@@ -77,3 +77,14 @@ caption = "The bounce light alone (brightened) while the camera pans: it stays o
 - **Fires and lamps throw it too:** a burning car lights the wall and ground beside it in its colour.
 - **Steady at the frame's edges.** Wet roads and smooth surfaces in shade also pick up a faint sheen of the colours
   round them.
+
+### Light on newly revealed surfaces
+
+Moving the camera or a vehicle no longer lets multi-bounce feedback borrow the
+previous frame's light from a different surface. Each interpolated history sample
+must agree in depth and facing before it can light the next bounce. This leaves the
+existing shade strength, sunlight restraint and exposure unchanged.
+
+The device regression is `godot --path . --rendering-method forward_plus --script
+tests/fixtures/ssgi-feedback.gd`. It checks a stable surface, newly revealed ground,
+a different-facing neighbour and an interpolation footprint crossing their edges.
