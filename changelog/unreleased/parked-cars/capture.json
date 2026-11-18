@@ -1,0 +1,47 @@
+{
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "source_ref": "53e4140a17223530974734453f56df6094045dcf",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "renderer": "forward_plus",
+  "resolution": [
+    1600,
+    900
+  ],
+  "stage": "tests/fixtures/environment-views.gd (town); main.gd off-screen screenshot",
+  "comparisons": [
+    {
+      "subjects": [
+        "town",
+        "square"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crops": {
+        "town": [
+          400,
+          160,
+          1360,
+          800
+        ],
+        "square": [
+          0,
+          60,
+          1600,
+          900
+        ]
+      }
+    },
+    {
+      "subjects": [
+        "burnt-out car"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --perf=0 --set=perf:0 --preset=high --mood=day --screenshot=OUT.png --shot-at=4 --focus=33.3,-33 --zoom=17 --pitch=-38 --cam-yaw=0.7",
+      "crop": [
+        0,
+        0,
+        1600,
+        900
+      ]
+    }
+  ],
+  "notes": "Before and after are the same seed-3 battle map, same cameras, no retouching. Each half is scaled to 792 px wide on the sheet."
+}
