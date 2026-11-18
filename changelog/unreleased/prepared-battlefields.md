@@ -3,6 +3,11 @@ title = "Choose your battlefield"
 summary = "Pick Alder Valley, Stonebridge or Highland Junction before deploying. Desktop builds reuse prepared ground and routes to reduce work at loading time."
 kind = "new"
 
+[[videos]]
+file = "deployment.webm"
+poster = "deployment.jpg"
+caption = "Select Stonebridge, then Highland Junction, deploy, and arrive at the FOB. Real Compatibility-renderer capture using generated fallback terrain; loading is shown at 45x, selection and arrival at normal speed. This is not a loading-time comparison."
+
 [[screenshots]]
 file = "battlefields.jpg"
 caption = "Alder Valley, Stonebridge and Highland Junction: coastal, river-crossing and dry foothill layouts."
