@@ -1175,9 +1175,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   it off and needs .50 cals, cannons, AA or rockets; tanks only fear anti-tank weapons.
 - **Off-map support**, from minute five (recon flights sooner), each on its own cooldown:
   - Coalition: **F/A-181 Black Wasp II strike** (a stick of four high-drag bombs across the spot), **A-10C
-    Thunderbolt II** and **A-164 Wipeout gun runs** (in low and visible, nose down, walking a burst of 30 mm
-    through the target: the impacts land first, the BRRRT arrives after), **AC-130U Spooky** and the cheaper
-    **V-44X Blackfish** gunships (a left-hand orbit, port wing down, for 25 seconds, hunting anything in the
+    Thunderbolt II** and **A-164 Wipeout gun runs** (diving on the target, nose down, walking a burst of 30 mm
+    through it: the impacts land first, the BRRRT arrives after), **AC-130U Spooky** and the cheaper
+    **V-44X Blackfish** gunships (a left-hand orbit, port wing down, for 26 seconds, hunting anything in the
     circle with the side-firing 105, 40 and 25/20 mm), **A-143 Buzzard** strafe, **A-149 Gryphon** precision strike,
     **MQ-4A Greyhawk** drone (circles firing guided missiles), **UCAV Sentinel** (two bombs, no warning to the
     enemy), **155 mm artillery** (eight heavy shells, visible arcs and a tearing whistle).
@@ -1187,6 +1187,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     **KH-3A Fenghuang Overwatch** (Rebels): see "Reconnaissance and the fog of war". Every aircraft on a run spots
     for its side as it flies.
   - Mortar and artillery shells are drawn a little larger than life with a smoke trail, so you can follow the arcs.
+  - **The aircraft fly as aeroplanes** (`Projectile._fly`): each holds its speed, turns by banking (the turn rate
+    follows from the bank, g tan(bank) / V, at a limited roll rate), and climbs or dives only as fast as the g it
+    can pull. It holds its height over the ground ahead of it, so a ridge is one smooth climb, never a snap. A
+    bomb run releases level at 60 m and then breaks away in a hard climbing turn (75 degrees of bank, 5 g); a gun
+    run aims its fixed gun with the whole airframe, pushing over from 70 m into a 12 to 15 degree dive on the
+    target, opening fire at 165 m slant range and walking the burst through by easing the nose up, then pulling
+    off in a climbing turn; an orbiting gunship runs in wings level, rolls into a pylon turn banked the 45 degrees
+    its circle needs, and rolls out to fly off climbing. The nose rides above the flight path by the angle of
+    attack the wings need, more of it in a hard turn. Clients work out velocity and bank from the snapshots.
   - The AI calls them on dense groups of spotted enemies, never danger-close to its own troops, running gun runs
     in from its own lines.
 

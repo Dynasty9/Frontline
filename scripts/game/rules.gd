@@ -75,7 +75,8 @@ func _launch(kind: String, team: int, pos: Vector3, dir: Vector3, by := 0) -> vo
 			# a reconnaissance pass: in along the line and out the other side,
 			# its camera (or the spotter's binoculars) sweeping a strip either side
 			var leg := float(sd.get("leg", 420.0))
-			var st0 := pos - dir * leg + Vector3(0, float(sd.get("alt", 60.0)), 0)
+			var st0 := pos - dir * leg
+			st0.y = maxf(world.terrain.landform.height(pos), world.terrain.landform.height(st0)) + float(sd.get("alt", 60.0))
 			world.spawn("projectile", {"ptype": "jet", "team": team, "pos": st0, "vel": dir * float(sd.get("speed", 90.0)), "target": pos, "fuse": 0.0, "thrower": 0, "mk": mk,
 				"sight": float(sd.sight), "stay": leg})
 			_sup_msg(team, foe, "%s inbound on %s. Watch the map." % [air_name, gr], "Enemy recon plane overhead. They've seen us." if warn else "", pos)
@@ -87,13 +88,14 @@ func _launch(kind: String, team: int, pos: Vector3, dir: Vector3, by := 0) -> vo
 			_sup_msg(team, foe, "%s on station over %s. Eyes on for %d seconds." % [air_name, gr, int(sd.stay)], "Enemy drone overhead!" if warn else "", pos)
 			return
 		"jet":
-			var start := pos - dir * 330.0 + Vector3(0, 34.0, 0)
+			var start := pos - dir * 330.0
+			start.y = maxf(world.terrain.landform.height(pos), world.terrain.landform.height(start)) + Projectile.JET_ALT
 			world.spawn("projectile", {"ptype": "jet", "team": team, "pos": start, "vel": dir * 95.0, "target": pos, "fuse": float(sd.get("bombs", 4)), "thrower": 0, "by": by, "mk": mk})
 			_sup_msg(team, foe, "%s inbound on %s." % [air_name, gr], "Enemy jet inbound!" if warn else "", pos)
 			return
 		"a10":
 			var st := pos + dir * Projectile.A10_START
-			st.y = Projectile.a10_alt(Projectile.A10_START)
+			st.y = maxf(world.terrain.landform.height(pos), world.terrain.landform.height(st)) + Projectile.A10_ALT
 			world.spawn("projectile", {"ptype": "a10", "team": team, "pos": st, "vel": dir * Projectile.A10_SPEED, "target": pos, "fuse": 0.0, "thrower": 0, "by": by, "mk": mk})
 			_sup_msg(team, foe, "%s inbound, gun run on %s. Danger close!" % [air_name, gr], "Enemy jet, low! Get down!", pos)
 			return

@@ -41,6 +41,7 @@ var mk := ""  # support aircraft: which model flies it
 var _bombs0 := -1.0  # a bomb run: how many it started with
 var guns := ""  # an orbiting gunship's weapons (GUNSETS)
 var sight := 0.0  # a recon flight: how far either side of its track its camera sees (0: an ordinary sortie)
+var fire_at := -1.0  # a gun run: when its burst began (world time; -1 not yet)
 var stay := 0.0  # a recon pass: how far on it flies; an orbit: how long it stays on station (0: the default)
 var _mark_t := 0.0
 var _visual_launch_offset := Vector3.ZERO
@@ -88,11 +89,13 @@ func apply_props(d: Dictionary) -> void:
 		sight = d.sight
 	if d.has("stay"):
 		stay = d.stay
+	if d.has("fire"):
+		fire_at = d.fire
 
 
 func get_props() -> Dictionary:
 	return {"ptype": ptype, "team": team, "pos": position, "vel": vel, "thrower": thrower_id, "fuse": fuse,
-		"origin": origin, "target": target, "T": shell_t, "tgt": tgt_id, "mk": mk, "guns": guns, "sight": sight, "stay": stay}
+		"origin": origin, "target": target, "T": shell_t, "tgt": tgt_id, "mk": mk, "guns": guns, "sight": sight, "stay": stay, "fire": fire_at}
 
 
 func on_spawned() -> void:
@@ -100,8 +103,12 @@ func on_spawned() -> void:
 		target.y = maxf(target.y, world.ground_y(target))
 	if ptype in ["grad", "arty", "ac105", "ac40", "ac25"]:
 		position = origin
+	if ptype == "ac130":
+		position = _ac_pos(life_t)  # where its run-in starts
 	net_pos = position
 	net_init = true
+	if ptype == "jet" or ptype == "a10":
+		_run = Defs.flat(vel).normalized()
 	if srv and ptype in ["rocket", "atgm", "recoilless"]:
 		_warn_target()
 	if world.has_view:
@@ -133,15 +140,110 @@ func sim(dt: float) -> void:
 			_bomb(dt)
 
 
-## Ground-attack jet: flies straight over the target and releases a stick of
-## high-drag bombs timed so they land across it.
-func _jet(dt: float) -> void:
+# --- Flight ----------------------------------------------------------------------------
+# Support aircraft fly as aeroplanes do. The speed holds; to turn, the pilot
+# rolls (at a roll rate, up to a bank limit) and the turn follows from the bank,
+# g tan(bank) / V; to climb or dive he pulls or pushes, and the flight path bends
+# only as fast as the g he pulls. He holds his height over the ground ahead of
+# him rather than the ground underneath, so a ridge is one smooth climb.
+
+const G := 9.81
+const AOA := 0.045  # rad: the nose rides about 2.5 degrees above the flight path at 1 g
+
+var bank := 0.0  # roll, + left wing down (a turn to the left)
+var _spd := 0.0  # (server) the speed it holds
+var _run := Vector3.ZERO  # the run-in heading (the heading it was launched on)
+var _alt := 0.0  # (server) run-in height over the ground
+var _side := 1.0  # (server) which way it breaks off: + left
+var _phase := 0  # (server) where it is in its attack
+var _vbank := 0.0  # (view) the bank drawn, eased toward the replicated one
+
+
+## Fixes the run on the first tick: its heading, its height over the target's
+## ground and (from its id, so a seed repeats it) which way it will break.
+func _start_run() -> void:
+	if _spd > 0.0:
+		return
+	if _run == Vector3.ZERO:
+		_run = Defs.flat(vel).normalized()
+	_spd = maxf(vel.length(), 1.0)
+	# (launched that high over the target or over its own start, whichever is higher)
+	_alt = position.y - maxf(world.terrain.landform.height(target), world.terrain.landform.height(position))
+	_side = 1.0 if eid % 2 == 0 else -1.0
+
+
+## One tick of flight toward the ground heading `want`, the flight path climbing
+## toward `gamma_want` (rad, + up). `max_bank` caps the roll, `g_pull` the pull-up.
+func _fly(dt: float, want: Vector3, gamma_want: float, max_bank: float, g_pull: float, roll_rate := 1.6) -> void:
+	var fw := Defs.flat(vel).normalized()
+	if fw.length() < 0.5:
+		fw = _run
+	var gamma := asin(clampf(vel.y / maxf(vel.length(), 0.01), -1.0, 1.0))
+	var err := fw.signed_angle_to(Defs.flat(want), Vector3.UP) if Defs.flat(want).length() > 0.01 else 0.0
+	bank = move_toward(bank, clampf(err * 3.0, -max_bank, max_bank), roll_rate * dt)
+	fw = fw.rotated(Vector3.UP, G * tan(bank) / _spd * dt)
+	# pulling up he can load g_pull; pushing over, he eases toward a fraction of 1 g
+	var rate := (g_pull - 1.0) * G / _spd if gamma_want > gamma else 0.8 * G / _spd
+	gamma = move_toward(gamma, gamma_want, rate * dt)
+	vel = fw * (_spd * cos(gamma)) + Vector3.UP * (_spd * sin(gamma))
 	position += vel * dt
-	position.y = maxf(position.y, world.terrain.landform.height(position + Defs.flat(vel)) + 60.0)
-	var dirn := Defs.flat(vel).normalized()
-	var along := Defs.flat(position - target).dot(dirn)
+	# (never through the ground, whatever he was told)
+	var floor_y := world.terrain.landform.height(position) + 6.0
+	if position.y < floor_y:
+		position.y = floor_y
+		vel.y = maxf(vel.y, 0.0)
+
+
+## The flight path angle that brings it to height `want_y` in about `secs` seconds.
+func _hold_y(want_y: float, secs := 3.0, dive := 0.3, climb := 0.45) -> float:
+	return clampf(atan2(want_y - position.y, _spd * secs), -dive, climb)
+
+
+## The climb that clears the ground along `dir` over the next few seconds by
+## `clear` metres: for every rise ahead, the angle up to `clear` over it, and
+## the steepest of them. What a pilot hugging the ground flies by.
+func _clear_gamma(dir: Vector3, clear: float, secs := 4.0) -> float:
+	var g := -PI * 0.5
+	for i in range(1, 9):
+		var d := _spd * secs * float(i) / 8.0
+		g = maxf(g, atan2(world.terrain.landform.height(position + dir * d) + clear - position.y, d))
+	return g
+
+
+## The aircraft's attitude: its nose along the flight path, rolled by its bank
+## and raised by the angle of attack its wings need, more of it in a hard turn.
+static func flight_basis(fw: Vector3, roll: float) -> Basis:
+	var up := Vector3.UP if absf(fw.normalized().y) < 0.98 else Vector3.BACK
+	var aoa := AOA / maxf(cos(roll), 0.3)
+	return Basis.looking_at(fw, up) * Basis(Vector3.BACK, roll) * Basis(Vector3.RIGHT, aoa)
+
+
+## (view) Draws a flying aircraft along its flight path at its bank.
+func _pose_model(dt: float, fw: Vector3, roll: float) -> void:
+	_vbank = lerpf(_vbank, roll, 1.0 - exp(-dt * 8.0))
+	if fw.length() > 0.01:
+		model.global_basis = flight_basis(fw, _vbank)
+
+
+## Ground-attack jet: runs in level along the line, releases a stick of
+## high-drag bombs timed to land across the target, then hauls round in a hard
+## climbing break away from the bursts. A recon pass flies straight through.
+func _jet(dt: float) -> void:
+	_start_run()
+	var along := Defs.flat(position - target).dot(_run)
 	if _bombs0 < 0.0:
 		_bombs0 = fuse
+	var run_y := world.terrain.landform.height(target) + _alt
+	if sight <= 0.0 and fuse <= 0.0 and along > 15.0:
+		# the stick is gone: break away, climbing
+		_phase = 1
+		var out := _run.rotated(Vector3.UP, _side * JET_BREAK)
+		var climb := minf(0.42, maxf(_hold_y(run_y + 150.0, 2.0, 0.3, 0.42), _clear_gamma(Defs.flat(vel).normalized(), 60.0)))
+		_fly(dt, out, climb, deg_to_rad(75.0), 5.0, 2.2)
+	else:
+		# hold the line through the target, level at the run-in height
+		var ahead := target + _run * (along + 250.0)
+		_fly(dt, ahead - position, minf(0.45, maxf(_hold_y(run_y), _clear_gamma(_run, 35.0))), 0.6, 3.0)
 	if fuse > 0.0:
 		# a stick 10 m apart, centred on the target
 		var i := _bombs0 - fuse
@@ -150,8 +252,16 @@ func _jet(dt: float) -> void:
 			world.spawn("projectile", {"ptype": "bomb", "team": team, "pos": position + Vector3(0, -1.4, 0), "vel": vel * 0.95, "thrower": thrower_id, "by": by})
 	if sight > 0.0:
 		_photograph(dt)
-	if along > (stay if stay > 0.0 else 340.0):
+		if along > (stay if stay > 0.0 else 340.0):
+			world.despawn(self)
+	elif Defs.flat(position - target).length() > 560.0 or life_t > 45.0:
 		world.despawn(self)
+
+
+## How far round a bomb run hauls after the drop (rad).
+const JET_BREAK := 2.2
+## A bomb run's height over the target (BOMB_THROW is worked out for it).
+const JET_ALT := 60.0
 
 
 const BOMB_DRAG := 1.25
@@ -414,6 +524,31 @@ func read_state(b: StreamPeerBuffer) -> void:
 	net_pos = get_v3(b)
 	smoke_r = b.get_u8() / 20.0
 	flying = b.get_u8() == 1
+	if ptype == "jet" or ptype == "a10":
+		_read_flight()
+
+
+var _snap_t := -1.0  # (client) the last snapshot of a manoeuvring aircraft: when,
+var _snap_p := Vector3.ZERO  # where,
+var _snap_v := Vector3.ZERO  # and how fast it had been going
+
+
+## (client) A manoeuvring aircraft's velocity and bank aren't sent: they follow
+## from where it was in the last two snapshots (taken on the host's clock), and
+## the bank from how fast it's turning, tan(bank) = V omega / g.
+func _read_flight() -> void:
+	var t: float = world.time
+	var dt := t - _snap_t
+	if _snap_t >= 0.0 and dt > 0.005 and dt < 1.0:
+		var v := (net_pos - _snap_p) / dt
+		if v.length() < 400.0:
+			if _snap_v.length() > 1.0 and Defs.flat(v).length() > 1.0:
+				var omega := Defs.flat(_snap_v).signed_angle_to(Defs.flat(v), Vector3.UP) / dt
+				bank = lerpf(bank, clampf(atan(omega * v.length() / G), -1.4, 1.4), 0.35)
+			vel = v
+			_snap_v = v
+	_snap_t = t
+	_snap_p = net_pos
 
 
 func _process(dt: float) -> void:
@@ -432,9 +567,12 @@ func _view_process(dt: float) -> void:
 				vel = _bomb_step(vel, dt)
 			net_pos += vel * dt
 			position = position.lerp(net_pos, 1.0 - exp(-dt * 10.0)) if position.distance_to(net_pos) < 25.0 else net_pos
-		var fw := vel.normalized()
-		if absf(fw.y) < 0.98:
-			model.look_at(model.global_position + fw, Vector3.UP)
+		if ptype == "jet":
+			_pose_model(dt, vel, bank)
+		else:
+			var fw := vel.normalized()
+			if absf(fw.y) < 0.98:
+				model.look_at(model.global_position + fw, Vector3.UP)
 		if _vm:
 			for pv in _vm.wheels:
 				(pv as Node3D).rotate_object_local(Vector3(0, 0, 1), dt * 40.0)  # the propeller
@@ -606,7 +744,7 @@ func add_eyes(out: PackedVector3Array) -> void:
 			if Defs.in_map(position, -40.0):
 				out.append(Vector3(position.x, position.z, GUNRUN_SIGHT))
 		"ac130":
-			if life_t > 2.0 and life_t < on_station():
+			if life_t > AC_IN and life_t < AC_IN + on_station():
 				out.append(Vector3(target.x, target.z, sight if sight > 0.0 else ORBIT_SIGHT))
 			out.append(Vector3(position.x, position.z, BELOW_SIGHT))
 
@@ -630,63 +768,90 @@ func _photograph(dt: float) -> void:
 
 
 # --- A-10 gun run ----------------------------------------------------------------------
+# The gun is fixed in the nose, so the pilot aims it with the whole aircraft: he
+# runs in at height, pushes over into a shallow dive with the target in his
+# sight, opens fire at slant range and walks the burst through it by easing
+# the nose up, then pulls off in a climbing turn before he's low over the
+# bursts.
 
 const A10_SPEED := 58.0
 const A10_START := -420.0
-const A10_FIRE_AT := -50.0  # along-track distance from the target where the burst starts
+const A10_ALT := 70.0  # run-in height over the target
+const A10_ROLL_IN := 0.21  # rad (12 degrees): the sight line down to the target where he pushes over
+const A10_RANGE := 165.0  # slant range at which the burst starts
 const A10_BURST := 1.0
-const A10_STRIP := 18.0  # the rounds walk +-18 m through the target, ahead of the diving jet
+const A10_STRIP := 18.0  # the rounds walk +-18 m through the target
+const A10_CLIMB := 0.42  # rad: the pull-off climb
+const A10_BREAK := 1.7  # rad: how far round he turns coming off
 
 
-static func a10_alt(along: float) -> float:
-	if along < -160.0:
-		return lerpf(62.0, 27.0, clampf((along - A10_START) / (-160.0 - A10_START), 0.0, 1.0))
-	if along < 0.0:
-		return lerpf(27.0, 21.0, (along + 160.0) / 160.0)
-	return 21.0 + along * 0.42
+## Where the burst is falling `k` (0..1) of the way through it.
+func _a10_pip(k: float) -> Vector3:
+	var p := target + heading_run() * lerpf(-A10_STRIP, A10_STRIP, k)
+	p.y = world.terrain.landform.height(p)
+	return p
 
 
-## Comes in low along `vel`, nose down, and walks a two-second burst of 30 mm
-## through the target; the BRRRT reaches the ground after the shells do.
+## The run-in heading (the client has only the heading it was launched on).
+func heading_run() -> Vector3:
+	return _run if _run != Vector3.ZERO else Defs.flat(vel).normalized()
+
+
+## Runs in level, dives on the target and walks a one-second burst of 30 mm
+## through it; the BRRRT reaches the ground after the shells do.
 func _a10(dt: float) -> void:
-	var dirn := Defs.flat(vel).normalized()
-	position += dirn * A10_SPEED * dt
-	var along := Defs.flat(position - target).dot(dirn)
-	position.y = world.terrain.landform.height(position) + a10_alt(along)
-	vel = dirn * A10_SPEED + Vector3(0, (a10_alt(along + 1.0) - a10_alt(along)) * A10_SPEED, 0)
-	if along >= A10_FIRE_AT and _fire_el < A10_BURST:
-		if _fire_el < 0.0:
-			_fire_el = 0.0
-			world.stat("a10_run")
-		var side := dirn.cross(Vector3.UP)
+	_start_run()
+	var k := clampf(_fire_el / A10_BURST, 0.0, 1.0) if _fire_el >= 0.0 else 0.0
+	var pip := _a10_pip(k)
+	var to := pip - position
+	var los := atan2(to.y, Defs.flat(to).length())
+	match _phase:
+		0:
+			# the run-in, level along the line
+			var ahead := target + _run * (Defs.flat(position - target).dot(_run) + 250.0)
+			_fly(dt, ahead - position, minf(0.45, maxf(_hold_y(world.terrain.landform.height(target) + _alt), _clear_gamma(_run, 30.0))), 0.5, 3.0, 1.2)
+			if -los >= A10_ROLL_IN:
+				_phase = 1
+		1, 2:
+			# in the dive, the flight path on the pipper, unless the ground
+			# coming up in front would have him into it first
+			_fly(dt, to, maxf(los, _clear_gamma(Defs.flat(vel).normalized(), 12.0, 2.0)), 0.5, 3.5, 1.2)
+			if _phase == 1 and to.length() <= A10_RANGE:
+				_phase = 2
+				_fire_el = 0.0
+				fire_at = world.time
+				world.push_props(self, {"fire": fire_at})
+				world.stat("a10_run")
+		_:
+			# coming off: a climbing turn away from his own bursts
+			_fly(dt, _run.rotated(Vector3.UP, _side * A10_BREAK), maxf(A10_CLIMB, _clear_gamma(Defs.flat(vel).normalized(), 40.0)), deg_to_rad(60.0), 4.0, 1.4)
+	if _phase == 2:
+		var side := _run.cross(Vector3.UP)
 		var n := int(round(30.0 * dt + world.rng.randf() * 0.5))
 		for i in n:
-			var k := clampf(_fire_el / A10_BURST, 0.0, 1.0)
-			var aim := target + dirn * lerpf(-A10_STRIP, A10_STRIP, k) + side * world.rng.randf_range(-3.0, 3.0) + dirn * world.rng.randf_range(-2.0, 2.0)
+			var aim := _a10_pip(clampf(_fire_el / A10_BURST, 0.0, 1.0)) + side * world.rng.randf_range(-3.0, 3.0) + _run * world.rng.randf_range(-2.0, 2.0)
 			aim.y = world.ground_y(aim) + 0.15
 			_hits.append([world.time + position.distance_to(aim) / 950.0, aim])
 		_fire_el += dt
+		if _fire_el >= A10_BURST:
+			_phase = 3
 	for i in range(_hits.size() - 1, -1, -1):
 		var h: Array = _hits[i]
 		if world.time >= float(h[0]):
 			_hits.remove_at(i)
 			world.combat.explode(h[1], {"dmg": 75.0, "radius": 2.6, "fling": 5.0, "at": 170.0, "top": true, "src": null, "team": team, "by": by, "size": 0.68, "struct_mult": 1.6})
-	if along > 420.0:
+	if (_phase == 3 and _hits.is_empty() and Defs.flat(position - target).length() > 460.0) or life_t > 40.0:
 		world.despawn(self)
 
 
 func _a10_view(dt: float) -> void:
-	var dirn := Defs.flat(vel).normalized()
 	if not srv:
-		net_pos += dirn * A10_SPEED * dt
+		net_pos += vel * dt
 		position = position.lerp(net_pos, 1.0 - exp(-dt * 10.0)) if position.distance_to(net_pos) < 25.0 else net_pos
-	var along := Defs.flat(position - target).dot(dirn)
-	if not srv:
-		position.y = world.terrain.landform.height(position) + a10_alt(along)
-	var fw := (dirn * A10_SPEED + Vector3(0, (a10_alt(along + 1.0) - a10_alt(along)) * A10_SPEED, 0)).normalized()
-	if absf(fw.y) < 0.98:
-		model.look_at(model.global_position + fw, Vector3.UP)
-	var firing := along >= A10_FIRE_AT and along < A10_FIRE_AT + A10_BURST * A10_SPEED
+	_pose_model(dt, vel, bank)
+	var el := _fire_el if srv else (world.time - fire_at if fire_at >= 0.0 else -1.0)
+	var firing := el >= 0.0 and el < A10_BURST
+	var fw := model.global_basis * Vector3.FORWARD
 	var nose := position + fw * 7.6 + Vector3(0, -0.3, 0)
 	if _vm and _vm.mg_tip and is_instance_valid(_vm.mg_tip) and _vm.mg_tip.is_inside_tree():
 		nose = _vm.mg_tip.global_position  # the model's own gun muzzle
@@ -698,9 +863,8 @@ func _a10_view(dt: float) -> void:
 			# the shells (950 m/s) arrive well before the sound (343 m/s)
 			_gun_sound_delay = 0.55
 		if randf() < 0.7 and world.fx:
-			var k := clampf((along - A10_FIRE_AT) / (A10_BURST * A10_SPEED), 0.0, 1.0)
-			var side := dirn.cross(Vector3.UP)
-			var aim := target + dirn * lerpf(-A10_STRIP, A10_STRIP, k) + side * randf_range(-3.0, 3.0)
+			var side := Defs.flat(fw).normalized().cross(Vector3.UP)
+			var aim := _a10_pip(clampf(el / A10_BURST, 0.0, 1.0)) + side * randf_range(-3.0, 3.0)
 			world.fx._tracer(nose, aim, 3.5, 1.4)
 			world.fx._flash(nose, 0.04, 2.2)
 	if _gun_sound_delay > 0.0:
@@ -713,8 +877,11 @@ func _a10_view(dt: float) -> void:
 
 const AC_R := 165.0
 const AC_ALT := 88.0
-const AC_SPEED := 52.0
+const AC_SPEED := 40.0  # slow enough that the pylon turn round AC_R is banked about 45 degrees
 const AC_ON_STATION := 26.0
+const AC_IN := 5.0  # s: the straight run-in before it rolls into the orbit
+const AC_ROLL := 2.0  # s: rolling into the turn, and out of it
+const AC_OUT := 10.0  # s: flying off before it's gone
 const AC_GUNS := {
 	"ac105": {"every": 3.4, "burst": 1, "gap": 0.0, "T": 2.6, "spread": 2.5, "snd": "ac105", "vol": 5.0},
 	"ac40": {"every": 2.3, "burst": 3, "gap": 0.38, "T": 1.8, "spread": 2.2, "snd": "ac40", "vol": 0.0},
@@ -727,11 +894,34 @@ func on_station() -> float:
 	return stay if stay > 0.0 else AC_ON_STATION
 
 
+## How long it has been circling (0 until it rolls into the orbit, on_station()
+## once it rolls out).
+func _ac_orbit_t(t: float) -> float:
+	return clampf(t - AC_IN, 0.0, on_station())
+
+
+## Where an orbiting aircraft is at time `t`: in on a straight line that meets
+## the circle on its tangent, round the circle, and off along the tangent
+## where it rolls out, climbing away. Worked out the same on every peer.
 func _ac_pos(t: float) -> Vector3:
-	var a := fuse - t * AC_SPEED / AC_R  # a left-hand orbit: the target off the port wing, where the guns are
+	var a := fuse - _ac_orbit_t(t) * AC_SPEED / AC_R  # a left-hand orbit: the target off the port wing, where the guns are
 	var p := target + Vector3(cos(a) * AC_R, AC_ALT, sin(a) * AC_R)
 	p.y = maxf(p.y, world.terrain.landform.peak + AC_ALT)
+	var along := Vector3(sin(a), 0.0, -cos(a))  # the way it's flying round the circle
+	if t < AC_IN:
+		p -= along * ((AC_IN - t) * AC_SPEED)
+	elif t - AC_IN > on_station():
+		var out := (t - AC_IN - on_station()) * AC_SPEED
+		p += along * out + Vector3.UP * (out * 0.08)
 	return p
+
+
+## Its bank at time `t`: level on the run-in, rolled into the steady turn the
+## circle needs (tan(bank) = V^2 / (R g)), and level again flying off.
+func _ac_bank(t: float) -> float:
+	var u := t - AC_IN
+	var full := atan2(AC_SPEED * AC_SPEED, AC_R * G)
+	return full * smoothstep(-AC_ROLL * 0.75, AC_ROLL * 0.25, u) * (1.0 - smoothstep(on_station() - AC_ROLL * 0.25, on_station() + AC_ROLL * 0.75, u))
 
 
 ## Other orbiting aircraft's weapons: a VTOL gunship's 30 mm and rockets, an
@@ -759,8 +949,9 @@ const GUNSETS := {
 func _ac130(dt: float) -> void:
 	position = _ac_pos(life_t)
 	vel = (_ac_pos(life_t + 0.1) - position) / 0.1
-	if life_t < 3.0 or life_t > on_station():
-		if life_t > on_station() + 8.0:
+	var u := life_t - AC_IN
+	if u < 1.0 or u > on_station() - 2.0:
+		if u > on_station() + AC_OUT:
 			world.despawn(self)
 		return
 	var gset: Dictionary = GUNSETS.get(guns, AC_GUNS)
@@ -810,9 +1001,7 @@ func _ac_aim() -> Vector3:
 ## The same bank and heading as the rendered airframe, also available headless.
 func aircraft_pose() -> Transform3D:
 	var fw := heading()
-	var basis := Basis.looking_at(fw, Vector3.UP)
-	var bank := atan2(AC_SPEED * AC_SPEED, AC_R * 9.81)
-	return Transform3D(basis * Basis(Vector3.BACK, bank), position)
+	return Transform3D(flight_basis(fw, _ac_bank(life_t)), position)
 
 
 func aircraft_muzzle(weapon: String) -> Vector3:
@@ -844,14 +1033,12 @@ func _ac130_view(dt: float) -> void:
 	if not srv:
 		life_t += dt
 		position = _ac_pos(life_t)
-	var fw := (_ac_pos(life_t + 0.1) - _ac_pos(life_t)).normalized()
-	if absf(fw.y) < 0.98:
-		model.look_at(model.global_position + fw, Vector3.UP)
-		model.rotate_object_local(Vector3(0, 0, 1), atan2(AC_SPEED * AC_SPEED, AC_R * 9.81))  # banked left into the turn, the guns on the target
+	# banked left into the turn, the guns on the target
+	model.global_basis = flight_basis(_ac_pos(life_t + 0.1) - _ac_pos(life_t), _ac_bank(life_t))
 	if _vm:
 		for w in _vm.wheels:
 			(w as Node3D).rotate_object_local(Vector3(0, 0, 1), dt * 40.0)
 	if _drone:
 		var d := world.cam.cam.global_position.distance_to(position) if world.cam else 200.0
-		var fade := clampf(minf(life_t / 3.0, (on_station() + 8.0 - life_t) / 4.0), 0.0, 1.0)
+		var fade := clampf(minf(life_t / 3.0, (AC_IN + on_station() + AC_OUT - life_t) / 4.0), 0.0, 1.0)
 		_drone.volume_db = linear_to_db(maxf(0.0005, fade * clampf(1.0 - (d - 60.0) / 400.0, 0.15, 1.0) * 0.35))

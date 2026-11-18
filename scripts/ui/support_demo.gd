@@ -109,7 +109,8 @@ func _update_camera() -> void:
 			# Give wide, banked wings and tiltrotor discs room at the frame edge.
 			if _aircraft.guns in ["ac130", "blackfish", "xian"]:
 				chase = chase.rotated(Vector3.UP, 0.45) * 1.65
-			follow = recon or time < (6.0 if _aircraft.guns == "greyhawk" else 3.2)
+			# Ride along the run-in and the roll into the orbit, then watch the circle.
+			follow = recon or time < Projectile.AC_IN + (3.0 if _aircraft.guns == "greyhawk" else 0.5)
 		elif _aircraft.ptype == "a10":
 			follow = _aircraft._fire_el < 0.0
 		elif not recon:
