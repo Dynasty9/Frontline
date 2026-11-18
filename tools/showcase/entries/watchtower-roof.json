@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/watchtower-roof.md",
+  "summary": "A watchtower's sheet roof has gone dull with the weather and has sandbags laid on its edges to hold it down in a wind.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (watchtower:0, --building-match)",
+  "rationale": "Small appearance change of the watchtower roof: one matched studio still before and after.",
+  "source_ref": "54276f86c8bd30e71772d24e56c86c5a363009a6",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/watchtower-roof/comparison.jpg",
+      "sha256": "9cd2e8a5805983af304e82209b995bfa91f1d3ba8d8d145be027862e6dbda940"
+    }
+  ],
+  "output": null
+}
