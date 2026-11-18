@@ -1056,14 +1056,26 @@ static func _gun125(k: VehicleModels, p: Node3D, y: float, z0: float, length: fl
 	return k._tip(p, Vector3(0, y, z0 - length - 0.05))
 
 
-## A commander's cupola with a 12.7 mm on its ring, the gun facing forward:
-## four vision blocks across the front, the hatch lid, the pintle mount.
+## A commander's cupola with its remote-controlled Kord, the gun facing
+## forward: four vision blocks across the front, the hatch lid, and on the
+## cupola's front the T-90's kind of mount - laid from inside under armour,
+## not from the open hatch - a bracket carrying one trunnion cheek on the
+## gun's left with the elevation drive on its outside, the cradle tray under
+## the gun and its box on the right, chuted over into the feed.
 static func _cupola_mg(k: VehicleModels, p: Node3D, pos: Vector3, mat := CAM) -> void:
 	VehicleMounts.cupola(k, p, pos + Vector3(0, 0.1, 0), 0.36, 0.39, 0.2, 4, -0.825, 0.55, mat, null, Vector3(0.12, 0.07, 0.05))
 	k._cyl(p, 0.3, 0.3, 0.06, pos + Vector3(0, 0.23, 0.05), Vector3.ZERO, mat, null, 14)
-	VehicleMounts.pintle(k, p, pos + Vector3(0, 0.26, -0.2), pos + Vector3(0.0, 0.5, -0.25), "gunmetal_w")
-	var g := k._pivot(p, pos + Vector3(0.0, 0.5, -0.25))
-	_kord(k, g, 1.3)
+	var at := pos + Vector3(0.0, 0.46, -0.2)
+	k._add(p, BevelMesh.make(Vector3(0.22, 0.07, 0.24), 0.01), mat, null, pos + Vector3(-0.02, 0.29, -0.2))
+	k._add(p, BevelMesh.make(Vector3(0.035, 0.2, 0.18), 0.008), mat, null, at + Vector3(-0.1, -0.09, 0.0))
+	k._add(p, BevelMesh.make(Vector3(0.06, 0.1, 0.13), 0.008), "gunmetal_w", null, at + Vector3(-0.15, -0.07, 0.02))
+	k._cyl(p, 0.04, 0.04, 0.05, at + Vector3(-0.1, 0, 0), Z90, "gunmetal_w", null, 12)
+	var g := k._pivot(p, at)
+	_kord(k, g, 1.3, 1.0, 1.0)
+	k._cyl(g, 0.022, 0.022, 0.05, Vector3(-0.075, 0, 0), Z90, "gunmetal_w", null, 10, false)
+	k._add(g, BevelMesh.make(Vector3(0.34, 0.03, 0.32), 0.006), "gunmetal_w", null, Vector3(0.1, -0.085, 0.02))
+	VehicleFittings.ammo_can(k, g, Vector3(0.2, 0.03, 0.04), OLIVE, Vector3.ZERO, Vector3(0.14, 0.2, 0.34))
+	_chute(k, g, Vector3(0.145, 0.15, -0.08), Vector3(0.1, 0.17, -0.07), Vector3(0.0625, 0.05, -0.06), 0.08)
 	k.gun_assembly(g, Vector3(0, 0, -1.3))
 
 
