@@ -1,0 +1,59 @@
+{
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "source_ref": "104f8e2f32801a991aac6ffd08395b32e7e76b47",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "view": "hq",
+      "crop": [
+        200,
+        80,
+        1400,
+        820
+      ]
+    },
+    {
+      "subjects": [
+        "depot:0",
+        "depot:1"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=depot:0,depot:1"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "cameras": {
+        "depot:0": [
+          0.0600004196166992,
+          5.32310914993286,
+          -0.294007778167725,
+          19.8523998260498,
+          70.7946090698242
+        ],
+        "depot:1": [
+          0.0600004196166992,
+          5.32310914993286,
+          -0.294007778167725,
+          19.8523998260498,
+          70.7946090698242
+        ]
+      },
+      "crop": [
+        380,
+        160,
+        1300,
+        860
+      ]
+    }
+  ],
+  "notes": "The baseline is main at v2.0.2; its fixture is given the same hq view (the near side's HQ, from the battle's side). The studio's HQs are framed by the after run's cameras (the baseline's three boxes would frame tighter).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

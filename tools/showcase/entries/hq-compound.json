@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/hq-compound.md",
+  "summary": "Each side's HQ built as a compound: containers, a sandbagged command post, a yard under a net.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (depot:0, depot:1); tests/fixtures/environment-views.gd (town: hq)",
+  "rationale": "Appearance change: the HQ in the map at the game's own camera, and both sides' HQs in the studio from the same cameras.",
+  "source_ref": "104f8e2f32801a991aac6ffd08395b32e7e76b47",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/hq-compound/comparison.jpg",
+      "sha256": "adcdc08ccdf09e4968c927daa7124a331df454fdd37018cb995729bd8b7f6801"
+    },
+    {
+      "file": "changelog/unreleased/hq-compound/capture.json",
+      "sha256": "cfd8306bfa817bd931cb4304e7e38ceac60be6e86f5c32b7a1a9377c1c82cd14"
+    }
+  ],
+  "output": null
+}
