@@ -7,7 +7,7 @@ var prefix := "build/snow-sequence"
 var records := []
 
 func _initialize() -> void:
-	RenderingServer.viewport_set_update_mode(root.get_viewport_rid(), RenderingServer.VIEWPORT_UPDATE_DISABLED)
+	RenderingServer.render_loop_enabled = false
 	call_deferred("capture")
 
 func capture() -> void:
@@ -21,6 +21,8 @@ func capture() -> void:
 	while game.world == null or game.world.time < 2.0:
 		await process_frame
 	world = game.world
+	# Do not consume atlas bake batches while their viewport is not drawn.
+	world.atmo.light_probes.set_process(false)
 	if world.director:
 		world.director.active = false
 	world.cam.set_process(false)
@@ -32,6 +34,7 @@ func capture() -> void:
 	tank.order_stop()
 	tank.always_animate_tracks = true
 	await _advance(48)
+	await _prepare_probes()
 	await _shot("control", 0)
 	if "--snow-diagnostic" in OS.get_cmdline_user_args():
 		await _diagnostic()
@@ -75,7 +78,7 @@ func _advance(ticks: int) -> void:
 func _shot(phase: String, frame: int) -> void:
 	# Resume after node _process updates, then draw exactly this state.
 	await process_frame
-	RenderingServer.viewport_set_update_mode(root.get_viewport_rid(), RenderingServer.VIEWPORT_UPDATE_ONCE)
+	world.atmo.light_probes._process(1.0 / 24.0)
 	RenderingServer.force_draw(false, 1.0 / 24.0)
 	assert(root.get_texture().get_image().save_png(prefix + "/%s-%04d.png" % [phase, frame]) == OK)
 	var spots := []
@@ -138,3 +141,22 @@ func _diagnostic() -> void:
 			await _shot("diagnostic-" + lighting + "-" + treatment, 0)
 		ground.shader = ground_original
 		bank.shader = bank_original
+
+
+func _prepare_probes() -> void:
+	# Rebuild any atlas batches queued during startup before rendering was enabled.
+	# Hold simulation for these preparation draws; they are not footage.
+	var mode: int = world.process_mode
+	world.process_mode = Node.PROCESS_MODE_DISABLED
+	var probes = world.atmo.light_probes
+	probes._base_drawn = false
+	probes._requeue_all_bricks()
+	for warm in 48:
+		probes._process(1.0 / 24.0)
+		RenderingServer.force_draw(false, 1.0 / 24.0)
+		await process_frame
+		if probes._tile_queue.is_empty() and probes._brick_queue.is_empty() and probes._light_queue.is_empty() and probes._local_queue.is_empty():
+			break
+	print("SNOW_PROBE_PREPARED quality=", probes.quality, " tiles=", probes._tile_queue.size(), " bricks=", probes._brick_queue.size(), " relight=", probes._light_queue.size())
+	assert(probes._tile_queue.is_empty() and probes._brick_queue.is_empty() and probes._light_queue.is_empty(), "Capture requires a completed probe atlas")
+	world.process_mode = mode
