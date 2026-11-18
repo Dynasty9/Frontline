@@ -355,11 +355,11 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gmg: bool, cam: Str
 	k.mg_tip = k._tip(t, Vector3(0, 0.46, -0.78 if gmg else -1.54) * sc)
 
 
-## A flat strip from a to b running across the vehicle, `size` its width
-## (along the vehicle) and thickness: a feed chute's run of links.
-static func _strip(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, size: Vector2, mat: String, col = null) -> void:
+## A flat strip from a to b, `size` its width (along `across`) and
+## thickness: a feed chute's run of links.
+static func _strip(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, size: Vector2, mat: String, col = null, across := Vector3.BACK) -> void:
 	var y := (b - a).normalized()
-	var x := Vector3.BACK
+	var x := across
 	var z := x.cross(y).normalized()
 	x = y.cross(z).normalized()
 	k._add(p, Res.box(Vector3(size.x, a.distance_to(b), size.y)), mat, col, (a + b) * 0.5, Basis(x, y, z).get_euler(), Vector3.ONE, false)
@@ -697,13 +697,28 @@ static func _nyx(k: VehicleModels, team: int, kind: String, seed := 0) -> void:
 	k._add(t, _armour([_ring(_oct(-0.42, 0.42, -0.5, 0.45, 0.14), 0.0), _ring(_oct(-0.36, 0.36, -0.38, 0.4, 0.12), 0.3)], "indep_nyx_mount", 0.03), cam, col, Vector3(0, 0.08, 0))
 	match kind:
 		"ac":
-			# the Rh 202 in its cradle on top, ammunition boxes either side, a sight
+			# the Rh 202 in its cradle on top: its long receiver under the top
+			# cover, and at the receiver's front the dual feeder, wider than the
+			# gun, which takes a belt from each side - high explosive from one
+			# box, armour piercing from the other, the gunner choosing between
+			# them shot by shot - each belt in its chute from its box beside the
+			# receiver; a sight
 			VehicleMounts.mantlet(k, t, Vector3(0.26, 0.2, 0.66), Vector3(-0.04, 0.47, -0.08), cam, col)
 			VehicleMounts.receiver(k, t, Vector3(0.18, 0.18, 0.84), Vector3(-0.04, 0.6, -0.02))
+			k._add(t, BevelMesh.make(Vector3(0.185, 0.035, 0.4), 0.008), "gunmetal_w", null, Vector3(-0.04, 0.7, 0.1))
+			k._add(t, BevelMesh.make(Vector3(0.28, 0.13, 0.2), 0.012), "gunmetal_w", null, Vector3(-0.04, 0.63, -0.3))
 			VehicleWeapons.autocannon(k, t, Vector3(-0.04, 0.58, -0.42), Vector3(-0.04, 0.58, -2.36), Vector2(0.06, 0.4), Vector2(0.032, 0.032), Vector2(0.05, 0.16))
 			k.mg_tip = k._tip(t, Vector3(-0.04, 0.58, -2.38))
+			var ammo := Color(0.3, 0.33, 0.23)
 			for s: float in [-1.0, 1.0]:
-				k._box(t, Vector3(0.16, 0.24, 0.38), Vector3(-0.04 + s * 0.22, 0.56, 0.1), "paint", Color(0.3, 0.33, 0.23))
+				var bx: float = -0.04 + s * 0.23
+				VehicleFittings.ammo_can(k, t, Vector3(bx, 0.55, 0.1), ammo, Vector3.ZERO, Vector3(0.16, 0.24, 0.38))
+				k._box(t, Vector3(0.006, 0.06, 0.12), Vector3(-0.04 + s * 0.141, 0.64, -0.3), "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+				var a := Vector3(bx - s * 0.03, 0.69, -0.04)
+				var arch := Vector3(-0.04 + s * 0.19, 0.72, -0.2)
+				var f := Vector3(-0.04 + s * 0.155, 0.66, -0.3)
+				for leg: Array in [[a, arch], [arch, f]]:
+					_strip(k, t, leg[0], leg[1], Vector2(0.08, 0.024), "metal_dark", Color(0.12, 0.12, 0.11), Vector3.RIGHT)
 			VehicleMounts.sight(k, t, Vector3(0.3, 0.5, -0.28), Vector3(0.16, 0.18, 0.24), [Rect2(Vector2(0, 0.02), Vector2(0.1, 0.08))], cam, col)
 			k._cyl(t, 0.2, 0.2, 0.05, Vector3(0.18, 0.4, 0.25), Vector3.ZERO, cam, col, 12)
 		"at":
