@@ -128,6 +128,9 @@ for (const [kind, setUp] of Object.entries(STORES)) {
 			(await restarted.get(a.id)).chunks.map((c) => c.sequence),
 			[0, 1, 2, 3],
 		);
+		// A viewer fetching concurrently after a restart must receive every
+		// original payload, not just a correctly ordered index or warm cache.
+		assert.deepEqual(await Promise.all(parts.map((p) => restarted.chunk(a.id, String(p.sequence)))), parts);
 		assert.equal((await restarted.chunk(a.id, '3')).start, 30);
 	});
 }
