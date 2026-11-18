@@ -493,6 +493,10 @@ func check_rounded_corners(world, gen: MapGen) -> void:
 					var in_bite := a < r - 0.001 and b < r - 0.001 and Vector2(a, b).distance_to(Vector2(r, r)) > r + 0.001
 					assert(in_bite == false or not piece[3], "The sidewalk keeps out of the kerb's curve")
 					assert(piece[3] or a <= r + 0.001 and b <= r + 0.001, "The asphalt fills only the curve's bite")
+		# a traffic light's post stands on the corner's paving, back from its kerb
+		var post := TownGen.corner_post(quadrant.x, quadrant.y)
+		var kerb_centre := Vector2(quadrant.x, quadrant.y) * (TownGen.CURB + r)
+		assert(Vector2(post.x, post.z).distance_to(kerb_centre) < r - 0.4 and absf(post.x) < TownGen.WALK, "Corner posts stand on the rounded paving")
 	world.decor = town.decor
 	var atmosphere := Atmosphere.new()
 	atmosphere.world = world

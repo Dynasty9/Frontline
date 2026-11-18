@@ -15,6 +15,13 @@ const ROAD_HW := 2.9
 const CURB := ROAD_HW  # the kerb meets the carriageway without a grass strip
 const WALK := 4.8  # back of the sidewalk
 const CORNER_R := 1.6  # the kerb's radius round a crossroads corner (the sidewalk is 1.9 m wide)
+
+
+## Where a post stands on a crossroads corner (from the crossing's middle,
+## toward the sx, sz corner): on the rounded paving, 0.55 m back from its kerb.
+static func corner_post(sx: float, sz: float) -> Vector3:
+	return Vector3(sx, 0, sz) * (CURB + CORNER_R - (CORNER_R - 0.55) * sqrt(0.5))
+
 const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
 const REACH := 56.0  # the main streets run this far each way from the middle
@@ -918,7 +925,7 @@ func _street_furniture() -> void:
 			var k: String = e[0]
 			if k == "drive":
 				drives.append(e)
-			elif not k in ["walk", "curb", "junction", "zebra", "pave", "lot_pave", "yard", "wire", "drop", "garden", "fence", "soft"]:
+			elif not k in ["walk", "walk_corner", "curb", "junction", "zebra", "pave", "lot_pave", "yard", "wire", "drop", "garden", "fence", "soft"]:
 				taken.append([e[1], 1.0])
 	var clear := func(p: Vector3, r: float) -> bool:
 		for t: Array in taken:
@@ -941,7 +948,7 @@ func _street_furniture() -> void:
 	if (node_dirs.get(_key(center), {}) as Dictionary).size() >= 4:
 		for sx: float in [-1.0, 1.0]:
 			for sz: float in [-1.0, 1.0]:
-				var tp := center + Vector3(sx, 0, sz) * (CURB + 0.55)
+				var tp := center + corner_post(sx, sz)
 				var yaw := Defs.yaw_of(Vector3(sx, 0, 0))
 				var side := signf((Basis(Vector3.UP, yaw) * Vector3.RIGHT).dot(Vector3(0, 0, sz)))
 				put.call("traffic_light", tp, yaw, side, 0.4)
