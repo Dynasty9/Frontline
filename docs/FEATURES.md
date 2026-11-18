@@ -753,7 +753,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
+  cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, round bales of straw (the spiral of the roll on their ends) and silage wrapped in black or green film, a fenced road frontage, an orchard; the barn weatherboarded
   under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
   Photographed gravel roads blend compacted wheel tracks into loose aggregate and irregular dirt edges,
