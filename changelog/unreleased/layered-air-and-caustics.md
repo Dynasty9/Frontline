@@ -48,6 +48,11 @@ file = "browser-shallows.jpg"
 caption = "The browser version's simpler caustics"
 
 [[videos]]
+file = "dawn-approach.webm"
+poster = "dawn-approach.jpg"
+caption = "Dawn approach, before and after the coastal mist correction: matching camera, seed, exposure and full High settings. Three seconds of actual Forward+ output with a static naval fixture and advancing camera and weather, at normal simulation speed; software Vulkan capture, not a performance measurement."
+
+[[videos]]
 file = "mist-flicker.webm"
 poster = "mist-flicker-poster.jpg"
 caption = "The same frozen dawn moment, mist off and on every second."
@@ -159,3 +164,5 @@ weighting, cloud lighting, caustic strength and exposure stay unchanged.
 The matched clip is a software-Vulkan capture at 30 fixed simulation frames per
 second. It demonstrates the in-game view, not hardware speed. Source revisions,
 camera settings and renderer setup are recorded in `layered-air-and-caustics/weather-boundary-capture.json`.
+
+The matched motion capture and its source revisions are recorded in `layered-air-and-caustics/dawn-approach-capture.json`.

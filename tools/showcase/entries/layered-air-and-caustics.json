@@ -5,7 +5,7 @@
   "kind": "improved",
   "summary": "Layered mist and haze with low-sun shafts, smoke plumes that drift downwind and glow over fires, lamps and headlights glowing in the night air, dust trails behind vehicles, far rain curtains, weather that varies across the map, and caustics in the shallows and on hulls and piers.",
   "medium": "motion",
-  "stage": "game scenarios (--aivai, --scenario=support, --scenario=naval, --scenario=convoy) off-screen, frozen and flipped with FL_DEBUG_AIR_FLIP where an OFF/ON is shown",
+  "stage": "Primary matched motion: tools/showcase/cloud-dawn-approach.gd. Earlier evidence: game scenarios (--aivai, --scenario=support, --scenario=naval, --scenario=convoy) off-screen, frozen and flipped with FL_DEBUG_AIR_FLIP where an OFF/ON is shown",
   "rationale": "Atmosphere and caustics are a few percent of a wide frame, so each effect gets a tight crop of one frozen moment with OFF stacked over ON, an arrow and a caption, plus a flicker clip of the same frame toggling every second; two motion clips show the caustics running and a plume drifting.",
   "source_ref": "78ff2411 plus the presentation commit on dines/volumetrics-weather-738062 (High preset unless noted, Godot 4.7.2 Forward+, Windows). Crops and labels: PIL; WebM: VP9 via Playwright ffmpeg.",
   "sources": [
@@ -201,6 +201,16 @@
     {
       "file": "changelog/unreleased/layered-air-and-caustics/weather-boundary.jpg",
       "sha256": "bdf6804a4e97a2ffbc526f172cc2455f0aa1df3dba4e211c8ceb13112584f9d3"
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/dawn-approach.webm",
+      "sha256": "3335af75eae545bfcc247ec2dbed773349a652cb63f3ba0eb99247e942041dab",
+      "caption": "Dawn approach, before and after the coastal mist correction: matching camera, seed, exposure and full High settings. Three seconds of actual Forward+ output with a static naval fixture and advancing camera and weather, at normal simulation speed; software Vulkan capture, not a performance measurement."
+    },
+    {
+      "file": "changelog/unreleased/layered-air-and-caustics/dawn-approach.jpg",
+      "sha256": "46986205a29462357ec6b2bbf7c39758a68f23a31e392552af6b70b93f4b9844",
+      "caption": "Frame from the matched motion capture."
     }
   ],
   "output": null,
@@ -208,5 +218,9 @@
     "file": "changelog/unreleased/layered-air-and-caustics/weather-boundary-capture.json",
     "scope": "Actual naval shoreline: freeze battle after one simulated second, finish scenery queues with drawing disabled, fix weather sweep phase, initialize drift half a metre before boundary, settle20 rendered frames, step weather60 frames. 2048-pixel shadows and AA off; volumetric fog and cloud shadows retained. After includes synchronized grid upload and reduced duplicate open-water pooling; enclosed terrain hollows retain their original weighting.",
     "caption": "Coastal mist and weather-cell boundary, before and after: the actual dawn shoreline with the same camera and exposure. The weather starts near a cell boundary; the battle is frozen while the weather advances. Forward+ diagnostic: 2048-pixel shadows, AA off."
+  },
+  "matched_motion_capture": {
+    "file": "changelog/unreleased/layered-air-and-caustics/dawn-approach-capture.json",
+    "caption": "Dawn approach, before and after the coastal mist correction: matching camera, seed, exposure and full High settings. Three seconds of actual Forward+ output with a static naval fixture and advancing camera and weather, at normal simulation speed; software Vulkan capture, not a performance measurement."
   }
 }
