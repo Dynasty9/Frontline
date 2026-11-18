@@ -268,6 +268,21 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## At the kerb
+
+The pieces at the kerb are `BuildingKerbside`'s:
+- **A town's street lamp** (`column`): a steel column with its service door, an outreach arm and a cast lantern.
+- **A village's lamp** (`pole_lamp`): an enamelled shade on a bracket off a wooden pole.
+- **The square's lanterns** (`lantern_post`): a fluted cast post, its ladder bar, a glazed lantern with its roof
+  and finial.
+- **A pillar hydrant** (`hydrant`): flange, barrel, bonnet, and outlets with chained caps.
+- **A stop sign** (`stop_sign`): the octagon with STOP in its white border, standing off its post on brackets,
+  its back bare galvanised steel.
+- **A mailbox on its post** (`mailbox`), with its flag up or down.
+- **The electricity board's cabinet** (`cabinet`), with louvres, doors and a danger plate.
+
+Decor's lenses glow where the lamps' heads hang. Render them with `--building-kinds=kerbside`.
+
 ## Who uses what
 
 | Component | Users |

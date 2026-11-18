@@ -336,6 +336,23 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# What stands at the kerb keeps to its spot: a lamp's head out over the
+	# road no further than its arm, a sign, a hydrant, a mailbox, a cabinet
+	# (the bounds of a turned lantern or sign are a turned square's).
+	var kerbs := [[func(k: BuildingKit): BuildingKerbside.column(k), Vector3(2.0, 6.45, 0.45)],
+		[func(k: BuildingKit): BuildingKerbside.pole_lamp(k), Vector3(1.45, 6.05, 0.65)],
+		[func(k: BuildingKit): BuildingKerbside.lantern_post(k), Vector3(0.75, 4.95, 0.75)],
+		[func(k: BuildingKit): BuildingKerbside.hydrant(k), Vector3(0.55, 0.8, 0.36)],
+		[func(k: BuildingKit): BuildingKerbside.stop_sign(k, k.rng), Vector3(0.8, 2.6, 0.35)],
+		[func(k: BuildingKit): BuildingKerbside.mailbox(k, Color.BLUE, true), Vector3(0.3, 1.42, 0.5)],
+		[func(k: BuildingKit): BuildingKerbside.cabinet(k), Vector3(1.25, 1.5, 0.75)]]
+	for kb: Array in kerbs:
+		var kbk := kit()
+		(kb[0] as Callable).call(kbk)
+		var kbb := _bounds(kbk.sink.root, Transform3D.IDENTITY)
+		var kbl: Vector3 = kb[1]
+		check(kbb.size.x <= kbl.x and kbb.size.z <= kbl.z and kbb.end.y <= kbl.y and kbb.position.y >= -0.01, "a kerbside piece keeps to its spot (%s, %s)" % [kbb, kbl])
+		kbk.sink.root.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:

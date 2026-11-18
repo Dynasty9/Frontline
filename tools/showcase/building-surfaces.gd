@@ -279,6 +279,24 @@ func _subject(kind: String) -> Node3D:
 					br.seed = 3 + i
 					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
 			return row
+		"kerbside":
+			# street lamps, a lantern, a hydrant, a stop sign, a mailbox and the
+			# electricity cabinet, where BuildingKerbside has them
+			var kerb := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_kerbside.gd"):
+				var kb: GDScript = load("res://scripts/game/building_kerbside.gd")
+				var kr := RandomNumberGenerator.new()
+				kr.seed = 5
+				var kk := BuildingKit.nodes(kerb, kr)
+				kk.box(Vector3(14.0, 0.12, 5.0), Vector3(0, -0.06, 0), "pavement", Color(0.62, 0.6, 0.56))
+				kb.call("column", kk.at_point(Vector3(-6.0, 0, 1.2)))
+				kb.call("pole_lamp", kk.at_point(Vector3(-3.4, 0, 1.6)))
+				kb.call("lantern_post", kk.at_point(Vector3(-0.8, 0, 1.0)))
+				kb.call("hydrant", kk.at_point(Vector3(1.0, 0, -0.6)))
+				kb.call("stop_sign", kk.at_point(Vector3(2.6, 0, -0.8), Vector3(0, -0.6, 0)), kr)
+				kb.call("mailbox", kk.at_point(Vector3(4.2, 0, -0.6)), Color(0.15, 0.25, 0.45), true)
+				kb.call("cabinet", kk.at_point(Vector3(6.0, 0, 0.6)))
+			return kerb
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:
