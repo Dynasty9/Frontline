@@ -1181,7 +1181,7 @@ func slots(c: Vector3, face: Vector3, n: int, wide := false) -> Array:
 	# men put in the church hold it from inside: their places are within its
 	# walls, at its windows and doors, not out through them among the graves
 	# (a house is smaller than a squad's spread: holding it takes its yard too)
-	var home := SoldierBrain.house_at(world, c)
+	var home: Structure = SoldierBrain.house_at(world, c) if world is World else null
 	if home != null and home.variant == 3:
 		search.house = home
 	if n > 0:
