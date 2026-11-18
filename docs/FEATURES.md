@@ -1682,6 +1682,23 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
   sheets and saddle fuel tanks; rolled tarps are common stowage. See "Twenty shared components" in
   [the component guide](vehicle-components.md).
+- **Gun stations as the real ones are built**: each family's guns are the weapons it really carries and work
+  as their mounts do.
+  - *Remote weapon stations* elevate whole: the gun, its sensor head (thermal, day-camera and laser windows
+    under an armoured door) and its ammunition box ride one cradle, a chute of links arching over the yoke into
+    the feed. NATO's (CROWS, the Samson pair) carry the .50 and the Mk 19; CSAT's (Arbalet pattern) the Kord and
+    the AGS-17 with its finned barrel; the AAF's the .50 and the GMG with the box hung outboard.
+  - *Pintles and rings* carry open cans and belts on the side each gun feeds from (a PK from its right).
+  - *Tank roofs*: the Abrams loader's armoured gun shield with its windows, the Merkava's loader's and
+    commander's MAGs, the T-100's remote Kord on its cupola, the T-55's DShK with its ring sight.
+  - *Cannon mounts*: the Gepard-pattern velocity sensor behind the brake and the gun houses rising with the
+    35 mm, the Marshall's mantlet and coax rising with its 40 mm, the Rh 202's twin feed, coaxial guns in
+    armoured port collars.
+  - *Boats*: the SURC's after gun on a yoke behind an armoured shield, the trawler's DShK behind a scrap
+    shield, the patrol ship's .50s on braced stanchions with brass bags, the Mk 38 with its sight head.
+  - *Aircraft*: the Ghost Hawk's door guns on swing-out arms, feeding from inboard; the Little Birds' guns on
+    pylons with chutes; the gunships' guns through bolted port plugs and rubber boots, the 40 mm ending in the
+    Bofors flash hider.
 - **Second construction pass** (shared builders across `vehicle_cargo.gd`, `vehicle_aircraft.gd`,
   `vehicle_fittings.gd` and others): engine-deck grilles, track skirts and return rollers, smoke banks and
   lamp units are shared across the armour; trucks share cargo beds, box bodies with doors, roller shutters
