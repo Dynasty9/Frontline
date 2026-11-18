@@ -660,5 +660,15 @@ func _ready() -> void:
 				var m := Structure.preview_model(kind, side, v + (4 if kind == "roof" and v == 2 else 0), sz, v == 2)
 				check(m != null and m.get_child_count() > 0, "%s/%d/%d builds" % [kind, side, v])
 				m.free()
+	# A parked car that burns out (its variant goes up by 6) keeps its own body:
+	# a hatchback's shell, not an SUV's.
+	var parked := Structure.new()
+	parked.skind = "car"
+	for v in 5:
+		parked.variant = v
+		var body := parked._car_kind()
+		parked.variant = v + 6
+		check(body == v and parked._car_kind() == body, "a burnt-out car %d keeps its body (%d)" % [v, parked._car_kind()])
+	parked.free()
 	print("BUILDING_COMPONENTS %s (%d failures)" % ["passed" if _failures == 0 else "failed", _failures])
 	TestRun.quit(get_tree())

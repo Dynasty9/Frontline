@@ -298,7 +298,8 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 			return {"t": w.time, "winner": w.winner, "seed": int(w.settings.get("seed", 0)), "scenario": String(w.settings.get("scenario", "")),
 				"mission": String(w.settings.get("mission", "")), "soldiers": w.soldiers.size(), "vehicles": w.vehicles.size(),
 				"structures": w.structures.size(), "squads": w.squads.size(), "supply": [w.rules.supply_total(0), w.rules.supply_total(1)],
-				"mission_info": _plain(w.mission_info), "ai": _ai(w)}
+				"mission_info": _plain(w.mission_info), "ai": _ai(w),
+				"key_points": w.key_points.map(func(k: Dictionary) -> Dictionary: return {"kind": k.kind, "pos": _xz(k.pos)})}
 		"squads":
 			for sq in w.squads.values():
 				if (team == -9 or sq.team == team) and (kind == "" or sq.kind == kind) and (ids.is_empty() or ids.has(sq.sid)):
