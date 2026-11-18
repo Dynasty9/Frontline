@@ -1726,6 +1726,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   gun covers; paint varies plate to plate and gathers dust and grime at a size the battle camera sees; car
   roofs show their paint; helicopter tails are aerofoils and cowlings carry panels; boats are wet at the
   waterline. See "Tenth pass" in [the component guide](vehicle-components.md).
+- **Gun boots, foliage and matte steel** (eleventh pass): tank guns wear canvas boots, camouflaged crews'
+  branches read from the battle camera along fenders and hull sides, truck cabs have rounded roofs with
+  gutters, helicopter fairings sit on the hull, the Merkava has its arrowhead turret, dark steel and
+  ID panels are matte, and boats have moulded motors. See "Eleventh pass" in
+  [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
