@@ -342,8 +342,13 @@ static func tower(model: Node3D, rng: RandomNumberGenerator, bags: Array) -> voi
 	for x in [-1.3, 1.3]:
 		for z in [-1.3, 1.3]:
 			_rod(model, Vector3(x, 5.0, z), Vector3(x, 6.72 - z * 0.09, z), 0.05, "wood", wc, 5)
-	BuildingRoofs.mono(BuildingKit.nodes(model).at_point(Vector3(0, 6.76, 0)), 3.7, 3.75, 0.09, "roof_sheet", Color(0.46, 0.45, 0.42), Color(0.46, 0.34, 0.21), 3)
+	# (galvanising gone dull with the weather; bags laid on the sheets' edges
+	# to hold them down in a wind, as an improvised tower's roof is)
+	BuildingRoofs.mono(BuildingKit.nodes(model).at_point(Vector3(0, 6.76, 0)), 3.7, 3.75, 0.09, "roof_sheet", Color(0.39, 0.38, 0.35), Color(0.46, 0.34, 0.21), 3)
 	bags.append({"p": Vector3(0, 5.27, -1.45), "s": Vector3(3.0, 0.19, 0.38), "r": 0.0})
+	for weight: Vector3 in [Vector3(-1.45, 0, -1.55), Vector3(1.4, 0, -1.6), Vector3(rng.randf_range(-0.5, 0.5), 0, 1.6)]:
+		var roof_y := 6.76 - sin(0.09) * weight.z + 0.12
+		bags.append({"p": Vector3(weight.x, roof_y, weight.z), "s": Vector3(0.55, 0.19, 0.36), "r": rng.randf_range(-0.4, 0.4) + (PI * 0.5 if absf(weight.x) > 1.0 else 0.0)})
 	# a searchlight on the front corner, on its yoke
 	var sl := Vector3(1.2, 5.52, -1.38)
 	_mk(model, Res.cyl(0.04, 0.05, 0.18, 6), "metal_dark", sl + Vector3(0, -0.1, 0))
