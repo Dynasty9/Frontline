@@ -2510,15 +2510,23 @@ void fragment() {
 			thaw_wet = smoothstep(0.45, 0.8, melted) * face * min(1.0, snow_cover * 4.0);
 		}
 		float slushed = 0.0;
+		float thinned = 0.0;
+		float wet_tile = 0.0;
 		if (heat > 0.0) {
-			float stack = 1.0 - smoothstep(0.55, 1.5, distance(wpos.xz, snow_k.zw) + (drift - 0.5) * 0.6);
-			float warmth = tnoise(tp.xz * 0.45 + seed.xz) * 0.6 + drift * 0.4;
-			float patches = smoothstep(0.7, 0.8, warmth) * heat;
-			float bare = max(stack, patches * 0.85);
-			settled *= 1.0 - bare;
-			// (and round each bare patch the snow has gone to grey, wet slush)
-			slushed = smoothstep(0.6, 0.7, warmth) * heat * (1.0 - bare);
-			thaw_wet = max(thaw_wet, bare * face * min(1.0, snow_cover * 4.0));
+			// The warmth comes through where the house is warmest: round the
+			// chimney, and in a patch or two over the rooms (smooth noise, so
+			// the thaw has soft edges, not the tiles' steps). Through it the
+			// snow goes thin, so the tiles show faintly, then to a band of grey
+			// slush, and in the middle the tiles are bare and wet.
+			float rag = (tnoise(tp.xz * 2.3 + seed.zx) - 0.5) * 0.35;
+			float stack = 1.0 - smoothstep(0.6, 2.4, distance(wpos.xz, snow_k.zw) + rag);
+			float warmth = tnoise(tp.xz * 0.28 + seed.xz) + rag * 0.5;
+			float thaw = max(stack, smoothstep(0.72, 0.95, warmth) * 0.9) * heat;
+			thinned = smoothstep(0.1, 0.45, thaw);
+			slushed = smoothstep(0.35, 0.6, thaw) * (1.0 - smoothstep(0.7, 0.85, thaw));
+			wet_tile = smoothstep(0.7, 0.85, thaw);
+			settled = mix(settled, max(settled, face * 0.6), thinned * (1.0 - wet_tile)) * (1.0 - wet_tile);
+			thaw_wet = max(thaw_wet, wet_tile * face * min(1.0, snow_cover * 4.0));
 		}
 		if (pattern == 20) {
 			// (a lawn in winter, where it shows: flattened and gone a dull brown)
@@ -2527,9 +2535,14 @@ void fragment() {
 		vec3 snow = vec3(0.8, 0.83, 0.88) * (0.93 + 0.07 * drift);
 		// (packed down and trodden grey, the prints in it)
 		snow = mix(snow, vec3(0.36, 0.37, 0.39) * (0.85 + 0.3 * tnoise(wpos.xz * 2.7)), trodden);
-		snow = mix(snow, vec3(0.42, 0.44, 0.47), slushed * 0.7);
+		snow = mix(snow, vec3(0.42, 0.44, 0.47), slushed * 0.8);
+		// (snow on a lawn or the paving, near the ground, as dim as the ground's)
+		if (pattern == 19 || pattern == 20) { snow *= 0.88; }
 		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
-		ALBEDO = mix(ALBEDO, snow, settled);
+		// (bare tile under meltwater: darker, duller in colour and glossy)
+		ALBEDO = mix(ALBEDO, mix(vec3(dot(ALBEDO, vec3(0.3, 0.5, 0.2))), ALBEDO, 0.6) * 0.55, wet_tile * face);
+		// (thinned, the snow lets the tiles show faintly through)
+		ALBEDO = mix(ALBEDO, snow, settled * (1.0 - thinned * 0.45 * (1.0 - slushed)));
 		// (meltwater on the thawed paving and roofs, on the warm deck, and round the snow's edge)
 		ALBEDO *= 1.0 - thaw_wet * 0.25;
 		ROUGHNESS = mix(ROUGHNESS, 0.3, thaw_wet);

@@ -141,8 +141,10 @@ static func _roll(b: Build, a: Vector3, e: Vector3, d: Vector3, n: Vector3, r: f
 	for j in segs + 1:
 		# how thick it is at each joint along its length (gusts, and gaps where it fell)
 		var k := rng.randf_range(0.65, 1.15)
+		# (where some fell it's thinner, never gone: a gap would show the dark
+		# fascia through it)
 		if breaks > 0.0 and rng.randf() < 0.12 * breaks and j > 0 and j < segs:
-			k = 0.0
+			k = rng.randf_range(0.35, 0.5)
 		var at := a + along * (length * j / segs)
 		var reach := rng.randf_range(0.55, 1.5)
 		for i in cols:
@@ -178,10 +180,10 @@ static func _icicles(b: Build, a: Vector3, e: Vector3, o: Vector3, y: float, hea
 		var mid := (x + end) * 0.5
 		while x < end:
 			var long := rng.randf_range(0.06, 0.38) * (1.0 - absf(x - mid) / maxf(run * 0.5, 0.1) * 0.6) * (0.6 + 0.4 * heat)
-			var rad := rng.randf_range(0.016, 0.03)
+			var rad := rng.randf_range(0.008, 0.016)
 			var top := Vector3(a.x, y, a.z) + along * x + o * (0.14 + rng.randf_range(-0.02, 0.02))
 			_cone(b, top, rad, long)
-			x += rng.randf_range(0.07, 0.22)
+			x += rng.randf_range(0.06, 0.35)
 		x = end + rng.randf_range(0.8, 3.0)
 
 
@@ -287,12 +289,14 @@ void fragment() {
 	if (snow_k.x < 0.75 && snow_noise(wpos.xz * 1.7 + wpos.y) > snow_k.x * 1.2) {
 		discard;
 	}
-	vec3 col = ice > 0.5 ? vec3(0.55, 0.62, 0.68) : vec3(0.8, 0.83, 0.88) * (0.94 + 0.06 * snow_noise(wpos.xz * 3.0 + wpos.y * 2.0));
+	// (ice clear and bright, the light through it)
+	vec3 col = ice > 0.5 ? vec3(0.78, 0.84, 0.9) : vec3(0.8, 0.83, 0.88) * (0.94 + 0.06 * snow_noise(wpos.xz * 3.0 + wpos.y * 2.0));
 	// (the underside of the curl in its own shade)
 	col *= ice > 0.5 ? 1.0 : mix(1.0, 0.8, smoothstep(0.6, 1.0, curl));
 	if (OUTPUT_IS_SRGB) { col = pow(col, vec3(1.0 / 2.2)); }
 	ALBEDO = col;
-	ROUGHNESS = ice > 0.5 ? 0.12 : 0.85;
+	ROUGHNESS = ice > 0.5 ? 0.25 : 0.85;
+	BACKLIGHT = vec3(ice * 0.4);
 	SPECULAR = ice > 0.5 ? 0.7 : 0.3;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
