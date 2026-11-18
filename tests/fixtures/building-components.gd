@@ -341,6 +341,15 @@ func _ready() -> void:
 		var pll: Vector3 = pl[1]
 		check(plb.size.x <= pll.x and plb.size.z <= pll.z and plb.end.y <= pll.y and plb.position.y >= -0.05, "a playground's piece keeps to its room (%s, %s)" % [plb, pll])
 		plk.sink.root.free()
+	# A farm's bales keep to their footprint (two side by side, a third on
+	# them), straw or wrapped.
+	for i in 6:
+		var bk := kit()
+		bk.rng.seed = i
+		BuildingFarm.bales(bk, 1 + i % 3, i >= 3, bk.rng)
+		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
+		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
+		bk.sink.root.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:
