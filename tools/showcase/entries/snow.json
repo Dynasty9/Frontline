@@ -2,10 +2,10 @@
   "entry": "changelog/unreleased/snow.md",
   "summary": "A snow weather: falling flakes, a white battlefield with wind-scoured drifts and churned mud, patchy snow on roofs, trees and the flat tops of vehicles, and thaws round fires and idling engines.",
   "medium": "motion",
-  "stage": "Native fire scenario capture at fixed 24 fps; retained historical stills",
-  "rationale": "A short current-build clip shows the snow bank and active fire at a close gameplay camera. A matched dry-grass sheet checks preservation of main\u2019s meadow geometry. Earlier stills retain their historical capture notes; this is not a before/after film or a completed art sign-off.",
-  "source_ref": "85169252e97c1934a77dfc514020e6940f79d081",
-  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "stage": "Matched native bank-edge comparison and retained historical snow evidence",
+  "rationale": "Paired normal and low cameras show the raised cutout lip meeting the ground after the skirt correction. Existing motion and dry meadow evidence remain useful. The pale shading band still needs work; this is not a completed art sign-off.",
+  "source_ref": "8c7f9fa4db4df5f35e811fe5cea3e023a815e2e3",
+  "before_ref": "1b8bfc985e18027c83e603d7ca76ce526117b350",
   "capture": {
     "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window, the user's settings",
     "town": "--aivai --seed=3 --mood=overcast / --mood=snow --nohud --focus-struct=town --shot-at=20; overcast from bd4f1b598ae80c6543cd4816e3f49a6ead730876, snow from this branch",
@@ -48,6 +48,119 @@
       "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
       "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
       "note": "The existing town, tank, melt, drifts and overcast comparison stills predate the cloud review. Their original capture notes above are retained."
+    },
+    "bank_edge_followup": {
+      "source_ref": "8c7f9fa4db4df5f35e811fe5cea3e023a815e2e3",
+      "before_ref": "1b8bfc985e18027c83e603d7ca76ce526117b350",
+      "renderer": "Godot 4.7.2, Compatibility, Mesa llvmpipe software rendering, Medium, 960x540 per pane, fixed 24 fps. Capture is not a performance measurement.",
+      "command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x540 --fixed-fps 24 --script tests/fixtures/environment-views.gd -- --scenario=fire --seed=3 --mood=snow --nohud --preset=medium --set=perf:0 --capture-set=snow-bank --capture-prefix=OUT",
+      "baseline_fixture": "The camera-only environment-views.gd fixture from the source ref was copied into the isolated before checkout; all game code is the original before ref. Both sides use identical camera, preset/exposure, seed and simulation timing. Fire and particle variation is cosmetic.",
+      "views": [
+        {
+          "name": "normal",
+          "focus": [
+            4,
+            0,
+            -18
+          ],
+          "zoom": 30,
+          "pitch": -35,
+          "yaw": 0,
+          "simulation_start": 2.5,
+          "simulation_end": 4.5
+        },
+        {
+          "name": "low",
+          "focus": [
+            4,
+            0,
+            -18
+          ],
+          "zoom": 18,
+          "pitch": -12,
+          "yaw": 0,
+          "simulation_start": 5,
+          "simulation_end": 7
+        }
+      ],
+      "change": "Remove the raised alpha-cut lip by burying the thin skirt. Full crest remains 0.48m. Wind stamp, ground, road, grass and snowfall shaders unchanged; drift declares the same five samplers and removes one fragment lookup. No GPU speedup claim.",
+      "validation": [
+        "Full project import and three focused lighting/material checks pass.",
+        "Dry foreground lower 420 rows remains pixel-identical to the prior branch dry render, previously matched against main.",
+        "Changelog validation and presentation audit pass.",
+        "Identical captured camera matrices, simulation times and fixture hashes verified. Both captures exit 0, without script/shader errors. Existing shutdown resource leaks remain. Full VP9 decode passed; 96 frames verified; representative encoded frames inspected."
+      ],
+      "limitations": [
+        "The broad pale band persists. Ground uses probe lighting and the bank does not; this is a likely contributor, not a fully isolated shading diagnosis. The shared probe helper adds three sampler declarations, so it was not added.",
+        "No hardware GPU is exposed (/dev/dri and /dev/nvidia0 absent); available Forward+ is llvmpipe software. Earlier Medium Forward+ runs did not finish usable frames. No hardware performance validation.",
+        "Long engine thaw, dark track breakthrough, wide melt context and weather transitions were not newly captured. Historical stills retain their original provenance.",
+        "Prior local breach scenario failure (one surviving defender at 60 seconds) and shutdown leaks reproduce on untouched main."
+      ],
+      "capture_records": {
+        "before": {
+          "drift_sha256": "fa1a6c46c8fcd38d91e93ba6790884e7331b2e60173eab665e13f1e45272da21",
+          "fixture_sha256": "824895e423c391be48a01187c0b37dcbecdd739e5a6ec0ad5cb196bcc888e855",
+          "fps": 24,
+          "mood": "snow",
+          "renderer": "gl_compatibility",
+          "seed": 3,
+          "views": [
+            {
+              "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.819152, -0.573576), Z: (0.0, 0.573576, 0.819152), O: (4.0, 17.20729, 6.574562)]",
+              "end": 4.49999999999999,
+              "pitch": -35.0,
+              "start": 2.5,
+              "view": "normal",
+              "zoom": 30.0
+            },
+            {
+              "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.978148, -0.207912), Z: (0.0, 0.207912, 0.978148), O: (4.0, 6.5, -0.393343)]",
+              "end": 6.99999999999998,
+              "pitch": -12.0,
+              "start": 4.99999999999999,
+              "view": "low",
+              "zoom": 18.0
+            }
+          ]
+        },
+        "after": {
+          "drift_sha256": "c77911accc579e4fe716bc52d62dcb6b9f1f56509c552dbf1f2c5cbdcb199a8d",
+          "fixture_sha256": "824895e423c391be48a01187c0b37dcbecdd739e5a6ec0ad5cb196bcc888e855",
+          "fps": 24,
+          "mood": "snow",
+          "renderer": "gl_compatibility",
+          "seed": 3,
+          "views": [
+            {
+              "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.819152, -0.573576), Z: (0.0, 0.573576, 0.819152), O: (4.0, 17.20729, 6.574562)]",
+              "end": 4.49999999999999,
+              "pitch": -35.0,
+              "start": 2.5,
+              "view": "normal",
+              "zoom": 30.0
+            },
+            {
+              "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.978148, -0.207912), Z: (0.0, 0.207912, 0.978148), O: (4.0, 6.5, -0.393343)]",
+              "end": 6.99999999999998,
+              "pitch": -12.0,
+              "start": 4.99999999999999,
+              "view": "low",
+              "zoom": 18.0
+            }
+          ]
+        }
+      },
+      "media": {
+        "duration_seconds": 3.958,
+        "frames": 96,
+        "fps": 24,
+        "width": 1920,
+        "height": 580,
+        "audio": "none",
+        "bytes": 2327297,
+        "layout": "Before left, after right; normal then low camera, 48 frames per view. Poster at 2.5 seconds."
+      },
+      "encode": "ffmpeg: four 24fps PNG sequences, trim 48 frames each, add 40px labels, hstack before/after, concat normal then low; libvpx-vp9 -crf 31 -b:v 0 -pix_fmt yuv420p -row-mt 1"
     }
   },
   "sources": [
@@ -82,6 +195,14 @@
     {
       "file": "changelog/unreleased/snow/hedge-motion.jpg",
       "sha256": "9c6e52f8d5f2321a3c42357e2fd8aa6b3a571805a36c5ebf5524e7bf16db52b7"
+    },
+    {
+      "file": "changelog/unreleased/snow/bank-edge-comparison.webm",
+      "sha256": "339bd63b16badeb9a192d040f7b6080b7c9d6507f93684386f69e38d4ad19a5a"
+    },
+    {
+      "file": "changelog/unreleased/snow/bank-edge-comparison.jpg",
+      "sha256": "fb7feb663c8a00db2b4e0d2094b45f8ce8f9b3702735e7859a756ff9296b7262"
     }
   ],
   "output": null

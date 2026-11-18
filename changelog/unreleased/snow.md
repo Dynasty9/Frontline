@@ -25,7 +25,12 @@ caption = "The same town and the same tank battle under an overcast sky and in s
 [[videos]]
 file = "hedge-motion.webm"
 poster = "hedge-motion.jpg"
-caption = "Snow along a burning hedgerow in the current build. Four seconds at normal speed, Medium settings, Compatibility renderer. This close view also shows the bank edge that still needs refinement."
+caption = "Earlier close view of snow along a burning hedgerow, before the bank-edge correction below. Four seconds at normal speed, Medium settings, Compatibility renderer."
+
+[[videos]]
+file = "bank-edge-comparison.webm"
+poster = "bank-edge-comparison.jpg"
+caption = "Bank edge before (left) and after (right), first at gameplay zoom and then from a low camera. The raised, jagged rim now meets the terrain; the pale shading contrast remains. Matched seed, camera, timing and Medium settings, Compatibility renderer."
 
 [[screenshots]]
 file = "dry-grass-comparison.jpg"
