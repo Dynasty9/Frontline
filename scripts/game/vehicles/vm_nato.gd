@@ -522,6 +522,10 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 	var rz := 1.9
 	var wr := 0.59
 	var roof := 2.6
+	# Its armoured glass is green-black through the laminate's depth (the
+	# blue-green tint read as opaque navy panes from the battle camera); a
+	# wreck's stays as it was.
+	var glass: Color = ARMOR_GLASS if k.wreck else VmCsat.ARMOR_GLASS
 	# --- V-hull, engine block, suspension and the wheels
 	k._add(m, VehicleModels.loft("nato_matv_v", [-0.22, -1.0, 0.22, -1.0, 0.22, 2.3, -0.22, 2.3], [-0.74, -1.2, 0.74, -1.2, 0.74, 2.55, -0.74, 2.55], 0.41, 1.13), cam, null, Vector3.ZERO)
 	k._box(m, Vector3(1.2, 0.5, 1.95), Vector3(0, 0.95, -2.0), "gunmetal_w")
@@ -569,7 +573,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 	_weld(k, m, _seated(capsule, 0.03), cam)
 	# windscreen: two small thick panes in a heavy frame
 	for s in [-1.0, 1.0]:
-		_zy(k, m, s * 0.47, 0.72, Vector2(-0.905, 1.92), Vector2(-0.745, 2.4), 0.05, 0.0, "glass", ARMOR_GLASS, false)
+		_zy(k, m, s * 0.47, 0.72, Vector2(-0.905, 1.92), Vector2(-0.745, 2.4), 0.05, 0.0, "glass", glass, false)
 		_zy(k, m, s * 0.47, 0.84, Vector2(-0.92, 1.87), Vector2(-0.73, 2.45), 0.03, -0.01, "gunmetal_w", null, false)
 	# doors: seams, small thick windows on the upper sides, handles, hinges
 	for s in [-1.0, 1.0]:
@@ -577,7 +581,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 			VehicleBody.seam(k, m, [Vector3(s * 1.245, 1.681, dz), Vector3(s * 1.085, 2.451, dz)])
 		for wz in [-0.28, 0.9]:
 			_xy(k, m, s, wz, 0.5, Vector2(1.2, 1.88), Vector2(1.11, 2.32), 0.07, 0.0, cam)
-			_xy(k, m, s, wz, 0.4, Vector2(1.2, 1.93), Vector2(1.12, 2.28), 0.03, 0.045, "glass", ARMOR_GLASS, false)
+			_xy(k, m, s, wz, 0.4, Vector2(1.2, 1.93), Vector2(1.12, 2.28), 0.03, 0.045, "glass", glass, false)
 		for ends in [Vector2(-0.88, 0.32), Vector2(0.32, 1.48)]:
 			var z0: float = ends.x + 0.018
 			var z1: float = ends.y - 0.018
@@ -615,7 +619,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 		_shackle(k, m, Vector3(s * 0.55, 1.12, 2.82), 1.0)
 	k._box(m, Vector3(2.3, 0.1, 0.08), Vector3(0, 1.92, 2.74), cam)
 	_zy(k, m, -0.45, 0.5, Vector2(1.537, 2.32), Vector2(1.581, 1.98), 0.06, 0.0, cam)
-	_zy(k, m, -0.45, 0.4, Vector2(1.54, 2.29), Vector2(1.578, 2.01), 0.03, 0.035, "glass", ARMOR_GLASS, false)
+	_zy(k, m, -0.45, 0.4, Vector2(1.54, 2.29), Vector2(1.578, 2.01), 0.03, 0.035, "glass", glass, false)
 	# the step up into the bed, on two brackets up to the bed's floor
 	VehicleFrames.step(k, m, Vector3(-0.6, 1.05, 2.86), Vector2(0.5, 0.2))
 	for x: float in [-0.8, -0.4]:
@@ -1874,7 +1878,10 @@ static func _hemtt(k: VehicleModels, team: int, body: String, seed := 0) -> void
 					# bands over its bows)
 					for i in 6:
 						k._add(m, _extrude_z("nato_hemtt_bow", [-1.24, 1.98, 1.24, 1.98, 1.24, 2.56, 0.99, 2.88, -0.99, 2.88, -1.24, 2.56], -0.04, 0.04, 0.02), "canvas_white", paint.darkened(0.12), Vector3(0, 0, -2.2 + i * 1.42))
-				k._box(m, Vector3(2.3, 0.82, 0.02), Vector3(0, 2.38, 4.965 if not shut else 4.9), "plain_dark", null, Vector3.ZERO, false)
+				# (past the rolled flap the tilt's own dim inside shows, and the
+				# benches under it; a wreck keeps its dark board)
+				if k.wreck:
+					k._box(m, Vector3(2.3, 0.82, 0.02), Vector3(0, 2.38, 4.965 if not shut else 4.9), "plain_dark", null, Vector3.ZERO, false)
 				if shut:
 					for x: float in [-0.75, 0.0, 0.75]:
 						k._box(m, Vector3(0.025, 0.84, 0.02), Vector3(x, 2.42, 4.958), "canvas_white", tilt.darkened(0.25), Vector3.ZERO, false)

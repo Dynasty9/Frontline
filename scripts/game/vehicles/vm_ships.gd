@@ -1329,11 +1329,25 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		VehicleCargo.crate_stack(k, m, Vector3(q[0], _dk(p, cz), cz), Vector3(0.62, 0.3, 0.4), Vector3i.ONE, "wood_painted", Color(0.3, 0.33, 0.22), 0.0, [], 0.12, Color(0.28, 0.26, 0.2), q[2])
 	# (one more on the first, set down a little askew)
 	VehicleCargo.crate_stack(k, m, Vector3(1.6, _dk(p, -4.1) + 0.3, -4.12), Vector3(0.62, 0.3, 0.4), Vector3i.ONE, "wood_painted", Color(0.28, 0.31, 0.21), 0.0, [], 0.12, Color(0.28, 0.26, 0.2), 0.1)
+	# The gun crew's parapet: filled sacks laid two courses high along the
+	# inside of each bulwark beside the gun, end to end and bonded, as a crew
+	# throws up a sandbag wall (VehicleCloth.sandbags; a wreck's and scenery's
+	# keep the old blocks, their sacks split and spilt).
+	var lot := VehicleCloth.sack_lot(k)
 	for s in [-1.0, 1.0]:
+		if not lot.is_empty():
+			var ends: Array[Vector3] = []
+			for sz: float in [gz - 1.25, gz + 1.25]:
+				var st := _at(p, sz)
+				ends.append(Vector3(s * (VmBoat._hw(st[1], st[3]) - 0.19), float(st[3]), sz))
+			VehicleCloth.sandbags(k, m, ends[0], ends[1], VehicleCargo.kit(k, m, ends[0], 43), lot, 2)
 		for i in 5:
 			var sz := gz - 1.0 + i * 0.5
 			var st := _at(p, sz)
-			_bx(k, m, Vector3(0.32, 0.16, 0.52), Vector3(s * (VmBoat._hw(st[1], st[3]) - 0.12), float(st[3]) + 0.1, sz), "sandbag", Color(0.6, 0.53, 0.38), Vector3(0, rng.randf_range(-0.15, 0.15), 0))
+			# (drawn either way, so the rest of the boat's rust and wear stay put)
+			var turn := rng.randf_range(-0.15, 0.15)
+			if lot.is_empty():
+				_bx(k, m, Vector3(0.32, 0.16, 0.52), Vector3(s * (VmBoat._hw(st[1], st[3]) - 0.12), float(st[3]) + 0.1, sz), "sandbag", Color(0.6, 0.53, 0.38), Vector3(0, turn, 0))
 	var lz := zs + 1.55
 	var ly := _dk(p, lz)
 	_bx(k, m, Vector3(0.7, 0.4, 0.55), Vector3(0.0, ly + 0.2, lz), "steel", Color(0.4, 0.2, 0.12))

@@ -222,8 +222,10 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 	# windscreen: two armoured panes in heavy frames on the slope, the pillar between
 	var ws_a := Vector2(-2.52, 1.36)
 	var ws_b := Vector2(-1.88, 1.79)
+	# (armoured glass's green-black, VmCsat.ARMOR_GLASS; a wreck's stays as it was)
+	var glass: Variant = null if k.wreck else VmCsat.ARMOR_GLASS
 	for s: float in [-1.0, 1.0]:
-		_plate(k, m, s * 0.45, 0.7, ws_a.lerp(ws_b, 0.2), ws_a.lerp(ws_b, 0.86), 0.03, "glass", null, -0.008, false)
+		_plate(k, m, s * 0.45, 0.7, ws_a.lerp(ws_b, 0.2), ws_a.lerp(ws_b, 0.86), 0.03, "glass", glass, -0.008, false)
 		_plate(k, m, s * 0.45, 0.8, ws_a.lerp(ws_b, 0.13), ws_a.lerp(ws_b, 0.2), 0.035, cam, col, 0.0)
 	_plate(k, m, 0.0, 0.12, ws_a.lerp(ws_b, 0.13), ws_b, 0.04, cam, col, 0.0)
 	# a wiper over each pane, parked along its foot with the spindle in the
@@ -243,7 +245,19 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 		VehicleFittings.mirror(k, m, Vector3(s * 1.46, 1.52, -2.2), Vector2(0.15, 0.24), -s * 0.3, [Vector3(s * 1.14, 1.48, -2.2)])
 		# the side door: seams, an armoured window, the handle, a step below
 		var sl: float = s * 0.49
-		VehicleGlazing.rectangle(k, m, Vector2(0.58, 0.26), Vector3(s * 1.15, 1.57, -0.52), (Basis.from_euler(Vector3(0, 0, sl)) * Basis(Vector3.UP, PI / 2)).get_euler(), false, null, 0.03)
+		var face := (Basis.from_euler(Vector3(0, 0, sl)) * Basis(Vector3.UP, PI / 2))
+		if k.wreck:
+			VehicleGlazing.rectangle(k, m, Vector2(0.58, 0.26), Vector3(s * 1.15, 1.57, -0.52), face.get_euler(), false, null, 0.03)
+		else:
+			# A block of armoured glass several centimetres thick, seated on a
+			# steel frame bolted over the opening (a thin pane flush with the
+			# plate read as a painted-on window).
+			var out := Vector3(s * cos(sl), absf(sin(sl)), 0)
+			var at := Vector3(s * 1.15, 1.57, -0.52)
+			k._box(m, Vector3(0.68, 0.36, 0.06), at, cam, col, face.get_euler())
+			VehicleGlazing.rectangle(k, m, Vector2(0.58, 0.26), at + out * 0.04, face.get_euler(), false, glass, 0.03)
+			for corner: Vector2 in [Vector2(-0.328, -0.166), Vector2(0.328, -0.166), Vector2(-0.328, 0.166), Vector2(0.328, 0.166)]:
+				VehicleBody.fastener(k, m, at + face.x * corner.x + face.y * corner.y + out * 0.03, out, 0.01, cam, col)
 		# the shut lines up the sill and on up the cabin's leaning side
 		var lean := Basis.from_euler(Vector3(0, 0, sl)) * Vector3.UP * 0.3
 		for dz: float in [-0.92, -0.04]:
@@ -252,7 +266,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 		VehicleDoors.lever(k, m, Vector3(s * 1.25, 1.06, -0.305), Vector3(s, 0, 0), Vector3.BACK, 0.125, 0.04)
 		VehicleFrames.step(k, m, Vector3(s * 1.18, 0.6, -0.48), Vector2(0.18, 0.5), Vector3.ZERO, "gunmetal_w")
 		# a small rear-quarter window, the stowage bin over the rear wheel
-		VehicleGlazing.rectangle(k, m, Vector2(0.26, 0.18), Vector3(s * 1.15, 1.57, 0.55), (Basis.from_euler(Vector3(0, 0, sl)) * Basis(Vector3.UP, PI / 2)).get_euler(), false, null, 0.03)
+		VehicleGlazing.rectangle(k, m, Vector2(0.26, 0.18), Vector3(s * 1.15, 1.57, 0.55), face.get_euler(), false, glass, 0.03)
 		VehicleEquipment.storage(k, m, Vector3(s * 1.33, 1.3, 1.85), Vector3(0.16, 0.3, 0.9), cam, col, Vector3.ZERO)
 		k._box(m, Vector3(0.02, 0.04, 0.9), Vector3(s * 1.415, 1.38, 1.85), "gunmetal_w", null, Vector3.ZERO, false)
 		# smoke dischargers on the deck corners, a whip antenna at each back corner
@@ -1047,14 +1061,19 @@ static func _zamak_tilt(k: VehicleModels, tarp: Color) -> void:
 		else:
 			k._box(m, Vector3(0.03, 0.03, 3.9), Vector3(s * 1.285, 1.82, 1.76), "plain_dark", null, Vector3.ZERO, false)
 	var back := 3.725 if not shut else 3.6
-	k._box(m, Vector3(2.36, 0.62, 0.02), Vector3(0, 2.27, back), "plain_dark", null, Vector3.ZERO, false)
+	# (past the rolled flap the tilt's own dim inside shows, and the benches
+	# under it; a wreck keeps its dark board)
+	if k.wreck:
+		k._box(m, Vector3(2.36, 0.62, 0.02), Vector3(0, 2.27, back), "plain_dark", null, Vector3.ZERO, false)
 	if not shut:
 		VehicleCloth.roll(k, m, Vector3(0, 2.72, 3.76), 0.11, 2.3, Z90, tarp.darkened(0.1), "canvas_white")
 	# The roll's ties and the shut flap's lacing straps are webbing, the dark
 	# olive of the roll's own straps (a wreck's keep their old dark bars).
 	var tie := tarp.darkened(0.1).darkened(0.35)
 	for s: float in [-1.0, 1.0]:
-		k._box(m, Vector3(0.4, 0.05, 0.03), Vector3(s * 0.8, 2.05, back + 0.005), "wood_dark", null, Vector3.ZERO, false)
+		# (the board's battens: gone with it)
+		if k.wreck:
+			k._box(m, Vector3(0.4, 0.05, 0.03), Vector3(s * 0.8, 2.05, back + 0.005), "wood_dark", null, Vector3.ZERO, false)
 		# the roll's ties, or the shut flap's lacing straps
 		if k.wreck:
 			if shut:
@@ -1100,8 +1119,11 @@ static func _zamak_cargo(k: VehicleModels, tarp: Color, seed: int) -> void:
 			# (the sandbag's sack, a grain sack's size: rounded at its closed
 			# end, its mouth tied off with an ear of cloth past the tie)
 			k._add(m, VehicleCloth._sack(1 + 2 * (i % 2)), "canvas_white", Color(0.56, 0.5, 0.38).darkened(0.04 * i), sack - Vector3(0, 0.12, 0), Vector3(0, turn, 0.04 * (i - 1)), Vector3(1.1, 1.75, 1.3))
+	# (three cans stood broad face to broad face against the tailgate, as a
+	# crew packs them so they can't fall over: 17 cm thick, 5 cm apart; a
+	# wreck's stand where they always stood)
 	for i in 3:
-		_jerrycan(k, m, Vector3(0.38 + i * 0.22, 1.44, 3.55), Color(0.3, 0.33, 0.23), PI / 2)
+		_jerrycan(k, m, Vector3(0.38 + i * 0.22, 1.44, 3.55), Color(0.3, 0.33, 0.23), PI / 2 if k.wreck else 0.0)
 
 
 ## Ammunition: palletised crates in stacks, strapped down, the front ones

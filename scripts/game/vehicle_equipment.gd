@@ -622,8 +622,11 @@ static func _drum_shell(r: float, length: float, hoop: float, segments: int) -> 
 
 ## The VS-17 air-recognition panel's two faces: fluorescent orange and cerise.
 ## Western and allied crews tie one on a roof or deck so pilots overhead tell
-## them from the enemy; a crew shows the face the day's orders call for.
-const PANEL_FACES: Array[Color] = [Color(0.98, 0.4, 0.1), Color(0.9, 0.17, 0.44)]
+## them from the enemy; a crew shows the face the day's orders call for. A
+## panel that has ridden a few weeks on a deck is no longer new dye, it's a
+## sun-dulled orange or rose under the dust (see recognition_panel), so the
+## battle camera finds it as a warm patch, not the brightest thing in the field.
+const PANEL_FACES: Array[Color] = [Color(0.8, 0.38, 0.14), Color(0.72, 0.22, 0.38)]
 ## Parachute cord, olive or black, tied from the panel's corner grommets.
 const PANEL_CORD: Array[Color] = [Color(0.24, 0.24, 0.17), Color(0.09, 0.09, 0.08)]
 
@@ -632,20 +635,26 @@ const PANEL_CORD: Array[Color] = [Color(0.24, 0.24, 0.17), Color(0.09, 0.09, 0.0
 ## `center` is on the surface it lies on, `rot` turns the panel (its long
 ## side along X) to lie on it: a yaw, and a pitch for a sloping bonnet. A crew
 ## folds it in half (`folded`) where the roof is too short for it, so it
-## reads as a 0.9 m square-ish patch of double cloth. Only some crews put one
-## out (`chance`, from the kit seed, 0.4 by default) and scenery and wrecks
-## never carry one: it is the brightest thing on a vehicle from the air, which
-## is the point, so the battle camera picks out the ones that do. Nothing
-## when it isn't laid; true when it is.
-static func recognition_panel(k: VehicleModels, parent: Node3D, center: Vector3, rot := Vector3.ZERO, folded := false, chance := 0.4) -> bool:
+## reads as a 0.9 m square-ish patch of double cloth; most crews keep it
+## folded so anyway, two in three of those with room for the whole sheet.
+## Only some crews put one out (`chance`, from the kit seed, 0.2 by default)
+## and scenery and wrecks never carry one: it's the warmest colour on a
+## vehicle from the air, which is the point, so the battle camera picks out
+## the few that do. Nothing when it isn't laid; true when it is.
+static func recognition_panel(k: VehicleModels, parent: Node3D, center: Vector3, rot := Vector3.ZERO, folded := false, chance := 0.2) -> bool:
 	if k.wreck or k.burnt:
 		return false
 	var rng := VehicleCargo.kit(k, parent, center, 41)
 	if rng == null or rng.randf() >= chance:
 		return false
 	var face: Color = PANEL_FACES[rng.randi_range(0, 1)]
-	# a season in the sun bleaches the dye toward a chalky pink or apricot
+	# a season in the sun bleaches the dye toward a chalky pink or apricot,
+	# and the dust the hull wears lies on it too
 	face = face.lerp(Color(0.9, 0.78, 0.7), rng.randf_range(0.0, 0.14))
+	var dust: Color = VehicleMaterials.DIRT.get(k.surface_family, VehicleMaterials.DIRT.armor).dust_col
+	face = face.lerp(dust, rng.randf_range(0.15, 0.3))
+	if not folded and rng.randf() < 0.67:
+		folded = true
 	# (laid by hand, a few degrees off square, in the plane it lies on)
 	var m := k._pivot(parent, center)
 	m.basis = Basis.from_euler(rot) * Basis(Vector3.UP, rng.randf_range(-0.07, 0.07))

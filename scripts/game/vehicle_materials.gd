@@ -13,7 +13,9 @@ const PROFILES := {
 	"aircraft": {"surface_paint_wear": 0.40,"surface_normal_strength": 0.04, "surface_finish": 0, "surface_weather": 0.24, "surface_grain": 0.05, "surface_coat": 0.03, "surface_coat_roughness": 0.30, "surface_roughness": 0.30, "map": "coating", "rough": 0.68, "metal": 0.0, "bump": 0.006, "grime": 0.025, "surface_scale": 2.0, "surface_tone": 0.025},
 	"automotive": {"surface_normal_strength": 0.03, "surface_finish": 0, "surface_weather": 0.08, "surface_grain": 0.03, "surface_coat_roughness": 0.18, "surface_roughness": 0.24, "map": "coating", "rough": 0.28, "metal": 0.0, "bump": 0.006, "grime": 0.23, "surface_scale": 2.0, "surface_tone": 0.025, "surface_coat": 0.65},
 	"marine": {"surface_paint_wear": 0.60,"surface_normal_strength": 0.06, "surface_finish": 0, "surface_weather": 0.23, "surface_grain": 0.08, "surface_coat_roughness": 0.24, "surface_roughness": 0.42, "map": "coating", "rough": 0.42, "metal": 0.0, "bump": 0.012, "grime": 0.25, "surface_scale": 1.5, "surface_tone": 0.05, "surface_coat": 0.2},
-	"rubber": {"surface_normal_strength": 0.65, "surface_finish": 1, "surface_weather": 0.22, "surface_grain": 0.65, "surface_roughness": 0.38, "surface_specular": 0.22, "map": "rubber", "rough": 0.88, "metal": 0.0, "bump": 0.09, "grime": 0.11, "surface_scale": 2.0, "surface_tone": 0.18},
+	# (a tyre sheds the dust its paint keeps: it flexes and turns, so it takes
+	# about a quarter of the hull's, and that a dark road film, see preset)
+	"rubber": {"surface_normal_strength": 0.65, "surface_finish": 1, "surface_weather": 0.22, "surface_grain": 0.65, "surface_roughness": 0.38, "surface_specular": 0.22, "map": "rubber", "rough": 0.88, "metal": 0.0, "bump": 0.09, "grime": 0.06, "surface_scale": 2.0, "surface_tone": 0.18},
 	"plastic": {"surface_normal_strength": 0.28, "surface_finish": 7, "surface_weather": 0.10, "surface_grain": 0.35, "surface_roughness": 0.30, "surface_specular": 0.30, "map": "rubber", "rough": 0.63, "metal": 0.0, "bump": 0.025, "grime": 0.2, "surface_scale": 5.0},
 	# Cotton duck (tilts, tarps, the old kit): a coarse open weave, dead matte,
 	# mottled where it has been rained on, sun-faded and dried out again.
@@ -201,6 +203,12 @@ static func preset(material_key: String) -> Dictionary:
 	p["surface_splash"] = dirt.splash
 	p["surface_mud_col"] = dirt.mud_col
 	p["surface_dust_col"] = dirt.dust_col
+	if finish == "rubber":
+		# Dust on a tyre is the dark film of road grit and brake dust a
+		# turning, oily rubber holds, not the pale powder that settles on a
+		# painted hull: from the battle camera a dusty tyre still reads as
+		# rubber, not as the hull's tan moulded round the wheel.
+		p["surface_dust_col"] = (dirt.mud_col as Color).lerp(dirt.dust_col, 0.3).darkened(0.12)
 	if WET.has(vehicle_family) and finish != "burnt":
 		p["surface_wet"] = WET[vehicle_family]
 		p["surface_sea"] = WaterMap.LEVEL

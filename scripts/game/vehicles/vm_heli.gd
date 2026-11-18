@@ -177,7 +177,9 @@ class Hull:
 
 
 ## The hull as a solid.
-static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String, col = null, grow := 0.0) -> Variant:
+## `joins`: the panel joints' stations (z), where the hull's own every other
+## station would fall wrongly (a nose given extra stations to round it).
+static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String, col = null, grow := 0.0, joins: Array = []) -> Variant:
 	var mesh := h.mesh(key, grow)
 	if h.n >= 10:
 		mesh = VehicleBody.skin(mesh, key)
@@ -185,8 +187,11 @@ static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String
 	if key.ends_with("_body") and h.n >= 10:
 		# Panel joins follow the authored skin; glazing sits above them, so
 		# seams cannot cut across a cockpit pane or change the hull outline.
-		for station in range(2, h.st.size() - 2, 2):
-			var z: float = h.st[station][0]
+		var zs: Array = joins.duplicate()
+		if zs.is_empty():
+			for station in range(2, h.st.size() - 2, 2):
+				zs.append(float(h.st[station][0]))
+		for z: float in zs:
 			if float(h.at(z)[2]) < 0.35:
 				continue
 			var points: Array = []
@@ -205,10 +210,63 @@ static func _hull(k: VehicleModels, p: Node3D, h: Hull, key: String, mat: String
 static func _patch(k: VehicleModels, p: Node3D, h: Hull, key: String, z0: float, z1: float, t0: float, t1: float, mat: String, col = null, grow := 0.012, depth := 0.03, sx := 0.0) -> void:
 	for s in ([1.0, -1.0] if sx == 0.0 else [sx]):
 		if mat == "glass":
-			VehicleGlazing.polygon(k, p, _skin(h, z0, z1, t0, t1, s), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), false, col, 0.012, 2, grow, h.patch("%s%s" % [key, "r" if s > 0.0 else "l"], z0, z1, t0, t1, grow, depth, s))
+			_pane(k, p, h, key, z0, z1, t0, t1, col, grow, depth, s)
 			continue
-		var mi: Variant = k._add(p, h.patch("%s%s" % [key, "r" if s > 0.0 else "l"], z0, z1, t0, t1, grow, depth, s), mat, col, Vector3.ZERO)
+		var pkey := "%s%s" % [key, "r" if s > 0.0 else "l"]
+		var mesh := h.patch(pkey, z0, z1, t0, t1, grow, depth, s)
+		# (on a round hull a panel follows the skin's curve, shaded as smoothly
+		# as the skin under it: flat-shaded, a livery top or a door panel showed
+		# every facet as a stripe of sunlight from above, and the boom read as
+		# an octagonal pipe; its cut edges keep their crease; wrecks are drawn
+		# as they were)
+		if h.n >= 10 and not k.wreck:
+			mesh = VehicleBody.skin(mesh, pkey)
+		var mi: Variant = k._add(p, mesh, mat, col, Vector3.ZERO)
 		k._unshadow(mi)
+
+
+## One pane of glass laid on the hull between z0..z1 and t0..t1 on one side
+## (sx 1 or -1), in its rubber seal: the glass part (VmPlane.cockpit clears
+## it over a crew).
+static func _pane(k: VehicleModels, p: Node3D, h: Hull, key: String, z0: float, z1: float, t0: float, t1: float, col = null, grow := 0.012, depth := 0.03, sx := 1.0) -> Variant:
+	var pkey := "%s%s" % [key, "r" if sx > 0.0 else "l"]
+	var mesh := h.patch(pkey, z0, z1, t0, t1, grow, depth, sx)
+	# (on a round hull the pane is curved glass, its reflection sliding
+	# smoothly over it as the skin's light does, not broken at every facet)
+	if h.n >= 10 and not k.wreck:
+		mesh = VehicleBody.skin(mesh, pkey)
+	return VehicleGlazing.polygon(k, p, _skin(h, z0, z1, t0, t1, sx), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), false, col, 0.012, 2, grow, mesh)
+
+
+## The six-sided hull `h` with its roof sunk between z0 and z1 to make room
+## for a cockpit under a glass canopy laid on h: the upper flanks stop a
+## fraction `keep` of the way up their facet (along it, so they stay where
+## the glass's sills sit on them) and a flat floor joins them, with a step
+## down at either end (the cockpit's bulkheads). For a hexagonal (n 6,
+## phase 0) round section (p 2) with an unscaled top, as the Comanche's.
+static func _sunk(h: Hull, z0: float, z1: float, keep: float) -> Hull:
+	var lowered := func(z: float) -> Array:
+		var q := h.at(z)
+		q[0] = z
+		q[3] = float(q[3]) * keep
+		# (the facet's top corner, at 60 degrees, pulled along the facet
+		# toward its foot: its x is widened back by the top scale)
+		q[5] = 1.0 + (1.0 - keep) / sin(PI / 3.0)
+		return q
+	# [z, sunk] for each station: the hull's own, and a pair either side of
+	# each step
+	var marks: Array = [[z0 - 0.01, false], [z0 + 0.01, true], [z1 - 0.01, true], [z1 + 0.01, false]]
+	for s: Array in h.st:
+		var z: float = s[0]
+		if z < z0 - 0.011 or z > z1 + 0.011:
+			marks.append([z, false])
+		elif z > z0 + 0.011 and z < z1 - 0.011:
+			marks.append([z, true])
+	marks.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var st: Array = []
+	for mk: Array in marks:
+		st.append(lowered.call(float(mk[0])) if mk[1] else h.at(float(mk[0])))
+	return Hull.new(st, h.n, h.p, h.ph)
 
 
 ## The hull's skin between z0..z1 and t0..t1 as a surface (q.x along z, q.y
@@ -1145,10 +1203,19 @@ static func _blackfoot(k: VehicleModels, team: int) -> void:
 		[3.8, 1.52, 0.36, 0.46, 0.28],
 		[5.3, 1.58, 0.3, 0.38, 0.24],
 	], 6, 2.0, 0.0)
-	_hull(k, m, h, "heli_bf_body", mat, col)
-	# the stepped tandem canopy, framed, and the night-pilotage window
-	_patch(k, m, h, "heli_bf_can1", -5.25, -3.55, 0.22, 2.78, "glass", null, 0.012, 0.05, 1.0)
-	_patch(k, m, h, "heli_bf_can2", -3.2, -2.05, 0.22, 2.78, "glass", null, 0.012, 0.05, 1.0)
+	# The stepped tandem canopy, framed, and the night-pilotage window. The
+	# Comanche's two crew sit in a cockpit sunk under its faceted glass: the
+	# hull's roof drops to their sills under the panes, and the panes are
+	# clear over the pilot and gunner in their seats (opaque tiles read as a
+	# blue box). Wrecks keep the solid hull and the old glass.
+	var crew := not (k.wreck or k.burnt)
+	_hull(k, m, _sunk(h, -5.25, -2.05, 0.3) if crew else h, "heli_bf_body" + ("_pit" if crew else ""), mat, col)
+	var can1: Variant = _pane(k, m, h, "heli_bf_can1", -5.25, -3.55, 0.22, 2.78, null, 0.012, 0.05)
+	var can2: Variant = _pane(k, m, h, "heli_bf_can2", -3.2, -2.05, 0.22, 2.78, null, 0.012, 0.05)
+	# (the gunner in front, the pilot behind and higher; olive suits, grey
+	# helmets, as the Kajman's)
+	VmPlane.cockpit(k, m, "heli_bf1", [[-5.2, 1.3, 0.5, 0.36, 0.02], [-4.6, 1.37, 0.58, 0.5, 0.02], [-3.6, 1.45, 0.64, 0.56, 0.02]], can1, [-4.3], Color(0.33, 0.37, 0.41), 0.4, Color(0.48, 0.49, 0.47))
+	VmPlane.cockpit(k, m, "heli_bf2", [[-3.15, 1.52, 0.66, 0.62, 0.02], [-2.6, 1.54, 0.68, 0.74, 0.02], [-2.1, 1.55, 0.68, 0.72, 0.02]], can2, [-2.62], Color(0.33, 0.37, 0.41), 0.4, Color(0.48, 0.49, 0.47))
 	_patch(k, m, h, "heli_bf_bow", -3.56, -3.2, 0.1, 2.9, mat, col, 0.026, 0.03, 1.0)
 	for t in [1.0, 2.0]:
 		_patch(k, m, h, "heli_bf_rail%d" % int(t), -5.25, -2.05, t - 0.05, t + 0.05, mat, col, 0.022, 0.02, 1.0)
@@ -1160,6 +1227,14 @@ static func _blackfoot(k: VehicleModels, team: int) -> void:
 	# the cooled exhaust still stains the boom aft of its slots
 	_flank_soot(k, m, h, 3.35, 1.38, 2.2, 0.3, mat, col, 0.006)
 	_patch(k, m, h, "heli_bf_seam", -4.35, -4.3, -0.95, 0.2, "gunmetal_w", null, 0.008)
+	# The composite skin is laid up in bays, and its joints show: frame
+	# joints round the airframe aft of the weapon bays and down the tail
+	# cone, and an access panel over each engine bay a shade darker (one
+	# flat grey read as a CG box). Wrecks as they were.
+	if not k.wreck:
+		for z: float in [0.62, 1.86, 3.7]:
+			_patch(k, m, h, "heli_bf_joint%d" % int(z * 100), z - 0.012, z + 0.012, -3.0, 3.0, "gunmetal_w", Color(0.2, 0.21, 0.2), 0.005, 0.02, 1.0)
+		_patch(k, m, h, "heli_bf_panel", -0.85, 0.4, 0.3, 0.9, mat, (col as Color).darkened(0.07) if col is Color else null, 0.004, 0.02)
 	# the mast fairing and mast
 	k._add(m, VehicleModels.loft("heli_bf_mast", [-0.5, -2.1, 0.5, -2.1, 0.62, -1.2, 0.55, 1.2, -0.55, 1.2, -0.62, -1.2],
 		[-0.24, -1.62, 0.24, -1.62, 0.34, -1.05, 0.28, 0.35, -0.28, 0.35, -0.34, -1.05], 2.2, 2.78, 0.06), mat, col, Vector3.ZERO)
@@ -1859,9 +1934,14 @@ static func _falcon(k: VehicleModels, team: int) -> void:
 	var mat: String = pc[0]
 	var col = pc[1]
 	var dark := Color(0.06, 0.06, 0.06)
+	# (the Fire Scout's nose is a smooth blunt dome over its avionics bay: a
+	# quarter ellipse in six stations, where three made a faceted golf ball)
 	var h := Hull.new([
-		[-2.9, 1.26, 0.16, 0.15, 0.15],
-		[-2.78, 1.27, 0.4, 0.37, 0.36],
+		[-2.9, 1.26, 0.068, 0.065, 0.062],
+		[-2.875, 1.262, 0.164, 0.155, 0.149],
+		[-2.83, 1.265, 0.267, 0.252, 0.243],
+		[-2.75, 1.275, 0.377, 0.356, 0.343],
+		[-2.63, 1.29, 0.476, 0.45, 0.433],
 		[-2.45, 1.31, 0.55, 0.52, 0.5],
 		[-1.6, 1.36, 0.64, 0.62, 0.6],
 		[-0.6, 1.38, 0.65, 0.64, 0.6],
@@ -1869,12 +1949,15 @@ static func _falcon(k: VehicleModels, team: int) -> void:
 		[1.0, 1.5, 0.38, 0.42, 0.32],
 		[1.5, 1.58, 0.18, 0.2, 0.16],
 	], 14, 2.1)
-	_hull(k, m, h, "heli_fa_body", mat, col)
+	if k.wreck:
+		# (a wreck keeps the old nose: wrecks are drawn as they were)
+		h = Hull.new([[-2.9, 1.26, 0.16, 0.15, 0.15], [-2.78, 1.27, 0.4, 0.37, 0.36]] + h.st.slice(5), 14, 2.1)
+	_hull(k, m, h, "heli_fa_body" if k.wreck else "heli_fa_round_body", mat, col, 0.0, [-2.45, -0.6])
 	# panel seams and access hatches (no windows: nobody aboard)
 	for z in [-2.2, -1.05, 0.25]:
 		_patch(k, m, h, "heli_fa_seam%d" % int(z * 100 + 300), z - 0.012, z + 0.012, -3.4, 10.4, "gunmetal_w", null, 0.006, 0.03, 1.0)
 	_patch(k, m, h, "heli_fa_hatch", -0.9, -0.2, -0.6, 1.4, mat, (col as Color).darkened(0.08) if col is Color else null, 0.008)
-	_patch(k, m, h, "heli_fa_nose", -2.9, -2.45, -3.4, 10.4, mat, (col as Color).darkened(0.12) if col is Color else null, 0.006, 0.03, 1.0)
+	_patch(k, m, h, "heli_fa_nose" if k.wreck else "heli_fa_rnose", -2.9, -2.45, -3.4, 10.4, mat, (col as Color).darkened(0.12) if col is Color else null, 0.006, 0.03, 1.0)
 	# the engine fairing on the back, its intake and exhaust; the mast
 	k._add(m, VehicleModels.loft("heli_fa_eng", [-0.32, -1.2, 0.32, -1.2, 0.36, 0.7, 0.2, 1.15, -0.2, 1.15, -0.36, 0.7],
 		[-0.18, -0.9, 0.18, -0.9, 0.22, 0.5, 0.1, 0.9, -0.1, 0.9, -0.22, 0.5], 1.9, 2.3, 0.04), mat, col, Vector3.ZERO)
@@ -1925,10 +2008,21 @@ static func _prop(k: VehicleModels, p: Node3D, pos: Vector3, r: float, nb := 2, 
 	var bl := k._pivot(rp, Vector3.ZERO)
 	bl.name = "Blades"
 	k._cyl(rp, r * 0.1, r * 0.14, r * 0.14, Vector3(0, r * 0.05, 0), Vector3.ZERO, "gunmetal_w", null, 8)
+	# Moulded composite blades, as a small multirotor's are: steep and narrow
+	# at the hub, widest a third of the way out, twisting flatter to a slim
+	# rounded-off tip (flat boards read as planks). One cached aerofoil per
+	# prop size, a coarse section at this scale, turned round the hub for
+	# each blade; it pulls up the rotor's y. (Wrecks keep the old blades.)
+	var prof := [0.0, r * 0.13, 0.35, r * 0.21, 0.75, r * 0.16, 1.0, r * 0.07]
+	var foil := [0.0, 0.0, 0.3, 1.0, 1.0, 0.12]
+	var blade := VehiclePropellers.blade("", Vector3(0, -1, 0), r * 0.1, r, prof, 0.62, 0.2, 0.12, 1.0, foil)
 	for i in nb:
-		var bs := Basis.from_euler(Vector3(0, phase + TAU * float(i) / float(nb), 0))
-		_rbox(k, bl, bs, Vector3(r * 0.17, r * 0.045, r * 0.55), Vector3(0, r * 0.07, r * 0.36), "plain", col, Vector3(0, 0, 0.3))
-		_rbox(k, bl, bs, Vector3(r * 0.13, r * 0.04, r * 0.36), Vector3(r * 0.015, r * 0.07, r * 0.8), "plain", col, Vector3(0, 0.08, 0.22))
+		if k.wreck:
+			var bs := Basis.from_euler(Vector3(0, phase + TAU * float(i) / float(nb), 0))
+			_rbox(k, bl, bs, Vector3(r * 0.17, r * 0.045, r * 0.55), Vector3(0, r * 0.07, r * 0.36), "plain", col, Vector3(0, 0, 0.3))
+			_rbox(k, bl, bs, Vector3(r * 0.13, r * 0.04, r * 0.36), Vector3(r * 0.015, r * 0.07, r * 0.8), "plain", col, Vector3(0, 0.08, 0.22))
+			continue
+		k._add(bl, blade, "plain", col, Vector3(0, r * 0.07, 0), Vector3(-PI / 2, phase + TAU * float(i) / float(nb), 0))
 	if not k.burnt:
 		var blur := MeshInstance3D.new()
 		blur.name = "Blur"

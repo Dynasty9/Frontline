@@ -645,13 +645,30 @@ static func nav_light(k: VehicleModels, p: Node3D, center: Vector3, size: Vector
 	k._add(p, Res.sphere(r, 10), "signal_lens", col, center + Vector3(s * r * 0.45, r * 0.12, 0), Vector3.ZERO, Vector3(0.85, 0.7, 1.45), false)
 
 
-## A team panel flat on a wing's upper surface at span x, both wings.
+## The side's mark `s` across painted on both wings' upper skins at span x,
+## where the old panel sat: the ground vehicles' chevron or band
+## (VehicleModels._mark_outline), its apex or lean toward the nose and
+## mirrored wing to wing, in the airframe's own paint so it weathers with the
+## wing and follows the airfoil's curve instead of standing on its crest as a
+## dark slab. Gone with the paint on a wreck.
 static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, x: float, s: float) -> void:
+	if k.wreck or team < 0:
+		return
 	var w := surf_at(secs, x)
 	var le: Vector3 = w[0]
-	var y := le.y + float(w[2]) * 0.5 + 0.008
-	for sd in [-1.0, 1.0]:
-		k._team_mark(p, team, Vector3(sd * x, y, le.z + float(w[1]) * 0.38), Vector3(s, 0.015, s))
+	var outline := VehicleModels._mark_outline(team, Vector2(s, s))
+	for sd: float in [-1.0, 1.0]:
+		var pts := PackedVector2Array()
+		for q in outline:
+			pts.append(Vector2(q.x * sd, q.y))
+		if sd < 0.0:
+			pts.reverse()
+		var tris := PackedVector2Array()
+		var idx := Geometry2D.triangulate_polygon(pts)
+		for i in idx:
+			tris.append(pts[i])
+		var at := Vector3(sd * x, le.y, le.z + float(w[1]) * 0.38)
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(at, Vector3.UP, Vector3.RIGHT, wing_skin(secs, 1.0)), [[tris, VehicleModels._mark_col(team)]], "aircraft", 1)
 
 
 # --- paint: insignia, numbers, panel lines, soot ------------------------------------

@@ -287,6 +287,11 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, mat :=
 
 # --- Ifrit: ZiL Karatel ------------------------------------------------------------
 
+## Armoured glass: laminated blocks several centimetres thick, whose depth
+## turns the light through them green-black (a thin pane's blue-grey read as
+## opaque navy on an armoured car).
+const ARMOR_GLASS := Color(0.05, 0.08, 0.065)
+
 ## ZiL-4327 Karatel ("Punisher"): a faceted armoured body like a stealth
 ## fighter's - the long tapered bonnet between angular wheel arches, the
 ## steeply raked windscreen with its two small panes, upper sides leaning in
@@ -319,26 +324,50 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 	_plate(k, m, Vector3(0, 1.415, -2.95), Vector3(0, 1.735, -1.45), 0.62, 0.05, c)
 	var bn := Vector3(0, 1.78, -0.37).normalized()
 	VehicleFittings.grille(k, m, Vector3(0, 1.73, -1.62) + bn * 0.025, Vector2(1.05, 0.26), _face_rot(bn, Vector3(0, 0.37, 1.78)), c, null, 6, true)
-	# the windscreen: two small panes in the raked front of the cabin
+	# the windscreen: two small panes in the raked front of the cabin, each a
+	# block of armoured glass several centimetres thick seated on a steel frame
+	# that stands proud of the plate round it (a wreck's panes and fittings
+	# stay as they were)
 	var wu := Vector3(0, 0.75, 0.85)
 	var wn := Vector3(0, 0.85, -0.75).normalized() * 0.016
+	var live := not k.wreck
 	for s in [-1.0, 1.0]:
-		_pane(k, m, Vector3(s * 0.38, 2.14, -0.86) + wn, wu, Vector2(0.56, 0.44), "glass")
-		# its wiper parked along the pane's foot, the spindle below its outer corner
+		if live:
+			_pane(k, m, Vector3(s * 0.38, 2.14, -0.86) + wn * 1.4, wu, Vector2(0.66, 0.54), c, null, 0.07)
+			_pane(k, m, Vector3(s * 0.38, 2.14, -0.86) + wn * 4.3, wu, Vector2(0.56, 0.44), "glass", ARMOR_GLASS)
+		else:
+			_pane(k, m, Vector3(s * 0.38, 2.14, -0.86) + wn, wu, Vector2(0.56, 0.44), "glass")
+		# its wiper parked along the pane's foot, the spindle below its outer
+		# corner (on the frame, the blade on the glass)
 		var wa := wu.normalized()
-		VehicleFittings.wiper(k, m, Vector3(s * 0.6, 2.14, -0.86) - wa * 0.25 + wn * 0.5, Vector3(s * 0.38, 2.14, -0.86) - wa * 0.17 + wn * 2.4, Vector3.RIGHT, wn, 0.4)
+		VehicleFittings.wiper(k, m, Vector3(s * 0.6, 2.14, -0.86) - wa * 0.25 + wn * (3.7 if live else 0.5), Vector3(s * 0.38, 2.14, -0.86) - wa * 0.17 + wn * (5.8 if live else 2.4), Vector3.RIGHT, wn, 0.4)
 		# A-pillar cover strips on the screen's facets
 		_pane(k, m, Vector3(s * 0.84, 1.98, -0.92), Vector3(s * -0.15, 0.75, 0.85), Vector2(0.06, 0.95), c, null, 0.04)
-	_pane(k, m, Vector3(0, 2.14, -0.86) + wn, wu, Vector2(0.12, 0.62), c, null, 0.05)
+	# (the post between the panes standing just proud of their frames)
+	if live:
+		_pane(k, m, Vector3(0, 2.14, -0.86) + wn * 1.4, wu, Vector2(0.12, 0.62), c, null, 0.13)
+	else:
+		_pane(k, m, Vector3(0, 2.14, -0.86) + wn, wu, Vector2(0.12, 0.62), c, null, 0.05)
 	# side windows, door seams and lever handles, the doors' steps
 	for s in [-1.0, 1.0]:
 		var up := Vector3(s * -0.4, 1.0, 0)
 		var on := Vector3(s * 0.928, 0.371, 0) * 0.014
 		for wz in [0.15, 1.3]:
-			_pane(k, m, Vector3(s * 0.99, 2.02, wz) + on, up, Vector2(0.62, 0.36), "glass", null, 0.03, Vector3.BACK)
+			if not live:
+				_pane(k, m, Vector3(s * 0.99, 2.02, wz) + on, up, Vector2(0.62, 0.36), "glass", null, 0.03, Vector3.BACK)
+				continue
+			# thick armoured glass on a frame bolted over the opening
+			_pane(k, m, Vector3(s * 0.99, 2.02, wz) + on * 1.6, up, Vector2(0.76, 0.5), c, null, 0.07, Vector3.BACK)
+			_pane(k, m, Vector3(s * 0.99, 2.02, wz) + on * 4.9, up, Vector2(0.62, 0.36), "glass", ARMOR_GLASS, 0.03, Vector3.BACK)
+			# (its bolts along the frame's foot: a bolt head here costs as much as
+			# the frame, so two, where the light catches them under the glass)
+			for bz: float in [-0.25, 0.25]:
+				VehicleBody.fastener(k, m, Vector3(s * 0.99, 2.02, wz + bz) - up.normalized() * 0.228 + on * 4.1, on.normalized(), 0.011, c, null)
 		# each door's gap runs up the body from the chine over the belt to the roof edge
 		for sz in [-0.4, 0.72, 1.86]:
 			VehicleBody.seam(k, m, [Vector3(s * 1.0, 1.03, sz), Vector3(s * 1.22, 1.5, sz), Vector3(s * 0.8, 2.5, sz)])
+		if live:
+			_ifrit_side(k, m, s, c)
 		for hz in [0.55, 1.7]:
 			VehicleDoors.lever(k, m, Vector3(s * 1.16, 1.38, hz - 0.045), Vector3(s, 0, 0), Vector3.BACK, 0.125, 0.04)
 		for sz in [0.15, 1.3]:
@@ -363,7 +392,7 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 	# the rear: the door with its window and hinges, the spare wheel, the step
 	VehicleDoors.leaf(k, m, Vector3(0.8, 1.2, 0.04), Vector3(0.38, 1.66, 3.17), c, null, Vector3.ZERO, 2)
 	if not k.burnt:
-		VehicleGlazing.rectangle(k, m, Vector2(0.36, 0.26), Vector3(0.38, 1.98, 3.195), Vector3.ZERO)
+		VehicleGlazing.rectangle(k, m, Vector2(0.36, 0.26), Vector3(0.38, 1.98, 3.195), Vector3.ZERO, false, null if k.wreck else ARMOR_GLASS)
 	for hy in [1.25, 2.05]:
 		VehicleDoors.hinge(k, m, Vector3(0.78, hy, 3.19), Vector3.BACK, Vector3.UP, 0.02, "gunmetal_w")
 	VehicleDoors.pull(k, m, Vector3(0.05, 1.6, 3.19), Vector3.BACK, Vector3.UP, 0.16)
@@ -384,6 +413,38 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 		_periscope(k, m, Vector3(0.5, 2.55, -0.35))
 		k.turret = _rcws(k, m, Vector3(0, 2.5, 0.05), arm)
 	k._team_mark(m, team, Vector3(-0.2, 2.53, 2.65), Vector3(0.7, 0.02, 0.45))
+
+
+## The fittings that break up one side `s` of a fielded Karatel's shell (a
+## blank faceted body read as a soap bar): each door's two heavy hinges, a
+## stowage bin on the rear quarter and a grab rail along the roof's edge, all
+## on the hull's own planes.
+static func _ifrit_side(k: VehicleModels, m: Node3D, s: float, c: String) -> void:
+	# Each door hangs from its front edge on two heavy external hinges, one
+	# on the lower plate and one on the leaning upper one: a knuckle on the
+	# gap and its strap welded back along the door (plain blocks, since the
+	# roster can't afford a hinge's every knuckle and bolt eight times over).
+	var lower_n := Vector3(s * 0.906, -0.424, 0)
+	var upper_n := Vector3(s * 0.922, 0.387, 0)
+	for hz: float in [-0.4, 0.72]:
+		for hinge: Array in [[Vector3(s * 1.103, 1.25, hz), lower_n, Vector3(s * 0.424, 0.906, 0)], [Vector3(s * 0.947, 2.15, hz), upper_n, Vector3(s * -0.387, 0.922, 0)]]:
+			var at: Vector3 = hinge[0]
+			var n: Vector3 = hinge[1]
+			var axis: Vector3 = hinge[2]
+			VehicleFrames.tube(k, m, at + n * 0.014 - axis * 0.06, at + n * 0.014 + axis * 0.06, 0.02, c, null, 6, false)
+			k._box(m, Vector3(0.016, 0.085, 0.12), at + n * 0.008 + Vector3(0, 0, 0.06), c, null, Vector3(0, 0, atan2(n.y, n.x)), false)
+	# a stowage bin on the rear quarter, hung on the leaning plate behind the
+	# doors: a welded box, its lid's shut line under the top and two latches
+	var bin_rot := Vector3(0, 0, s * 0.3977)
+	var bin_up := Vector3(s * -0.387, 0.922, 0)
+	var bin := Vector3(s * 1.144, 1.939, 2.43)
+	k._add(m, BevelMesh.make(Vector3(0.2, 0.42, 0.8), 0.018), c, null, bin, bin_rot)
+	k._box(m, Vector3(0.204, 0.01, 0.804), bin + bin_up * 0.13, "rubber", null, bin_rot, false)
+	for lz: float in [-0.25, 0.25]:
+		k._box(m, Vector3(0.02, 0.06, 0.05), bin + upper_n * 0.1 + bin_up * 0.1 + Vector3(0, 0, lz), "metal_dark", null, bin_rot, false)
+	# a grab rail along the roof's edge over the crew, for climbing up to the hatches
+	# (its feet sunk in the roof, its bends gentle enough to need no joint balls)
+	VehicleFrames.path(k, m, [Vector3(s * 0.68, 2.49, -0.22), Vector3(s * 0.68, 2.575, -0.1), Vector3(s * 0.68, 2.575, 0.85), Vector3(s * 0.68, 2.49, 0.97)], 0.016, c, null, 6, false, 0)
 
 
 # --- Qilin: ST Kinetics LSV Mk II --------------------------------------------------
@@ -1482,12 +1543,13 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 				for s in [-1.0, 1.0]:
 					_plate(k, m, Vector3(s * 1.262, 2.1, z), Vector3(s * 1.132, 3.2, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)
 					_plate(k, m, Vector3(s * 1.135, 3.2, z), Vector3(s * 0.95, 3.31, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)
-			# the back flap hanging half down from the rear bow: cloth, slack
-			# between its corners, not a board
+			# the back flap let half down from the rear bow, hung from the
+			# bow's own section and rolled up at its foot, the dim inside under
+			# it (a wreck's keeps its old sheet)
 			if k.wreck:
 				k._box(m, Vector3(2.1, 0.9, 0.04), Vector3(0, 2.62, 4.4), "canvas_white", tilt.darkened(0.12))
 			else:
-				VehicleCloth.panel(k, m, Vector3(0, 2.62, 4.4), Vector2(2.1, 0.9), Vector3.ZERO, tilt.darkened(0.12))
+				VehicleCloth.back_flap(k, m, section, 4.38, 2.7, tilt.darkened(0.06))
 			for s in [-1.0, 1.0]:
 				k._box(m, Vector3(0.06, 0.08, 0.02), Vector3(s * 0.7, 2.15, 4.43), "gunmetal_w", null, Vector3.ZERO, false)
 			# the boarding ladder hung on the tailgate, its stiles toward the truck

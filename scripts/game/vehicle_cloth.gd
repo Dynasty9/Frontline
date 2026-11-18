@@ -49,8 +49,21 @@ static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Co
 		h *= 1.0 - 0.06 * drop
 		var top := h - 0.012 * (1.0 - pinch)
 		var edge := w - 0.012 * drop
-		rings.append(PackedVector3Array([Vector3(-hem, 0.14, z), Vector3(-edge + ripple * 0.6, h * 0.62, z), Vector3(-edge + 0.025, h - 0.075 + ripple * 0.5, z), Vector3(-edge + 0.09, top + ripple * 0.4, z), Vector3(0, top - 0.008 + ripple * 0.35, z), Vector3(edge - 0.09, top - ripple * 0.4, z), Vector3(edge - 0.025, h - 0.075 - ripple * 0.5, z), Vector3(edge - ripple * 0.6, h * 0.62, z), Vector3(hem, 0.14, z)]))
-	var shell := VehicleModels.solid(rings, "shared_tarp_%s_%d_%d" % [str(size), lashings[0], lashings[1]] + ("_%d" % fold if fold > 0 else "") + ("" if k.wreck else "_sq"))
+		# The slack the lashings leave runs off across the top in one
+		# diagonal fold, a ridge beside its valley, where the cloth was
+		# dragged over the load (none under a strap, which pulls it flat).
+		var folded: Array[float] = []
+		for x: float in [-edge + 0.09, -edge * 0.45, 0.0, edge * 0.45, edge - 0.09]:
+			var d := x / hem * 0.45 + t * 1.4 - 0.45 - float(fold) * 0.12
+			folded.append(0.035 * (exp(-pow((d - 0.08) / 0.09, 2.0)) - exp(-pow((d + 0.08) / 0.09, 2.0))) * (1.0 - pinch) * (1.0 - drop))
+		# At each corner the spare cloth is gathered round and tucked down,
+		# so seen from above the cover's corners are rounded off and pulled
+		# low, not a box's square shoulders (its hem stays tied along the bed).
+		var gather := pow(absf(t - 0.5) * 2.0, 5.0)
+		var sx := 0.08 * gather
+		var sy := 0.07 * gather
+		rings.append(PackedVector3Array([Vector3(-hem, 0.14, z), Vector3(-edge + ripple * 0.6 + sx * 0.25, h * 0.62, z), Vector3(-edge + 0.025 + sx, h - 0.075 + ripple * 0.5 - sy, z), Vector3(-edge + 0.09 + sx * 0.6, top + ripple * 0.4 + folded[0] * 0.5 - sy * 0.3, z), Vector3(-edge * 0.45, top - 0.005 + ripple * 0.38 + folded[1], z), Vector3(0, top - 0.008 + ripple * 0.35 + folded[2], z), Vector3(edge * 0.45, top - 0.005 - ripple * 0.38 + folded[3], z), Vector3(edge - 0.09 - sx * 0.6, top - ripple * 0.4 + folded[4] * 0.5 - sy * 0.3, z), Vector3(edge - 0.025 - sx, h - 0.075 - ripple * 0.5 - sy, z), Vector3(edge - ripple * 0.6 - sx * 0.25, h * 0.62, z), Vector3(hem, 0.14, z)]))
+	var shell := VehicleModels.solid(rings, "shared_tarp_%s_%d_%d" % [str(size), lashings[0], lashings[1]] + ("_%d" % fold if fold > 0 else "") + ("" if k.wreck else "_sqf"))
 	var arrays := shell.surface_get_arrays(0)
 	var smooth := SurfaceTool.new()
 	smooth.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -146,6 +159,19 @@ static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array
 	if closed_back:
 		ends.append(float(bows[bows.size() - 1]) - 0.012)
 	for z: float in ends:
+		if closed_back and z != ends[0] and not k.wreck:
+			# The back flap let down and laced shut is cloth, not a board: it
+			# hangs from the rear bow in two soft folds, pulled flat again at
+			# its foot where it's laced to the tailboard (a wreck's stays the
+			# sheet it was).
+			var low: float = (profile[0] as Vector2).y
+			for p: Vector2 in profile:
+				low = minf(low, p.y)
+			var key := "%s|%.3f|laced" % [str(profile), low]
+			if not _flaps.has(key):
+				_flaps[key] = _flap_mesh(profile, low, true)
+			k._add(parent, _flaps[key], "canvas_white", col, Vector3(0, 0, z + 0.012))
+			continue
 		var front := PackedVector3Array()
 		var back := PackedVector3Array()
 		for point: Vector2 in profile:
@@ -209,8 +235,10 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 		var pick := rng.randf()
 		rolled = 3 if pick < 0.16 else (1 if pick < 0.26 else (2 if pick < 0.36 else 0))
 	var built := _tilt_meshes(profile, bows, variant)
-	var roof := col.lerp(SUN_FADED, 0.16)
-	var side := col.darkened(0.03)
+	# (the roof bleached by the sun on every tilt, the curtains under the
+	# eaves a shade darker, where road dirt and the rain's run-off stain them)
+	var roof := col.lerp(SUN_FADED, 0.26)
+	var side := col.darkened(0.06)
 	for part: Array in built[0]:
 		var width := int(part[2])
 		if width != 1 and (rolled & (1 if width == 0 else 2)) != 0:
@@ -224,13 +252,15 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 		if (rolled & (1 << s)) == 0:
 			k._add(parent, built[1][s], "canvas_white", col.darkened(0.16), Vector3.ZERO)
 			k._add(parent, built[2][s], "canvas_white", col.darkened(0.42).lerp(Color(0.25, 0.23, 0.17), 0.4), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+	# The cover's dim inside, the cloth seen from under it: past an open back
+	# or a rolled side the shade under the tilt shows, and the benches and
+	# troops in it, as on a real truck (no board across the opening).
+	for width in 3:
+		if width == 1 or (rolled & (1 if width == 0 else 2)) == 0:
+			k._add(parent, built[4][width], "canvas_white", col.darkened(0.6), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 	if rolled != 0:
 		var z0: float = bows[0]
 		var z1: float = bows[bows.size() - 1]
-		# the cover's dark inside, seen past the open side
-		for width in 3:
-			if width == 1 or (rolled & (1 if width == 0 else 2)) == 0:
-				k._add(parent, built[4][width], "canvas_white", col.darkened(0.3), Vector3.ZERO)
 		for s in 2:
 			if (rolled & (1 << s)) == 0:
 				continue
@@ -264,6 +294,86 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 			var a: Vector2 = profile[i]
 			var b: Vector2 = profile[i + 1]
 			VehicleEquipment._rod(k, parent, Vector3(a.x, a.y, z), Vector3(b.x, b.y, z), 0.009, "canvas_white", col.darkened(0.16), 6, false, 3)
+
+
+## A tilt's back flap let half down from its rear bow at `z`: the cloth hangs
+## from the bow's own section (so it meets the cover at the roof and the
+## shoulders, with no gaps), falls in two soft vertical folds and is rolled up
+## at its foot, `foot` high, and strapped there, so the dim inside shows under
+## it. One cached sheet per section and foot.
+static func back_flap(k: VehicleModels, parent: Node3D, profile: Array, z: float, foot: float, col: Color) -> void:
+	var key := "%s|%.3f" % [str(profile), foot]
+	if not _flaps.has(key):
+		_flaps[key] = _flap_mesh(profile, foot)
+	k._add(parent, _flaps[key], "canvas_white", col, Vector3(0, 0, z + 0.004))
+	var r := 0.085
+	var width := _flap_half(profile, foot) * 2.0 - 0.08
+	roll(k, parent, Vector3(0, foot + r * 0.35, z + r * 0.85), r, width, Vector3(0, 0, PI / 2), col.darkened(0.05), "canvas_white")
+
+
+static var _flaps := {}
+
+
+## The section's half width at height y (its widest point there).
+static func _flap_half(profile: Array, y: float) -> float:
+	var best := 0.0
+	for i in profile.size() - 1:
+		var a: Vector2 = profile[i]
+		var b: Vector2 = profile[i + 1]
+		if (y - a.y) * (y - b.y) <= 0.0 and absf(b.y - a.y) > 0.0001:
+			best = maxf(best, absf(lerpf(a.x, b.x, (y - a.y) / (b.y - a.y))))
+		elif absf(b.y - a.y) <= 0.0001 and absf(y - a.y) < 0.0001:
+			best = maxf(best, maxf(absf(a.x), absf(b.x)))
+	return best
+
+
+## The flap's sheet in the section's plane (z 0, its face toward +Z): rows
+## from the foot to the crown, through every corner of the section, each as
+## wide as the section there; the folds deepen toward the foot, where the
+## cloth hangs free of the bow. `laced`: the flap let all the way down and
+## laced to the tailboard, its folds fullest half way down and pulled flat at
+## both ends, set in from the lacing straps families run down its face.
+static func _flap_mesh(profile: Array, foot: float, laced := false) -> ArrayMesh:
+	var top := foot
+	for p: Vector2 in profile:
+		top = maxf(top, p.y)
+	var ys: Array[float] = []
+	for i in 5:
+		ys.append(lerpf(foot, top, i / 4.0))
+	for p: Vector2 in profile:
+		if p.y > foot + 0.02 and p.y < top - 0.02:
+			ys.append(p.y)
+	ys.sort()
+	var cols := 21
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(0)
+	var grid: Array[PackedVector3Array] = []
+	for y: float in ys:
+		var hw := _flap_half(profile, y)
+		var hang := 1.0 - (y - foot) / maxf(top - foot, 0.01)
+		var row := PackedVector3Array()
+		for c in cols:
+			var u := float(c) / (cols - 1)
+			var fold := 0.0
+			for at: float in ([0.38, 0.62] if laced else [0.3, 0.68]):
+				fold += exp(-pow((u - at) / (0.05 if laced else 0.07), 2.0))
+			var depth := (0.03 * fold + 0.012 * sin(PI * u)) * hang * sin(PI * u)
+			if laced:
+				depth = 0.035 * fold * sin(PI * hang) * sin(PI * u)
+			row.append(Vector3((u - 0.5) * 2.0 * hw, y, depth))
+		grid.append(row)
+	for r in grid.size() - 1:
+		for c in cols - 1:
+			# (wound clockwise seen from behind, the face Godot draws)
+			var quad: Array[Vector3] = [grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c]]
+			for tri: Array in [[0, 3, 2], [0, 2, 1]]:
+				for i: int in tri:
+					surface.set_uv(Vector2(quad[i].x, quad[i].y))
+					surface.add_vertex(quad[i])
+	surface.index()
+	surface.generate_normals()
+	return surface.commit()
 
 
 ## The section sampled from the left hem over the crown to the right about
@@ -359,8 +469,10 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 			var up := clampf(n.y, 0.0, 1.0)
 			var hold := smoothstep(0.0, 0.3, h)
 			# The cover sags between its bows: most across the middle of the
-			# roof, a little on the sides, nothing at the laced hem.
-			var sag := minf(0.05, 0.032 * length) * bell * (0.4 + 0.6 * up) * (0.7 + 0.3 * sin(PI * arc[q] / total)) * hold
+			# roof, a little on the sides, nothing at the laced hem; deep
+			# enough on the roof that each bow throws a shadow line seen from
+			# above.
+			var sag := minf(0.075, 0.048 * length) * bell * (0.4 + 0.6 * up) * (0.7 + 0.3 * sin(PI * arc[q] / total)) * hold
 			# Pulled in at each eye and bellied out between them, the hem
 			# lifting a little between its eyes.
 			var belly := 0.013 * sin(PI * v) * (1.0 - smoothstep(0.05, 0.5, h)) * smoothstep(0.0, 0.06, h)
@@ -458,8 +570,9 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 		hems.append(_arrays_mesh(hem_v, hem_n, PackedVector2Array()))
 		cords.append(_arrays_mesh(cord_v, cord_n, PackedVector2Array()))
 	# Where each side curtain meets the roof (a rolled curtain is strapped
-	# up there), and the cover's inside: the section 3 cm in, facing in, one
-	# mesh for each width, for a truck with a curtain rolled up.
+	# up there), and the cover's inside: the section 8 cm in (deeper than the
+	# cloth sags between its bows, so no edge of it shows past the eaves from
+	# outside), facing in, one mesh for each width.
 	var eaves: Array[Vector3] = []
 	var liners: Array[ArrayMesh] = []
 	var first_roof := -1
@@ -480,8 +593,8 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 			var w := 1 if absf(f.y) >= 0.5 else (0 if mid < 0.0 else 2)
 			if w != width:
 				continue
-			var a: Vector2 = (profile[i] as Vector2) - f * 0.03
-			var b: Vector2 = (profile[i + 1] as Vector2) - f * 0.03
+			var a: Vector2 = (profile[i] as Vector2) - f * 0.08
+			var b: Vector2 = (profile[i + 1] as Vector2) - f * 0.08
 			var z0: float = float(bows[0]) + 0.02
 			var z1: float = float(bows[bows.size() - 1]) - 0.02
 			var corners: Array[Vector3] = [Vector3(a.x, a.y, z0), Vector3(b.x, b.y, z0), Vector3(b.x, b.y, z1), Vector3(a.x, a.y, z1)]
@@ -1018,12 +1131,18 @@ static func camouflage(k: VehicleModels) -> float:
 ## dark scrim]: woodland green over khaki and black-brown, and a desert net of
 ## sand over pale stone and brown for a vehicle painted sand.
 const NET_WOODLAND: Array[Color] = [Color(0.2, 0.24, 0.14), Color(0.4, 0.39, 0.25), Color(0.13, 0.11, 0.07)]
-const NET_DESERT: Array[Color] = [Color(0.50, 0.44, 0.31), Color(0.66, 0.60, 0.46), Color(0.30, 0.24, 0.16)]
-## Cut leaves: fresh, in shade, and a day or two on, drying out. Living leaves
-## are a yellower, more saturated green than any olive or green paint, and
-## a branch is cut to be seen as bush from above, so these keep that: a fresh
-## spray stands off the paint under it at 50 m, a drying one goes olive-gold.
-const LEAVES: Array[Color] = [Color(0.25, 0.38, 0.10), Color(0.18, 0.29, 0.08), Color(0.36, 0.38, 0.13), Color(0.47, 0.40, 0.16)]
+## (The desert one's garnish is no paler than the sand paint it hides: a
+## paler scrim catches the noon sun white and the bundle reads as litter on
+## the roof, where a darker mound with mid-brown in it reads as a net.)
+const NET_DESERT: Array[Color] = [Color(0.45, 0.39, 0.27), Color(0.54, 0.48, 0.35), Color(0.34, 0.27, 0.17)]
+## Cut leaves: fresh, in shade, a day or two on drying out, and wilted. Living
+## leaves are a yellower green than any olive or green paint, and a branch is
+## cut to be seen as bush from above, so these keep that, but a cut branch
+## starts to wilt within hours, its leaves going greyer and duller as they
+## curl (a saturated green read as plastic ivy): a fresh spray still stands
+## off the paint under it at 50 m, a drying one goes olive-gold, a wilted one
+## brown-olive.
+const LEAVES: Array[Color] = [Color(0.24, 0.34, 0.11), Color(0.19, 0.27, 0.10), Color(0.32, 0.34, 0.14), Color(0.40, 0.35, 0.16), Color(0.33, 0.29, 0.16)]
 ## A cut branch's bark.
 const STEM := Color(0.27, 0.21, 0.15)
 
@@ -1202,14 +1321,18 @@ static func _spray(variant: int) -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var idx := PackedInt32Array()
-	for n in 42:
+	# (six more, smaller leaves than the old forty-two, so the spray stays as
+	# full while each leaf shrinks to a hand's length)
+	for n in 48:
 		var d := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)).normalized()
 		var r := pow(rng.randf(), 0.5) * 0.9
 		var c := Vector3(d.x * r * 1.25, d.y * r * 0.55 + 0.12, d.z * r)
 		var out := Vector3(c.x / 1.25, (c.y - 0.12) / 0.55, c.z).normalized()
-		var t := (out + Vector3(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.3, 0.3), rng.randf_range(-0.6, 0.6))).normalized()
+		# (each leaf drooping off its stalk as a cut branch's do once they wilt,
+		# and a hand's length at most: big flat leaves read as a houseplant)
+		var t := (out + Vector3(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.3, 0.3), rng.randf_range(-0.6, 0.6)) + Vector3.DOWN * 0.45).normalized()
 		var b := t.cross(Vector3(rng.randf_range(-0.7, 0.7), 1.0, rng.randf_range(-0.7, 0.7)).normalized()).normalized()
-		_leaf(verts, norms, idx, c, t, b, rng.randf_range(0.46, 0.62), rng.randf_range(0.22, 0.3), (out + Vector3.UP * 0.3).normalized())
+		_leaf(verts, norms, idx, c, t, b, rng.randf_range(0.36, 0.48), rng.randf_range(0.17, 0.23), (out + Vector3.UP * 0.3).normalized())
 	_sprays[variant] = VehicleWheels._mesh(verts, norms, idx)
 	return _sprays[variant]
 

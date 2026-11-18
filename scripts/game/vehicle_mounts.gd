@@ -38,6 +38,8 @@ static func mantlet(k: VehicleModels, parent: Node3D, size: Vector3, center: Vec
 
 ## Proofed canvas, near black olive (a dust cover, a mantlet boot).
 const BOOT := Color(0.2, 0.21, 0.16)
+## A boot in service: proofed olive duck weathered toward the crews' khaki kit.
+const BOOT_DUCK := Color(0.31, 0.31, 0.23)
 
 ## The mantlet's canvas dust cover (see mantlet): from the casting's face at
 ## `face` (z, in the mount's space) forward along -Z, `length` long, gathered
@@ -67,28 +69,50 @@ static func gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float
 		radius = tied * 1.3
 	var cloth := BOOT
 	var rng := VehicleCargo.kit(k, mount, Vector3(0, 0, face), 23)
-	if rng != null and not k.wreck:
-		# sun-faded toward a pale olive, or a newer, darker issue cover
-		cloth = BOOT.lerp(Color(0.31, 0.3, 0.22), rng.randf_range(0.0, 0.7)) if rng.randf() < 0.7 else BOOT.darkened(0.15)
+	if not k.wreck:
+		# A boot in service is proofed duck that the sun and the dust the gun
+		# pumps through it have faded paler than the paint it's strapped to (a
+		# near-black cover read as a plastic cone): weathered olive, faded
+		# further toward a pale khaki, or a newer, darker issue cover.
+		cloth = BOOT_DUCK
+		if rng != null:
+			cloth = BOOT_DUCK.lerp(Color(0.42, 0.40, 0.30), rng.randf_range(0.0, 0.8)) if rng.randf() < 0.7 else BOOT_DUCK.darkened(0.14)
 	# (a wreck's boot stays the three plain folds it has always been)
 	var n := 3 if k.wreck else maxi(1, folds)
-	# A boot is proofed canvas, rubberised against the rain and the dust the
-	# gun pumps in and out as it recoils: smooth and faintly glossy where
-	# cotton duck is dead matte. Its ties are webbing straps buckled round the
-	# casting and the barrel, a tighter weave with a sheen of its own. (A
-	# wreck's stays the duck that burns away.)
-	var cloth_kind := "canvas" if k.wreck else "coated"
+	# The boot is matte cotton duck, proofed with wax rather than rubberised,
+	# so it reads as cloth where a glossy coat read as moulded plastic. Its
+	# ties are webbing straps buckled round the casting and the barrel, a
+	# tighter weave with a sheen of its own. (A wreck's stays the duck that
+	# burns away.)
+	var cloth_kind := "canvas"
 	var tie_kind := "canvas" if k.wreck else "webbing"
 	var step := length / n
 	for i in n:
-		var r0 := lerpf(radius, tied, float(i) / n) * (1.0 if i == 0 else (1.06 if k.wreck else 1.12))
+		var r0 := lerpf(radius, tied, float(i) / n) * (1.0 if i == 0 else 1.06)
 		var r1 := lerpf(radius, tied, (i + 1.0) / n)
 		# The slack: a fold hangs by a third of what it stands off its tie, so
 		# its top still clears the barrel; the last, tied round it, not at all.
 		var drop := 0.0 if k.wreck else (r1 - tied) * 0.35
-		# (the first fold's back end a centimetre into the casting's face)
-		# (sixteen sides: the folds' outline is what the camera reads)
-		k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, -drop, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), cloth_kind, cloth, 12 if k.wreck else 16)
+		if k.wreck:
+			k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, 0, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), cloth_kind, cloth, 12)
+			continue
+		# Each pleat is a ridge: the cloth rises from the crease the last one
+		# lapped into up to a crest a fifth proud, then falls to the next
+		# crease, so its back slope and its front slope take the light
+		# differently from any side (stepped cones read as one smooth cone
+		# from in front, with their steps facing the turret). The two slopes
+		# meet inside each other, so neither needs a cap.
+		var crest := lerpf(radius, tied, (i + 0.38) / n) * 1.2
+		var back := step * 0.38 + (0.01 if i == 0 else 0.002)
+		var zb := face - step * i + (0.01 if i == 0 else 0.002)
+		# (sixteen sides: the folds' outline is what the camera reads; the
+		# first fold's back end a centimetre into the casting's face)
+		# (the slope rising out of a crease is the shaded side of the fold, and
+		# alternate folds take the light a shade differently, as pleated cloth
+		# does where it's drawn tighter on one than the next)
+		VehicleFrames.cyl(k, mount, lerpf(radius, tied, float(i) / n), crest, back, Vector3(0, -drop, zb - back * 0.5), Vector3(PI / 2, 0, 0), cloth_kind, cloth.darkened(0.28), 16, true, 0)
+		var front := step * 0.62 + 0.004
+		VehicleFrames.cyl(k, mount, crest, r1, front, Vector3(0, -drop, face - step * (i + 0.38) - front * 0.5 + 0.002), Vector3(PI / 2, 0, 0), cloth_kind, cloth.lightened(0.06) if i % 2 == 0 else cloth.darkened(0.06), 16, true, 0)
 	var band := minf(0.035, length * 0.2)
 	k._cyl(mount, tied + 0.008, tied + 0.008, band, Vector3(0, 0, face - length + band * 0.5), Vector3(PI / 2, 0, 0), tie_kind, cloth.darkened(0.25), 12, false)
 	if k.wreck:
@@ -309,10 +333,13 @@ static func turret_ring(k: VehicleModels, parent: Node3D, center: Vector3, top_r
 ## A sight's window: coated optics, darker than a cab's glass and warm in
 ## their coating's cast (the anti-reflection film on a gunner's or thermal
 ## sight's objective reads amber to violet), so a sight head reads as a lens
-## from the battle camera, not a pale blue pane like a windscreen.
-const OPTIC := Color(0.52, 0.47, 0.4)
-## A cupola's vision block: thick laminated armour glass, green-dark.
-const BLOCK := Color(0.5, 0.6, 0.54)
+## from the battle camera, not a pale blue pane like a windscreen. (Within
+## the glass tint's range: a paler colour clamps to the cab glass's own pale
+## blue-grey, which is how both used to glow sky-blue.)
+const OPTIC := Color(0.17, 0.135, 0.12)
+## A cupola's vision block: 10 cm of laminated armour glass seen end on, so
+## its green goes nearly black from outside; only the sky's sheen lies on it.
+const BLOCK := Color(0.11, 0.15, 0.13)
 
 ## Armoured sight head (gunner's box, commander's panoramic head) with its
 ## window on the local -Z face. `windows` holds Rect2s: position is the window

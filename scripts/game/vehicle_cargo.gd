@@ -14,6 +14,13 @@ const KIT_CLOTH: Array[Color] = [Color(0.30, 0.32, 0.22), Color(0.23, 0.26, 0.19
 const KIT_PAINT: Array[Color] = [Color(0.30, 0.32, 0.22), Color(0.21, 0.25, 0.17), Color(0.46, 0.40, 0.28), Color(0.33, 0.35, 0.30)]
 ## Tarpaulins thrown over a load: olive, faded green, khaki and dark green.
 const KIT_TARP: Array[Color] = [Color(0.30, 0.32, 0.23), Color(0.36, 0.38, 0.29), Color(0.44, 0.40, 0.30), Color(0.24, 0.27, 0.20)]
+## Canvas covers from the depot: the tarpaulins' shades and the two desert
+## khakis duck is issued in (a sand duck and a yellower one), which no hull
+## paint quite matches.
+const KIT_CANVAS: Array[Color] = [Color(0.30, 0.32, 0.23), Color(0.36, 0.38, 0.29), Color(0.44, 0.40, 0.30), Color(0.24, 0.27, 0.20), Color(0.52, 0.46, 0.33), Color(0.47, 0.43, 0.28)]
+## Cotton duck as it comes off the loom, proofed: a khaki a little yellower
+## and greener than any paint, which every canvas cover leans toward.
+const DUCK := Color(0.45, 0.42, 0.29)
 ## Ratchet-strap webbing: olive, tan and black.
 const KIT_STRAP: Array[Color] = [Color(0.28, 0.26, 0.2), Color(0.47, 0.41, 0.29), Color(0.1, 0.1, 0.09)]
 ## 200-litre drums as a depot refills and swaps them: olive, a darker green,
@@ -61,9 +68,18 @@ static func kit_colour(rng: RandomNumberGenerator, col: Color, palette: Array[Co
 ## and the old ones fade. One colour for the whole tilt (its cloth, its bows'
 ## lashing, its rolled flap), drawn once by the family; `col` where the model
 ## carries the builders' one load.
+## Canvas is another stuff from the hull's paint, so even an issue tilt is
+## cut from duck, not painted: it keeps only part of the paint's shade and
+## leans toward the duck's khaki, so from above the tilt reads apart from the
+## cab, and two trucks in three wear a canvas of another lot.
 static func tilt_colour(k: VehicleModels, parent: Node3D, col: Color) -> Color:
 	var rng := kit(k, parent, Vector3.ZERO, 9)
-	return kit_colour(rng, col, KIT_TARP, 0.6) if rng != null else col
+	if rng == null:
+		return col
+	# (a wreck's keeps the shade it always had)
+	if k.wreck:
+		return kit_colour(rng, col, KIT_TARP, 0.6)
+	return kit_colour(rng, col, KIT_CANVAS, 0.3).lerp(DUCK, 0.3)
 
 
 static func pallet(k: VehicleModels, parent: Node3D, base: Vector3, size: Vector2, height := 0.1) -> void:
@@ -327,6 +343,16 @@ static func shelter(k: VehicleModels, parent: Node3D, z0: float, z1: float, widt
 		k._box(parent, Vector3(0.022, 0.025, length - c * 2.0), Vector3(s * (hw + 0.011), roof_y - rc - 0.02, zc), mat, dark)
 		k._box(parent, Vector3(width - c * 2.0, 0.025, 0.022), Vector3(0, roof_y - rc - 0.02, zc + s * (length * 0.5 + 0.011)), mat, dark)
 	k._box(parent, Vector3(width - c * 2.0, 0.07, 0.028), Vector3(0, floor_y + 0.035, z1 + 0.014), "gunmetal_w")
+	if rc <= 0.0 and not k.wreck:
+		# A square-roofed box body (a civilian van body's GRP panels) is
+		# framed in aluminium: a capping rail over the roof's edges, catching
+		# the light round its top, and a rub rail along each side at the
+		# height a loading bay's dock or a passing branch would strike it,
+		# standing clear of the panel ribs (a wreck's stays as it was).
+		for s: float in [-1.0, 1.0]:
+			k._box(parent, Vector3(0.032, 0.034, length - c * 2.0), Vector3(s * (hw - 0.004), roof_y + 0.007, zc), "gunmetal_w")
+			k._box(parent, Vector3(width - c * 2.0, 0.034, 0.032), Vector3(0, roof_y + 0.007, zc + s * (length * 0.5 - 0.004)), "gunmetal_w")
+			k._box(parent, Vector3(0.02, 0.06, length - c * 2.0 - 0.04), Vector3(s * (hw + 0.024), floor_y + 0.42, zc), "gunmetal_w")
 	var count := ribs if ribs >= 0 else maxi(1, roundi(length / 0.95)) - 1
 	for s: float in [-1.0, 1.0]:
 		for i in count:
@@ -558,6 +584,12 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 	var nx := maxi(1, grid.x)
 	var ny := maxi(1, grid.y)
 	var nz := maxi(1, grid.z)
+	# A crew's strapped pallet of painted boxes is now and then another store
+	# on the same footprint: long crates (rockets, mortar bombs) laid across
+	# it two high, so a bed of pallets isn't one box repeated.
+	if rng != null and not k.wreck and not straps.is_empty() and nx > 1 and nz > 1 and VehicleMaterials.profile(mat, k.surface_family) != "wood" and rng.randf() < 0.33:
+		nx = 1
+		ny = maxi(2, ny)
 	var lift := maxf(0.0, pallet_height)
 	if lift > 0.0:
 		pallet(k, m, Vector3.ZERO, Vector2(size.x, size.z), lift)
@@ -578,6 +610,15 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 	var layers := ny
 	var taken := {}
 	var wood_col := Color(1, 1, 1)
+	# The lot's stencil (-1 the builders' one: two long lines on every lid).
+	# A crew's stack is from one lot, its lids stencilled one way, or not on
+	# top at all (half of them: the marking is on the ends): two short lines
+	# of the lot's text, a painted lot band across one end, or a small block
+	# of text; each box was set down either way round. (A wreck's keep theirs.)
+	var style := -1
+	if rng != null and not k.wreck:
+		var pick := rng.randf()
+		style = 0 if pick < 0.5 else (1 if pick < 0.68 else (2 if pick < 0.84 else 3))
 	if rng != null:
 		if ny > 1 and rng.randf() < 0.35:
 			layers = ny - 1
@@ -616,25 +657,36 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 						var sx := rng.randf_range(-0.2, 0.2) * (maxf(0.0, gx - 0.016) if nx > 1 else gx)
 						var sz := rng.randf_range(-0.2, 0.2) * (maxf(0.0, gz - 0.016) if nz > 1 else gz)
 						at += Vector3(sx, 0, sz)
-				var stencil := l == layers - 1 and minf(bw, bd) >= 0.18
+				var stencil := l == layers - 1 and minf(bw, bd) >= 0.18 and style != 0
 				# (a stencilled lid sits 2 mm down, so its paint stands clear of
 				# the lid without lifting the stack's top)
 				var sink := 0.002 if stencil else 0.0
 				k._box(m, Vector3(bw, ph - sink, bd), at - Vector3(0, sink * 0.5, 0), mat, tint)
 				if stencil:
-					# The lot's stencil on the lid, two lines of it along the box's
-					# length toward one end (black on a wooden crate, pale on a
-					# painted box), so from above a box reads as a box of stores.
+					# The lot's stencil on the lid, toward one end (black on a
+					# wooden crate, pale on a painted box, a lot band in the
+					# filling's yellow), so from above a box reads as a box of
+					# stores: [across, along, width, length] as shares of the lid.
 					var long_z := bd >= bw
 					var length := bd if long_z else bw
 					var across := bw if long_z else bd
-					for row: float in [-0.12, 0.08]:
-						var o := Vector3(across * row, ph * 0.5 - 0.001, length * 0.12)
-						var mark := Vector3(across * 0.07, 0.002, length * 0.42)
+					var marks: Array = [[-0.12, 0.12, 0.07, 0.42], [0.08, 0.12, 0.07, 0.42]]
+					match style:
+						1:
+							marks = [[-0.07, 0.2, 0.045, 0.25], [0.05, 0.2, 0.045, 0.25]]
+						2:
+							marks = [[0.0, 0.32, 0.86, 0.06]]
+						3:
+							marks = [[-0.09, 0.22, 0.035, 0.2], [0.0, 0.22, 0.035, 0.26], [0.09, 0.22, 0.035, 0.14]]
+					var flip := -1.0 if style > 0 and rng.randf() < 0.5 else 1.0
+					var ink: Variant = null if wood else (Color(0.6, 0.5, 0.2) if style == 2 else Color(0.72, 0.69, 0.58))
+					for q: Array in marks:
+						var o := Vector3(across * float(q[0]), ph * 0.5 - 0.001, length * float(q[1]) * flip)
+						var mark := Vector3(across * float(q[2]), 0.002, length * float(q[3]))
 						if not long_z:
 							o = Vector3(o.z, o.y, o.x)
 							mark = Vector3(mark.z, mark.y, mark.x)
-						k._box(m, mark, at + o, "plain_dark" if wood else mat, null if wood else Color(0.72, 0.69, 0.58), Vector3.ZERO, false)
+						k._box(m, mark, at + o, "plain_dark" if wood else mat, ink, Vector3.ZERO, false)
 				if wood:
 					for e: float in [-1.0, 1.0]:
 						k._box(m, Vector3(bw + 0.016, band, bd + 0.016), at + Vector3(0, e * (ph * 0.5 - band * 0.5 - minf(0.04, ph * 0.1)), 0), "wood_dark")
