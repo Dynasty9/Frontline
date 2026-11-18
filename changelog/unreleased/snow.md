@@ -22,6 +22,15 @@ caption = "The wind (blowing left to right here) heaps the snow against a hedger
 [[screenshots]]
 file = "comparison.jpg"
 caption = "The same town and the same tank battle under an overcast sky and in snow: white roofs and fields, slushy streets with white gutters, patchy snow on the tanks that have been fighting, tread marks through it and mud round the burning wreck."
+[[videos]]
+file = "hedge-motion.webm"
+poster = "hedge-motion.jpg"
+caption = "Snow along a burning hedgerow in the current build. Four seconds at normal speed, Medium settings, Compatibility renderer. This close view also shows the bank edge that still needs refinement."
+
+[[screenshots]]
+file = "dry-grass-comparison.jpg"
+caption = "Dry grass, current main above and the snow branch below: the grass and shrubs retain the same appearance. Same seed, camera, time and Medium settings in Compatibility; the background fires can differ."
+
 +++
 
 - **Pick it** under Settings > Lighting & Look > Time of day & weather, in the menu's Time and weather row, or in photo mode. A random battle snows now and then, about one in twenty.
