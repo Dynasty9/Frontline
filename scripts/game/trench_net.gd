@@ -338,7 +338,7 @@ func rebuild() -> void:
 
 
 static func edge_erosion(p: Vector3) -> float:
-	return 0.07 * sin(p.x * 1.17 + sin(p.z * 0.83)) + 0.04 * sin(p.z * 4.1 + p.x * 2.3)
+	return 0.05 * sin(p.x * 1.17 + sin(p.z * 0.83)) + 0.035 * sin(p.z * 2.9 + p.x * 1.6 + sin(p.x * 0.61)) + 0.022 * sin(p.x * 6.7 - p.z * 5.3)
 
 
 func _raster(a: Vector3, b: Vector3, tiles: Dictionary) -> void:
@@ -518,7 +518,12 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 		var l := Defs.flat(b - a).length()
 		for i in ceili(l / 0.32):
 			var p := a + d * (i * 0.32)
+			if not _boarded(p) or _hash(p) < 0.07:
+				continue  # a stretch never boarded, or a slat gone
 			var wear := sin(p.x * 19.7 + p.z * 8.3)
+			var skew := (_hash(p + Vector3(3.1, 0, 7.7)) - 0.5) * 0.1
+			d = d.rotated(Vector3.UP, skew)
+			sd = d.cross(Vector3.UP) * 0.32
 			var width := sd * (0.94 + 0.1 * wear)
 			p += sd * (wear * 0.08)
 			var q := [p + width + d * wear * 0.025, p + d * 0.28 + width, p + d * (0.28 - wear * 0.025) - width, p - width]
@@ -528,10 +533,14 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 			dst.set_color(Color((wear + 1.0) * 0.5, 1, 1))
 			_board(dst, q, uv, 0.045)
 			board_count += 1
+			d = Defs.flat(b - a).normalized()
+			sd = d.cross(Vector3.UP) * 0.32
 		# Bearers carry the slats above drainage mud, rather than leaving them suspended.
 		for side in [-1.0, 1.0]:
 			for i in ceili(l):
 				var p: Vector3 = a + d * float(i) + sd.normalized() * side * 0.2
+				if not _boarded(p) or not _boarded(p + d * minf(1.0, l - float(i))):
+					continue
 				var span := minf(1.0, l - float(i))
 				var width := sd.normalized() * 0.035
 				var q := [p + width, p + d * span + width, p + d * span - width, p - width]
@@ -542,6 +551,19 @@ func _build_meshes(tiles: Dictionary, segs: Array) -> void:
 	if board_count > 0:
 		dst.index()
 	boards.mesh = dst.commit() if board_count > 0 else null
+
+
+## Duckboards come up the line a few lengths at a time: some stretches of a
+## trench are boarded, others are still bare mud. Decided from the place
+## (a few metres at a time), so every peer lays the same boards.
+static func _boarded(p: Vector3) -> bool:
+	var cell := Vector3(floorf(p.x / 2.4), 0, floorf(p.z / 2.4))
+	return _hash(cell) > 0.38
+
+
+static func _hash(p: Vector3) -> float:
+	var h := sin(p.x * 12.9898 + p.z * 78.233 + p.y * 37.719) * 43758.5453
+	return h - floorf(h)
 
 
 func _board(dst: SurfaceTool, q: Array, uv: Array, thickness: float) -> void:
@@ -573,7 +595,7 @@ static func rim_height(p: Vector3, depth: float) -> float:
 
 
 static func cut_relief(p: Vector3, fraction: float) -> float:
-	return sin(fraction * PI) * (0.045 + 0.035 * sin(p.x * 8.3 + p.z * 6.7 + fraction * 12.0))
+	return sin(fraction * PI) * (0.06 + 0.035 * sin(p.x * 8.3 + p.z * 6.7 + fraction * 12.0) + 0.025 * sin(p.x * 2.1 - p.z * 1.7 + fraction * 5.0))
 
 
 static func cut_normal(p: Vector3, inward: Vector3, depth: float, fraction: float) -> Vector3:
@@ -718,7 +740,8 @@ func _berm_strip(bst: SurfaceTool, pts: Array, ins: Array) -> void:
 		var depth: float = _draw_depth(p, -0.3)
 		var variation := 0.76 + 0.24 * sin(p.x * 1.3 + sin(p.z * 0.9))
 		reach *= (0.4 + 0.6 * depth / 1.2) * variation
-		var h := (0.31 + 0.16 * sin(p.x * 1.7 + p.z * 0.71) + 0.07 * sin(p.z * 5.3)) * clampf(reach / 1.2, 0.0, 1.0) * depth / 1.2
+		var lumps := 0.07 * sin(p.z * 5.3) + 0.08 * sin(p.x * 3.9 - p.z * 2.6 + sin(p.z * 1.3)) + 0.05 * sin(p.x * 9.1 + p.z * 7.7)
+		var h := (0.31 + 0.16 * sin(p.x * 1.7 + p.z * 0.71) + lumps) * clampf(reach / 1.2, 0.0, 1.0) * depth / 1.2
 		lip.append(p + Vector3.UP * rim_height(p, depth))
 		crest.append(p + o * minf(0.65, reach * (0.36 + 0.12 * variation)) + Vector3(0, maxf(0.1 * depth / 1.2, h), 0))
 		var outer := p + o * reach

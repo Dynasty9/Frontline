@@ -190,7 +190,7 @@ func _ready() -> void:
 		check(is_zero_approx(TrenchNet.cut_relief(sample, 0.0)) and is_zero_approx(TrenchNet.cut_relief(sample, 1.0)), "Cut relief meets the rim and authoritative floor without seams")
 		for depth in [0.2, 0.4, 0.6, 0.8]:
 			var relief := TrenchNet.cut_relief(sample, depth)
-			check(relief >= 0.0 and relief <= 0.081, "Earth clods stay within eight centimetres of the cut and clear of the walking route")
+			check(relief >= 0.0 and relief <= 0.121, "Earth clods stay within twelve centimetres of the cut and clear of the walking route")
 	for heading in [0.0, 0.7, 2.2]:
 		var shoring := Node3D.new()
 		var shoring_rng := RandomNumberGenerator.new()

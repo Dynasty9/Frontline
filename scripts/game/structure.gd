@@ -3436,9 +3436,9 @@ const BAG_COLS := [
 	[[Color(1.0, 1.0, 1.0), 0.5], [Color(0.92, 0.8, 0.66), 0.3], [Color(1.36, 1.44, 1.72), 0.2]],
 ]
 const BAG_CLOTH := Color(0.5, 0.45, 0.33)  # the "bag" surface's own colour
-## Bags filled from a trench's own spoil and left out in it: all one hessian,
-## caked in the same earth, so a parapet reads as part of the ground.
-const TRENCH_BAGS := [[Color(0.86, 0.82, 0.76), 1.0]]
+## Bags in a trench line: whatever the depot had (olive, tan and white
+## polypropylene, the odd hessian one), each caked in the trench's own mud.
+const TRENCH_BAGS := [[Color(0.82, 0.92, 0.7), 0.35], [Color(0.98, 0.9, 0.78), 0.3], [Color(1.3, 1.34, 1.4), 0.2], [Color(0.92, 0.8, 0.66), 0.15]]
 
 
 ## Bags laid in a trench line (its parapet, a gun bay dug into it).
@@ -3515,11 +3515,16 @@ func _bag(xf: Array[Transform3D], cols: Array[Color], p: Dictionary, pb: Basis, 
 	lp += Vector3(rng.randf_range(-0.03, 0.03), rng.randf_range(-0.012, 0.012), rng.randf_range(-0.025, 0.025))
 	var q := lp if along_x else Vector3(lp.z, lp.y, lp.x)
 	var yaw := (0.0 if along_x else PI / 2) + turn + rng.randf_range(-0.09, 0.09) + (PI if rng.randf() < 0.5 else 0.0)
-	var b := pb * Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, rng.randf_range(-0.05, 0.05)) * Basis(Vector3.FORWARD, rng.randf_range(-0.04, 0.04))
+	# a bag dropped rather than laid lies tilted, slumped and squashed
+	var loose: float = p.get("loose", 0.0)
+	var tilt := 0.05 + 0.2 * loose
+	if loose > 0.0:
+		sz *= Vector3(rng.randf_range(0.92, 1.08), rng.randf_range(0.85, 1.1), rng.randf_range(0.9, 1.12))
+	var b := pb * Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, rng.randf_range(-tilt, tilt)) * Basis(Vector3.FORWARD, rng.randf_range(-tilt * 0.8, tilt * 0.8))
 	xf.append(Transform3D(b.scaled_local(sz), p.p + pb * q))
 	# the colour: mostly the wall's lot, bleached a little on top
 	var pick := lot
-	if rng.randf() < 0.45:
+	if rng.randf() < (1.0 if _trench_bags() else 0.45):
 		var r := rng.randf()
 		for i in pal.size():
 			r -= float(pal[i][1])
@@ -3529,8 +3534,8 @@ func _bag(xf: Array[Transform3D], cols: Array[Color], p: Dictionary, pb: Basis, 
 	var c: Color = pal[pick][0]
 	var k := rng.randf_range(0.86, 1.06) + (0.06 if top else 0.0)
 	if _trench_bags():
-		c = c.lerp(C_DIRT * 1.5, 0.4 if top else 0.55)
-		k = rng.randf_range(0.9, 1.0) + (0.04 if top else 0.0)
+		c = c.lerp(C_DIRT * 1.5, rng.randf_range(0.3, 0.6))
+		k = rng.randf_range(0.85, 1.02)
 	var want := Color(clampf(BAG_CLOTH.r * c.r * k, 0.0, 1.0), clampf(BAG_CLOTH.g * c.g * k, 0.0, 1.0), clampf(BAG_CLOTH.b * c.b * k, 0.0, 1.0)).srgb_to_linear()
 	var base := BAG_CLOTH.srgb_to_linear()
 	cols.append(Color(want.r / base.r, want.g / base.g, want.b / base.b))

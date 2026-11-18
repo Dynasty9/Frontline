@@ -1236,15 +1236,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     joined cuts remove retaining boards and parapet bags where their supporting ground is gone.
     Placing or removing a bunker refreshes the vegetation around its earth banks.
     The trenches scenario includes a rear bunker route, covered ammunition, sandbags and anti-tank obstacles.
-  - **Fitting out** (`trench_fittings.gd`): kept deliberately plain. A finished fire bay (one running across the
-    enemy's front) has a low parapet of sandbags along its front lip, two bags high, all one earth-caked hessian
-    so it reads as part of the ground. Walls are revetted with planks behind posts, every third section with
-    corrugated-iron sheets on round pickets instead. Along the bays: a scaling ladder against the front wall on
-    some, ammunition boxes on the fire step, and the field telephone line along the back wall. Communication
-    trenches get just the line.
+  - **Fitting out** (`trench_fittings.gd`): modelled on positions dug since 2022, not a tidy manual. Walls are
+    raw earth in places and shored in others, a stretch at a time, with what was to hand: cut logs stacked behind
+    stakes (most sections), pallets stood on edge, odd planks, a sheet of OSB or roofing iron. Bags lie in loose
+    heaps at two or three firing points to a fire bay, olive, tan and white polypropylene all caked in mud, and a
+    few more lie about on the spoil. The floor collects ammunition tins, water bottles, ration packs, cardboard, a jerrycan, a spent
+    launcher tube; field cable loops along the back wall. Duckboards are laid in some stretches and not others,
+    slats missing or askew, and the cut faces and spoil are lumpy rather than regular.
   - **Rear bays:** occasional long sections include a recess off the through route: a dugout entrance (a
-    timber door frame in the back wall, the stairs going down into the dark, a gas blanket rolled over the door;
-    the dugout is mined deep under the ground behind, so nothing of it shows above), a timber-roofed funk hole or a supply shelf. Squads shelter in the dugouts under shellfire
+    frame of round logs in the back wall, more logs over it, a tarpaulin hung across the door with one side hooked
+    back; the dugout is dug deep under the ground behind, so nothing of it shows above), a timber-roofed funk hole or a supply shelf. Squads shelter in the dugouts under shellfire
     (see *Take shelter*); the funk hole's roof is physical cover, not a bombproof bunker.
     Moving soldiers yield and sidestep inside narrow passages; crossing a high lip takes a slower climb.
   - **Damage:** a trench remains excavated after bombardment. Damage affects one section's depth,
