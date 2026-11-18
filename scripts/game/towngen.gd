@@ -1259,14 +1259,16 @@ func _churchyard(c: Vector3, axis: float, size: Vector3, cr: RandomNumberGenerat
 		wall_at.call(at.call(-hx + (i + 0.5) * hx * 2.0 / k, back), axis, -1, {"size": Vector3(hx * 2.0 / k, 1.0, 0.5), "variant": 0})
 	# the path from the gate up to the west door, and round to the porch
 	var tower := -size.z * 0.5
-	_d("path", at.call(0.0, (front + tower) * 0.5), axis, Vector3(1.6, 0, tower - front + 0.3))
+	_d("path", at.call(0.0, (front + tower) * 0.5), axis, Vector3(2.2, 0, tower - front + 0.3))
+	# A small landing gives the west doorway a readable approach from above.
+	_d("path", at.call(0.0, tower - 0.6), axis, Vector3(3.6, 0, 1.2))
 	var nl := size.z - Structure.CHURCH_TOWER - Structure.CHURCH_CHANCEL
 	var porch_z := tower + Structure.CHURCH_TOWER + nl / maxi(1, int(round(nl / 2.8))) * 0.5
 	var porch_x := -(size.x * 0.5 + 0.2 + Structure.CHURCH_PORCH.y + 0.8)
 	# (past the conifer at the front corner)
 	var fork := front + 3.4
-	_d("path", at.call(porch_x, (fork - 0.6 + porch_z) * 0.5), axis, Vector3(1.4, 0, porch_z - fork + 0.6))
-	_d("path", at.call((porch_x - 0.1) * 0.5, fork), axis, Vector3(-porch_x - 1.5, 0, 1.2))
+	_d("path", at.call(porch_x, (fork - 0.6 + porch_z) * 0.5), axis, Vector3(1.8, 0, porch_z - fork + 0.9))
+	_d("path", at.call((porch_x - 0.1) * 0.5, fork), axis, Vector3(-porch_x - 1.1, 0, 1.8))
 	# rows of graves either side of the nave (clear of the porch and its
 	# path), more behind the chancel
 	for side: float in [-1.0, 1.0]:
