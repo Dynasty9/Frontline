@@ -1368,8 +1368,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   hedge, fence, wreck and car drifts a bank against its lee face that rises to a rounded crest a little way out and
   tails off a few metres downwind (farther behind a tall wall, farther still behind a hedge or fence the wind half
   passes through), deeper along some stretches than others, with a smaller bank on the windward face, and none
-  inside a roofed house. Each view stamps the drifts from the structures standing into a 1 m map (so every peer
-  gets the same ones) and lays raised snow over the ground where there are any, its relief shaded toward the sun
+  inside a roofed house. Each view stamps the drifts from the structures standing into a map a metre a texel (two on the bigger
+  battlefields), so every peer gets the same ones, and lays raised snow over the ground where there are any, its relief shaded toward the sun
   and its colour the ground's own so the two meet without a seam; the grass in a drift is buried, a wall knocked down takes its drift with it, and a thaw or a scorch clears it. Thawed ground stays thawed once the fire is out and whitens again only slowly, while the snow keeps
   falling. Running gear, glass, charred hulls and floors indoors take none, and men only a dusting. A
   battle that opens in snow starts covered; snow that sets in mid-battle settles over four minutes, in the hollows

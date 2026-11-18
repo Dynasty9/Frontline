@@ -3076,7 +3076,7 @@ void fragment() {
 		// (and in the open, bleached pale: dead straw stands out of snow light
 		// and warm, not as dark holes)
 		vec3 winter = vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7);
-		winter = mix(winter, vec3(0.2, 0.165, 0.1) * (0.75 + 0.5 * d3), 0.75 * (1.0 - wood_floor));
+		winter = mix(winter, vec3(0.19, 0.165, 0.12) * (0.75 + 0.5 * d3), 0.75 * (1.0 - wood_floor));
 		col = mix(col, winter, snow_cover * mix(0.75, 0.95, wood_floor) * (1.0 - exposed * clean));
 	}
 	// Wind ripples are resolved only while they cover several pixels.
@@ -3092,15 +3092,16 @@ void fragment() {
 	// marks); deep in a hollow it lies smooth.
 	vec2 sas_w = vec2(0.924, 0.382);
 	vec2 sas_q = vec2(dot(p, sas_w) / 9.0, dot(p, vec2(-sas_w.y, sas_w.x)) / 1.7);
-	float sas_keep = (1.0 - smoothstep(0.08, 0.3, length(fwidth(sas_q)))) * (1.0 - smoothstep(0.75, 1.35, lie)) * snow;
+	// (none under the trees, where the wind can't get at it)
+	float sas_keep = (1.0 - smoothstep(0.08, 0.3, length(fwidth(sas_q)))) * (1.0 - smoothstep(0.75, 1.35, lie)) * snow * (1.0 - wood_floor);
 	vec2 sas_grad = vec2(0.0);
 	float sas_h = 0.5;
 	if (terrain_detail && sas_keep > 0.001) {
 		sas_h = texture(detail_tex, sas_q + 0.29).r;
 		float sas_a = texture(detail_tex, sas_q + vec2(0.03, 0.0) + 0.29).r;
 		float sas_c = texture(detail_tex, sas_q + vec2(0.0, 0.03) + 0.29).r;
-		// (the carving's slope in metres per metre, some ten centimetres deep)
-		sas_grad = (sas_w * (sas_a - sas_h) / (0.03 * 9.0) + vec2(-sas_w.y, sas_w.x) * (sas_c - sas_h) / (0.03 * 1.7)) * 0.1 * sas_keep;
+		// (the carving's slope in metres per metre, some five centimetres deep)
+		sas_grad = (sas_w * (sas_a - sas_h) / (0.03 * 9.0) + vec2(-sas_w.y, sas_w.x) * (sas_c - sas_h) / (0.03 * 1.7)) * 0.05 * sas_keep;
 	}
 	if (terrain_detail && snow > 0.001) {
 		// Metre-scale powder and dirty melt edges stay separate from broad wind drifts.

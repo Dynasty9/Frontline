@@ -22,7 +22,9 @@ extends Node3D
 ## from its deformation map, so they ride shell holes and slopes), and the
 ## grass in a drift is buried (Grass.GRASS_SHADER reads the same map).
 
-const CELL := 1.0  # m a texel
+## Metres a texel: one on the usual map; two on the bigger battlefields,
+## where a metre's map would be four or nine times the memory and stamping.
+static var CELL := 1.0
 const TILE := 32.0  # m: a drift mesh tile
 const REGION := 256.0  # m: tiles are drawn in batches this size, each culled on its own
 const CHECK := 1.0  # s between looks at what's standing
@@ -59,6 +61,7 @@ var _mat: ShaderMaterial
 
 func setup(a) -> void:
 	atmo = a
+	CELL = 1.0 if MapDims.SIZE <= 1100.0 else 2.0
 	n = int(round(MapDims.SIZE / CELL))
 	data.resize(n * n)
 	roofed.resize(n * n)
@@ -505,8 +508,11 @@ void fragment() {
 	vec3 to_sun = normalize(snow_sun());
 	// (and as dim as the ground's snow round it, which its own bakes of the
 	// sky it can see and of the hills' shade take down: measured, about 0.86)
-	col *= 0.86 * clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.9, 0.75, 1.15) * (1.0 - hollow * 0.12);
-	col *= mix(vec3(1.0), vec3(0.9, 0.95, 1.04), smoothstep(0.0, -0.25, dot(wn, to_sun) - to_sun.y));
+	// (none of it at the thin edge, so the drift runs out into the ground's
+	// own snow with no rim)
+	float body = smoothstep(0.05, 0.35, deep);
+	col *= 0.86 * clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.9 * body, 0.75, 1.15) * (1.0 - hollow * 0.12);
+	col *= mix(vec3(1.0), vec3(0.9, 0.95, 1.04), smoothstep(0.0, -0.25, dot(wn, to_sun) - to_sun.y) * body);
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
 	}

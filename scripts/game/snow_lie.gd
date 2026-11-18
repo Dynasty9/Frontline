@@ -37,7 +37,7 @@ float snow_lie(vec2 p, float here, vec4 around, float spacing, vec3 to_sun) {
 	vec2 sl_wind = vec2(0.924, 0.382);
 	// (the ground rising along the wind faces into it; falling, it's in its lee)
 	float sl_into_wind = dot(sl_grad, sl_wind);
-	float sl_lie = 0.94;
+	float sl_lie = 0.98;
 	sl_lie -= clamp(sl_into_wind * 5.0, 0.0, 0.85);
 	sl_lie += clamp(-sl_into_wind * 3.5, 0.0, 0.55);
 	sl_lie += clamp(sl_hollow * 14.0, -0.7, 0.6);

@@ -127,7 +127,9 @@ static func _roll(b: Build, a: Vector3, e: Vector3, d: Vector3, n: Vector3, r: f
 	# the cross-section, in (d, n): from the covering up the slope, over the
 	# top, round the edge and down
 	var down_a := atan2(-n.y, d.y)  # (the angle pointing straight down)
-	var section: Array[Vector2] = [Vector2(-tail, 0.005)]
+	# (its tail starts a little under the covering, so the roof's own coat
+	# draws where the two meet, and how far up it reaches varies)
+	var section: Array[Vector2] = [Vector2(-tail, -0.03)]
 	for i in 7:
 		var phi := lerpf(PI * 0.5, down_a - 0.25, i / 6.0)
 		section.append(Vector2(r * 0.25, 0.0) + Vector2(cos(phi), sin(phi)) * r)
@@ -142,10 +144,11 @@ static func _roll(b: Build, a: Vector3, e: Vector3, d: Vector3, n: Vector3, r: f
 		if breaks > 0.0 and rng.randf() < 0.12 * breaks and j > 0 and j < segs:
 			k = 0.0
 		var at := a + along * (length * j / segs)
+		var reach := rng.randf_range(0.55, 1.5)
 		for i in cols:
 			var q: Vector2 = section[i]
 			# (scaled toward the edge: a gap closes the lip down onto it)
-			b.v.append(at + d * (q.x if i == 0 else q.x * k) + n * (q.y * k))
+			b.v.append(at + (d * q.x * reach + n * q.y if i == 0 else d * q.x * k + n * (q.y * k)))
 			b.n.append(normals[i])
 			b.c.append(Color(0.0, float(i) / (cols - 1), 0.0))
 	for j in segs:
