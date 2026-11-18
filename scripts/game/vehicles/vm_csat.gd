@@ -971,14 +971,26 @@ static func _tigris(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 1.0, 1.05, 0.1, c, null, 20)
 	k._add(t, _chamfer_loft("csat_tig_tur", [-0.95, -1.35, 0.95, -1.35, 1.2, -0.95, 1.2, 1.35, -1.2, 1.35, -1.2, -0.95],
 		[-0.8, -0.95, 0.8, -0.95, 1.05, -0.7, 1.05, 1.2, -1.05, 1.2, -1.05, -0.7], 0.08, 1.05, 0.07), c, null, Vector3.ZERO)
-	# the guns: a 35 mm in a cradle on each side, ammunition feed fairings
+	# the guns: a 35 mm on each side in its armoured gun house - the front
+	# plate raked back over the barrel's collar, the sides leaning in a
+	# little, a bolted access door on the outer face - on the trunnion block
+	# out of the turret's flank, the ammunition feed's fairing behind it; on
+	# each barrel, behind the brake, the muzzle velocity sensor's coil, which
+	# times every round leaving so the fire control knows the barrel's wear
 	for s in [-1.0, 1.0]:
 		var gx: float = s * 1.42
 		VehicleMounts.mantlet(k, t, Vector3(0.16, 0.3, 0.5), Vector3(s * 1.22, 0.6, -0.3), "gunmetal_w")
-		k._box(t, Vector3(0.3, 0.42, 1.5), Vector3(gx, 0.6, -0.35), c)
-		k._box(t, Vector3(0.26, 0.2, 0.6), Vector3(gx, 0.6, 0.6), c)
-		VehicleWeapons.autocannon(k, t, Vector3(gx, 0.62, -1.08), Vector3(gx, 0.62, -3.99), Vector2(0.07, 0.4), Vector2(0.046, 0.04), Vector2(0.06, 0.26))
-		k._box(t, Vector3(0.12, 0.1, 0.16), Vector3(gx, 0.75, -1.15), "gunmetal_w")
+		k._add(t, _chamfer_loft("csat_tig_house", [-0.15, -0.75, 0.15, -0.75, 0.15, 0.75, -0.15, 0.75], [-0.13, -0.57, 0.13, -0.57, 0.13, 0.73, -0.13, 0.73], -0.21, 0.22, 0.03), c, null, Vector3(gx, 0.6, -0.35))
+		VehicleMounts.applique(k, t, Vector3(gx + s * 0.15, 0.58, -0.2), Vector3(0.62, 0.26, 0.02), Vector3(0, s * PI / 2, 0), c, null, Vector2i(3, 2))
+		k._add(t, BevelMesh.make(Vector3(0.26, 0.2, 0.6), 0.03), c, null, Vector3(gx, 0.6, 0.6))
+		k._cyl(t, 0.1, 0.1, 0.12, Vector3(gx, 0.62, -1.04), X90, "gunmetal_w", null, 14)
+		var g := k._pivot(t, Vector3(gx, 0.62, -1.08))
+		VehicleWeapons.autocannon(k, g, Vector3.ZERO, Vector3(0, 0, -2.91), Vector2(0.07, 0.4), Vector2(0.046, 0.04), Vector2(0.06, 0.26))
+		k._cyl(g, 0.068, 0.068, 0.26, Vector3(0, 0, -2.52), X90, "gunmetal_w", null, 14)
+		for z: float in [-2.39, -2.65]:
+			k._cyl(g, 0.074, 0.074, 0.02, Vector3(0, 0, z), X90, "metal_dark", null, 14, false)
+		k._add(g, BevelMesh.make(Vector3(0.06, 0.05, 0.14), 0.006), "gunmetal_w", null, Vector3(0, 0.085, -2.52))
+		k.gun_assembly(g, Vector3(0, 0, -2.91))
 		_smoke(k, t, Vector3(s * 1.0, 0.95, 0.9), s, 3, 1.3)
 	k.mg_tip = k._tip(t, Vector3(1.42, 0.62, -4.0))
 	k.gun_tip = k._tip(t, Vector3(-1.42, 0.62, -4.0))
