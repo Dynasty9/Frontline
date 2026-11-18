@@ -18,7 +18,7 @@ var _scroll := 0.0
 var _content_h := 0.0
 var _rows: Array = []  # [Rect2, kind ("sq"/"veh"), id, commandable]
 var _head := Rect2()
-var _hover := -1
+var _pointer := Vector2.INF
 
 
 func _ready() -> void:
@@ -28,21 +28,21 @@ func _ready() -> void:
 
 func _gui_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseMotion:
-		var h := -1
-		for i in _rows.size():
-			if (_rows[i][0] as Rect2).has_point(ev.position):
-				h = i
-		if h != _hover:
-			_hover = h
-			queue_redraw()
+		_pointer = ev.position
+		queue_redraw()
 	elif ev is InputEventPanGesture:
 		# two fingers on a trackpad scroll the list
 		_scroll = clampf(_scroll + (ev as InputEventPanGesture).delta.y * 30.0, 0.0, maxf(0.0, _content_h - size.y))
+		_rows.clear()
+		queue_redraw()
 		accept_event()
 	elif ev is InputEventMouseButton and ev.pressed:
 		var mb := ev as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_scroll = clampf(_scroll + (-ROW_H if mb.button_index == MOUSE_BUTTON_WHEEL_UP else ROW_H), 0.0, maxf(0.0, _content_h - size.y))
+			_pointer = mb.position
+			_rows.clear()
+			queue_redraw()
 			accept_event()
 			return
 		if mb.button_index != MOUSE_BUTTON_LEFT:
@@ -59,8 +59,8 @@ func _gui_input(ev: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_MOUSE_EXIT and _hover != -1:
-		_hover = -1
+	if what == NOTIFICATION_MOUSE_EXIT:
+		_pointer = Vector2.INF
 		queue_redraw()
 
 
@@ -71,9 +71,15 @@ func content_h() -> float:
 ## The squad or vehicle under the cursor in the list, as [kind, id] ("" when
 ## none): the map marks the same unit, so a name in the list finds its place.
 func hovered() -> Array:
-	if _hover < 0 or _hover >= _rows.size():
-		return ["", 0]
-	return [String(_rows[_hover][1]), int(_rows[_hover][2])]
+	if open:
+		for row in _rows:
+			if _is_hovered(row[0]):
+				return [String(row[1]), int(row[2])]
+	return ["", 0]
+
+
+func _is_hovered(rect: Rect2) -> bool:
+	return Rect2(Vector2.ZERO, size).has_point(_pointer) and rect.has_point(_pointer)
 
 
 ## Whether a squad needs its commander now: in a fight, pinned, breaking, short
@@ -87,6 +93,7 @@ static func needs_you(st: Dictionary, code: String) -> bool:
 
 func toggle() -> void:
 	open = not open
+	_rows.clear()
 	Settings.v["orbat"] = open
 	Sfx.ui("click")
 	queue_redraw()
@@ -142,10 +149,10 @@ func _draw() -> void:
 
 
 func _draw_content() -> void:
+	_rows.clear()
 	var w := hud.world
 	if w == null or w.input == null:
 		return
-	_rows.clear()
 	var lt: int = w.local_team
 	var teams: Array = [lt] if lt >= 0 else [0, 1]
 	# gather: squads by sid, vehicles
@@ -248,12 +255,12 @@ func _section(y: float, label: String, top: float, bottom: float) -> float:
 
 ## A row's ground: the selected one washed with the accent fading out across
 ## it, the one under the cursor faintly lit; a rule under every one.
-func _row_bg(r: Rect2, sel: bool, idx: int) -> void:
+func _row_bg(r: Rect2, sel: bool) -> void:
 	if sel:
 		var a := UiKit.fa(UiKit.ACCENT, 0.22)
 		var b := UiKit.fa(UiKit.ACCENT, 0.05)
 		draw_polygon(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]), PackedColorArray([a, b, b, a]))
-	elif idx == _hover:
+	elif _is_hovered(r):
 		draw_rect(r, UiKit.fa(UiKit.TEXT, 0.05))
 	UiKit.rule(self, Vector2(r.position.x, r.end.y - 0.5), Vector2(r.end.x, r.end.y - 0.5))
 
@@ -275,12 +282,11 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	var r := Rect2(0, y, W, ROW_H)
 	var team: int = mem[0].team
 	var mine: bool = w.input.is_mine(mem[0])
-	var idx := _rows.size()
 	var sel: bool = sid in w.input.sel_squads
 	_rows.append([r, "sq", sid, mine])
-	_row_bg(r, sel, idx)
+	_row_bg(r, sel)
 	var st: Dictionary = hud.squad_state(sid, mem)
-	var quiet := not sel and idx != _hover and not needs_you(st, String(st.code))
+	var quiet := not sel and not _is_hovered(r) and not needs_you(st, String(st.code))
 	var sym: Array = MapSymbols.squad_symbol(mem)
 	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 0.55 if quiet else 1.0)
 	var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
@@ -319,13 +325,12 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 		return y + ROW_H
 	var r := Rect2(0, y, W, ROW_H)
 	var mine: bool = w.input.is_mine(v)
-	var idx := _rows.size()
 	var sel: bool = v.eid in w.input.sel_vehicles
 	_rows.append([r, "veh", v.eid, mine])
-	_row_bg(r, sel, idx)
+	_row_bg(r, sel)
 	# a vehicle holding or on the move, and not badly hurt, is quiet like a squad
 	var hf: float = v.health_frac()
-	var vquiet: bool = not sel and idx != _hover and (v.flags & (Vehicle.F_TRACK | Vehicle.F_FIRE)) == 0 and hf >= 0.4
+	var vquiet: bool = not sel and not _is_hovered(r) and (v.flags & (Vehicle.F_TRACK | Vehicle.F_FIRE)) == 0 and hf >= 0.4
 	var vs: Array = MapSymbols.vehicle_symbol(v.vkind)
 	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, v.team == w.local_team or w.local_team < 0, v.team, vs[0], "", 0.55 if vquiet else 1.0)
 	var by := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0

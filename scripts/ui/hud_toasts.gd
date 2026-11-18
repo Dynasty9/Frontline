@@ -13,12 +13,12 @@ const MERGE_S := 4.0  # how soon the same report from another unit joins the lin
 const MERGE_KINDS := ["info", "alert", "warn"]  # units' reports (not players' comings and goings)
 
 var hud: Hud
-var items: Array = []  # [kind, text, age, life, time stamp(, who, what: a merged report)]
+var items: Array = []  # [kind, text, age, life, time stamp, who, what, grouping age]
 
 
 func push(kind: String, text: String) -> void:
 	for it in items:
-		if it[1] == text:
+		if kind in MERGE_KINDS and it[0] == kind and it[1] == text and float(it[7]) < MERGE_S:
 			it[2] = 0.0
 			queue_redraw()
 			return
@@ -28,7 +28,7 @@ func push(kind: String, text: String) -> void:
 	var said := _subject_split(text) if kind in MERGE_KINDS else []
 	if not said.is_empty():
 		for it in items:
-			if it[0] == kind and float(it[2]) < MERGE_S and it.size() > 5 and String(it[6]) == String(said[1]):
+			if it[0] == kind and float(it[7]) < MERGE_S and not it[5].is_empty() and String(it[6]) == String(said[1]):
 				var who: Array = it[5]
 				if not String(said[0]) in who:
 					who.append(String(said[0]))
@@ -37,10 +37,10 @@ func push(kind: String, text: String) -> void:
 				queue_redraw()
 				return
 	var t := hud.world.time if hud and hud.world else 0.0
-	var item := [kind, text, 0.0, 10.0 if kind in ["alert", "intel", "warn"] else LIFE, t]
+	var item := [kind, text, 0.0, 10.0 if kind in ["alert", "intel", "warn"] else LIFE, t, [], "", 0.0]
 	if not said.is_empty():
-		item.append([String(said[0])])
-		item.append(String(said[1]))
+		item[5] = [String(said[0])]
+		item[6] = String(said[1])
 	items.push_front(item)
 	if items.size() > 6:
 		items.pop_back()
@@ -53,6 +53,7 @@ func tick(dt: float) -> void:
 		# Between arrival and departure the log's drawing stays unchanged.
 		changed = changed or items[i][2] < 0.24 or items[i][2] + dt >= items[i][3] - 0.15
 		items[i][2] += dt
+		items[i][7] += dt
 		if items[i][2] > items[i][3]:
 			items.remove_at(i)
 	if changed:

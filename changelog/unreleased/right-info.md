@@ -12,3 +12,5 @@ caption = "The same moments before and after: a busy fight (order of battle and 
 - **Pointing at a squad or vehicle in the order of battle** marks it on the map, so you can find it at once.
 - **Squad names on the map** appear when they help: for the units you've selected or are pointing at, ones under fire, ones you've just given an order, and on the tactical map. The rest of the time the symbol and its strength say enough, and the battle isn't buried under names.
 - **The log** puts the same report from several units into one line: "Bravo 1, Charlie 1 and Delta 1 are moving out of the shellfire." That leaves room for the warnings that matter.
+
+Scrolling keeps the map highlight attached to the row actually under your pointer, including when the pointer stays still. Report groups close four seconds after the first report; a later repeat or a change in urgency gets its own line. Chat and radio repeats remain separate.

@@ -192,3 +192,5 @@ A spinner for real waiting is allowed. Nothing pulses to get attention; the acce
 - Use `UiMotion` for anything that moves.
 - Add the new part to the gallery (`scripts/test/ui_gallery.gd`) and look at it with `--ui-gallery=out.png
   --gallery-theme=KEY` in each theme.
+
+ORBAT hover is resolved against the current visible row rectangles after scrolling, and clears over blank space or a collapsed list. Repeated unit reports group for four seconds from the first arrival, without extending that window as more reports arrive. A later report or a different urgency starts a new line.
