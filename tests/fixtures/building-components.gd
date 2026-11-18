@@ -327,6 +327,20 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A playground's equipment keeps to the room the playground gives it.
+	var plays := [[func(k: BuildingKit): BuildingPlay.swings(k, Color.BLUE, true), Vector3(3.75, 2.55, 1.85)],
+		[func(k: BuildingKit): BuildingPlay.slide(k, Color.RED, Color.YELLOW), Vector3(3.9, 2.95, 1.0)],
+		[func(k: BuildingKit): BuildingPlay.climber(k, Color.GREEN), Vector3(2.4, 1.75, 2.4)],
+		[func(k: BuildingKit): BuildingPlay.seesaw(k, Color.YELLOW), Vector3(3.8, 1.2, 0.7)],
+		[func(k: BuildingKit): BuildingPlay.sandpit(k, k.rng), Vector3(3.0, 0.4, 3.0)],
+		[func(k: BuildingKit): BuildingPlay.roundabout(k, [Color.RED, Color.BLUE]), Vector3(2.3, 1.05, 2.3)]]
+	for pl: Array in plays:
+		var plk := kit()
+		(pl[0] as Callable).call(plk)
+		var plb := _bounds(plk.sink.root, Transform3D.IDENTITY)
+		var pll: Vector3 = pl[1]
+		check(plb.size.x <= pll.x and plb.size.z <= pll.z and plb.end.y <= pll.y and plb.position.y >= -0.05, "a playground's piece keeps to its room (%s, %s)" % [plb, pll])
+		plk.sink.root.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:

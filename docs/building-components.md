@@ -257,6 +257,20 @@ negative inset so the frame stands proud of the face and glaze it fully (`glazin
 would show the block behind. Door leaves that swing are built in their own hinge kit (`BuildingKit.nodes(pivot)`);
 `BuildingOpenings.leaf` runs the leaf out along `toward` from the hinge line.
 
+## The playground
+
+A town playground's equipment is `BuildingPlay`'s, in round steel tube painted bright:
+- **Swings** (`swings`): an A-frame at each end, two seats on galvanised chains (`chain`), one of them often a
+  toddler's cradle seat.
+- **A slide** (`slide`): a tower with a deck, guard rails and a little roof, a ladder of round rungs, and a steel
+  chute between raised sides to its run-out.
+- **A climbing dome** (`climber`), its rungs in rings.
+- **A seesaw** (`seesaw`) on a sprung pivot, with seats, grab handles and a tyre half sunk under each end.
+- **A sandpit** (`sandpit`) in timber kerbs with a seat board, the sand heaped and dug, a bucket and spade in it.
+- **A roundabout** (`roundabout`), its painted disc with steel strips and grab rails.
+
+Render them with `--building-kinds=playground`.
+
 ## Who uses what
 
 | Component | Users |
