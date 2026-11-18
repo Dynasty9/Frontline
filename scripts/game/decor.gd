@@ -690,11 +690,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_beam(Vector3(2.75, 0, 0.25), Vector3(2.4, 12.4, 0.25), 0.05, "metal_dark")
 			_beam(Vector3(2.75, 0, -0.25), Vector3(2.4, 12.4, -0.25), 0.05, "metal_dark")
 		"hay":
-			var n2 := int(ex) if ex != null else 1
-			for i in n2:
-				_m(Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3((i - (n2 - 1) * 0.5) * 1.35, 0.65, 0), Color(0.75, 0.64, 0.32), Vector3(0, 0, PI * 0.5))
-			if n2 >= 3:
-				_m(Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3(0, 1.85, 0), Color(0.72, 0.62, 0.3), Vector3(0, 0, PI * 0.5))
+			# round bales by a farm (BuildingFarm): straw, or now and then silage
+			# wrapped in film
+			BuildingFarm.bales(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 1, rng.randf() < 0.35, rng)
 		"drive":
 			var d2: Vector3 = ex
 			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)
