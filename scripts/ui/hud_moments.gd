@@ -19,12 +19,15 @@ var _rects: Array = []  # [Rect2, pos]: each line as drawn, to click
 
 
 func push(tone: String, text: String, pos) -> void:
-	for it in items:
-		if it[1] == text:
+	for i in items.size():
+		var it: Array = items[i]
+		if it[0] == tone and it[1] == text:
 			# the same again while it's up (two trucks in one ambush): counted, not repeated
 			it[3] = 0.0
 			it[4] = int(it[4]) + 1
 			it[2] = pos
+			items.remove_at(i)
+			items.push_front(it)
 			queue_redraw()
 			return
 	items.push_front([tone, text, pos, 0.0, 1])
@@ -71,9 +74,9 @@ func _draw() -> void:
 		var tone: String = it[0]
 		var age: float = it[3]
 		var a := clampf((LIFE - age) / 0.4, 0.0, 1.0)
-		# it lands with one flicker, like a caution in the log
-		if not UiMotion.reduced() and age < 0.12 and fmod(age, 0.12) >= 0.06:
-			a = 0.0
+		# A short fade keeps rapid updates legible; reduced motion lands immediately.
+		if not UiMotion.reduced():
+			a *= clampf(age / UiMotion.QUICK, 0.0, 1.0)
 		var col := UiKit.GOOD if tone == "gain" else UiKit.BAD
 		var text := String(it[1]).to_upper()
 		if int(it[4]) > 1:

@@ -160,8 +160,9 @@ A squad of yours under fire somewhere you aren't looking comes in as a caution, 
 The turns of the battle a commander should feel (an enemy vehicle destroyed, a squad wiped out, a town or a FOB
 taken or lost) get a line of their own, centred under the status line: mono capitals between corner ticks on a
 dark band, `GOOD` for ours and `BAD` for theirs, the grid in `DIM`, and on the newest the jump key in `FAINT`
-(`ENEMY T-90M DESTROYED  E4  [SPACE]`). Two at most, six seconds each, one flicker as they land; the same again
-while one is up is counted (`×2`), not repeated. A click on one takes the camera there. Nothing grows, shakes
+(`ENEMY T-90M DESTROYED  E4  [SPACE]`). Two at most, six seconds each, a brief `UiMotion.QUICK` fade as they land (immediate with reduced motion); the same again
+while one is up is counted (`×2`), not repeated. It returns to the top with its latest location, so the newest
+event carries the jump hint. A click on one takes the camera there. Nothing grows, shakes
 or plays a fanfare: it is a display's notice.
 
 The squad card's cells say what a man is doing in a code of eight letters at most (`SMOKING`, `FALL BK`); the

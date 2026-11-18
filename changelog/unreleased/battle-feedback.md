@@ -22,7 +22,8 @@ caption = "The same battle before (left) and after (right), at 0:25, 4:00 and 7:
 
 - **Moments:** an enemy vehicle destroyed, a squad wiped out, a town or a FOB taken or lost shows for a few
   seconds under the status line: green for good news, red for bad, with the grid. Space (or a click on it) takes
-  you there.
+  you there. Repeated events return to the top with their updated count and latest location.
+  Notices fade in briefly instead of flickering; reduced motion shows them immediately.
 - **Kills and losses** on the status line: the men and vehicles your side has killed and lost so far.
 - **Idle squads:** squads of yours standing about with nothing to do are counted above the fire missions. Press
   `.` (or click it) to select the next one and go there.
