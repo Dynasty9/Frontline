@@ -2957,8 +2957,11 @@ void fragment() {
 				+ (texture(detail_tex, p / 0.55 + 0.29).r - 0.5) * 0.35;
 			float worn = mix(2.55, 3.15, gravelled) - road_d + ragged;
 			// down the crown of a track, where no wheel runs, grass holds on in patches
-			float crown_grass = smoothstep(0.3, 0.75, (0.3 - road_d) / 0.3 + (d2 - 0.5) * 1.4 + (d3 - 0.5) * 0.6) * (1.0 - gravelled);
-			float coverage = smoothstep(mix(-0.25, -0.55, gravelled), 0.9, worn) * (1.0 - crown_grass * 0.6);
+			// (a strip half a metre wide, broken where the bumpers scrape it)
+			float crown_grass = smoothstep(0.25, 0.6, (0.5 - road_d) / 0.5 + (d2 - 0.5) * 1.2 + (texture(detail_tex, p / 0.9 + 0.33).r - 0.5) * 0.7) * (1.0 - gravelled);
+			// (in tufts with the earth between them, not a lawn)
+			float tufts = texture(detail_tex, p / 0.31 + 0.71).r * 0.6 + texture(detail_tex, p / 0.13 + 0.19).r * 0.4;
+			float coverage = smoothstep(mix(-0.25, -0.55, gravelled), 0.9, worn) * (1.0 - crown_grass * smoothstep(0.38, 0.62, tufts));
 			float track = height_blend(moss_sample.a, trail.a, coverage);
 			// the trail's grain, in the dust of this country (its mean linear colour
 			// 0.247, 0.150, 0.086, luminance 0.166): a warm, dull earth
@@ -3031,6 +3034,8 @@ void fragment() {
 			// (a gravel road's spill thins out over a metre of soil and stones)
 			dust = mix(dust, bare_soil, (1.0 - smoothstep(mix(0.15, 0.1, gravelled), mix(0.95, 1.4, gravelled), worn)) * mix(0.85, 0.7, gravelled));
 			dust *= 1.0 - wet * 0.3;
+			// what grass there is down the crown is trampled and dusty
+			moss = mix(moss, mix(moss * vec3(0.78, 0.76, 0.62), dust, 0.25), crown_grass * 0.8);
 			moss = mix(moss, dust, track);
 			moss_data = mix(moss_data, road_data, track);
 			moss_n = normalize(mix(moss_n, road_n, track * 0.8));
