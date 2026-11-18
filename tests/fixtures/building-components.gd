@@ -181,6 +181,29 @@ func _ready() -> void:
 		check(not occupied(wk.sink.root, p), "the window is clear at %s" % p)
 	check(occupied(wk.sink.root, Vector3(0, 1.5, -0.1)), "the window has its mullion")
 	wk.sink.root.free()
+	# A shop's display window: clear between its bars, its stall riser solid
+	# under it; the stock behind the glass below a man's eye and inside the
+	# wall's depth or behind it, none of it out on the pavement.
+	var sfk := kit()
+	BuildingOpenings.shopfront(sfk, Vector3(0, (Structure.SHOP_SILL + Structure.SHOP_HEAD) * 0.5, 0), Vector2(2.2, Structure.SHOP_HEAD - Structure.SHOP_SILL), {"glazing": 0.0, "cracked": 0.0})
+	for p in [Vector3(-0.5, 1.4, -0.05), Vector3(0.5, 1.4, -0.05), Vector3(0, 1.5, 0.1)]:
+		check(not occupied(sfk.sink.root, p), "the display window is clear at %s" % p)
+	check(occupied(sfk.sink.root, Vector3(0, 0.35, 0.04)), "the display window has its stall riser")
+	sfk.sink.root.free()
+	for sd in 12:
+		var dsk := kit()
+		dsk.rng.seed = sd
+		BuildingShops.display(dsk, 2.1, Structure.SHOP_SILL, BuildingShops.paint(sd), dsk.rng)
+		var gb := _bounds(dsk.sink.root, Transform3D.IDENTITY)
+		check(gb.position.y >= Structure.SHOP_SILL - 0.01 and gb.end.y < 1.45 and gb.end.z <= -0.1 and absf(gb.get_center().x) < 0.2, "a window display keeps behind the glass (%s)" % gb)
+		dsk.sink.root.free()
+	# The years' grime lies on the face, under the eaves' band and above the
+	# plinth, on every part of the wall's body and none of its openings.
+	for v in [0, 1, 2, 3]:
+		var gw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, 1.0, 0.4), v == 2, 77)
+		var gwb := _bounds(gw, Transform3D.IDENTITY)
+		check(gwb.end.y <= 3.05 and gwb.size.x <= 3.6, "a house wall (%d) keeps to its bay and under its eaves (%s)" % [v, gwb])
+		gw.free()
 
 	# Shared shapes: windows of one size share one frame mesh.
 	check(BuildingOpenings.frame_shape(1.3, 1.0, 1, 0.7) == BuildingOpenings.frame_shape(1.3, 1.0, 1, 0.7), "window frames are cached")
@@ -194,7 +217,7 @@ func _ready() -> void:
 
 	# Batched scenery keeps to world-space surfaces (StructureView merges
 	# nothing in local space), so the new dressing doesn't break the batches.
-	for spec: Array in [["house_wall", 0, Vector3(2.8, 2.0, 0.4)], ["house_wall", 1, Vector3(2.8, 4.0, 0.4)], ["house_wall", 2, Vector3(2.8, 2.0, 0.4)],
+	for spec: Array in [["house_wall", 0, Vector3(2.8, 2.0, 0.4)], ["house_wall", 1, Vector3(2.8, 4.0, 0.4)], ["house_wall", 2, Vector3(2.8, 2.0, 0.4)], ["house_wall", 3, Vector3(2.8, 1.0, 0.4)],
 			["low_wall", 0, Vector3(4.0, 1.0, 0.5)], ["low_wall", 2, Vector3(4.0, 1.0, 0.5)], ["floor", 0, Vector3(8, 0.06, 7)]]:
 		var m := Structure.preview_model(spec[0], -1, spec[1], spec[2])
 		var stack: Array = [m]
@@ -327,6 +350,15 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A farm's bales keep to their footprint (two side by side, a third on
+	# them), straw or wrapped.
+	for i in 6:
+		var bk := kit()
+		bk.rng.seed = i
+		BuildingFarm.bales(bk, 1 + i % 3, i >= 3, bk.rng)
+		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
+		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
+		bk.sink.root.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:
