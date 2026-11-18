@@ -1249,8 +1249,12 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			# most front doors are shut (decided from where it stands: the map's
 			# random numbers stay as they were)
 			var shut := variant == 2 and (doors_shut == 1 or (doors_shut < 0 and posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7))
-			# (a ruin's lamps are long out)
-			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined})
+			# (a ruin's lamps are long out; a shop's walls are fitted out as a
+			# shop's inside)
+			var wall := {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined}
+			if plan.get("shop", false) and not barn:
+				wall["shop"] = true
+			world.spawn("structure", wall)
 	# a roof on every house still standing: tiled and pitched, or flat (over
 	# a storey above the ground floor, where it has one)
 	var flat := false

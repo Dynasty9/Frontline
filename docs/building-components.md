@@ -148,6 +148,10 @@ books stand in runs. Render three rooms with `--building-kinds=house_rooms`. A s
 `TownGen._plan` marks a shop) is fitted out instead of furnished (`BuildingInteriors.shop`): rows of shelving
 running back from the door, stocked in runs of one kind or picked half empty, and the counter across the back
 with its till and scales and stock at its end, all clear of the front and of what stands against the walls.
+Its walls know it's a shop (the `shop` prop `MapGen._house` gives them) and are fitted out to match
+(`BuildingInteriors.shop_wall`, from the same stream and within the same `REACH` as a house's furniture): shelving
+the length of a plain wall packed with goods (now and then picked half empty), a cooler of drinks at one end of
+some, or a greengrocer's rack of crates under a chalked price board; its windows have a blind or nothing.
 Render two with `--building-kinds=shop_rooms`.
 
 ## House plans and storeys

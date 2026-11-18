@@ -632,6 +632,15 @@ func _ready() -> void:
 		check(ab.position.x >= -L * 0.5 + BuildingInteriors.REACH - 0.06 and ab.end.x <= L * 0.5 - BuildingInteriors.REACH + 0.06, "it keeps in from the wall's ends (%.2f: %s)" % [L, ab])
 		check(ab.position.z >= -0.01 and ab.end.z <= BuildingInteriors.REACH + 0.02 and ab.position.y >= 0.0 and ab.end.y <= 2.6, "it keeps within reach of the wall, under the ceiling (%.2f: %s)" % [L, ab])
 		ak.sink.root.free()
+		# (and a shop's wall the same: its shelving, its cooler, its rack)
+		var swk := kit()
+		swk.rng.seed = s2
+		BuildingInteriors.shop_wall(swk, L, swk.rng)
+		var swb := _bounds(swk.sink.root, Transform3D.IDENTITY)
+		check(swk.sink.root.get_child_count() > 0, "a shop's %.2f m wall is fitted out" % L)
+		check(swb.position.x >= -L * 0.5 + BuildingInteriors.REACH - 0.06 and swb.end.x <= L * 0.5 - BuildingInteriors.REACH + 0.06, "a shop's fittings keep in from the wall's ends (%.2f: %s)" % [L, swb])
+		check(swb.position.z >= -0.01 and swb.end.z <= BuildingInteriors.REACH + 0.02 and swb.position.y >= 0.0 and swb.end.y <= 2.6, "a shop's fittings keep within reach of the wall, under the ceiling (%.2f: %s)" % [L, swb])
+		swk.sink.root.free()
 		var tk := kit()
 		tk.rng.seed = s2
 		BuildingInteriors.table(tk, Vector3(9.0, 0.06, 7.6), BuildingInteriors.WOODS[0], tk.rng)

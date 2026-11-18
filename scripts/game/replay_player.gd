@@ -438,6 +438,7 @@ func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:
 		prop_types.structure["zr"] = 0.0
 		prop_types.structure["look"] = 0  # (a wing's roof: the roof whose looks it shares)
 		prop_types.structure["entry"] = 0  # (a barn's floor: the wall its door is in)
+		prop_types.structure["shop"] = false  # (a shop's walls: fitted out as a shop's)
 	var schema: Dictionary = prop_types.get(kind, {})
 	for key in values:
 		if key == "toss":

@@ -410,11 +410,14 @@ func _rotated(n: Node3D) -> Node3D:
 
 ## The same layout as MapGen._house: the front (street) wall at -z with the
 ## door in it, windows in most other sections.
-## A house wall's preview, its lamps out (`dark`: a ruin's) where Structure
-## can build one so; before it could, as it was then.
-func _wall(v: int, sz: Vector3, shut: bool, id: int, dark: bool) -> Node3D:
+## A house wall's preview, its lamps out (`dark`: a ruin's) and fitted out
+## as a shop's (`shop`) where Structure can build one so; before it could, as
+## it was then.
+func _wall(v: int, sz: Vector3, shut: bool, id: int, dark: bool, shop := false) -> Node3D:
 	var script: Script = load("res://scripts/game/structure.gd")
 	for m: Dictionary in script.get_script_method_list():
+		if m.name == "preview_model" and (m.args as Array).size() >= 8:
+			return script.callv("preview_model", ["house_wall", -1, v, sz, shut, id, dark, shop])
 		if m.name == "preview_model" and (m.args as Array).size() >= 7:
 			return script.callv("preview_model", ["house_wall", -1, v, sz, shut, id, dark])
 	return Structure.preview_model("house_wall", -1, v, sz, shut, id)
@@ -448,7 +451,7 @@ func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined :
 				heap.rotation.y = yaw
 				root.add_child(heap)
 				continue
-			var wall := _wall(variant, Vector3(seg_len, float(color), 0.4), variant == 2, wall_ids.get(si * 10 + k, 100 + si * 10 + k), ruined)
+			var wall := _wall(variant, Vector3(seg_len, float(color), 0.4), variant == 2, wall_ids.get(si * 10 + k, 100 + si * 10 + k), ruined, fv == 3)
 			wall.position = lp
 			wall.rotation.y = yaw
 			root.add_child(wall)
