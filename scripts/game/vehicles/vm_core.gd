@@ -332,20 +332,14 @@ static func _sprocket(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: fl
 	return pv
 
 
-## A steel idler wheel (twin discs) spinning about x.
+## A steel idler wheel spinning about x: the road wheels' twin pressed discs
+## with their hub and bolt circle (VehicleWheels.road), but steel-rimmed where
+## a road wheel is tyred, since the idler only tensions the track and runs on
+## the links' inner faces. Built the road wheels' way, it reads as one of the
+## set from the battle camera instead of a smooth drum of another make.
 static func _idler(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: float, mat: String, col = null) -> Node3D:
-	var pv := k._pivot(p, pos)
+	var pv := VehicleWheels.road(k, p, pos, r, w, mat, col, 0, false)
 	pv.set_meta(&"radius", r)
-	for sx: float in [-1.0, 1.0]:
-		k._cyl(pv, r, r, w * 0.34, Vector3(sx * w * 0.3, 0, 0), Z90, "gunmetal_w", null, 14)
-	k._cyl(pv, r * 0.76, r * 0.76, w * 0.92, Vector3.ZERO, Z90, mat, col, 12)
-	k._cyl(pv, r * 0.28, r * 0.3, w + 0.06, Vector3.ZERO, Z90, "gunmetal_w", null, 8, false)
-	var ox := signf(pos.x)
-	k._cyl(pv, r * 0.78, r * 0.78, 0.024, Vector3(ox * w * 0.5, 0, 0), Z90, mat, col, 20)
-	for i in 6:
-		var a := TAU * i / 6.0
-		k._cyl(pv, r * 0.165, r * 0.165, 0.012, Vector3(ox * (w * 0.5 + 0.015), sin(a) * r * 0.55, cos(a) * r * 0.55), Z90, "metal_dark", null, 10, false)
-	k.wheels.append(pv)
 	return pv
 
 
@@ -653,7 +647,11 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 	var trunnion := Vector3(0, gy, -2.08)
 	k.gun_mount = k._pivot(t, trunnion)
 	var slide := k._pivot(k.gun_mount, -trunnion)
-	k._cyl(slide, 0.14, 0.15, 0.16, Vector3(0, gy, -2.18), X90, cam, null, 14)
+	# the gun's pleated canvas mantlet cover, from the shield's face to its
+	# tie round the sleeve: with the gun, so it lays as the gun elevates
+	var boot := k._pivot(slide, Vector3(0, gy, 0))
+	VehicleMounts._gun_boot(k, boot, -2.11, 0.2, 0.095, 0.26)
+	k._fold(boot)
 	VehicleFittings.barrel(k, slide, Vector3(0, gy, -2.3), Vector3(0, gy, -5.32), 0.095, cam, null)
 	VehicleFittings.evacuator(k, slide, Vector3(0, gy, -3.82), 0.135, 0.56, cam)
 	VehicleWeapons.muzzle_sensor(k, slide, Vector3(0, gy + 0.13, -5.14), Vector3(0.09, 0.07, 0.14), Vector3(0, gy, -5.14), 0.095)
@@ -1063,13 +1061,16 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 	var gy := 0.4
 	k._add(t, VehicleModels.solid([_rz([-0.36, gy - 0.26, 0.36, gy - 0.26, 0.42, gy - 0.1, 0.42, gy + 0.14, 0.3, gy + 0.28, -0.3, gy + 0.28, -0.42, gy + 0.14, -0.42, gy - 0.1], -0.85),
 		_rz([-0.3, gy - 0.22, 0.3, gy - 0.22, 0.36, gy - 0.08, 0.36, gy + 0.1, 0.26, gy + 0.22, -0.26, gy + 0.22, -0.36, gy + 0.1, -0.36, gy - 0.08], -1.24)], "core_t55_mant"), cam, null, Vector3.ZERO)
-	k._cyl(t, 0.13, 0.2, 0.3, Vector3(0, gy, -1.38), X90, "canvas", Color(0.36, 0.34, 0.25), 12)
-	for z: float in [-1.31, -1.45]:
-		k._cyl(t, 0.18 - (z + 1.31) * 0.4, 0.18 - (z + 1.31) * 0.4, 0.025, Vector3(0, gy, z), X90, "canvas", Color(0.3, 0.29, 0.21), 12, false)
 	# the 100 mm: the long tapering barrel, the fume extractor near the muzzle
 	var trunnion := Vector3(0, gy, -1.38)
 	k.gun_mount = k._pivot(t, trunnion)
 	var slide := k._pivot(k.gun_mount, -trunnion)
+	# the boot: pleated canvas from the mantlet's face, tied round the barrel,
+	# with the gun so it lays as the gun elevates (on the turret, the barrel
+	# swung out through its side)
+	var boot := k._pivot(slide, Vector3(0, gy, 0))
+	VehicleMounts._gun_boot(k, boot, -1.24, 0.2, 0.07, 0.3)
+	k._fold(boot)
 	VehicleFittings.barrel(k, slide, Vector3(0, gy, -1.5), Vector3(0, gy, -5.065), 0.07, cam, null, false)
 	VehicleFittings.evacuator(k, slide, Vector3(0, gy, -4.42), 0.118, 0.64, cam)
 	k.gun_tip = k._tip(slide, Vector3(0, gy, -5.1))
@@ -1871,6 +1872,9 @@ static func _bradley(k: VehicleModels, team: int, seed := 0) -> void:
 			_bx(k, m, Vector3(0.02, 0.03, 0.9), Vector3(s * 1.5, 1.08, z0 + 0.52), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleEquipment.skirt_bow(k, m, Vector3(s * 1.44, 0.95, -2.85), Vector3(0.07, 0.42, 0.5), s, cam, null, Vector3(-0.45, 0, 0))
 		k._team_mark(m, team, Vector3(s * 1.515, 1.46, 1.42), Vector3(0.02, 0.24, 0.7))
+		# cut branches tucked along the skirts' top under the armour tiles,
+		# ahead of the recognition panel
+		VehicleBody.cut_branches(k, m, Vector3(s * 1.48, 1.143, -2.3), Vector3(s * 1.48, 1.143, 0.4), Vector3(s, 0, 0), 31)
 	# the roof: the troop compartment's long cargo hatch hinged at its back
 	# edge, vision blocks
 	VehicleFittings.panel_hatch(k, m, Vector3(0, roof + 0.03, 2.05), Vector3(1.3, 0.06, 1.2), cam)

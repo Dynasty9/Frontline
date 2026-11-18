@@ -396,6 +396,8 @@ static func _mora(k: VehicleModels, team: int, seed := 0) -> void:
 		for i in 5:
 			VehicleEquipment.skirt(k, m, Vector3(s * 1.49, 0.8, -1.9 + i * 1.1), Vector3(0.05, 0.44, 1.08), s, cam, col)
 			k._box(m, Vector3(0.02, 0.03, 1.0), Vector3(s * 1.52, 0.98, -1.9 + i * 1.1), "gunmetal_w", null, Vector3.ZERO, false)
+		# cut branches tucked along the skirts' top edge, against the hull side
+		VehicleBody.cut_branches(k, m, Vector3(s * 1.5, 1.033, -2.2), Vector3(s * 1.5, 1.033, 1.1), Vector3(s, 0, 0), 31)
 		VehicleEquipment.skirt_bow(k, m, Vector3(s * 1.49, 0.86, -2.78), Vector3(0.05, 0.36, 0.6), s, cam, col, Vector3(-0.45, 0, 0))
 		# the hull's side seam at the deck line, a stowage box aft
 		k._box(m, Vector3(0.04, 0.05, 6.1), Vector3(s * 1.45, 1.5, 0.05), cam, col)
@@ -447,7 +449,7 @@ static func _mora(k: VehicleModels, team: int, seed := 0) -> void:
 	var tb := [-0.55, -1.22, 0.55, -1.22, 1.05, -0.72, 1.1, 0.95, 0.85, 1.18, -0.85, 1.18, -1.1, 0.95, -1.05, -0.72]
 	var tt := [-0.42, -0.88, 0.42, -0.88, 0.86, -0.5, 0.93, 0.85, 0.72, 1.04, -0.72, 1.04, -0.93, 0.85, -0.86, -0.5]
 	k._add(t, _armour([_ring(tb, 0.06), _ring(tt, 0.74)], "indep_mora_tur", 0.06), cam, col, Vector3.ZERO)
-	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.22, Vector3(1.1, 0.06, 0.95), Vector3(1.05, 0.06, -0.72), Vector3(0.86, 0.74, -0.5), Vector3(0.93, 0.74, 0.85), Vector2(0.39, 0.43), VehicleMarkings.STENCIL_AAF)
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.38, Vector3(1.1, 0.06, 0.95), Vector3(1.05, 0.06, -0.72), Vector3(0.86, 0.74, -0.5), Vector3(0.93, 0.74, 0.85), Vector2(0.39, 0.43), VehicleMarkings.STENCIL_AAF)
 	VehicleMounts.mantlet(k, t, Vector3(0.36, 0.4, 0.4), Vector3(0, 0.4, -1.18), cam, col)
 	VehicleWeapons.autocannon(k, t, Vector3(0, 0.4, -1.3), Vector3(0, 0.4, -4.11), Vector2(0.075, 0.5), Vector2(0.045, 0.045), Vector2(0.065, 0.22))
 	k.mg_tip = k._tip(t, Vector3(0, 0.4, -4.14))
@@ -514,6 +516,8 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 			if heavy:
 				k._box(m, Vector3(0.02, 0.03, 0.9), Vector3(s * 1.905, 1.06, sz), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleEquipment.skirt_bow(k, m, Vector3(s * 1.83, 0.96, -3.48), Vector3(0.14, 0.4, 0.56), s, cam, col, Vector3(-0.5, 0, 0))
+		# cut branches tucked along the skirts' top, against the hull side
+		VehicleBody.cut_branches(k, m, Vector3(s * 1.82, 1.153, -2.8), Vector3(s * 1.82, 1.153, 1.3), Vector3(s, 0, 0), 31)
 		# the hull's sides: a stowage box and the tool rack above the skirts
 		VehicleEquipment.storage(k, m, Vector3(s * 1.8, 1.4, 2.6), Vector3(0.12, 0.3, 1.2), cam, col, Vector3.ZERO)
 		k._cyl(m, 0.03, 0.03, 2.4, Vector3(s * 1.79, 1.5, 0.1), X90, "gunmetal_w", null, 6, false)
@@ -541,7 +545,8 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 	var tt := [-1.2, -1.92, 1.2, -1.92, 1.6, -1.45, 1.6, 1.06, 1.36, 1.98, -1.36, 1.98, -1.6, 1.06, -1.6, -1.45]
 	k._add(t, _armour([_ring(tb, 0.0), _ring(tt, 0.86)], "indep_kuma_tur", 0.07), cam, col, Vector3.ZERO)
 	# the tactical number on the side armour, ahead of the panel's middle strap
-	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.28, Vector3(1.79, 0.05, 0.975), Vector3(1.79, 0.05, -1.975), Vector3(1.79, 0.81, -1.975), Vector3(1.79, 0.81, 0.975), Vector2(0.686, 0.49), VehicleMarkings.STENCIL_AAF)
+	# (42 cm figures, on the front module, clear of its corner bolts)
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.42, Vector3(1.79, 0.05, 0.975), Vector3(1.79, 0.05, -1.975), Vector3(1.79, 0.81, -1.975), Vector3(1.79, 0.81, 0.975), Vector2(0.834, 0.49), VehicleMarkings.STENCIL_AAF)
 	# bolt-on armour: the Revolution's passive modules, flame-cut slabs hung
 	# side by side with a finger's gap between them, each held by heavy bolts
 	# at its corners and carrying a lifting lug on its top edge for the crane
@@ -553,13 +558,15 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 		for cz: float in [-1.485, -0.5, 0.485]:
 			VehicleMounts.applique(k, t, Vector3(s * 1.72, 0.43, cz), Vector3(0.965, 0.76, 0.14), Vector3(0, s * PI / 2, 0), cam, col, Vector2i(2, 2), 1)
 		k._team_mark(t, team, Vector3(s * 1.8, 0.34, 0.25), Vector3(0.03, 0.22, 0.7))
-		# smoke dischargers: a group of four on each side, aft
-		_smoke(k, t, Vector3(s * 1.62, 0.92, 1.12), 4, s * -1.05, 0.5, 0.05)
+		# smoke dischargers: a group of four on each side, aft, on the roof's
+		# edge and inboard of the side modules' faces
+		_smoke(k, t, Vector3(s * 1.55, 0.92, 1.12), 4, s * -1.05, 0.5, 0.05)
 		_antenna(k, t, Vector3(s * 1.1, 0.86, 1.75), 2.2)
 	# the gun: mantlet, thermal sleeve, fume extractor, muzzle reference sensor
 	var gc := Color(0.31, 0.34, 0.25)
-	VehicleMounts.mantlet(k, t, Vector3(0.62, 0.54, 0.36), Vector3(0, 0.42, -2.06), cam, col)
-	k._cyl(t, 0.2, 0.22, 0.2, Vector3(0, 0.42, -2.32), X90, cam, col, 14)
+	# (the gun's canvas boot strapped round the mantlet's face, tied round
+	# the sleeve where it leaves it)
+	VehicleMounts.mantlet(k, t, Vector3(0.62, 0.54, 0.36), Vector3(0, 0.42, -2.06), cam, col, Vector3.ZERO, Vector2(0.105, 0.22))
 	VehicleFittings.barrel(k, t, Vector3(0, 0.42, -2.42), Vector3(0, 0.42, -5.98), 0.105, "paint", gc)
 	VehicleFittings.evacuator(k, t, Vector3(0, 0.42, -3.87), 0.165, 0.7, "paint", gc)
 	VehicleWeapons.muzzle_sensor(k, t, Vector3(0, 0.55, -5.78), Vector3(0.06, 0.07, 0.1), Vector3(0, 0.42, -5.78), 0.105)
@@ -789,7 +796,7 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 	k._team_mark(m, team, Vector3(1.345, 1.45, 0.3), Vector3(0.03, 0.26, 0.7))
 	k._team_mark(m, team, Vector3(-1.345, 1.45, 0.3), Vector3(0.03, 0.26, 0.7))
 	# the tactical number on each flank, between the forward bin and the panel
-	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.26, Vector3(1.335, 1.2, 3.0), Vector3(1.335, 1.2, -3.0), Vector3(1.335, 1.85, -3.0), Vector3(1.335, 1.85, 3.0), Vector2(0.603, 0.46), VehicleMarkings.STENCIL_AAF)
+	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.38, Vector3(1.335, 1.2, 3.0), Vector3(1.335, 1.2, -3.0), Vector3(1.335, 1.85, -3.0), Vector3(1.335, 1.85, 3.0), Vector2(0.603, 0.46), VehicleMarkings.STENCIL_AAF)
 	# the turret: low and faceted, the 30 mm in its mantlet with the coax
 	# beside it, a Titan tube on each side
 	var t := k._pivot(m, Vector3(0, 2.08, 0.3))
@@ -921,6 +928,13 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	for x: float in [-0.3, 0.0, 0.3]:
 		VehicleFittings.marker(k, m, Vector3(x, 2.74, -1.94), Vector3(0.06, 0.05, 0.09), 2.0, Color(0.62, 0.45, 0.12))
 	_antenna(k, m, Vector3(-1.0, 2.72, -0.86), 1.6)
+	# a camouflage net bundled on the cab roof between the hatch and the
+	# antenna, by a crew that camouflages its truck (VehicleCloth.camouflage)
+	var net_at := Vector3(-0.42, 2.72, -1.3)
+	var rng := VehicleCargo.kit(k, m, net_at, 17)
+	var camo := VehicleCloth.camouflage(k)
+	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
+		VehicleCloth.net(k, m, net_at, Vector3(0.78, rng.randf_range(0.1, 0.17), 0.72), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
 	# behind the cab: the spare wheel upright in its frame, the air intake,
 	# the fuel tank on the left and the battery box on the right
 	VehicleWheels.spare(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, cam, col)
