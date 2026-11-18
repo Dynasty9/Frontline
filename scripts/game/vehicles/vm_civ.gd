@@ -458,9 +458,11 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	# the wheels: the trim's silver alloys, but about one pickup in three (and
 	# more of the fighters') on the base model's black-painted steel wheels,
 	# so a row of them isn't stamped from one mould; a wreck's stay silver
+	# (a parked one's chosen by its paint, its look, so each look is one model)
 	var rim_mat := "steel"
 	var rim := Color(0.6, 0.61, 0.6)
-	if not k.wreck and absi(hash(seed * 23 + 9)) % (2 if v != "" else 3) == 0:
+	var rim_pick := absi(hash(seed * 23 + 9)) if v != "" else absi(hash(_paint(seed, 11, false)))
+	if not k.wreck and rim_pick % (2 if v != "" else 3) == 0:
 		rim_mat = "gunmetal_w"
 		rim = Color(0.12, 0.12, 0.12)
 	# ladder frame, the wheel tubs behind the wheels, axles and diffs, exhaust
@@ -1550,9 +1552,10 @@ static func _suv(k: VehicleModels, seed: int) -> void:
 	_car_details(k, m, 0.05, zr, 1.19)
 	# the alloys: silver, but one owner in three ordered them in anthracite (a
 	# street of these on one wheel read as stamped from one mould; a wreck's
-	# stay silver)
+	# stay silver; chosen by the paint, which is the parked car's look, so
+	# every SUV of a paint is the same model)
 	var rim := Color(0.55, 0.56, 0.56)
-	if not k.wreck and absi(hash(seed * 17 + 5)) % 3 == 0:
+	if not k.wreck and absi(hash(_paint(seed, 61, false))) % 3 == 0:
 		rim = Color(0.17, 0.17, 0.18)
 	# the long bonnet's shut line, the tailgate's down the tail to above the
 	# bumper (its glass is the rear window above)
