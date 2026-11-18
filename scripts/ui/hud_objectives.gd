@@ -14,7 +14,7 @@ const W := 380.0
 var hud: Hud
 var need_h := 0.0  # how tall the panel is (the notifications go under it)
 var _states := {}  # objective text -> state, to spot the changes
-var _banners: Array = []  # [caption, text, colour, age]
+var _banners: Array = []  # [caption, text, colour, age, training]
 var _drilled := {}  # (a drill mission) what's been reported done already
 var _drill0 := {}  # ...and how things stood when it started watching
 
@@ -88,7 +88,7 @@ func _report_drills(info: Dictionary) -> void:
 
 func _spot_changes(info: Dictionary) -> void:
 	for o in info.get("objs", []):
-		var key := Keys.fill(String(o[1]))
+		var key := String(o[1])
 		var st := int(o[2])
 		var was := int(_states.get(key, -1))
 		if was == st:
@@ -96,17 +96,21 @@ func _spot_changes(info: Dictionary) -> void:
 		_states[key] = st
 		match st:
 			MissionDirector.ACTIVE:
-				_banner("NEW OBJECTIVE" if not bool(o[7]) else "OPTIONAL OBJECTIVE", key, UiKit.ACCENT, "objective")
+				_banner("NEW OBJECTIVE" if not bool(o[7]) else "OPTIONAL OBJECTIVE", key, UiKit.ACCENT, "objective", info.get("key", "") == "bootcamp")
 			MissionDirector.DONE:
-				_banner("OBJECTIVE COMPLETE", key, UiKit.GOOD, "objective_done")
+				_banner("OBJECTIVE COMPLETE", key, UiKit.GOOD, "objective_done", info.get("key", "") == "bootcamp")
 			MissionDirector.FAILED:
-				_banner("OBJECTIVE FAILED", key, UiKit.BAD, "objective_failed")
+				_banner("OBJECTIVE FAILED", key, UiKit.BAD, "objective_failed", info.get("key", "") == "bootcamp")
 
 
-func _banner(cap: String, text: String, col: Color, snd: String) -> void:
+func _banner(cap: String, text: String, col: Color, snd: String, training := false) -> void:
 	# a run of them at once (the start of a mission, one done and the next set):
 	# each gets its turn
-	_banners.append([cap, text, col, 0.0])
+	# Training advances as soon as the player acts. Never ask them to carry
+	# out an old instruction while the objective panel has already moved on.
+	if training:
+		_banners.clear()
+	_banners.append([cap, text, col, 0.0, training])
 	if _banners.size() > 4:
 		_banners.remove_at(1)
 	Sfx.ui(snd)
@@ -228,26 +232,32 @@ func _draw_panel(info: Dictionary) -> void:
 			wy += 17.0
 
 
-## An objective set, met or lost, across the top of the screen: a band of ink
-## ruled off in its colour, the word, then the objective; it flickers on.
+## A short label above a readable instruction. Long key bindings and training
+## directions wrap within the viewport instead of extending beyond its edges.
 func _draw_banner(b: Array) -> void:
 	var age: float = b[3]
-	var a := clampf((4.2 - age) / 0.2, 0.0, 1.0)
-	if not UiMotion.reduced() and age < 0.12 and fmod(age, 0.12) >= 0.06:
-		a = 0.0
+	var training := bool(b[4])
+	var a := 1.0 if UiMotion.reduced() else clampf((4.2 - age) / UiMotion.QUICK, 0.0, 1.0)
+	if not UiMotion.reduced():
+		if training:
+			a *= clampf(age / UiMotion.QUICK, 0.0, 1.0)
+		elif age < 0.12 and fmod(age, 0.12) >= 0.06:
+			a = 0.0
 	var col: Color = b[2]
-	var cy := 150.0
 	var cx := size.x * 0.5
-	var text := Keys.fill(String(b[1]))
-	var tw := UiKit.caps_w(text, 22)
-	var bw := maxf(tw + 80.0, 360.0)
-	var r := Rect2(cx - bw * 0.5, cy - 30, bw, 64)
-	draw_rect(r, UiKit.fa(UiKit.INK, 0.82 * a))
+	var bw := minf(680.0, size.x - 32.0)
+	var lines := MapSymbols.wrap(Keys.fill(String(b[1])), 18, 500, bw - 40.0)
+	var r := Rect2(cx - bw * 0.5, 120.0, bw, 44.0 + lines.size() * 24.0)
+	draw_rect(r, UiKit.fa(UiKit.INK, 0.9 * a))
 	draw_line(r.position + Vector2(0, 0.5), Vector2(r.end.x, r.position.y + 0.5), UiKit.fa(col, a), 1.0)
 	draw_line(Vector2(r.position.x, r.end.y - 0.5), r.end - Vector2(0, 0.5), UiKit.fa(col, a), 1.0)
 	var cap := String(b[0])
-	UiKit.caps_at(self, Vector2(cx - UiKit.caps_w(cap, 12) * 0.5, cy - 8), cap, 12, UiKit.fa(col, a))
-	UiKit.caps_at(self, Vector2(cx - tw * 0.5, cy + 20), text, 22, UiKit.fa(UiKit.TEXT, a))
+	UiKit.caps_at(self, Vector2(cx - UiKit.caps_w(cap, 12) * 0.5, r.position.y + 22), cap, 12, UiKit.fa(col, a))
+	var y := r.position.y + 48.0
+	for line in lines:
+		var text := String(line)
+		UiKit.text(self, Vector2(cx - UiKit.text_width(text, 18, 500) * 0.5, y), text, 18, UiKit.fa(UiKit.TEXT, a), 500)
+		y += 24.0
 
 
 ## Text set off a point: align 0 left of it, 0.5 centred on it, 1 right of it.

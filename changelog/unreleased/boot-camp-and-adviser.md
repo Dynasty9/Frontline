@@ -29,6 +29,8 @@ caption = "Offered once, on a first launch"
   attack-move and defend, handing a squad to your XO, the order of battle and the tactical map.
 - Each step waits until you've done it, and names the key as you have it bound: rebind one and the course asks
   for the new key.
+- Training instructions wrap to stay on screen. Each new step replaces the previous banner immediately,
+  with a short fade; Reduce motion makes the change instant.
 - **The adviser** (Play vs AI) suggests the nearest towns to take, lettered and marked on the ground and the
   minimap like a mission's objectives, and now and then speaks up: supply sitting unspent, squads idle for two
   minutes, a FOB under attack.
