@@ -954,7 +954,7 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 	if not o.is_empty():
 		var g := Defs.grid_ref(o[1])
 		out.code = {"move": "MOV ", "bound": "BOUND ", "ambush": "AMBUSH ", "assault": "ATK ", "defend": "DEF ", "build": "BUILD "}.get(String(o[0]), "") + g
-		out.code = {"retreat": "FALL BACK", "attack": "ENGAGE", "tunnel": "TUNNELS", "contact": "CONTACT", "displace": "DISPLACE", "rout": "ROUTING"}.get(String(o[0]), out.code)
+		out.code = {"retreat": "FALL BACK", "attack": "ENGAGE", "tunnel": "TUNNELS", "contact": "CONTACT", "displace": "DISPLACE", "dugout": "DUGOUT", "rout": "ROUTING"}.get(String(o[0]), out.code)
 		match String(o[0]):
 			"move":
 				out.text = "Moving to " + g
@@ -998,6 +998,10 @@ func squad_state(sid: int, mem: Array) -> Dictionary:
 			"displace":
 				out.text = "Moving out of the shellfire"
 				out.glyph = "move"
+				out.col = Color(1.0, 0.72, 0.42)
+			"dugout":
+				out.text = "Sheltering in a dugout"
+				out.glyph = "defend"
 				out.col = Color(1.0, 0.72, 0.42)
 			"rout":
 				out.text = "ROUTING"
@@ -1415,12 +1419,25 @@ func _mission_head(vb: VBoxContainer) -> String:
 	vb.add_child(s)
 	var done := 0
 	var all := 0
+	var optional_done := 0
+	var optional_all := 0
+	var optional_lines := PackedStringArray()
 	for o in info.get("objs", []):
 		if bool(o[7]):
+			optional_all += 1
+			var completed := int(o[2]) == MissionDirector.DONE
+			if completed:
+				optional_done += 1
+			optional_lines.append(("Complete: " if completed else "Not completed: ") + String(o[1]))
 			continue
 		all += 1
 		if int(o[2]) == MissionDirector.DONE:
 			done += 1
+	if optional_all > 0:
+		var bonus := UiKit.mono_label("OPTIONAL OBJECTIVES %d/%d" % [optional_done, optional_all], 12, UiKit.GOOD if optional_done == optional_all else UiKit.FAINT)
+		bonus.mouse_filter = Control.MOUSE_FILTER_PASS
+		bonus.tooltip_text = "\n".join(optional_lines)
+		vb.add_child(bonus)
 	var el := float(info.get("el", 0.0))
 	var lost: Array = info.get("lost", [0, 0])
 	return "T+%s · OBJECTIVES %d/%d · LOST %d/%d · KILLED %d" % [UiKit.fmt_time(el), done, all, int(lost[0]), int(lost[1]), int(info.get("kills", 0))]

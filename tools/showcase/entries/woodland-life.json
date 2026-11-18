@@ -1,0 +1,69 @@
+{
+  "entry": "changelog/unreleased/woodland-life.md",
+  "summary": "Scanned trees and layered undergrowth connect woods with leaf-covered soil, deadwood and small butterflies.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=woodland; parent-revision comparison, detail stills and a six-second butterfly clip",
+  "rationale": "Matched generated-map and attack-scene views show the changed canopy, understory and forest floor. Close-ups show material and ground contact; the silent clip shows wing and flight motion.",
+  "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876 + codex/woodland-life working tree",
+  "before_ref": "Clean detached parent bd4f1b598ae80c6543cd4816e3f49a6ead730876, rendered in woodland-baseline-20261113 with the same camera fixture. Only the fixture was copied; no woodland assets or implementation were present.",
+  "capture": {
+    "renderer": "Godot 4.7.2 Forward+, RTX 3090, High preset, 1600x900, seed 3, day; golden-hour detail explicitly labeled. Simulation held at two seconds.",
+    "command": "godot --path . --audio-driver Dummy --fixed-fps 30 --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --scenario=attack --seed=3 --offscreen --nohud --perf=0 --preset=high --mood=day --capture-set=woodland --capture-clip=detail-4 --capture-prefix=build/woodland/review-loop/final09",
+    "generated": "Replace --scenario=attack with --aivai and add --woodland-generated --capture-views=floor,stand,eye. Generated stand (21.48109,0.10866,-232.7845), seed 3. Parent and changed camera transforms were checked equal.",
+    "baseline": "Same two stages at parent revision, without --capture-clip. No --woodland-before shortcut. Wind and wildlife phase are not synchronized between processes.",
+    "comparison": "Uncropped 1600x900 captures uniformly reduced to 800x450 panels; before above, after below. Generated eye view left, attack floor view right.",
+    "clip": "180 frames at 30 fps, 1600x900 H.264/yuv420p, 6 seconds, silent; full decode exit 0 and representative decoded frames inspected.",
+    "details": "Nearest streamed specimens: log, fern and sapling. Golden-hour generated eye view shows lighting response.",
+    "final_detail": "Comparison refreshed from final19-floor and generated19-eye after packing woodland coverage into the existing biome texture. Detail stills and butterfly clip retain the same assets and shader appearance from final09. A later 1.5 m culling margin expands animated detail bounds without changing mesh placement or shading.",
+    "generated_camera": "Parent generated-before-eye and final generated19-eye have identical recorded camera transforms: origin (28.25681,2.350788,-222.8805), X (0.860323,0,-0.509749), Y (-0.011284,0.999755,-0.019045), Z (0.509624,0.022137,0.860112). Attack-floor comparison uses identical recorded focus, zoom, pitch, yaw, seed, time, resolution and renderer; the first parent floor sidecar predates transform logging.",
+    "geometry_observation": "Generated-eye monitor: parent 6,340,182 primitives / 1,177 draw calls; final19 11,215,555 / 1,347. Residency warmup can vary; these are observed capture counters, not a controlled FPS benchmark."
+  },
+  "validation": [
+    "GRASS_STREAM_TEST failures=0 in native Compatibility, including elevated frustum culling, seeded placement and Wildlife off",
+    "STRUCTURE_BATCHES passed",
+    "Native Compatibility attack seed 3, 60 simulated seconds at fixed 30 Hz: exit 0, no script errors",
+    "LANDFORM passed: generation, determinism, validation, grounding, sight, slope navigation, craters, replication",
+    "Forward+ day and golden-hour, native Compatibility and Low preset captures inspected",
+    "Native Compatibility fire scenario, seed 3, 30 simulated seconds: exit 0; Forward+ burning-woodland screenshot at 20 seconds inspected",
+    "Headless attack seed 3, 60 simulated seconds: exit 0; headless landform fixture passed",
+    "Changelog check passed; presentation audit verified all 206 entries and final source hashes",
+    "Native material regression passed with the original twelve-sampler terrain budget; packed mask preserves the biome noise channel",
+    "Native grass regression verifies unchanged plant/debris transforms across Wildlife and rain changes",
+    "Final headless grass regression: GRASS_STREAM_TEST failures=0, including packing real FastNoise biome data without changing its noise channel",
+    "Final Web export exit 0; Chrome WebGL2 woodland frames web18-4 and web18-5 rendered, with no script, shader or browser graphics diagnostic errors in the harness log",
+    "Final packed-mask Low floor and rain eye views inspected; Low omits ground meshes, rain retains plants and excludes butterflies",
+    "All 75 cached source files match their recorded SHA-256 hashes",
+    "Final animated-bounds grass regression: failures=0, exit 0; final21 native Compatibility capture inspected, exit 0",
+    "Offline bake Python files compile; git diff --check passed",
+    "Final Forward+ night woodland inspected, exit 0; butterfly instance count is zero",
+    "All nine packed surface-map imports retain mipmaps and disable normal-map-only compression",
+    "Final Godot import exit 0 with no SCRIPT ERROR or Parse Error",
+    "Final Medium native Compatibility floor inspected, exit 0, with reduced understory density"
+  ],
+  "limitations": [
+    "Not an AAA-equivalence claim; canopy repetition and some sparse transitions remain visible.",
+    "No isolated FPS comparison: unrelated rendering and simulation jobs saturated the shared CPU. Added geometry has a measurable rendering cost.",
+    "No host/client pair or full scenario suite completed for this change. Cosmetic scenery does not alter replicated gameplay state.",
+    "Native and WebGL captures include existing imported mocap UID warnings; native shutdown also reports resource warnings. The browser scene was visually inspected, not benchmarked.",
+    "Browser visual validation precedes the final culling-margin-only adjustment; native grass and rendering checks cover that adjustment."
+  ],
+  "sources": [
+    {
+      "file": "changelog/unreleased/woodland-life/comparison.jpg",
+      "sha256": "824efe9120d54ccbaadd333e672eb265789bd578a3cebcfaa6888bd16132fd61"
+    },
+    {
+      "file": "changelog/unreleased/woodland-life/details.jpg",
+      "sha256": "91ec98571d8c1a633b2d75e73d194354931f6e770e44c8d0e40df8c9a9a7f0cf"
+    },
+    {
+      "file": "changelog/unreleased/woodland-life/butterflies.jpg",
+      "sha256": "f85d317e6347b81f7948ccead9ad9dff38d2f01e67991041fc147da704eb39e6"
+    },
+    {
+      "file": "changelog/unreleased/woodland-life/butterflies.mp4",
+      "sha256": "7074a2ba6b189793238617f21bf98d6011c8e0df954f3beadc0775de75639e80"
+    }
+  ],
+  "output": null
+}

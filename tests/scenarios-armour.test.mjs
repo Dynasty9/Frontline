@@ -82,6 +82,12 @@ scenarioTests([
     // Grenades now settle on trench floors instead of bouncing at sea level.
     secs: 120,
     does: "tanks, IFVs and two rifle squads assault a Rebel trench system and break into it",
+    begin: async (f) => {
+      const works = await f.structures({ team: 1 });
+      for (const kind of ["bunker", "ammo_cache", "camo_net", "sandbags", "tank_trap", "wire", "mg_nest"]) {
+        assert.ok(works.some((s) => s.kind === kind && s.built), `the trench position includes usable ${kind}`);
+      }
+    },
     check: async (f) => {
       f.atLeast("plan_assault", 1, "the infantry put in an assault");
       f.atLeast("cannon", 10, "the tanks shelled the trenches");

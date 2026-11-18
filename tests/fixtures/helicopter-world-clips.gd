@@ -8,6 +8,8 @@ extends Node3D
 ##   --clip=helicopters-chase  the same flight from a camera following her
 ##   --clip=helicopters-crash  two Ghost Hawks cross the view at 16 m and are both shot down
 ##                             2.5 s in: the near one's tail rotor goes, the far one's engines
+##   --clip=helicopters-wrecks the same shoot-down, then the camera goes in close on each
+##                             wreck in turn (7.5 s on) and pulls back to the RTS view (14.5 s)
 ##   --frames=DIR      write one PNG a frame there (tools/showcase/capture.py's contract)
 ##   --label=TEXT      the caption's first line (e.g. BEFORE / AFTER)
 ##   --seconds=S       how long to record (default 23; 10 for the crash)
@@ -28,6 +30,8 @@ class Track:
 	var next_drop := 0.0
 	var trail_mesh := ImmediateMesh.new()
 	var drop_mesh := ImmediateMesh.new()
+	var last := Vector3.ZERO  # where she was last seen flying
+	var wreck: Structure = null  # what's left of her, once she's down
 
 
 var output := ""
@@ -55,8 +59,11 @@ func _ready() -> void:
 		if arg.begins_with("--cam="): cam_from = _v3(arg.get_slice("=", 1))
 		if arg.begins_with("--look="): cam_look = _v3(arg.get_slice("=", 1))
 		if arg.begins_with("--shot-times="): shots = Array(arg.get_slice("=", 1).split(",")).map(func(x): return float(x))
+	var crash := crash_mode()
+	if mode == "helicopters-wrecks":
+		trace = false  # (close up, the traced paths are only in the way)
 	if seconds < 0.0:
-		seconds = 10.0 if mode == "helicopters-crash" else 23.0
+		seconds = {"helicopters-crash": 10.0, "helicopters-wrecks": 17.0}.get(mode, 23.0)
 	if not output.is_empty():
 		DirAccess.make_dir_recursive_absolute(output)
 	seed(712)
@@ -81,7 +88,7 @@ func _ready() -> void:
 	var c := _ground(START + REDIRECT)
 	for p: Vector3 in [a, c]:
 		field.spawn("structure", {"skind": "helipad", "pos": p, "yaw": 0.0, "team": 0, "built": true})
-	if mode == "helicopters-crash":
+	if crash:
 		# both crossing the view at cruise height, one nearer the camera
 		var across := Defs.flat(REDIRECT).normalized()
 		var toward := Defs.flat(cam_from - cam_look).normalized()
@@ -107,7 +114,7 @@ func _ready() -> void:
 	caption.add_theme_constant_override("shadow_offset_x", 1)
 	caption.add_theme_constant_override("shadow_offset_y", 2)
 	canvas.add_child(caption)
-	_frame_camera(0.0)
+	_frame_camera(0.0, 0.0)
 	print("HELICOPTER_WORLD_WARMUP")
 	# Let the terrain, grass and shaders settle (in the air the helicopters
 	# are held where they start).
@@ -116,12 +123,12 @@ func _ready() -> void:
 		held.append([tr.heli.position, tr.heli.velocity])
 	for i in 48:
 		await RenderingServer.frame_post_draw
-		if mode == "helicopters-crash":
+		if crash:
 			for k in tracks.size():
 				tracks[k].heli.position = held[k][0]
 				tracks[k].heli.velocity = held[k][1]
 	print("HELICOPTER_WORLD_RECORDING")
-	if mode != "helicopters-crash":
+	if not crash:
 		tracks[0].heli.lift_dest = _ground(START + OUT)
 	var frames := int(round(seconds * 30.0))
 	var shot := 0
@@ -129,7 +136,7 @@ func _ready() -> void:
 	var downed := false
 	for frame in frames:
 		var t := frame / 30.0
-		if mode == "helicopters-crash":
+		if crash:
 			if t >= SHOT_DOWN_AT and not downed:
 				downed = true
 				for tr in tracks:
@@ -141,7 +148,8 @@ func _ready() -> void:
 			tracks[0].heli.lift_dest = c
 		for tr in tracks:
 			_record_path(tr, t)
-		_frame_camera(1.0 / 30.0)
+			_find_wreck(tr)
+		_frame_camera(1.0 / 30.0, t)
 		_caption(t, redirected, downed)
 		await RenderingServer.frame_post_draw
 		if output.is_empty():
@@ -186,7 +194,37 @@ func _ground(p: Vector3) -> Vector3:
 	return Vector3(p.x, field.ground_y(p), p.z)
 
 
-func _frame_camera(dt: float) -> void:
+## Once she's down, the wreck the game left where she hit.
+func _find_wreck(tr: Track) -> void:
+	if is_instance_valid(tr.heli) and not tr.heli.gone:
+		tr.last = tr.heli.position
+		return
+	if tr.wreck != null and is_instance_valid(tr.wreck):
+		return
+	var best := 12.0
+	for st in field.structures_near(tr.last, 12.0):
+		if st.skind in ["wreck", "rubble"] and not st.gone and Defs.flat(st.position - tr.last).length() < best:
+			best = Defs.flat(st.position - tr.last).length()
+			tr.wreck = st
+
+
+func _frame_camera(dt: float, t := 0.0) -> void:
+	if mode == "helicopters-wrecks" and t >= 7.5:
+		# close round each wreck in turn, then the commander's view of both
+		if t >= 14.5:
+			var mid := (tracks[0].last + tracks[1].last) * 0.5
+			mid.y = field.ground_y(mid)
+			camera.global_position = mid + Vector3(30, 38, 26)
+			camera.look_at(mid)
+			return
+		var k := 0 if t < 11.0 else 1
+		var tr := tracks[k]
+		var at := tr.wreck.position if tr.wreck != null and is_instance_valid(tr.wreck) else tr.last
+		at.y = field.ground_y(at)
+		var ang := 0.6 + (t - (7.5 if k == 0 else 11.0)) * 0.12 + k * 1.9
+		camera.global_position = at + Vector3(cos(ang) * 15.0, 5.5, sin(ang) * 15.0)
+		camera.look_at(at + Vector3(0, 1.0, 0))
+		return
 	var heli := tracks[0].heli
 	if mode == "helicopters-chase" and is_instance_valid(heli) and not heli.gone:
 		var want := heli.position + Vector3(24, 11, 28)
@@ -226,9 +264,13 @@ func _record_path(tr: Track, t: float) -> void:
 		tr.drop_mesh.surface_end()
 
 
+func crash_mode() -> bool:
+	return mode in ["helicopters-crash", "helicopters-wrecks"]
+
+
 func _caption(t: float, redirected: bool, downed: bool) -> void:
 	var heli := tracks[0].heli
-	if mode == "helicopters-crash":
+	if crash_mode():
 		var state := "BOTH SHOT DOWN AT %.1f s" % SHOT_DOWN_AT if downed else "TWO GHOST HAWKS AT 16 m, 15 m/s"
 		caption.text = "%s · %s\n%04.1f s" % [label, state, t]
 		return

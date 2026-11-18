@@ -318,6 +318,9 @@ func _answer_window() -> void:
 ## for a --scenario test setup on the desktop (small, and its scripted events
 ## run on timers).
 func _breathe(text: String, frac: float) -> void:
+	if LocalServer.child:
+		# Generation blocks the child loop; publish here so the launcher can show each stage.
+		LocalServer._write(".progress", {"text": text, "frac": frac})
 	build_stage.emit(text, frac)
 	if _staged and is_inside_tree():
 		await get_tree().process_frame
@@ -418,6 +421,9 @@ func _register(e: Entity) -> void:
 		vehicles.append(e)
 	elif e is Structure:
 		structures.append(e)
+		# New earth banks bury plants that are already streamed into the view.
+		if e.skind == "bunker" and not building and atmo and atmo.grass:
+			atmo.grass.request_rebuild(0.2)
 		refresh_owned_structure(e)
 		mark_static_dirty(e)
 		if e.skind in Structure.SIM_KINDS:
@@ -457,6 +463,8 @@ func despawn(e: Entity) -> void:
 		if structure_view:
 			structure_view.remove(e)
 		structures.erase(e)
+		if e.skind == "bunker" and not building and atmo and atmo.grass:
+			atmo.grass.request_rebuild(0.2)
 		if recording:
 			recording.dirty_static(e.eid)
 		owned_structures.erase(e)
@@ -567,6 +575,47 @@ func trench_mount_spot(pos: Vector3, yaw: float) -> Dictionary:
 			if n.dot(Defs.dir_of(yaw)) < 0.0:
 				n = -n
 			best = {"pos": q, "yaw": Defs.yaw_of(n)}
+	return best
+
+
+## A spot the coarse cover grid calls "in the trench" can be a pace outside the
+## cut, standing on its lip, or at the foot of the back wall. A man sent there
+## belongs on the fire step: the nearest point against the wall facing `face`.
+func onto_fire_step(p: Vector3, face: Vector3) -> Vector3:
+	var best := p
+	var bd := 1.6
+	for st in structures_near(p, 5.0):
+		if st.skind != "trench" or st.trench_depth() < 0.6:
+			continue
+		var sg := TrenchNet.seg_of(st)
+		var a := Defs.flat(sg[0])
+		var ab := Defs.flat(sg[1]) - a
+		var length := ab.length()
+		if length < 1.2:
+			continue
+		var dir := ab / length
+		var side := Vector3(-dir.z, 0, dir.x)
+		if side.dot(face) < 0.0:
+			side = -side
+		var q := a + dir * clampf(Defs.flat(p - a).dot(dir), 0.6, length - 0.6) + side * (TrenchNet.HALF_W - 0.34)
+		var d := Defs.flat(q - p).length()
+		if d < bd and trench_depth(q) >= 0.6:
+			bd = d
+			best = q
+	return best
+
+
+## The nearest dugout within r of p with room left in it, or null.
+func dugout_for(p: Vector3, r: float) -> Structure:
+	var best: Structure = null
+	var bd := r
+	for st in structures_near(p, r + 4.0):
+		if not TrenchNet.has_dugout(st) or TrenchNet.dugout_room(st) <= 0:
+			continue
+		var d := Defs.flat(TrenchNet.dugout_door(st) - p).length()
+		if d < bd:
+			bd = d
+			best = st
 	return best
 
 
@@ -1478,7 +1527,11 @@ func _load_tick() -> void:
 	match _load_step:
 		0:
 			if not _join_ground:
-				_load_stage("Waiting for the host", 0.0)
+				if LocalServer.pid > 0 and not LocalServer.build_progress.is_empty():
+					var progress: Dictionary = LocalServer.build_progress
+					build_stage.emit(String(progress.get("text", "Preparing the battlefield")), 0.14 + 0.26 * clampf(float(progress.get("frac", 0.0)) / 0.7, 0.0, 1.0))
+				else:
+					_load_stage("Waiting for the host", 0.0)
 				return
 			_lay_ground()
 			_load_step = 1
@@ -1488,10 +1541,10 @@ func _load_tick() -> void:
 			set_decor(decor, town_rect)
 			_load_mark("decor")
 			_load_step = 2
-			_load_stage("Charting the water", 0.1)
+			_load_stage("Shaping the ground", 0.1)
 		2:
 			if _ground_task >= 0 and not WorkerThreadPool.is_task_completed(_ground_task):
-				_load_stage("Charting the water", 0.1 + 0.08 * minf(1.0, (t0 - _load_t0) / 4000000.0))
+				_load_stage("Shaping the ground", 0.1 + 0.08 * terrain.landform_progress)
 				return
 			_ground_done()
 			_load_step = 3
@@ -1538,7 +1591,8 @@ func _load_stage(text: String, frac: float) -> void:
 	load_frac = frac
 	# (the loading screen runs from where the client's empty world left it to
 	# where main.gd's warm-up takes over)
-	build_stage.emit(text, 0.14 + 0.58 * frac)
+	var start := 0.4 if LocalServer.pid > 0 and _join_ground else 0.14
+	build_stage.emit(text, start + (0.72 - start) * frac)
 
 
 func _load_mark(what: String) -> void:

@@ -71,6 +71,7 @@ func _ready() -> void:
 	HNav.C = 16
 	HNav.NC = 4
 	var world := World.new()
+	world.srv = true
 	world.settings = {"seed": 3}
 	world.terrain = TerrainMap.new(world)
 	world.water = WaterMap.new(world)
@@ -188,7 +189,7 @@ func _ready() -> void:
 	atmosphere.env = Environment.new()
 	atmosphere.ground_mat = ShaderMaterial.new()
 	var ground_shader := Shader.new()
-	ground_shader.code = CloudShadow.shader(MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT)), CloudShadow.OWN_LIGHT)
+	ground_shader.code = CloudShadow.shader(MapDims.shader(Atmosphere.GROUND_SHADER.replace("// BACKDROP_HEIGHT", Atmosphere.BACKDROP_HEIGHT).replace("// RAIN_DROPS", Mats.RAIN_DROPS)), CloudShadow.OWN_LIGHT)
 	atmosphere.ground_mat.shader = ground_shader
 	atmosphere._d = {"fog_d": 0.002}
 	world.terrain.landform.peak = 80.0
@@ -362,6 +363,7 @@ func _ready() -> void:
 	assert(truck.position.x <= -12.0, "Supply trucks cannot bypass an impassable mountain slope")
 	# Give the hull a real elevated plateau, rather than a knife-edge ridge.
 	var plateau := World.new()
+	plateau.srv = true
 	plateau.settings = {"seed": 3}
 	plateau.terrain = TerrainMap.new(plateau)
 	plateau.water = WaterMap.new(plateau)

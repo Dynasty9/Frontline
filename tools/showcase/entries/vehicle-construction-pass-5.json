@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/vehicle-construction-pass-5.md",
+  "summary": "Shared vehicle builders draw only what can be seen: about 45% less geometry and 38% faster model builds, same look.",
+  "medium": "measurement",
+  "stage": "tools/vehicles/construction-metrics.tscn",
+  "rationale": "A performance change with no intended visual difference: the evidence is measured geometry and build time with conditions and units. Matched before/after renders (at most 0.03% of pixels differ) stay outside Git.",
+  "source_ref": "54823975 with construction passes 2 to 4 applied: an intermediate state of the change that adds this entry",
+  "before_ref": "54823975 with construction passes 2 to 4 applied: an intermediate state of the change that adds this entry",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-construction-pass-5/measurements.json",
+      "sha256": "9f08b864a87bdff3aca34b993ac718a502d6856fa84edfe9f6f68a35bc755e8a"
+    }
+  ],
+  "output": null
+}

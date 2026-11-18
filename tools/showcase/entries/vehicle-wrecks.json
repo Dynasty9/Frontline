@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/vehicle-wrecks.md",
+  "summary": "Destroyed vehicles burn out end to end (char, rust, soot, ash, tyres and canvas gone, scorched ground, debris), and shot-down helicopters lie crashed and broken.",
+  "medium": "still",
+  "stage": "tests/fixtures/vehicle-wreck-clips.tscn; tests/fixtures/helicopter-world-clips.tscn",
+  "rationale": "The change is appearance: one matched before/after sheet of the same burnt-out tank, technical and helicopter (same stage, seed, camera and time on main and on this branch), and the helicopter crash sheet for the crash poses and broken rotors, all on the real showroom battlefield at the High preset.",
+  "source_ref": "12bf17ec",
+  "before_ref": "1c6e13a7",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-wrecks/burnt-out.jpg",
+      "sha256": "b165b3bc10dfd1adde58a68dc02b1ae9d2540f9afbe5022147e92291e9c8da4a"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-wrecks/helicopter-crash.jpg",
+      "sha256": "8704b1b626b2d5cf56efc82c76dfd3dd99ea505aa079a20f5c319a213f55d6b5"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-wrecks/capture.json",
+      "sha256": "a4fa20c2db24d1a615c53f70fcec615c5ac89d3a54b20435fa581bc64e954d6e"
+    }
+  ],
+  "output": null
+}

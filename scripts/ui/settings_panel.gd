@@ -105,6 +105,8 @@ func _ready() -> void:
 		["check", "ssao", "Ambient occlusion", null, "Contact shadows in corners, under soldiers and around sandbags."],
 		["option", "ao_q", "Ambient occlusion quality", Settings.LABELS.ao_q, "More samples, less noise."],
 		["check", "ssil", "Indirect light", null, "Light bouncing off nearby surfaces (screen-space)."],
+		["option", "light_probes", "Light probes", Settings.LABELS.light_probes, "A grid of probes over the battlefield works out how much sky every street, room and trench can see, and how much sunlight the walls and ground round it throw back: shaded streets, dim rooms lit from their windows, warm light off a sunlit wall. Updated as buildings fall and shells dig craters. Low keeps only the shade from the sky."],
+		["option", "ssgi", "Bounce light", Settings.LABELS.ssgi, "Sunlight thrown back off walls, roofs and roads lights what faces them in their colours: a sunlit brick wall warms the street, a white house brightens the alley beside it, light through a breach fills the room. High casts more rays, for less grain."],
 		["check", "gi", "Global illumination", null, "SDFGI: full bounced lighting. Expensive."],
 		["check", "phys_sky", "Physical sky", null, "At golden hour, dawn, dusk and in haze the sky is worked out from how sunlight scatters in the air: deep blue overhead, a reddened sun, the earth's shadow rising at dusk. The sky lights the battlefield too, so shade turns sky-blue while the sunlit side glows."],
 		["check", "terrain_reflections", "Mountain reflections", null, "Cached distant terrain reflected in water. Does not reflect moving units; approximate near shorelines."],
@@ -121,6 +123,7 @@ func _ready() -> void:
 	_pages["lighting"] = _page(stack, [
 		["head", "", "Look"],
 		["option", "mood", "Time of day & weather", MOOD_NAMES, "Lighting for the battle (applies immediately)."],
+		["check", "time_passes", "Time passes", null, "The light moves on as the battle goes: the sun crosses the sky and one time of day turns into the next, dawn into midday, golden hour into dusk and then night in about forty minutes. Rain, overcast and haze hold. Everyone in a battle who has it on sees the same sky."],
 		["option", "look", "Colour grading", Settings.LABELS.look, "The film look laid over the scene."],
 		["option", "tonemap", "Tonemapper", Settings.LABELS.tonemap, "How bright highlights (fire, sun) roll off."],
 		["slider", "brightness", "Brightness", [0.6, 1.5, 0.05], "Overall exposure."],
@@ -134,6 +137,7 @@ func _ready() -> void:
 		["check", "local_exp", "Local exposure", null, "Keeps the detail in deep shade and in bright fire at the same time, as the eye does: a man in a building's shadow stays visible beside a burning wreck."],
 		["check", "eye_adapt", "Eye adaptation", null, "The view dims for a flash and recovers after it, and in the dark colours drain towards a cool grey as night vision takes over."],
 		["check", "film", "Film look", null, "Bright highlights bleed red into the film (halation), and fine detail is sharpened without halos."],
+		["option", "motion_blur", "Motion blur", Settings.LABELS.motion_blur, "What moves fast smears as it would through a camera's open shutter: rotor blades, flung bodies and debris, a jet going over. Objects + camera blurs a quick pan too."],
 		["check", "heat_haze", "Heat haze", null, "The air shimmers over fires and burning wrecks, over the engines and exhausts of tanks and helicopters, and for a moment round a blast. With Reduce motion on it holds still."],
 	])
 	_pages["display"] = _page(stack, [
@@ -195,8 +199,8 @@ func _ready() -> void:
 ## the camera and lens passes; marching the physical sky and shadowing fires
 ## would cost a browser too much; and the page decides the game's size and
 ## when it draws.
-const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync",
-	"light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze"]
+const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "ssgi", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync",
+	"light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze", "motion_blur"]
 ## Settings only a Mac has a use for: elsewhere a trackpad scrolls like a wheel.
 const ONLY_ON_MAC := ["scroll_mode"]
 

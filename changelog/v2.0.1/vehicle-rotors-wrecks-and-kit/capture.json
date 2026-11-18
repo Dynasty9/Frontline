@@ -1,0 +1,26 @@
+{
+  "before_ref": "1dba1feafa5104b69c75f0ded24e6870cd51d3d9",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    3150
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82. The before column was rendered from the before_ref checkout with this change's tools/showcase/vehicle-surfaces.gd (for --surface-flight).",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> [--surface-flight] [--surface-seed=<seed>] [--surface-focus=<focus>] --surface-size=<size> --surface-out=<outside-repo-directory>",
+  "shots": [
+    {"model": "heli", "flight": true, "size": 17, "label": "Supply helicopter in flight: a soft rotor disc, no pale ring"},
+    {"model": "blackfish", "flight": true, "size": 30, "label": "Blackfish: proprotor discs in the blades' paint"},
+    {"model": "wreck_marshall", "size": 9, "label": "Marshall wreck: rust, ash and soot, bare rims", "after_note": "re-rendered after merging main's burnt-out wrecks (#196), which take a wreck's tyres off"},
+    {"model": "wreck_suv", "size": 6, "label": "Burnt-out car: rust and ash, empty sooty windows"},
+    {"model": "hunter", "focus": "0.85,1.6,-1.9", "size": 2.2, "label": "Hunter: chamfered bonnet and fender edges"},
+    {"model": "zamak_ammo", "seed": 3, "focus": "0,1.9,1.6", "size": 5.5, "label": "Zamak ammo truck, seed 3: its own tarp and load"},
+    {"model": "zamak_ammo", "seed": 11, "focus": "0,1.9,1.6", "size": 5.5, "label": "Zamak ammo truck, seed 11: another tarp and load"}
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "source_ref": "3a6601dcadd8e765df99d2db98dec3468ab7e2d5",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 3200x1800 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "house_rooms"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_rooms"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "crops": [
+        [
+          200,
+          300,
+          3000,
+          1480
+        ],
+        [
+          1180,
+          560,
+          2040,
+          960
+        ],
+        [
+          2080,
+          340,
+          2940,
+          740
+        ],
+        [
+          480,
+          760,
+          1340,
+          1160
+        ]
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage (its house_rooms subject: three houses with their roofs off and plain back and left walls). The after was framed first at 1600x900 and both sides rendered at 3200x1800 with its camera, for crops of each room. The baseline is the house plans change this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

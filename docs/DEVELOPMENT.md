@@ -85,7 +85,8 @@ Ultra with all of the cinematic lighting on top) and every option on its own, la
   flares, rain and thunder; applies live), colour grading (natural, cinematic, vivid, warm film, cold steel,
   bleached war film, black & white), tonemapper (AgX / ACES / Filmic / Reinhard), brightness, contrast, bloom,
   film grain, tilt-shift depth of field; and the camera and lens: lens flare and glare, sun shafts, local exposure,
-  eye adaptation, the film look and heat haze (`cinematic_fx.gd`, compute passes on the HDR scene; Forward+ only).
+  eye adaptation, the film look, heat haze and motion blur (`cinematic_fx.gd`, compute passes on the HDR scene;
+  Forward+ only).
 - **Display:** window mode (windowed / borderless / exclusive fullscreen), window size (applied at launch; a
   size too big for the screen maximises the window instead; test runs keep the project's window or the size
   `--resolution` asks for), VSync, frame-rate cap, field of view, performance overlay.
@@ -221,6 +222,30 @@ the calling system's time; do not add it to the total. Headless FPS is zero beca
 frames are rendered. The overlay's game-logic bar is time per rendered frame, which can
 contain several simulation ticks; its system table is time per tick.
 
+`--gpu-bench[=out.json]` prices graphics settings in a stationary scene on the graphics card. Windowed (it reads the renderer's
+GPU time, which headless runs don't have), `--gpu-bench-at` seconds into the battle (8) it holds the battle still,
+hides the interface, turns vsync and the frame cap off, and switches each setting that's on off and on again in
+short blocks (off, on, off, on, ... off: `--gpu-bench-cycles` pairs, 10, of `--gpu-bench-frames` frames, 20, after a
+settle of two fifths of that, at least 6, longer for global illumination, water and grass). Other work on the card only ever adds
+time, so each block counts by the frame a fifth of the way up from its quickest, and each on block is set against
+the average of the off blocks either side of it, which cancels load that rises or fades steadily. A setting's cost
+is the median of those differences and its spread their middle half; render scale (100% against 50%) is the control
+and the run says whether it stood clear of the noise. It prints a table (`GPUBENCH` lines), writes the report as
+JSON, puts every setting back and never saves them. Start it on the settings to price (`--preset=cinematic` enables
+them all) with `--gpu-bench-only=key,key` for a few, e.g.
+`godot --path . --resolution 1920x1080 -- --offscreen --nohud --perf=0 --scenario=roster --seed=3 --mood=golden
+--preset=cinematic --focus=-84,24 --zoom=34 --gpu-bench=costs.json --gpu-bench-at=10`. Other programs drawing on
+the same card widen the spread (several game windows rendering at once made it several milliseconds); keep the
+machine quiet for small settings.
+
+This is not an advancing-battle benchmark. `Time passes` is explicitly **not measured**:
+the held clock does not exercise periodic sky relighting, terrain-shadow rebakes or mountain
+reflection recaptures. The JSON lists it in `unmeasured_settings` with its reason and
+`requires: "advancing_battle_clock"`, never as a zero-cost setting. `scope: "stationary"`
+and the starting/ending battle times record the measurement boundary. Use an advancing-clock
+run (the existing `FL_DEBUG_TOD` diagnostics separate step/rebake frames from other frames)
+for that work; this report does not establish its cost.
+
 Run `godot --headless --path . res://tests/structure_index_test.tscn` for building-index
 lifecycle checks and a same-process FOB lookup comparison with 1,000 scenery objects.
 See [simulation scaling](SIMULATION_SCALING.md) for the performance investigation and
@@ -271,6 +296,9 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --report-at=SECONDS                                   (client) ask the host for the statistics then; a headless client
                                                       prints a CLIENT report line for each it gets
 --perf-at=480 [--perf-shot=path.png]                  fast-forward, then measure real FPS and server tick cost
+--gpu-bench[=out.json] [--gpu-bench-at=8]             (windowed) what each graphics setting costs the GPU: each switched off
+  [--gpu-bench-only=a,b --gpu-bench-frames=20          and on in turn on the held battle; a table and a JSON report
+   --gpu-bench-cycles=10]                               (see "Automated test modes")
 --focus-vehicle=tank --vehicle-view=Tracks             record from the selected vehicle’s named in-game camera mount
 --screenshot=out.png --shot-at=30 --focus=X,Z --zoom=40 [--shots=N --shot-every=0.5]
 --mood=golden --perf=3 --preset=ultra                 lighting, overlay level and graphics preset for screenshots
@@ -340,6 +368,8 @@ FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
+--scenario=storeys                                    a house on two floors with a wing; a charge blows in a front wall
+                                                      and the floor above comes down with its roof (storey_fell)
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
 --scenario=town                                       a rifle squad takes a village's supply dump, its lorry runs the stock to
                                                       FOB Alpha, then a Rebel cell comes to take it back (town_captured,
@@ -384,11 +414,16 @@ FL_DEBUG_TOWNS=1 (env)                                print each town and villag
 FL_DEBUG_ECON=1 (env)                                 print every supply truck HQ sends (its road's length, its load) and every load delivered
 FL_DEBUG_HPA=1 (env)                                  benchmark hierarchical vs flat paths at start-up
 FL_DEBUG_DECOR=1 (env)                                print the street-furniture chunk and mesh counts
+FL_DEBUG_MODELS=1 (env)                               print each parked car's and wreck's model as it's made (built, copied from
+                                                      one with its look, or queued to build piecewise) and each frame's piece
 FL_DEBUG_CINE=1 (env)                                 say once that the cinematic lighting passes run, and which (windowed);
                                                       every 5 s, how many heat sources the heat haze has in view
 FL_DEBUG_CINE_VIEW=N (env)                            show one cinematic buffer instead of the scene: 1 sun shafts, 2 lens flare
                                                       and glare, 3 local exposure (red lifted, blue tamed), 4 the bright pass,
-                                                      5 the heat haze (blue the hot air, red and green how far it bends)
+                                                      5 the heat haze (blue the hot air, red and green how far it bends),
+                                                      6 the motion blur's per-pixel blur (px / 16), 7 its velocity check
+                                                      (red: the engine's velocity less the camera's reprojection, ~0 on
+                                                      still ground while the camera pans)
 FL_DEBUG_WILDLIFE=1 (env)                             every 5 s: the wildlife's cost, how many of each are drawn, what took
                                                       fright at what, and where one of each is (the first time, the water too)
 FL_WILDLIFE_FOLLOW=KIND (env)                         the camera keeps on one animal (birds, ducks, soarer, bat, rat, hare, fish,
@@ -850,9 +885,12 @@ The rendered `tests/fixtures/terrain-materials.tscn` also compares tinted roofs 
 batching in both renderers; packed tints retain the renderer's colour space and their full bright range.
 The scaling runner includes this scene alongside the navigation and AI regressions.
 Benchmark JSON includes loading-stage timings, route-cache hits and path queue
-waiting time. `--require-target` makes the benchmark fail when any measured rendered
-frame exceeds 16.67 ms or any simulation tick exceeds 33.33 ms; ordinary runs retain
-these budget results without treating an unfinished optimization as a harness error.
+waiting time. `--require-target` requires `--rendered` and nonempty frame and simulation
+tick measurements. It fails when either measurement is absent, any rendered frame exceeds
+16.67 ms, or any simulation tick exceeds 33.33 ms. Headless runs leave render budgets
+unmeasured (`null`) and cannot pass this acceptance gate. Ordinary runs without
+`--require-target` retain diagnostic reports and budget results without treating an
+unfinished optimization as a harness error.
 
 ## Generated elevation
 

@@ -1,0 +1,29 @@
+{
+  "entry": "changelog/unreleased/time-passes.md",
+  "summary": "A Time passes setting: the sun moves, and golden hour fades through sunset and a blue dusk into moonlit night in about forty minutes, the same for every player.",
+  "medium": "motion",
+  "stage": "game capture flags (--write-movie, --fixed-fps 30, --offscreen) with FL_DEBUG_TOD_AT/FL_DEBUG_TOD_PACE",
+  "rationale": "The change is the light moving over time, so a timelapse of a real battle shows it best: one fixed view from golden hour to night, sped up 150 times (forty minutes of battle in fifteen seconds). A four-moment still sheet from the same frames gives the outcome at a glance and as the poster's companion. Smoothness, purity and cost are measured, not shown: the fixture test and the GPU frame times are in the pull request.",
+  "source_ref": "dines/relaxed-thompson-2ef34d (e3b96ccc + working tree), 2026-11-13",
+  "capture": {
+    "renderer": "Forward+ (Vulkan), 1280x720, off-screen window, --preset=cinematic (physical sky)",
+    "clip": "FL_DEBUG_TOD_AT=300 FL_DEBUG_TOD_PACE=150 godot --write-movie tl.avi --resolution 1280x720 --fixed-fps 30 -- --offscreen --perf=0 --aivai --seed=3 --mood=golden --preset=cinematic --focus=0,0 --zoom=200 --pitch=-12 --cam-yaw=1.2 --nohud --quit-after=17; frames 40-505 encoded VP9 (crf 36) with Playwright's ffmpeg",
+    "sheet": "frames 40, 220, 320 and 480 of the same recording, 800x450 each; poster frame 250",
+    "note": "The clock is sped up for the recording only (a debug switch); in play it runs six times as fast as life."
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/time-passes/time-passes.webm",
+      "sha256": "d249781fed893d690c3a7ca5a0474ebc52f25bc40b9b1f0867ddcf05f6ec3fbf"
+    },
+    {
+      "file": "changelog/unreleased/time-passes/time-passes.jpg",
+      "sha256": "64a1d6f81f29d06af0909ab3fdb347ae64fceeff17ebb66b73077137bd8ef9b3"
+    },
+    {
+      "file": "changelog/unreleased/time-passes/golden-to-night.jpg",
+      "sha256": "d94525f016c96bc6bd43678a510b56ba86ac14e44eaf7c7a3a09d69b95767a4f"
+    }
+  ],
+  "output": null
+}

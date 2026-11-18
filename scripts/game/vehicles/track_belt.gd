@@ -38,20 +38,36 @@ func build(hull: PackedVector2Array, width: float, thickness: float, wheels: Arr
 	var teeth := int(wheel_nodes.back().get_meta(&"teeth", 0))
 	if teeth > 0:
 		radii[-1] = teeth * pitch / TAU
-	# Each shoe has overlapping hinges. The projecting pin ends and two
-	# tread blocks give its silhouette a different shape on the bend.
 	var shoe := SurfaceTool.new()
 	shoe.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var steel := Color("51483d")
 	var worn := Color("786e5d")
 	var rubber := Color("302e29")
-	# The running surface meets the tyre. Slim pin ends sit inside the
-	# connectors; the centre guide passes between the paired road wheels.
-	_part(shoe, Res.box(Vector3(width * 0.92, thickness * 0.72, pitch * 0.91)), Transform3D.IDENTITY, steel)
+	# Steel the road wheels roll on and the ground wears is rubbed bright: the
+	# inner face of each link or shoe and the guide horns' flanks.
+	var rubbed := Color("8a857a")
+	if rests_on_wheels:
+		# A track without return rollers is the old Soviet single-pin steel
+		# track (the T-55's): VehicleTracks' cast link with its grouser, the
+		# hinge lugs that interleave with the next link's on the pin, and the
+		# guide horn, polished bright by the road wheels it runs between.
+		var link: Array = VehicleTracks._link(width, thickness, pitch, false, 0.0)
+		_part(shoe, link[0], Transform3D.IDENTITY, steel, rubbed, Vector3.UP)
+		_part(shoe, link[2], Transform3D.IDENTITY, worn)
+		_finish(shoe, count)
+		return
+	# Otherwise a western double-pin track (the Abrams' and Bradley's): each
+	# shoe's body round its two pins with its two rubber pads; the end
+	# connectors and the centre guide clamp the pins of the next shoe, so
+	# they sit on the hinge between shoes. The projecting pin ends and the
+	# pads give the silhouette a different shape on the bend. The running
+	# surface meets the tyre; the centre guide passes between the paired
+	# road wheels.
+	_part(shoe, Res.box(Vector3(width * 0.92, thickness * 0.72, pitch * 0.91)), Transform3D.IDENTITY, steel, rubbed, Vector3.UP)
 	for side: float in [-1.0, 1.0]:
 		var pad := Res.box(Vector3(width * 0.40, thickness * 0.30, pitch * 0.84))
 		var xf := Transform3D(Basis(Vector3.UP,side * 0.09),Vector3(side * width * 0.226,-thickness * 0.45,0))
-		_part(shoe,pad,xf,steel.darkened(0.12) if rests_on_wheels else rubber)
+		_part(shoe,pad,xf,rubber)
 		var end := Vector3(side * width * 0.47,0,pitch * 0.47)
 		var connector := Res.box(Vector3(width * 0.071,thickness * 0.64,pitch * 0.78))
 		_part(shoe,connector,Transform3D(Basis.IDENTITY,end),steel)
@@ -62,7 +78,12 @@ func build(hull: PackedVector2Array, width: float, thickness: float, wheels: Arr
 	var base := PackedVector2Array([Vector2(-0.036,-pitch*0.27),Vector2(0.036,-pitch*0.27),Vector2(0.036,pitch*0.27),Vector2(-0.036,pitch*0.27)])
 	var tip := PackedVector2Array([Vector2(-0.014,-pitch*0.11),Vector2(0.014,-pitch*0.11),Vector2(0.014,pitch*0.11),Vector2(-0.014,pitch*0.11)])
 	var guide := VehicleModels.solid([VehicleModels.ring_y(base,thickness*0.32),VehicleModels.ring_y(tip,thickness*1.15)],"track_horn_%.3f_%.3f" % [pitch,thickness])
-	_part(shoe,guide,Transform3D.IDENTITY,steel)
+	_part(shoe,guide,Transform3D(Basis.IDENTITY,Vector3(0,0,pitch * 0.5)),steel,rubbed,Vector3.RIGHT)
+	_finish(shoe, count)
+
+
+## The shoe's material and the multimesh of `count` of them, posed.
+func _finish(shoe: SurfaceTool, count: int) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
 	mat.vertex_color_is_srgb = true
@@ -79,13 +100,16 @@ func build(hull: PackedVector2Array, width: float, thickness: float, wheels: Arr
 		multimesh.set_instance_color(i, Color(shade, shade, shade, 1))
 	_pose()
 
-func _part(shoe: SurfaceTool, mesh: Mesh, xf: Transform3D, color: Color) -> void:
+## A part of the shoe in `color`; given a `rub` colour, its faces turned
+## along `along` (either way, in the shoe's space) take that instead.
+func _part(shoe: SurfaceTool, mesh: Mesh, xf: Transform3D, color: Color, rub := Color(0, 0, 0, 0), along := Vector3.UP) -> void:
 	var triangles := Mats._flat(mesh,0)
 	var points: PackedVector3Array = triangles[0]
 	var normals: PackedVector3Array = triangles[1]
 	for i in points.size():
-		shoe.set_color(color)
-		shoe.set_normal(xf.basis * normals[i])
+		var n := xf.basis * normals[i]
+		shoe.set_color(rub if rub.a > 0.0 and absf(n.normalized().dot(along)) > 0.6 else color)
+		shoe.set_normal(n)
 		shoe.add_vertex(xf * points[i])
 
 func advance(distance: float, ground: Callable) -> void:

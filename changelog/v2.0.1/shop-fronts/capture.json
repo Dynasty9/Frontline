@@ -1,0 +1,58 @@
+{
+  "before_ref": "b4a4e3c2dc6fa1c3e9994b560483b816cfc24fed",
+  "source_ref": "02a0892fa67ca09c87ced4811282bd7d86c79f13",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "shops"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=shops"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "shops": [
+          0.0479307174682617,
+          1.91957211494446,
+          -0.508825778961182,
+          16.1936626434326,
+          79.4069366455078
+        ]
+      },
+      "crops": [
+        [
+          240,
+          100,
+          1520,
+          820
+        ],
+        [
+          440,
+          340,
+          1480,
+          760
+        ]
+      ]
+    },
+    {
+      "subjects": [
+        "shopfront"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crop": [
+        330,
+        160,
+        1500,
+        680
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage and environment views fixture (the shops subject draws the old awning on the baseline, as the old decor did; the town views gained a shop front). The baseline is the war-worn walls change this builds on.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}
