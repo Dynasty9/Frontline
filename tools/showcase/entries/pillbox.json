@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/pillbox.md",
+  "summary": "The Coalition's bunker has a thick roof slab with turf on it and a parapet of bags, a hood, sloped sill and splayed cheeks at every firing slit, an escape hatch, periscope and vent, and rain stains down its walls.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (bunker:0, --building-rear, --building-match)",
+  "rationale": "Appearance change of the concrete bunker: matched studio stills from the front and the door side show the slits' hoods, the roof and the streaks.",
+  "source_ref": "bf65fbec89ed66c34781b6aac1fc901649de80e6",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/pillbox/comparison.jpg",
+      "sha256": "176c60eb4a8bbb6dde1bca779800beb315130148d3a730157faee07c65eea628"
+    }
+  ],
+  "output": null
+}
