@@ -1844,16 +1844,25 @@ void fragment() {
 		vec2 q = vec2(uv.x / sl + h12(vec2(row, 3.7 + off.x)), (in3 - y0) / rh);
 		vec2 cell = vec2(floor(q.x), row);
 		vec2 f = vec2(fract(q.x), q.y);
-		float ex = 0.05 / sl;
-		float ey = 0.045 / rh;
-		float e = mix(0.86, smoothstep(0.0, ex * 1.6, f.x) * smoothstep(1.0, 1.0 - ex * 1.6, f.x) * smoothstep(0.0, ey * 1.6, f.y) * smoothstep(1.0, 1.0 - ey * 1.6, f.y), kb);
+		// Recessed pointing occupies centimetres, not most of a small stone.
+		float kj = keep(0.06, px);
+		float ex = 0.022 / sl;
+		float ey = 0.018 / rh;
+		float e = mix(0.86, smoothstep(0.0, ex * 1.6, f.x) * smoothstep(1.0, 1.0 - ex * 1.6, f.x) * smoothstep(0.0, ey * 1.6, f.y) * smoothstep(1.0, 1.0 - ey * 1.6, f.y), kj);
 		float rb = mix(0.5, h12(cell + off), kb);
 		float warm = mix(0.5, h12(cell * 1.7 + 4.1 + off), kb);
 		vec3 sc = mix(col_a, col_c, rb) * mix(vec3(1.0), vec3(1.06, 1.0, 0.9), smoothstep(0.55, 0.9, warm) * kb);
-		sc *= (0.8 + 0.3 * tnoise(uv * 13.0)) * mix(1.0, 0.86 + 0.28 * h12(cell * 2.3 + off), kb);
-		vec3 mortar = mix(col_b, col_a * 1.08, 0.55) * (0.92 + 0.12 * tnoise(uv * 31.0));
+		// Fade each grain band independently before it becomes subpixel.
+		float grain = mix(0.5, tnoise(uv * 13.0), keep(1.0 / 13.0, px));
+		float mortar_grain = mix(0.5, tnoise(uv * 31.0), keep(1.0 / 31.0, px));
+		float relief = mix(0.5, tnoise(uv * 9.0 + rb * 10.0), keep(1.0 / 9.0, px));
+		sc *= (0.8 + 0.3 * grain) * mix(1.0, 0.86 + 0.28 * h12(cell * 2.3 + off), kb);
+		vec3 mortar = mix(col_b, col_a * 1.08, 0.55) * (0.92 + 0.12 * mortar_grain);
 		col = mix(mortar, sc, e);
-		h = e * (0.7 + 0.3 * tnoise(uv * 9.0 + rb * 10.0));
+		// Porous lime remains matte beside the slightly smoother stone faces.
+		r = mix(0.98, clamp(rough - 0.04 + 0.06 * rb, 0.8, 0.96), e);
+		// About a centimetre of relief at the stone preset, not deep grooves.
+		h = e * (0.25 + 0.08 * relief);
 	} else if (pattern == 12) {
 		float fib = tfbm(vec2(uv.x * 9.0, uv.y * 0.8) + off);
 		col = mix(col_b, col_a, fib);
