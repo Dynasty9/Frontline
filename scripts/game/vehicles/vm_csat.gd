@@ -304,35 +304,70 @@ static func _kord(k: VehicleModels, g: Node3D, length: float, s := 1.0, feed := 
 	VehicleWeapons._bore(k, g, -length, 0.012 * s)
 
 
-## A remote weapon station on the roof: the turntable, the cradle with a
-## 12.7 mm HMG ("hmg"), a 40 mm grenade launcher ("gmg"), a 7.62 ("mmg") or a
-## 30 mm cannon ("ac30"), the sight head with its windows, the ammunition box.
-## Returns the traversing pivot; the muzzle is stored in k.mg_tip.
+## A flexible feed chute from the mouth of a gun's box at `a`, arched over
+## `b`, into the feedway at `c` (all in the gun's space, across x): two
+## runs of hinged steel links `w` wide along the gun, the hinge at the arch.
+static func _chute(k: VehicleModels, g: Node3D, a: Vector3, b: Vector3, c: Vector3, w: float) -> void:
+	for leg: Array in [[a, b], [b, c]]:
+		_plate(k, g, leg[0], leg[1], w, 0.028, "metal_dark", Color(0.12, 0.12, 0.11), Vector3.BACK, false)
+	k._cyl(g, 0.02, 0.02, w + 0.02, b, X90, "metal_dark", Color(0.12, 0.12, 0.11), 8, false)
+
+
+## A remote weapon station on the roof (the Arbalet-DM pattern on Russian
+## armoured cars): the turntable and its armoured base, two yoke arms
+## carrying the elevating mass on a cross shaft - the cradle with a 12.7 mm
+## Kord ("hmg") or a grenade launcher ("gmg"), its ammunition box hung on the
+## feed side and chuted into the gun, the optical unit (television, thermal
+## and laser windows) on the other, all laid together as real stations lay
+## them - or a 7.62 ("mmg") or a 30 mm cannon ("ac30") with a fixed sight
+## and box. Returns the traversing pivot; the muzzle is stored in k.mg_tip.
 static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, mat := CAM) -> Node3D:
 	var t := k._pivot(p, pos)
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.3, 0.34, 0.1, "gunmetal_w", null, 16)
 	k._add(t, VehicleModels.loft("csat_rcws_ped", [-0.2, -0.22, 0.2, -0.22, 0.2, 0.26, -0.2, 0.26], [-0.16, -0.16, 0.16, -0.16, 0.16, 0.22, -0.16, 0.22], 0.1, 0.36, 0.015), mat, null, Vector3.ZERO)
+	var y := 0.5
+	if gun == "hmg" or gun == "gmg":
+		# the grenade launcher feeds from its right, the Kord from its left
+		var fs := 1.0 if gun == "gmg" else -1.0
+		var gz := 0.0 if gun == "gmg" else 0.02
+		var length := 0.82 if gun == "gmg" else 1.72
+		# the yoke arms, the trunnion bosses at their heads on the shaft's line
+		for sx: float in [-0.17, 0.17]:
+			k._add(t, BevelMesh.make(Vector3(0.045, 0.2, 0.2), 0.008), mat, null, Vector3(sx, 0.43, gz))
+			k._cyl(t, 0.05, 0.05, 0.06, Vector3(sx, y, gz), Z90, "gunmetal_w", null, 12)
+		var g := k._pivot(t, Vector3(0, y, gz))
+		var port := 0.0525
+		if gun == "gmg":
+			VehicleWeapons.gmg(k, g, Vector3.ZERO, Vector3(0, 0, -length), 1.0, 0.0)
+			port = 0.12
+		else:
+			_kord(k, g, length)
+		# the cross shaft from the receiver out through each arm's boss
+		for side: float in [-1.0, 1.0]:
+			k._cyl(g, 0.026, 0.026, 0.215 - port, Vector3(side * (0.215 + port) * 0.5, 0, 0), Z90, "gunmetal_w", null, 10, false)
+		# the box on the feed side, its chute arched over into the feedway
+		VehicleFittings.ammo_can(k, g, Vector3(fs * 0.3, -0.04, 0.04), OLIVE, Vector3.ZERO, Vector3(0.17, 0.26, 0.42))
+		_chute(k, g, Vector3(fs * 0.235, 0.105, -0.1), Vector3(fs * 0.15, 0.15, -0.08), Vector3(fs * (port + 0.01), 0.05, -0.06), 0.09)
+		# the optical unit on the other side under its armoured lid: the
+		# thermal imager's big window, the television camera's and the laser
+		# rangefinder's small one under them
+		VehicleMounts.sight(k, g, Vector3(-fs * 0.31, 0.04, -0.03), Vector3(0.2, 0.25, 0.32), [Rect2(Vector2(-fs * 0.035, 0.035), Vector2(0.085, 0.085)), Rect2(Vector2(fs * 0.05, 0.045), Vector2(0.05, 0.05)), Rect2(Vector2(fs * 0.04, -0.06), Vector2(0.06, 0.035))], mat)
+		k._add(g, BevelMesh.make(Vector3(0.22, 0.025, 0.36), 0.008), mat, null, Vector3(-fs * 0.31, 0.178, -0.04))
+		k.gun_assembly(g, Vector3(0, 0, -length))
+		k.mg_tip = k._tip(t, Vector3(0, y, -0.82 if gun == "gmg" else -1.7))
+		return t
 	# the trunnion arms either side of the cradle
 	for sx in [-0.17, 0.17]:
 		VehicleMounts.mantlet(k, t, Vector3(0.05, 0.22, 0.24), Vector3(sx, 0.44, 0.0), mat)
-	var y := 0.5
 	match gun:
 		# The guns feed from the station's own box beside them, so none carries a can.
-		"gmg":
-			VehicleWeapons.gmg(k, t, Vector3(0, y, 0.0), Vector3(0, y, -0.82), 1.0, 0.0)
-			k.mg_tip = k._tip(t, Vector3(0, y, -0.82))
 		"ac30":
 			VehicleMounts.receiver(k, t, Vector3(0.28, 0.26, 0.8), Vector3(0, y, 0.0))
 			VehicleWeapons.autocannon(k, t, Vector3(0, y, -0.4), Vector3(0, y, -2.33), Vector2(0.07, 0.3), Vector2(0.045, 0.04), Vector2(0.06, 0.16))
 			k.mg_tip = k._tip(t, Vector3(0, y, -2.35))
-		"mmg":
+		_:
 			VehicleWeapons.mmg(k, t, Vector3(0, y, 0.0), Vector3(0, y + 0.02, -0.92), 1.4, 0.0, false)
 			k.mg_tip = k._tip(t, Vector3(0, y + 0.02, -0.92))
-		_:
-			var g := k._pivot(t, Vector3(0, y, 0.02))
-			_kord(k, g, 1.72)
-			k.gun_assembly(g, Vector3(0, 0, -1.72))
-			k.mg_tip = k._tip(t, Vector3(0, y, -1.7))
 	# the sight head beside the gun under its lid, the ammunition box on the other side
 	VehicleMounts.sight(k, t, Vector3(0.33, y + 0.06, -0.02), Vector3(0.24, 0.26, 0.34), [Rect2(Vector2(-0.05, 0.02), Vector2(0.08, 0.08)), Rect2(Vector2(0.06, 0.02), Vector2(0.06, 0.06))], mat)
 	k._box(t, Vector3(0.22, 0.04, 0.3), Vector3(0.33, y + 0.2, -0.02), mat)
