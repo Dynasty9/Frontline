@@ -5,11 +5,11 @@ kind = "improved"
 
 [[screenshots]]
 file = "reflections.jpg"
-caption = "Rain, an alley between two houses with a car parked under the eaves. Without the light probes the car's roof and glass and the wet alley floor mirror the bright sky; with them they mirror the walls round them, about a third darker on the car, a tenth on the open roofs."
+caption = "Rain, an alley between two houses with a car parked under the eaves, probes off over on. With them the car's roof and windscreen (close up, right) and the wet alley floor mirror the walls round them, not the bright sky: about a third darker on the car, a tenth on the open roofs."
 
 [[screenshots]]
 file = "soldiers.jpg"
-caption = "The same frozen moment, probes off and on: a gunner in the room takes its dim, warm light, about half as bright as he stood before, and a man by the wall outside its shade, a third darker. A man out in the open is unchanged."
+caption = "Three men, probes off over on: a gunner in a room takes its dim, warm light (about half as bright), a man in the narrow alley its shade and the brick's warmth (a fifth darker), and a man out in the sun is unchanged."
 
 [[screenshots]]
 file = "wall-down.jpg"

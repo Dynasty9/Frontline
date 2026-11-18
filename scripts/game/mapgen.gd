@@ -806,6 +806,12 @@ func scenario(sname: String) -> void:
 			gq.order_defend(Vector3(0, 0, -30), Vector3(0, 0, 1))
 			var rq := r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, -20))
 			rq.order_defend(Vector3(0, 0, -20), Vector3(0, 0, 1))
+			# and an AT team put in the alley's shade, a squad out in the sun at its mouth
+			var aq := r.spawn_squad("at_team", 0, a, Vector3(-2.5, 0, -34.25))
+			for i in aq.members.size():
+				aq.members[i].position = Vector3(-3.0 + i * 1.6, 0, -34.25)
+			var sq := r.spawn_squad("rifle_squad", 0, a, Vector3(-12, 0, -34.25))
+			sq.order_move(Vector3(-12, 0, -34.25), Vector3(-1, 0, 0), 0, false)
 		"lean":
 			for i in 3:
 				_spawn("tall_wall", Vector3(-14 + i * 14.0, 0, -10), 0.0, -1, {"size": Vector3(6, 2.6, 0.5)})
