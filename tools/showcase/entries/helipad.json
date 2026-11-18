@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/helipad.md",
+  "summary": "Helipads laid out as forward landing pads.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (helipad:0, helipad:1)",
+  "rationale": "Appearance change: both sides' helipads in the studio from the same cameras.",
+  "source_ref": "619a9b61b88c2e893a6872cd667518990a719d1d",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/helipad/comparison.jpg",
+      "sha256": "1f4f8effda08846fe0310951a71728c7ddec65804c209b94066e0609262cc6eb"
+    },
+    {
+      "file": "changelog/unreleased/helipad/capture.json",
+      "sha256": "37f48442c259665005f2dde516055a0496fa5f4821ec378318a82535ad22bdc1"
+    }
+  ],
+  "output": null
+}
