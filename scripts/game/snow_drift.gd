@@ -447,7 +447,11 @@ float drift_deep(vec2 p) {
 
 float drift_top(vec2 p) {
 	float d = drift_deep(p);
-	return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__) + 0.03 + d * d * (3.0 - 2.0 * d) * 0.45;
+	// The thin skirt sinks into the terrain instead of floating above it.
+	// Keep the full lee crest; only the outer few centimetres are recessed.
+	float rise = d * d * (3.0 - 2.0 * d) * 0.48;
+	float skirt = 0.045 * (1.0 - smoothstep(0.0, 0.3, d));
+	return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__) + rise - skirt;
 }
 
 void vertex() {
@@ -463,10 +467,9 @@ void vertex() {
 
 void fragment() {
 	float n1 = texture(detail_tex, wpos.xz / 3.1 + 0.27).r;
-	float n2 = texture(detail_tex, wpos.xz / 1.6 + 0.61).r;
-	// (its edge broken where the wind has worked at it: crisp, not a fade)
-	float edge = deep + (n1 - 0.5) * 0.2 + (n2 - 0.5) * 0.06;
-	ALPHA = smoothstep(0.1, 0.16, edge);
+	// Clip only empty tiles. The buried skirt makes the visible boundary,
+	// so an alpha threshold cannot cut an elevated sheet across the ground.
+	ALPHA = smoothstep(0.0, 0.01, deep);
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
 	// the ground's own snow (its powder scan, linear), a little blue where the
 	// drift is shallow and wind-packed
