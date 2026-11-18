@@ -200,14 +200,30 @@ static func boom_box(k: VehicleModels, parent: Node3D, size: Vector3, center: Ve
 
 ## A panel of cage armour with actual open gaps. Endpoints describe its bottom
 ## edge; direction of the bars and spacing are explicit styles, not inferred.
-static func slats(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, height: float, spacing: float, vertical := false, mat := "gunmetal_w", col = null) -> void:
+## `frame_mat` / `frame_col` finish the posts and rails: a cage bolted on in
+## the field is painted with the tank, frame and all, so a family passes its
+## paint there too (the default is the bare dark steel it has always been).
+static func slats(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, height: float, spacing: float, vertical := false, mat := "gunmetal_w", col = null, frame_mat := "gunmetal_w", frame_col = null) -> void:
+	# (a wreck's cage keeps the bare frame it has always had: wrecks are drawn
+	# on their own)
+	if k.wreck:
+		frame_mat = "gunmetal_w"
+		frame_col = null
 	var along := (b - a).normalized()
 	var normal := along.cross(Vector3.UP).normalized()
 	for end: Vector3 in [a, b]:
-		VehicleFrames.beam(k, parent, end, end + Vector3.UP * height, 0.045, 0.045, "gunmetal_w")
+		VehicleFrames.beam(k, parent, end, end + Vector3.UP * height, 0.045, 0.045, frame_mat, frame_col)
 		VehicleBody.fastener(k, parent, end + Vector3.UP * height + normal * 0.026, normal, 0.010)
 	for h: float in [0.0, height]:
-		VehicleFrames.beam(k, parent, a + Vector3.UP * h, b + Vector3.UP * h, 0.045, 0.045, "gunmetal_w")
+		VehicleFrames.beam(k, parent, a + Vector3.UP * h, b + Vector3.UP * h, 0.045, 0.045, frame_mat, frame_col)
+	# Horizontal bars can't span a whole hull side on their own: a real cage
+	# is a row of bolted panels, each about a metre and a half wide, with an
+	# upright between them. (A cage of upright bars is its own stiffening.)
+	if not vertical and not k.wreck:
+		var panels := ceili(a.distance_to(b) / 1.6)
+		for i in range(1, panels):
+			var foot := a.lerp(b, float(i) / panels)
+			VehicleFrames.beam(k, parent, foot, foot + Vector3.UP * height, 0.035, 0.035, frame_mat, frame_col)
 	var count := maxi(2, ceili((a.distance_to(b) if vertical else height) / spacing))
 	for i in range(1, count):
 		var t := float(i) / count

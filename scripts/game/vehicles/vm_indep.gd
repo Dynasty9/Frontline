@@ -180,7 +180,7 @@ static func _sprocket(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: fl
 ## 2's, Warrior's and Wiesel's tracks are double-pin with a centre guide
 ## running between the twin road wheels.
 static func _track_belt(k: VehicleModels, p: Node3D, x: float, w: float, circles: Array, th := 0.08, segs := 16) -> void:
-	VehicleTracks.shoes(k, p, x, w, VehicleTracks.wheel_envelope(circles, th, segs), th, 0.20, true, true)
+	VehicleTracks.shoes(k, p, x, w, VehicleTracks.on_rollers(k, VehicleTracks.wheel_envelope(circles, th, segs), circles, th * 0.5), th, 0.20, true, true)
 
 
 # --- Strider: KMW Fennek LGS scout car ---------------------------------------------
@@ -346,7 +346,7 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gmg: bool, cam: Str
 ## take `mat` / `col` (the hull's paint: a cage comes painted with the tank).
 static func _slats(k: VehicleModels, p: Node3D, c: Vector3, l: float, h: float, along_x: bool, gap := 0.17, mat := "gunmetal_w", col = null) -> void:
 	var axis := Vector3.RIGHT if along_x else Vector3.BACK
-	VehicleMounts.slats(k, p, c - axis * l * 0.5 - Vector3.UP * h * 0.5, c + axis * l * 0.5 - Vector3.UP * h * 0.5, h, gap, true, mat, col)
+	VehicleMounts.slats(k, p, c - axis * l * 0.5 - Vector3.UP * h * 0.5, c + axis * l * 0.5 - Vector3.UP * h * 0.5, h, gap, true, mat, col, mat, col)
 
 
 

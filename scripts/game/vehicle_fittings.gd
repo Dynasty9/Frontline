@@ -341,7 +341,11 @@ static func barrel(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle: Ve
 	var key := Vector2(radius, length)
 	# The tube keeps twenty sides: its silhouette is what the camera follows.
 	# Its taper is straight, so no rings between its ends; the sooted bore's
-	# floor is the liner's own end, turned to face the muzzle.
+	# floor is the liner's own end, turned to face the muzzle. A painted tube
+	# doesn't keep its paint at the muzzle: the blast and the barrel's heat
+	# burn it off the last tenth, down to the blackened steel, so the tube is
+	# two pieces split there (a wreck's stays the one it has always been).
+	var split := 0.9
 	if not _barrels.has(key):
 		var outer := CylinderMesh.new()
 		outer.top_radius = radius
@@ -358,20 +362,49 @@ static func barrel(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle: Ve
 		inner.rings = 0
 		inner.cap_top = false
 		inner.flip_faces = true
-		_barrels[key] = [outer, inner]
+		var rear := CylinderMesh.new()
+		rear.top_radius = radius * lerpf(1.12, 1.0, split)
+		rear.bottom_radius = radius * 1.12
+		rear.height = length * split
+		rear.radial_segments = 20
+		rear.rings = 0
+		rear.cap_top = false
+		var front := CylinderMesh.new()
+		front.top_radius = radius
+		front.bottom_radius = rear.top_radius
+		front.height = length * (1.0 - split)
+		front.radial_segments = 20
+		front.rings = 0
+		front.cap_top = false
+		front.cap_bottom = false
+		_barrels[key] = [outer, inner, rear, front]
 	var meshes: Array = _barrels[key]
-	k._add(mount, meshes[0], material, col, Vector3(0, length / 2, 0))
+	if k.wreck or k.burnt or material == VehicleWeapons.STEEL:
+		k._add(mount, meshes[0], material, col, Vector3(0, length / 2, 0))
+	else:
+		k._add(mount, meshes[2], material, col, Vector3(0, length * split / 2, 0))
+		k._add(mount, meshes[3], VehicleWeapons.STEEL, null, Vector3(0, length * (1.0 + split) / 2, 0))
 	var depth := minf(length, radius * 6)
 	k._add(mount, meshes[1], "burnt", Color(0.018, 0.019, 0.018), Vector3(0, length - depth / 2, 0))
 	k._add(mount, _ring(radius * 0.62, radius * 1.02, 20), "gunmetal", Color(0.29, 0.30, 0.28), Vector3(0, length, 0), Vector3.ZERO, Vector3(1, 0.3, 1))
 	if sleeved:
 		var span := length * 0.83
+		# Each sleeve section is wrapped and closed on its own, so its seam
+		# strip lies where that section was fitted, not in one line down the gun.
+		var turns: Array[float] = [deg_to_rad(25.0), deg_to_rad(-25.0), 0.0]
 		for i in 3:
 			var y := span * (i + 0.5) / 3
 			VehicleFrames.cyl(k, mount, radius * 1.13, radius * 1.13, span / 3 - 0.025, Vector3(0, y, 0), Vector3.ZERO, material, col, 16)
 			VehicleFrames.cyl(k, mount, radius * 1.19, radius * 1.19, 0.035, Vector3(0, span * (i + 1) / 3 - 0.035, 0), Vector3.ZERO, "gunmetal_w", null, 16, false)
+			# The joint between two sections, beside the clamp: a dark band of
+			# the bare tube showing in the gap, so the sleeve reads as fitted
+			# sections rather than one painted pipe. (A wreck's sleeve keeps
+			# the look it has always had: wrecks are drawn on their own.)
+			if not k.wreck:
+				VehicleFrames.cyl(k, mount, radius * 1.10, radius * 1.10, 0.015, Vector3(0, span * (i + 1) / 3, 0), Vector3.ZERO, "metal_dark", null, 16, false, 0)
 			# Longitudinal closure strip and clamp latch on the sleeve.
-			k._box(mount, Vector3(radius * 0.23, span / 3 - 0.035, 0.012), Vector3(0, y, radius * 1.13), material, col, Vector3.ZERO, false)
+			var turn: float = 0.0 if k.wreck else turns[i]
+			k._box(mount, Vector3(radius * 0.23, span / 3 - 0.035, 0.012), Vector3(sin(turn) * radius * 1.13, y, cos(turn) * radius * 1.13), material, col, Vector3(0, turn, 0), false)
 			k._box(mount, Vector3(radius * 0.48, 0.045, 0.024), Vector3(0, span * (i + 1) / 3 - 0.035, radius * 1.18), "gunmetal_w", null, Vector3.ZERO, false)
 	k._fold(mount)
 
@@ -945,6 +978,11 @@ static func evacuator(k: VehicleModels, parent: Node3D, center: Vector3, radius:
 	VehicleFrames.cyl(k, mount, radius * 0.72, radius, cap, Vector3(0, 0, half - cap * 0.5), x90, material, col, 16, true, 1)
 	VehicleFrames.cyl(k, mount, radius, radius * 0.72, cap, Vector3(0, 0, -half + cap * 0.5), x90, material, col, 16, true, 2)
 	VehicleFrames.cyl(k, mount, radius * 1.03, radius * 1.03, minf(0.04, length * 0.06), Vector3(0, 0, length * 0.08), x90, "metal_dark", null, 16, false)
+	# The chamber is rolled from plate and welded round its middle: a bead,
+	# painted over with the gun, that catches the light across the tube (a
+	# wreck's chamber stays as it was).
+	if not k.wreck:
+		k._add(mount, _ring(radius * 0.99, radius + 0.011, 16), material, col, Vector3.ZERO, x90, Vector3(1, 0.8, 1), false)
 	VehicleBody.fastener(k, mount, Vector3(0, radius + 0.002, -length * 0.2), Vector3.UP, radius * 0.12)
 	k._fold(mount)
 

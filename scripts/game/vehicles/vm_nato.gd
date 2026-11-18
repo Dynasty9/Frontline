@@ -1003,12 +1003,12 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 		_era(k, m, Vector3(s * 0.15, 1.45, -3.42), Vector3(s * 1.42, 1.45, -2.62), Vector3(s * 0.36, 1.96, -2.3), Vector3(s * 1.12, 1.96, -1.82), 4, 2, Vector3(s * 0.4, 0.6, -0.8), cam)
 	# slat cages: a frame standing off each side and across the back
 	for s in [-1.0, 1.0]:
-		VehicleMounts.slats(k, m, Vector3(s * 1.62, 1.255, -2.0), Vector3(s * 1.62, 1.255, 2.8), 0.85, 0.19, false, cam)
+		VehicleMounts.slats(k, m, Vector3(s * 1.62, 1.255, -2.0), Vector3(s * 1.62, 1.255, 2.8), 0.85, 0.19, false, cam, null, cam)
 		for z in [-2.0, -0.4, 1.2, 2.8]:
-			VehicleFrames.beam(k, m, Vector3(s * 1.38, 1.6, z), Vector3(s * 1.62, 1.6, z), 0.04, 0.04, "gunmetal_w")
-	VehicleMounts.slats(k, m, Vector3(-1.62, 1.255, 3.85), Vector3(1.62, 1.255, 3.85), 0.85, 0.19, false, cam)
+			VehicleFrames.beam(k, m, Vector3(s * 1.38, 1.6, z), Vector3(s * 1.62, 1.6, z), 0.04, 0.04, "gunmetal_w" if k.wreck else cam)
+	VehicleMounts.slats(k, m, Vector3(-1.62, 1.255, 3.85), Vector3(1.62, 1.255, 3.85), 0.85, 0.19, false, cam, null, cam)
 	for s in [-1.0, 1.0]:
-		VehicleFrames.beam(k, m, Vector3(s * 1.6, 1.9, 3.25), Vector3(s * 1.6, 1.9, 3.85), 0.05, 0.05, "gunmetal_w")
+		VehicleFrames.beam(k, m, Vector3(s * 1.6, 1.9, 3.25), Vector3(s * 1.6, 1.9, 3.85), 0.05, 0.05, "gunmetal_w" if k.wreck else cam)
 	# the remote weapon station on the turret roof (it turns with the gun)
 	_rcws(k, t, Vector3(-0.35, 0.8, 1.35), "hmg", cam, 0.9)
 	k.turret = t

@@ -561,8 +561,13 @@ static func _running_gear(k: VehicleModels, p: Node3D, x: float, w: float, f: Ve
 		var a := deg_to_rad(-60.0 + i * 37.5)
 		pts.append(Vector2(r.x + cos(a) * (r.z + t), r.y + sin(a) * (r.z + t)))
 	var top_y := maxf(f.y + f.z, r.y + r.z)
+	# (the return run rests on the rollers' tops and hangs between them)
+	var tops: Array = []
+	for z in rollers:
+		tops.append(Vector3(z, top_y - 0.09, 0.09))
+	var outline := VehicleTracks.on_rollers(k, PackedVector2Array(pts), tops, t)
 	for s in [-1.0, 1.0]:
-		VehicleTracks.shoes(k, p, s * x, w, PackedVector2Array(pts), t, 0.20, false, false, t * 0.5)
+		VehicleTracks.shoes(k, p, s * x, w, outline, t, 0.20, false, false, t * 0.5)
 		for z in road:
 			_rwheel(k, p, Vector3(s * x, rr + t, z), rr, w * 0.72)
 		for z in rollers:
@@ -1126,9 +1131,9 @@ static func _sochor(k: VehicleModels, team: int, seed := 0) -> void:
 ## run's bottom line), `h` tall, standing off the hull along `out`. The bars
 ## take `mat` (the hull's paint: the cages come painted with the tank).
 static func _slats(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, h: float, out: Vector3, mat := "gunmetal_w") -> void:
-	VehicleMounts.slats(k, p, a, b, h, 0.13, false, mat)
+	VehicleMounts.slats(k, p, a, b, h, 0.13, false, mat, null, mat)
 	for at: Vector3 in [a, b]:
-		VehicleFrames.beam(k, p, at + Vector3.UP * h * 0.5, at + Vector3.UP * h * 0.5 - out * 0.16, 0.04, 0.04, "gunmetal_w")
+		VehicleFrames.beam(k, p, at + Vector3.UP * h * 0.5, at + Vector3.UP * h * 0.5 - out * 0.16, 0.04, 0.04, "gunmetal_w" if k.wreck else mat)
 
 
 

@@ -360,7 +360,7 @@ static func _belt(k: VehicleModels, p: Node3D, x: float, w: float, circles: Arra
 		var belt := preload("res://scripts/game/vehicles/track_belt.gd").new()
 		belt.position.x = x
 		p.add_child(belt)
-		belt.build(hull, w, th, k.wheels, rests_on_wheels)
+		belt.build(VehicleTracks.on_rollers(k, hull, circles, th * 0.5), w, th, k.wheels, rests_on_wheels)
 		k.belts.append(belt)
 		return
 	# The wreck keeps its kind of track: the T-55's (the one whose return run
@@ -649,7 +649,7 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 	# the gun's pleated canvas mantlet cover, from the shield's face to its
 	# tie round the sleeve: with the gun, so it lays as the gun elevates
 	var boot := k._pivot(slide, Vector3(0, gy, 0))
-	VehicleMounts._gun_boot(k, boot, -2.11, 0.2, 0.095, 0.26)
+	VehicleMounts.gun_boot(k, boot, -2.11, 0.2, 0.095, 0.26)
 	k._fold(boot)
 	VehicleFittings.barrel(k, slide, Vector3(0, gy, -2.3), Vector3(0, gy, -5.32), 0.095, cam, null)
 	VehicleFittings.evacuator(k, slide, Vector3(0, gy, -3.82), 0.135, 0.56, cam)
@@ -1073,7 +1073,7 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 	# with the gun so it lays as the gun elevates (on the turret, the barrel
 	# swung out through its side)
 	var boot := k._pivot(slide, Vector3(0, gy, 0))
-	VehicleMounts._gun_boot(k, boot, -1.24, 0.2, 0.07, 0.3)
+	VehicleMounts.gun_boot(k, boot, -1.24, 0.2, 0.07, 0.3)
 	k._fold(boot)
 	VehicleFittings.barrel(k, slide, Vector3(0, gy, -1.5), Vector3(0, gy, -5.065), 0.07, cam, null, false)
 	VehicleFittings.evacuator(k, slide, Vector3(0, gy, -4.42), 0.118, 0.64, cam)

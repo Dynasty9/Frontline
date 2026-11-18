@@ -18,6 +18,41 @@ static func wheel_envelope(circles: Array, thickness: float, segments := 16) -> 
 	return Geometry2D.convex_hull(points)
 
 
+## `outline` let down onto the return rollers among `circles` (each (z, y,
+## r)). A real track's return run rests on its rollers and hangs between
+## them, but an outline drawn from sprocket to idler, or a convex hull (which
+## drops a roller in line with its neighbours or just under the run), is one
+## straight line over them, longer than the SAG_SPAN `shoes` and the belt let
+## sag. So each wheel whose top, `lift` under the belt's line, lies within a
+## few centimetres of a long upper run becomes a point of it: the rollers,
+## never the road wheels well below. A wreck keeps the outline it had.
+static func on_rollers(k: VehicleModels, outline: PackedVector2Array, circles: Array, lift: float) -> PackedVector2Array:
+	var points := outline.duplicate()
+	if k.wreck or k.burnt or points.size() < 3:
+		return points
+	var center := Vector2.ZERO
+	for p in points:
+		center += p
+	center /= float(points.size())
+	for c: Vector3 in circles:
+		var top := Vector2(c.x, c.y + c.z + lift)
+		var n := points.size()
+		for i in n:
+			var a := points[i]
+			var b := points[(i + 1) % n]
+			var lo := minf(a.x, b.x)
+			var hi := maxf(a.x, b.x)
+			# (a wheel the run already leaves from, sprocket or idler, has a
+			# point of its own rim within its radius)
+			var clear := maxf(0.05, c.z)
+			if hi - lo < 0.3 or top.x <= lo + clear or top.x >= hi - clear or a.y + b.y < center.y * 2.0:
+				continue
+			if absf(top.y - lerpf(a.y, b.y, (top.x - a.x) / (b.x - a.x))) < 0.08:
+				points.insert(i + 1, top)
+			break
+	return points
+
+
 ## The links round `outline`, one every `pitch` or so, each turned to the run
 ## it lies on. Two kinds of track, as armies fit them:
 ## - `pads`: a western double-pin track (Abrams, Merkava, Leopard 2,
