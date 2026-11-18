@@ -659,30 +659,56 @@ static func nav_light(k: VehicleModels, p: Node3D, center: Vector3, size: Vector
 	k._add(p, Res.sphere(r, 10), "signal_lens", col, center + Vector3(s * r * 0.45, r * 0.12, 0), Vector3.ZERO, Vector3(0.85, 0.7, 1.45), false)
 
 
-## The side's mark `s` across painted on both wings' upper skins at span x,
-## where the old panel sat: the ground vehicles' chevron or band
-## (VehicleModels._mark_outline), its apex or lean toward the nose and
-## mirrored wing to wing, in the airframe's own paint so it weathers with the
-## wing and follows the airfoil's curve instead of standing on its crest as a
-## dark slab. Gone with the paint on a wreck.
-static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, x: float, s: float) -> void:
+## The side's mark painted across both wings' upper skins as a tip band, in
+## the side's mark colour (VehicleModels._mark_col) and the airframe's own
+## paint, so it weathers with the wing. Gone with the paint on a wreck.
+## No air force paints a side's chevron a metre from its own roundel or star
+## (two badges on one wing), but crews in a coalition war paint
+## identification bands across the wing tips, where they frame the
+## silhouette from above. The band runs the tip's whole chord just inboard
+## of the navigation light, `s` x 0.7 wide (at least 0.25 m), wherever the
+## caller's span `_x` (the old mark's) lay. The blue side's band is notched
+## into a chevron on its inboard edge, the red side's straight, so the sides
+## differ in shape as well as colour. It is laid in strips down the chord,
+## so it follows the airfoil's curve and takes the skin's light, where one
+## flat polygon over the crest showed a crease of its own.
+static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, _x: float, s: float) -> void:
 	if k.wreck or team < 0:
 		return
-	var w := surf_at(secs, x)
-	var le: Vector3 = w[0]
-	var outline := VehicleModels._mark_outline(team, Vector2(s, s))
+	var tip: float = (secs[secs.size() - 1][0] as Vector3).x
+	var bw := maxf(s * 0.7, 0.25)
+	var x1 := tip - clampf(tip * 0.035, 0.1, 0.3)
+	var x0 := x1 - bw
+	var w0 := surf_at(secs, x0)
+	var w1 := surf_at(secs, x1)
+	var le0: Vector3 = w0[0]
+	var le1: Vector3 = w1[0]
+	var notch := 0.45 if team == 0 else 0.0
+	# rows down the chord, each a quad from the inboard edge (notched at mid
+	# chord for the chevron) to the outboard one
+	var rows := 8
+	var edge := func(i: int) -> Array:
+		var f := lerpf(0.06, 0.9, float(i) / float(rows))
+		var u := notch * (1.0 - absf(float(i) / float(rows) * 2.0 - 1.0))
+		var xa := lerpf(x0, x1, u)
+		var wa := surf_at(secs, xa)
+		var a := Vector3(xa, 0.0, (wa[0] as Vector3).z + float(wa[1]) * f)
+		var b := Vector3(x1, 0.0, le1.z + float(w1[1]) * f)
+		return [a, b]
+	var at := Vector3(x0, le0.y, le0.z)
 	for sd: float in [-1.0, 1.0]:
-		var pts := PackedVector2Array()
-		for q in outline:
-			pts.append(Vector2(q.x * sd, q.y))
-		if sd < 0.0:
-			pts.reverse()
 		var tris := PackedVector2Array()
-		var idx := Geometry2D.triangulate_polygon(pts)
-		for i in idx:
-			tris.append(pts[i])
-		var at := Vector3(sd * x, le.y, le.z + float(w[1]) * 0.38)
-		VehicleAircraft.paint(k, p, VehicleAircraft.face(at, Vector3.UP, Vector3.RIGHT, wing_skin(secs, 1.0)), [[tris, VehicleModels._mark_col(team)]], "aircraft", 1)
+		var prev: Array = edge.call(0)
+		for i in range(1, rows + 1):
+			var cur: Array = edge.call(i)
+			var q := []
+			for v: Vector3 in [prev[0], prev[1], cur[1], cur[0]]:
+				# (the face's x runs to the right and its y forward: the left
+				# wing's band is the right's mirrored)
+				q.append(Vector2((v.x - at.x) * sd, at.z - v.z))
+			tris.append_array([q[0], q[1], q[2], q[0], q[2], q[3]])
+			prev = cur
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(sd * at.x, at.y, at.z), Vector3.UP, Vector3.RIGHT, wing_skin(secs, 1.0)), [[tris, VehicleModels._mark_col(team)]], "aircraft", 1)
 
 
 # --- paint: insignia, numbers, panel lines, soot ------------------------------------

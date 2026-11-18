@@ -299,14 +299,17 @@ static func flatbed(k: VehicleModels, parent: Node3D, z0: float, z1: float, widt
 ## chamfers its four upright edges and `roof` the roof's edge (zero for square
 ## ones). Corner extrusions, a bottom rail and a roof drip rail round it,
 ## `ribs` upright ribs a side (-1 spaces them about 95 cm apart, 0 leaves the
-## sides plain for the caller's shutters and windows), `vents` mushroom vents
-## along the roof and clearance markers at the roof's corners (their lenses
-## gone on a wreck). `door` is the rear door opening, its centre (x, y) on the
+## sides plain for the caller's shutters and windows), `vents` low square
+## vents along the roof (a wreck's mushroom caps) and clearance markers at the
+## roof's corners (their lenses gone on a wreck); a body with a rounded roof
+## edge is a military ISO shelter, with a corner casting at each of its eight
+## corners. `door` is the rear door opening, its centre (x, y) on the
 ## rear face and its size (a zero size fills the face); `leaves` 2 hangs a pair
 ## of doors there, 1 or -1 one leaf hinged on its +X or -X edge, 0 none (see
 ## body_door). A nonzero `ladder` puts a rung ladder up the rear face at that
 ## x. Stays within the box but for 4 cm of markers and rails a side, 9 cm of
-## ladder at the back and 17 cm of vents on the roof. Windows, crosses, side
+## ladder at the back, 2 cm of corner castings and 6 cm of vents on the roof
+## (17 cm on a wreck). Windows, crosses, side
 ## doors (body_door), roller shutters (roller_shutter), crane, awning and roof
 ## plant stay with the caller.
 static func shelter(k: VehicleModels, parent: Node3D, z0: float, z1: float, width: float, floor_y: float, roof_y: float, mat: String, col = null, door := Rect2(), leaves := 2, ribs := -1, corner := 0.05, roof := 0.0, ladder := 0.0, vents := 2) -> void:
@@ -366,10 +369,26 @@ static func shelter(k: VehicleModels, parent: Node3D, z0: float, z1: float, widt
 	for i in maxi(0, vents):
 		var z := lerpf(z0 + length * 0.2, z1 - length * 0.2, float(i) / maxi(1, vents - 1)) if vents > 1 else zc
 		var at := Vector3(-hw * 0.4, roof_y, z)
+		if not k.wreck:
+			# A body's roof vent is a low square box 25 cm across, its lid
+			# held a finger's width over its dark throat, 6 cm high in all,
+			# so it sits down on the roof (a wreck's keeps its old caps).
+			k._box(parent, Vector3(0.25, 0.034, 0.25), at + Vector3(0, 0.017, 0), mat, col)
+			k._box(parent, Vector3(0.21, 0.014, 0.21), at + Vector3(0, 0.04, 0), "plain_dark", null, Vector3.ZERO, false)
+			k._box(parent, Vector3(0.27, 0.014, 0.27), at + Vector3(0, 0.053, 0), mat, dark)
+			continue
 		# The vent stands on the roof, its dark throat between body and cap.
 		VehicleEquipment._cyl(k, parent, 0.11, 0.13, 0.12, at + Vector3(0, 0.06, 0), Vector3.ZERO, mat, col, 10, true, 2)
 		VehicleEquipment._cyl(k, parent, 0.17, 0.17, 0.035, at + Vector3(0, 0.15, 0), Vector3.ZERO, mat, dark, 10)
 		VehicleEquipment._cyl(k, parent, 0.1, 0.1, 0.03, at + Vector3(0, 0.12, 0), Vector3.ZERO, "plain_dark", null, 10, false, 0)
+	if rc > 0.0 and not k.wreck:
+		# A military shelter is an ISO body: a steel corner casting at each of
+		# its eight corners, where it's lifted, stacked and locked down on the
+		# bed, standing a little proud of the panels and the corner angles.
+		for s: float in [-1.0, 1.0]:
+			for e: float in [-1.0, 1.0]:
+				for y: float in [floor_y + 0.05, roof_y - rc - 0.05]:
+					k._box(parent, Vector3(0.12, 0.1, 0.12), Vector3(s * (hw - 0.04), y, zc + e * (length * 0.5 - 0.04)), "gunmetal_w", Color(0.17, 0.17, 0.16))
 	if leaves != 0:
 		var opening := door
 		if opening.size.x <= 0.0 or opening.size.y <= 0.0:
@@ -564,7 +583,9 @@ static func roof_rack(k: VehicleModels, parent: Node3D, base: Vector3, size: Vec
 ## boxes across, the layers and the boxes along. `pallet_height` > 0 builds a
 ## wooden pallet that tall under them (see pallet); the boxes share the rest,
 ## stacked straight up and standing 2 to 4 cm apart. Wooden boxes (by `mat`'s
-## finish) are crates bound with two dark battens; painted or steel ones have a
+## finish) are crates bound with two dark battens, their edges square, their
+## lids three planks and a handle cleat on each short end (1.2 cm proud; a
+## wreck's keep their old moulded look); painted or steel ones have a
 ## lid seam and a carrying handle on each short end. Every other box is
 ## darkened by `shade` (negative lightens) so the stack reads as boxes from
 ## above. `straps` are the z offsets of ratchet straps over the boxes (see
@@ -579,6 +600,13 @@ static func roof_rack(k: VehicleModels, parent: Node3D, base: Vector3, size: Vec
 ## a loose wooden crate stands a little out of line within its gaps.
 static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: Vector3, grid := Vector3i.ONE, mat := "paint", col = null, pallet_height := 0.0, straps: Array = [], shade := 0.12, strap := Color(0.28, 0.26, 0.2), yaw := 0.0) -> void:
 	var rng := kit(k, parent, base, 6)
+	# Now and then a crew has thrown a PVC tarp over one strapped pallet of
+	# painted boxes against the rain and lashed it down, so a bed of pallets
+	# seen from above isn't rows of one lid (on the bed itself: the tarp is
+	# laid in the model's space).
+	if rng != null and not k.wreck and not straps.is_empty() and is_same(parent, k.root) and VehicleMaterials.profile(mat, k.surface_family) != "wood" and rng.randf() < 0.2:
+		VehicleCloth.load_cover(k, base, size, kit_colour(rng, Color(0.3, 0.32, 0.23), KIT_TARP, 0.0), false, "coated")
+		return
 	var m := k._pivot(parent, base)
 	m.rotation.y = yaw
 	var nx := maxi(1, grid.x)
@@ -619,6 +647,12 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 	if rng != null and not k.wreck:
 		var pick := rng.randf()
 		style = 0 if pick < 0.5 else (1 if pick < 0.68 else (2 if pick < 0.84 else 3))
+	# A wooden crate is boards nailed square, its lid three planks: the lot's
+	# marking a small block of stencilled text, never two long bars (which
+	# read as a chest's straps); a wreck's keep theirs.
+	var planks := wood and not k.wreck
+	if planks and style == -1:
+		style = 3
 	if rng != null:
 		if ny > 1 and rng.randf() < 0.35:
 			layers = ny - 1
@@ -660,8 +694,18 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 				var stencil := l == layers - 1 and minf(bw, bd) >= 0.18 and style != 0
 				# (a stencilled lid sits 2 mm down, so its paint stands clear of
 				# the lid without lifting the stack's top)
-				var sink := 0.002 if stencil else 0.0
-				k._box(m, Vector3(bw, ph - sink, bd), at - Vector3(0, sink * 0.5, 0), mat, tint)
+				var sink := 0.002 if stencil or planks else 0.0
+				if planks:
+					# (sawn boards: their edges eased 7 mm, not moulded round)
+					k._add(m, BevelMesh.make(Vector3(bw, ph - sink, bd), 0.007), mat, tint, at - Vector3(0, sink * 0.5, 0))
+					# the joints between the lid's three planks, along its length
+					var long := bd >= bw
+					for f: float in [-1.0, 1.0]:
+						var o := Vector3(f * bw / 6.0, ph * 0.5 - sink + 0.0005, 0) if long else Vector3(0, ph * 0.5 - sink + 0.0005, f * bd / 6.0)
+						var seam := Vector3(0.004, 0.002, bd - 0.03) if long else Vector3(bw - 0.03, 0.002, 0.004)
+						k._box(m, seam, at + o, "plain_dark", Color(0.1, 0.08, 0.06), Vector3.ZERO, false)
+				else:
+					k._box(m, Vector3(bw, ph - sink, bd), at - Vector3(0, sink * 0.5, 0), mat, tint)
 				if stencil:
 					# The lot's stencil on the lid, toward one end (black on a
 					# wooden crate, pale on a painted box, a lot band in the
@@ -678,7 +722,7 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 							marks = [[0.0, 0.32, 0.86, 0.06]]
 						3:
 							marks = [[-0.09, 0.22, 0.035, 0.2], [0.0, 0.22, 0.035, 0.26], [0.09, 0.22, 0.035, 0.14]]
-					var flip := -1.0 if style > 0 and rng.randf() < 0.5 else 1.0
+					var flip := -1.0 if style > 0 and rng != null and rng.randf() < 0.5 else 1.0
 					var ink: Variant = null if wood else (Color(0.6, 0.5, 0.2) if style == 2 else Color(0.72, 0.69, 0.58))
 					for q: Array in marks:
 						var o := Vector3(across * float(q[0]), ph * 0.5 - 0.001, length * float(q[1]) * flip)
@@ -690,6 +734,14 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 				if wood:
 					for e: float in [-1.0, 1.0]:
 						k._box(m, Vector3(bw + 0.016, band, bd + 0.016), at + Vector3(0, e * (ph * 0.5 - band * 0.5 - minf(0.04, ph * 0.1)), 0), "wood_dark")
+					if planks and ph > band * 2.0 + 0.1 and (ends_z or straps.is_empty()):
+						# A cleat across each short end between the battens, the
+						# crate's handle: a board nailed on, held under its lip
+						# (clear of the straps, which run down the long sides).
+						for e: float in [-1.0, 1.0]:
+							var o := Vector3(0, ph * 0.06, e * (bd * 0.5 + 0.006)) if ends_z else Vector3(e * (bw * 0.5 + 0.006), ph * 0.06, 0)
+							var cleat := Vector3(minf(0.16, bw * 0.55), 0.035, 0.012) if ends_z else Vector3(0.012, 0.035, minf(0.16, bd * 0.55))
+							k._box(m, cleat, at + o, "wood_dark")
 				else:
 					k._box(m, Vector3(bw + 0.004, 0.008, bd + 0.004), at + Vector3(0, ph * 0.5 - minf(0.05, ph * 0.22), 0), "plain_dark", null, Vector3.ZERO, false)
 					for e: float in [-1.0, 1.0]:

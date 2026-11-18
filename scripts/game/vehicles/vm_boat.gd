@@ -309,7 +309,46 @@ static func _tube(k: VehicleModels, parent: Node3D, pts: Array, r: float, mat: S
 		var a: Vector3 = pts[i]
 		var b: Vector3 = pts[i + 1]
 		var mesh: Mesh = VehicleModels._capsule(r, a.distance_to(b) + r * 2.0) if r >= 0.1 else Res.capsule(r, a.distance_to(b) + r * 2.0, 8)
+		if r >= 0.1 and not k.wreck:
+			# A blown-up tube is round: its section in 24 sides, so its
+			# outline and the light along it don't break into flats, and
+			# no rings down its straight length, where they add nothing (a
+			# wreck's keeps the old one).
+			mesh = _round_tube(r, a.distance_to(b) + r * 2.0)
 		k._add(parent, mesh, mat, col, (a + b) * 0.5, _aim(b - a))
+
+
+static var _round_tubes := {}
+
+
+## A capsule for an inflatable tube's leg, cached by its size.
+static func _round_tube(r: float, h: float) -> CapsuleMesh:
+	var key := "%.2f,%.2f" % [r, h]
+	if not _round_tubes.has(key):
+		var m := CapsuleMesh.new()
+		m.radius = r
+		m.height = h
+		m.radial_segments = 24
+		m.rings = 3
+		_round_tubes[key] = m
+	return _round_tubes[key]
+
+
+## A RIB's jockey seat, `at` the foot of its pedestal on the deck: a moulded
+## pedestal the crew straddle, a saddle cushion crowned in its middle and
+## rolled over its edges, and a raised bolster at its back to brace against
+## when the boat slams through a sea (marine vinyl, the hull's moulding).
+static func _jockey(k: VehicleModels, parent: Node3D, at: Vector3, hc: Color) -> void:
+	var j := k._pivot(parent, at)
+	k._add(j, VehicleModels.solid([_ry(_rr(0.34, 0.5, 0.0, 0.05, 0.05), 0.0), _ry(_rr(0.3, 0.46, 0.0, 0.06, 0.06), 0.49)], "boat_rhib_jockey"), "plain", hc, Vector3.ZERO)
+	var vinyl := Color(0.12, 0.12, 0.12)
+	k._add(j, VehicleProfiles.loft([_ry(_rnd(0.34, 0.58, 0.0, 0.06, 0.08), 0.488), _ry(_rnd(0.36, 0.6, 0.0, 0.08, 0.1), 0.53),
+		_ry(_rnd(0.35, 0.58, 0.0, 0.1, 0.11), 0.585), _ry(_rnd(0.27, 0.5, 0.0, 0.1, 0.1), 0.615)], 50.0), "coated", vinyl, Vector3.ZERO)
+	k._add(j, VehicleProfiles.loft([_ry(_rnd(0.34, 0.16, 0.2, 0.05, 0.06), 0.6), _ry(_rnd(0.34, 0.15, 0.205, 0.06, 0.06), 0.69),
+		_ry(_rnd(0.28, 0.1, 0.215, 0.04, 0.04), 0.73)], 50.0), "coated", vinyl.lightened(0.03), Vector3.ZERO)
+	# the welt round the cushion's edge, catching the light
+	k._add(j, VehicleProfiles.loft([_ry(_rnd(0.365, 0.61, 0.0, 0.085, 0.105), 0.55), _ry(_rnd(0.365, 0.61, 0.0, 0.085, 0.105), 0.562)], 50.0, false), "coated", vinyl.darkened(0.3), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+	k._fold(j)
 
 
 ## Points every `step` metres along a polyline (both ends kept).
@@ -354,7 +393,9 @@ static func _tube_kit(k: VehicleModels, parent: Node3D, ax: Array, r: float, cz:
 	for q in ax:
 		var v: Vector3 = q
 		side.append(Vector3(v.x * s, v.y, v.z))
-	_tube(k, parent, _offset(side, r * 0.92, -r * 0.2, cz), 0.045, mat, col.darkened(0.3))
+	# (the strake is solid black rubber, darker than the coated cloth it's
+	# glued to, so the tube's side reads as two tones)
+	_tube(k, parent, _offset(side, r * 0.92, -r * 0.2, cz), 0.045, mat, col.darkened(0.3 if k.wreck else 0.62))
 	var rs := _resample(side, r * 1.05)
 	var hi := _offset(rs, (r + 0.012) * cos(0.88), (r + 0.012) * sin(0.88), cz)
 	var lo := _offset(rs, (r + 0.012) * cos(0.72), (r + 0.012) * sin(0.72), cz)
@@ -504,7 +545,9 @@ static func _zodiac(k: VehicleModels, team: int) -> void:
 	# soft dull sheen with the weave just showing through, not moulded
 	# plastic (a wreck's keep the old finish).
 	var tm := "plain_dark" if k.wreck else "coated"
-	var tc := Color(0.12, 0.12, 0.125)
+	# (charcoal Hypalon, a shade off black so its black strake and paler seam
+	# tapes show on it)
+	var tc := Color(0.12, 0.12, 0.125) if k.wreck else Color(0.16, 0.165, 0.16)
 	var r := 0.25
 	var zt := 1.95  # the transom
 	# the tube's centreline: straight sides into a round bow that kicks up
@@ -521,9 +564,11 @@ static func _zodiac(k: VehicleModels, team: int) -> void:
 		# the tube ends: cones past the transom
 		k._cyl(m, 0.16, r, 0.3, Vector3(s * 0.7, 0.27, zt + 0.15), Vector3(PI / 2, 0, 0), tm, tc, 16)
 		k._add(m, Res.sphere(0.16, 14), tm, tc, Vector3(s * 0.7, 0.27, zt + 0.3))
-		# compartment seams round the tube
+		# compartment seams round the tube: the glued-on tapes over each
+		# bulkhead, paler where the coating's worn on their edges (a wreck's
+		# as they were)
 		for z in [0.95, -0.35]:
-			k._cyl(m, r + 0.007, r + 0.007, 0.035, Vector3(s * 0.7, 0.27, z), Vector3(PI / 2, 0, 0), tm, tc.darkened(0.35), 16, false)
+			k._cyl(m, r + 0.007, r + 0.007, 0.035, Vector3(s * 0.7, 0.27, z), Vector3(PI / 2, 0, 0), tm, tc.darkened(0.35) if k.wreck else tc.lightened(0.12), 16, false)
 		_tube_kit(k, m, right, r, -0.6, tm, tc, s)
 		# inflation valves on top
 		for z in [1.45, 0.2]:
@@ -847,7 +892,8 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 	var hc := Color(0.36, 0.38, 0.4)
 	# the collar is coated fabric (Hypalon over nylon), as a CRRC's tubes
 	var cm := "plain_dark" if k.wreck else "coated"
-	var cc := Color(0.19, 0.2, 0.21)
+	# (a navy RIB's grey Hypalon, its black strake and paler seam tapes on it)
+	var cc := Color(0.19, 0.2, 0.21) if k.wreck else Color(0.24, 0.25, 0.26)
 	var zt: float = p["z0"]
 	var r := 0.28
 	var all := _hull(p)
@@ -890,7 +936,7 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 		for i in [2, 5, 8]:
 			var a: Vector3 = right[i]
 			var b: Vector3 = right[i + 1]
-			k._cyl(m, r + 0.008, r + 0.008, 0.04, Vector3(s * a.x, a.y, a.z), _aim(Vector3(s * (b.x - a.x), b.y - a.y, b.z - a.z)), cm, cc.darkened(0.35), 16, false)
+			k._cyl(m, r + 0.008, r + 0.008, 0.04, Vector3(s * a.x, a.y, a.z), _aim(Vector3(s * (b.x - a.x), b.y - a.y, b.z - a.z)), cm, cc.darkened(0.35) if k.wreck else cc.lightened(0.12), 16, false)
 	# the centre console under its radar arch
 	var cz := -0.75
 	var dy := _top(_station(p, _u(p, cz)))
@@ -956,9 +1002,12 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 		var sy := _top(_station(p, _u(p, zr)))
 		for s in [-1.0, 1.0]:
 			var x: float = s * 0.38
-			k._box(m, Vector3(0.34, 0.5, 0.5), Vector3(x, sy + 0.24, zr), hm, hc)
-			# (upholstered in marine vinyl, a coated cloth that sheds the spray)
-			VehicleCab.seat(k, m, Vector3(x, sy + 0.55, zr + 0.02), Vector3(0.36, 0.2, 0.6), Vector3.ZERO, Color(0.12, 0.12, 0.12), "rubber" if k.wreck else "coated")
+			if k.wreck:
+				k._box(m, Vector3(0.34, 0.5, 0.5), Vector3(x, sy + 0.24, zr), hm, hc)
+				VehicleCab.seat(k, m, Vector3(x, sy + 0.55, zr + 0.02), Vector3(0.36, 0.2, 0.6), Vector3.ZERO, Color(0.12, 0.12, 0.12), "rubber")
+			else:
+				# (upholstered in marine vinyl, a coated cloth that sheds the spray)
+				_jockey(k, m, Vector3(x, sy - 0.01, zr + 0.02), hc)
 			for dx in [-0.13, 0.13]:
 				_rod(k, m, Vector3(x + dx, sy + 0.58, zr - 0.25), Vector3(x + dx, sy + 0.84, zr - 0.31), 0.015, "steel", STAINLESS)
 			_rod(k, m, Vector3(x - 0.13, sy + 0.84, zr - 0.31), Vector3(x + 0.13, sy + 0.84, zr - 0.31), 0.015, "steel", STAINLESS)
@@ -1387,10 +1436,22 @@ static func _scooter(k: VehicleModels, seed: int) -> void:
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.01, 0.09, 1.0), Vector3(s * 0.283, 0.48, 0.3), "plain", Color(0.33, 0.33, 0.34), Vector3.ZERO, false)
 		# (on the hood's dome section at z = -0.75: half-width 0.495 from 0.464 up 0.441)
-		for i in 2:
-			var a := deg_to_rad(31.0 + i * 9.0)
-			var vp := Vector3(s * 0.495 * pow(cos(a), 2.0 / 2.2), 0.464 + 0.441 * pow(sin(a), 2.0 / 2.2), -0.75)
-			k._box(m, Vector3(0.012, 0.022, 0.16), vp, "plain_dark", Color(0.06, 0.06, 0.06), Vector3(0, 0, s * a), false)
+		if k.wreck:
+			for i in 2:
+				var a := deg_to_rad(31.0 + i * 9.0)
+				var vp := Vector3(s * 0.495 * pow(cos(a), 2.0 / 2.2), 0.464 + 0.441 * pow(sin(a), 2.0 / 2.2), -0.75)
+				k._box(m, Vector3(0.012, 0.022, 0.16), vp, "plain_dark", Color(0.06, 0.06, 0.06), Vector3(0, 0, s * a), false)
+	if not k.wreck:
+		# The engine breathes through a louvred intake moulded into the deck
+		# just ahead of the handlebar pod, its slats across the hull in the
+		# deck's grey trim over a dark recess, where spray can't reach it.
+		# (Two black slits on each shoulder of the hood, under its curve,
+		# read as a pair of eyes over a smile.)
+		# (between the pod's front at z = -0.66 and the storage hatch behind
+		# the bow, where the hood's crown is 0.905-0.91 m up)
+		k._box(m, Vector3(0.26, 0.01, 0.09), Vector3(0, 0.905, -0.715), "plain_dark", Color(0.05, 0.05, 0.05), Vector3(-0.075, 0, 0), false)
+		for i in 3:
+			k._box(m, Vector3(0.24, 0.008, 0.02), Vector3(0, 0.911 - i * 0.002, -0.69 - i * 0.025), "plain_dark", Color(0.24, 0.24, 0.25), Vector3(0.45, 0, 0), false)
 	VehicleFittings.filler(k, m, Vector3(0.2, 0.83, -1.05), 0.035, Basis.from_euler(Vector3(0.3, 0, -0.3)) * Vector3.UP, "plain_dark", dark)
 	# the hood's storage hatch seam
 	k._box(m, Vector3(0.008, 0.01, 0.42), Vector3(0, 0.905, -0.98), "plain_dark", dark, Vector3(0.24, 0, 0), false)

@@ -111,9 +111,24 @@ static func vent(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outl
 	var rim := minf(0.025, minf(bounds.size.x, bounds.size.y) * 0.065)
 	var inset := Geometry2D.offset_polygon(outline, -rim * 1.5)
 	assert(not inset.is_empty())
-	k._add(parent, surface.patch(outline, -0.025, 0.012), "plain_dark", Color(0.025, 0.028, 0.026), Vector3.ZERO)
+	var w := k.wreck
+	# The cavity under a painted panel is the hull's own paint in its own
+	# shadow, a third of the paint's value, not a near-black hole: a black core
+	# read as a black stripe between every louvre from the battle camera. Bare
+	# metal and a car's radiator keep the dark core. (A wreck's stays dark.)
+	var core := Color(0.025, 0.028, 0.026)
+	if not w and VehicleMaterials.profile(material, k.surface_family) in ["armor", "aircraft", "marine", "service"]:
+		var paint: Color = col if col is Color else Mats._preset(VehicleMaterials.key(material, k.surface_family)).get("col_a", Color(0.3, 0.3, 0.28))
+		core = Color(paint.r * 0.3, paint.g * 0.3, paint.b * 0.3)
+	k._add(parent, surface.patch(outline, -0.025, 0.012), "plain_dark", core, Vector3.ZERO)
 	VehicleBody.boundary(k, parent, surface, outline, 0.0, rim * 0.7, true, 0, material, col)
 	var axis := 0 if vertical else 1
+	# Armoured louvres are pressed at a few centimetres' pitch, never a hand's
+	# breadth apart: a caller's few slats over a big deck (four over 1.2 m on a
+	# Strider) read as wide black slots. So a panel in service keeps its slats
+	# 8 cm apart at most, whatever it was given. (A wreck keeps its count.)
+	if not w:
+		count = maxi(count, ceili(bounds.size[axis] / 0.08))
 	var pitch := bounds.size[axis] / maxf(count, 1)
 	# Fine channels remain behind the protective slats, at a separate depth:
 	# strips of sheet seen only face on through the slats, so no edges or backs.
@@ -123,9 +138,38 @@ static func vent(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outl
 	# louvre (which read as zebra stripes on every engine deck). Each wider
 	# louvre is pitched less steeply, so its raised edge stands where the
 	# narrower one's did, under the rim. (A wreck's vent stays as it was.)
-	var w := k.wreck
 	_slats(k, parent, surface, inset[0], bounds, 0, clampi(ceili(bounds.size.x / 0.055), 6, 40), 0.14 if w else 0.22, -0.012, 0.0, "gunmetal", Color(0.14, 0.15, 0.14) if w else Color(0.15, 0.16, 0.15))
-	_slats(k, parent, surface, inset[0], bounds, axis, count, 0.42 if w else 0.64, 0.012, minf(0.012, pitch * 0.15), material, col, 0.25 if w else 0.165)
+	if w:
+		_slats(k, parent, surface, inset[0], bounds, axis, count, 0.42, 0.012, minf(0.012, pitch * 0.15), material, col, 0.25)
+		return
+	# One factory's panel isn't another's: by its size (so every hull of a kind
+	# wears the same one, and two kinds differ) the louvres are pressed wider
+	# or narrower, and the panel is either a plain bank, a bank stiffened across
+	# its middle by a flat bar, or a cover plate bolted down round its rim.
+	var style := posmod(roundi(bounds.size.x * 100.0) + roundi(bounds.size.y * 100.0) * 2 + (1 if vertical else 0), 3)
+	var coverage: float = [0.64, 0.7, 0.6][style]
+	_slats(k, parent, surface, inset[0], bounds, axis, count, coverage, 0.012, minf(0.012, pitch * 0.15), material, col, 0.165)
+	var run := 1 - axis
+	if style == 1 and bounds.size[run] > 0.45:
+		# a flat bar across the louvres' mid-span, standing on their raised edges
+		var mid := bounds.get_center()[run]
+		var half := minf(0.016, bounds.size[run] * 0.03)
+		var bar := PackedVector2Array([Vector2(mid - half, bounds.position.y), Vector2(mid + half, bounds.position.y), Vector2(mid + half, bounds.end.y), Vector2(mid - half, bounds.end.y)]) if run == 0 else PackedVector2Array([Vector2(bounds.position.x, mid - half), Vector2(bounds.end.x, mid - half), Vector2(bounds.end.x, mid + half), Vector2(bounds.position.x, mid + half)])
+		for clipped: PackedVector2Array in Geometry2D.intersect_polygons(inset[0], bar):
+			k._add(parent, surface.patch(clipped, 0.012 + pitch * coverage * 0.165 + 0.004, 0.014), material, col, Vector3.ZERO)
+	elif style == 2:
+		# the cover's bolts along its long sides, in line with the corner
+		# screws the rim already has (VehicleBody.boundary)
+		var center := bounds.get_center()
+		for i in outline.size():
+			var a: Vector2 = outline[i]
+			var b: Vector2 = outline[i + 1] if i + 1 < outline.size() else outline[0]
+			var bolts := floori(a.distance_to(b) / 0.28)
+			for j in range(1, bolts + 1):
+				var q := a.lerp(b, float(j) / (bolts + 1))
+				var distance := surface.point(q).distance_to(surface.point(center))
+				var uv := q.lerp(center, minf(0.2, 0.035 / maxf(distance, 0.001)))
+				VehicleBody.fastener(k, parent, surface.point(uv, 0.002), surface.normal(uv), minf(0.009, distance * 0.06))
 
 ## `slope`: how far each slat rises across its own width (its pitch).
 static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, inset: PackedVector2Array, bounds: Rect2, axis: int, count: int, coverage: float, lift: float, depth: float, material: String, col, slope := 0.25) -> void:
@@ -678,11 +722,19 @@ static func smoke_bank(k: VehicleModels, parent: Node3D, center: Vector3, size: 
 static func periscope(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, rotation := Vector3.ZERO) -> void:
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
-	k._box(mount, size, Vector3.ZERO, "gunmetal_w")
+	# The head is a welded armour box, its edges ground round, so each one
+	# catches a line of light on a dark deck (a wreck's keeps its plain box).
+	if k.wreck:
+		k._box(mount, size, Vector3.ZERO, "gunmetal_w")
+	else:
+		k._add(mount, BevelMesh.make(size, minf(0.008, minf(size.x, minf(size.y, size.z)) * 0.12)), "gunmetal_w", null, Vector3.ZERO)
 	var face := -size.z / 2
 	k._box(mount, Vector3(size.x * 0.86, size.y * 0.72, 0.008), Vector3(0, 0, face - 0.003), "rubber", null, Vector3.ZERO, false)
 	if not k.burnt:
-		k._box(mount, Vector3(size.x * 0.73, size.y * 0.52, 0.006), Vector3(0, 0, face - 0.008), "glass", Color(0.18, 0.30, 0.27), Vector3.ZERO, false)
+		# A vision block is a stack of laminated armour glass, green-black from
+		# the edge, not a pale window: the armoured profile and the blocks'
+		# green (a wreck's keeps the plain glass it had).
+		k._box(mount, Vector3(size.x * 0.73, size.y * 0.52, 0.006), Vector3(0, 0, face - 0.008), "glass" if k.wreck else "armor_glass", Color(0.18, 0.30, 0.27) if k.wreck else VehicleMounts.BLOCK, Vector3.ZERO, false)
 	# The overhanging lip shields the glass without becoming another window.
 	k._box(mount, Vector3(size.x * 1.04, size.y * 0.12, size.z * 0.65), Vector3(0, size.y * 0.48, face * 0.6), "gunmetal_w", null, Vector3.ZERO, false)
 	for side: float in [-1.0, 1.0]:

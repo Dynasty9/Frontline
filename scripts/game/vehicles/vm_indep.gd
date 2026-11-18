@@ -631,6 +631,11 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 	# an air-recognition panel, folded, on the turret roof behind the
 	# commander's cupola, clear of the wind sensor's mast
 	VehicleEquipment.recognition_panel(k, t, Vector3(0.55, 0.862, 1.0), Vector3.ZERO, true)
+	# the crew's kit on the bare plate: aft of the remote station on the
+	# left, and ahead of the loader's hatch beside the sight, clear of the
+	# roof's seams
+	VmCore.roof_kit(k, t, Vector3(-0.75, 0.862, 1.4), PI / 2, Vector2(0.5, 0.7), 0, Color(0.33, 0.35, 0.24))
+	VmCore.roof_kit(k, t, Vector3(-0.7, 0.862, -1.35), PI / 2, Vector2(0.5, 0.8), 1, Color(0.33, 0.35, 0.24))
 	# the bustle's stowage basket, the slat cage round it on its struts
 	VehicleMounts.basket(k, t, Vector3(0, 0.24, 2.3), Vector3(2.6, 0.44, 0.5))
 	VehicleCloth.roll(k, t, Vector3(-0.4, 0.44, 2.3), 0.17, 1.6, Z90, Color(0.33, 0.35, 0.24))
@@ -807,6 +812,10 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 		# mud flaps behind the first and last axles
 		for z: float in [-1.6, 3.0]:
 			VehicleFittings.mudflap(k, m, Vector3(s * 1.1, 0.98, z), Vector2(0.36, 0.3))
+	# the lower side plates down between the wheels, under the upper hull's
+	# overhang, an arch over each wheel
+	VmCore.wheel_wells(k, m, "indep_gorg_wells", 1.315, 1.35, 0.74, 1.21, -3.5, 3.5, axles, wr, wr + 0.12, 0.86, cam, col)
+	for s: float in [-1.0, 1.0]:
 		# the hull's side: a chine strake at mid height, stowage boxes aft,
 		# the side's lifting eyes
 		k._box(m, Vector3(0.05, 0.06, 7.2), Vector3(s * 1.345, 1.84, 0.0), cam, col)
@@ -893,8 +902,10 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleFittings.hatch(k, t, Vector3(0.35, 0.61, 0.5), 0.28, cam, col, 1.0, 0.06)
 	VehicleFittings.panel_hatch(k, t, Vector3(-0.35, 0.6, 0.45), Vector3(0.5, 0.05, 0.5), cam, col)
 	_antenna(k, t, Vector3(-0.6, 0.58, 0.8), 1.9)
-	# a stowage basket on the turret's back
+	# a stowage basket on the turret's back, a bag in its left half and the
+	# crew's kit in the right (half a basket of bare wire read as empty)
 	VehicleMounts.basket(k, t, Vector3(0, 0.2, 1.2), Vector3(1.4, 0.3, 0.4))
+	VmCore.roof_kit(k, t, Vector3(0.38, 0.215, 1.2), PI / 2, Vector2(0.34, 0.6), 0, Color(0.33, 0.35, 0.24))
 	k._bag(t, Vector3(0.7, 0.24, 0.3), Vector3(-0.3, 0.34, 1.2), "canvas", Color(0.36, 0.36, 0.26))
 
 
@@ -1004,7 +1015,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	var rng := VehicleCargo.kit(k, m, net_at, 17)
 	var camo := VehicleCloth.camouflage(k)
 	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
-		VehicleCloth.net(k, m, net_at, Vector3(0.78, rng.randf_range(0.1, 0.17), 0.72), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
+		VehicleCloth.roof_net(k, m, net_at, Vector3(0.78, rng.randf_range(0.1, 0.17), 0.72), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
 	else:
 		# or, in its place, an air-recognition panel folded on the roof
 		VehicleEquipment.recognition_panel(k, m, Vector3(-0.42, 2.765, -1.3), Vector3.ZERO, true)

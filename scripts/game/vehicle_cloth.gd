@@ -202,6 +202,8 @@ static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array
 ## The faded issue shade a tilt's roof goes after a few summers in the sun:
 ## paler and greyer than the sides, which the roof shades.
 const SUN_FADED := Color(0.60, 0.58, 0.50)
+## How much more or less than the rest each roof width has faded, bay by bay.
+const ROOF_FADES: Array[float] = [0.0, 0.06, -0.04, 0.035, -0.055, 0.05]
 static var _tilts := {}
 
 
@@ -243,7 +245,10 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 		var width := int(part[2])
 		if width != 1 and (rolled & (1 if width == 0 else 2)) != 0:
 			continue
-		var c := roof if width == 1 else side
+		# (each roof width sewn from its own bolt and bleached its own amount,
+		# so from above the bays don't read as one lid)
+		# (posmod, not %: models are built on worker threads)
+		var c := col.lerp(SUN_FADED, 0.26 + ROOF_FADES[posmod(int(part[1]) + variant * 2, ROOF_FADES.size())]) if width == 1 else side
 		if Vector2i(int(part[1]), width) == patch:
 			c = patch_col
 		k._add(parent, part[0], "canvas_white", c, Vector3.ZERO)
@@ -288,12 +293,9 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 			# rests, so a band's middle sits a little below the roll's axis.
 			for f: float in [-0.12, 0.12]:
 				k._add(parent, VehicleEquipment._cylinder(1.0, 1.0, 0.04, 10, false, false), "webbing", col.darkened(0.35), at + Vector3(0, -r * (1.0 - ROLL_TOP) * 0.5, f * (z1 - z0)), Vector3(PI / 2, 0, 0), Vector3(r * 1.02, 1.0, r * (1.0 + ROLL_TOP) * 0.5 * 1.02), false)
-	# the hems sewn round the cover's front and back edges, over the end bows
-	for z: float in [float(bows[0]), float(bows[bows.size() - 1])]:
-		for i in profile.size() - 1:
-			var a: Vector2 = profile[i]
-			var b: Vector2 = profile[i + 1]
-			VehicleEquipment._rod(k, parent, Vector3(a.x, a.y, z), Vector3(b.x, b.y, z), 0.009, "canvas_white", col.darkened(0.16), 6, false, 3)
+	# the doubled hems bound round the cover's front and back edges, over the
+	# end bows, and the chafing strips over the bows between them
+	k._add(parent, built[5], "canvas_white", roof.darkened(0.25), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 
 
 ## A tilt's back flap let half down from its rear bow at `z`: the cloth hangs
@@ -539,6 +541,15 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 							norms.append(shade[i])
 							uvs.append(Vector2((grid[i].z - z0) / maxf(z1 - z0, 0.001), (arc[along[corner]] - a0) / maxf(a1 - a0, 0.001)))
 			parts.append([_arrays_mesh(verts, norms, uvs), bay, width])
+	# Where each side curtain meets the roof (a rolled curtain is strapped
+	# up there).
+	var first_roof := -1
+	var last_roof := -1
+	for q in cols - 1:
+		if absf(face[seg[q]].y) >= 0.5:
+			if first_roof < 0:
+				first_roof = q
+			last_roof = q + 1
 	# The bound hem along each side's foot and the cord laced from eye to
 	# hook: down to a hook on the bed 7 cm under the hem halfway between two
 	# eyes, and up to the next.
@@ -554,6 +565,27 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 		for r in rows:
 			line.append(grid[r * cols + q] + out * 0.004 + Vector3(0, 0.012, 0))
 		_cord(line, 0.011, 4, hem_v, hem_n)
+		# The seam where the curtain is sewn to the roof, bound over the eave
+		# in a doubled band 6 cm wide that road grime and the rain's run-off
+		# darken, so from above the roof's edge reads as a line (it goes with
+		# its curtain: a rolled curtain's eave is under its roll).
+		var eq := first_roof if q == 0 else last_roof
+		if eq > 0 and eq < cols - 1:
+			var lo := PackedVector3Array()
+			var mid := PackedVector3Array()
+			var hi := PackedVector3Array()
+			var ns := PackedVector3Array()
+			for r in rows:
+				var c := grid[r * cols + eq]
+				var a := grid[r * cols + eq - 1]
+				var b := grid[r * cols + eq + 1]
+				var n := shade[r * cols + eq]
+				lo.append(c.lerp(a, minf(0.5, 0.03 / maxf(c.distance_to(a), 0.001))) + n * 0.004)
+				mid.append(c + n * 0.005)
+				hi.append(c.lerp(b, minf(0.5, 0.03 / maxf(c.distance_to(b), 0.001))) + n * 0.004)
+				ns.append(n)
+			_strip(lo, mid, ns, hem_v, hem_n)
+			_strip(mid, hi, ns, hem_v, hem_n)
 		var lace := PackedVector3Array()
 		for bay in bows.size() - 1:
 			var z0: float = bows[bay]
@@ -569,19 +601,11 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 		_cord(lace, 0.006, 3, cord_v, cord_n)
 		hems.append(_arrays_mesh(hem_v, hem_n, PackedVector2Array()))
 		cords.append(_arrays_mesh(cord_v, cord_n, PackedVector2Array()))
-	# Where each side curtain meets the roof (a rolled curtain is strapped
-	# up there), and the cover's inside: the section 8 cm in (deeper than the
+	# The eaves, and the cover's inside: the section 8 cm in (deeper than the
 	# cloth sags between its bows, so no edge of it shows past the eaves from
 	# outside), facing in, one mesh for each width.
 	var eaves: Array[Vector3] = []
 	var liners: Array[ArrayMesh] = []
-	var first_roof := -1
-	var last_roof := -1
-	for q in cols - 1:
-		if absf(face[seg[q]].y) >= 0.5:
-			if first_roof < 0:
-				first_roof = q
-			last_roof = q + 1
 	for q: int in [maxi(first_roof, 0), maxi(last_roof, 0)]:
 		eaves.append(Vector3(points[q].x, points[q].y, normals[q].x))
 	for width in 3:
@@ -611,7 +635,39 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 					verts.append(p)
 					norms.append(inward)
 		liners.append(_arrays_mesh(verts, norms, PackedVector2Array()))
-	var result := [parts, hems, cords, eaves, liners]
+	# The cover's two ends bound in a doubled hem 3 cm deep over the end bows
+	# (seen from behind it's the edge of a cover, not of a sheet of paper),
+	# and a chafing strip 5 cm wide sewn over every bow between them across
+	# the roof, where the cloth wears on the bow: grime works into the doubled
+	# cloth, so from the battle camera the strips rule the roof off bay by bay.
+	var trim_v := PackedVector3Array()
+	var trim_n := PackedVector3Array()
+	for r: int in [0, rows - 1]:
+		var line := PackedVector3Array()
+		var inward := 0.008 if r == 0 else -0.008
+		for q in cols:
+			line.append(grid[r * cols + q] + Vector3(0, 0, inward))
+		_cord(line, 0.018, 4, trim_v, trim_n)
+	if first_roof >= 0:
+		for r in range(1, rows - 1):
+			if us[r] != 0.0:
+				continue
+			var ta := minf(0.5, 0.025 / maxf(zs[r] - zs[r - 1], 0.001))
+			var tb := minf(0.5, 0.025 / maxf(zs[r + 1] - zs[r], 0.001))
+			var la := PackedVector3Array()
+			var lm := PackedVector3Array()
+			var lb := PackedVector3Array()
+			var ns := PackedVector3Array()
+			for q in range(first_roof, last_roof + 1):
+				var c := grid[r * cols + q]
+				var n := shade[r * cols + q]
+				la.append(c.lerp(grid[(r - 1) * cols + q], ta) + n * 0.004)
+				lm.append(c + n * 0.005)
+				lb.append(c.lerp(grid[(r + 1) * cols + q], tb) + n * 0.004)
+				ns.append(n)
+			_strip(la, lm, ns, trim_v, trim_n)
+			_strip(lm, lb, ns, trim_v, trim_n)
+	var result := [parts, hems, cords, eaves, liners, _arrays_mesh(trim_v, trim_n, PackedVector2Array())]
 	_tilts[key] = result
 	return result
 
@@ -636,6 +692,21 @@ static func _cord(points: PackedVector3Array, radius: float, sides: int, verts: 
 				for c: int in order:
 					verts.append(tri[c])
 					norms.append(tri[c + 3])
+
+
+## A band laid on the cloth between two lines of as many points, `normals`
+## (one a point of `a`, shared by `b`'s) its outward face.
+static func _strip(a: PackedVector3Array, b: PackedVector3Array, normals: PackedVector3Array, verts: PackedVector3Array, norms: PackedVector3Array) -> void:
+	for i in a.size() - 1:
+		var quad: Array[Vector3] = [a[i], a[i + 1], b[i + 1], b[i]]
+		var qn: Array[Vector3] = [normals[i], normals[i + 1], normals[i + 1], normals[i]]
+		for tri: Array in [[0, 1, 2], [0, 2, 3]]:
+			var order: Array[int] = [tri[0], tri[1], tri[2]]
+			if (quad[order[0]] - quad[order[2]]).cross(quad[order[0]] - quad[order[1]]).dot(qn[order[0]]) < 0.0:
+				order = [order[0], order[2], order[1]]
+			for c: int in order:
+				verts.append(quad[c])
+				norms.append(qn[c])
 
 
 static func _arrays_mesh(verts: PackedVector3Array, norms: PackedVector3Array, uvs: PackedVector2Array) -> ArrayMesh:
@@ -1180,6 +1251,47 @@ static func net(k: VehicleModels, parent: Node3D, foot: Vector3, size: Vector3, 
 		var shade := rng.randf_range(-0.07, 0.07)
 		var c: Color = cols[i].lightened(shade) if shade > 0.0 else cols[i].darkened(-shade)
 		k._add(mount, meshes[i], "canvas", c, Vector3.ZERO, Vector3.ZERO, scale, i == 0)
+	k._fold(mount)
+
+
+## A camouflage net stowed on a cab roof as a crew carries it between halts:
+## folded and rolled into a bundle along the longer side of `size`'s
+## footprint (x by z), its middle on the roof at `foot` and turned by
+## `rotation`, strapped twice, the garnish tufting out of both ends in the
+## net's pale and dark scrim; or, one time in three, `net`'s heap where it was
+## thrown down. A roll reads as kit from the battle camera, where a heap the
+## size of a door mat reads as litter. Stays within the footprint and 26 cm
+## over the roof.
+static func roof_net(k: VehicleModels, parent: Node3D, foot: Vector3, size: Vector3, rotation: Vector3, rng: RandomNumberGenerator) -> void:
+	if k.wreck or rng.randf() < 0.34:
+		net(k, parent, foot, size, rotation, rng)
+		return
+	var cols := _net_colours(k)
+	var long := maxf(size.x, size.z)
+	var r := clampf(minf(size.x, size.z) * 0.18, 0.09, 0.13)
+	var length := long - 0.18
+	var mount := k._pivot(parent, foot)
+	mount.basis = Basis.from_euler(rotation) * (Basis.IDENTITY if size.x >= size.z else Basis(Vector3.UP, PI / 2))
+	var shade := rng.randf_range(-0.06, 0.06)
+	var body: Color = cols[0].lightened(shade) if shade > 0.0 else cols[0].darkened(-shade)
+	var lie := k._pivot(mount, Vector3(0, r, 0))
+	lie.rotation = Vector3(0, 0, PI / 2)
+	_roll(k, lie, r, length, body, "canvas", Vector2(-0.3, 0.3))
+	# The scrim's leaves spill out of the roll's ends, as they would out of a
+	# rolled garnished net, tucked in only half way.
+	var tuft := Vector3(0.15, maxf(0.04, snappedf(r * 1.4, 0.02)), maxf(0.15, snappedf(r * 2.0, 0.05)))
+	var variant := rng.randi_range(0, 2)
+	var meshes := _net_meshes(tuft, variant)
+	for e: float in [-1.0, 1.0]:
+		for i: int in [1, 2]:
+			k._add(mount, meshes[i], "canvas", cols[i], Vector3(e * (length * 0.5 + 0.02), 0, 0), Vector3(0, PI if e < 0.0 else 0.0, 0), Vector3.ONE, false)
+	# and the garnish caught in the outer lap stands out of it all along, so
+	# from above it's a net, not a bedroll: the scrim of a heap the roll's
+	# size, its leaves round the roll's top
+	var along := Vector3(maxf(0.15, snappedf(length, 0.05)), maxf(0.04, snappedf(r * 2.0 + 0.04, 0.02)), maxf(0.15, snappedf(r * 2.3, 0.05)))
+	var lap := _net_meshes(along, variant)
+	for i: int in [1, 2]:
+		k._add(mount, lap[i], "canvas", cols[i], Vector3.ZERO, Vector3.ZERO, Vector3(length / along.x, 1.0, 1.0), false)
 	k._fold(mount)
 
 

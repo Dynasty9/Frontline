@@ -206,7 +206,10 @@ static func sensor(k: VehicleModels, parent: Node3D, center: Vector3, size: Vect
 		# in a box head (a ball curves away behind it).
 		_cyl(k, mount, radius * 1.25, radius * 1.25, radius * 0.35, at, Vector3(PI / 2, 0, 0), "rubber", null, 12, false, 1 if style != "ball" else 3)
 		if not k.burnt:
-			_cyl(k, mount, radius, radius, radius * 0.08, at + Vector3(0, 0, -radius * 0.2), Vector3(PI / 2, 0, 0), "glass", Color(0.13, 0.20, 0.23), 12, false, 1)
+			# An optic's window is coated armour glass, its amber-violet coating
+			# dark from any angle (VehicleMounts.OPTIC), not a pale blue window (a
+			# wreck's keeps the plain glass it had).
+			_cyl(k, mount, radius, radius, radius * 0.08, at + Vector3(0, 0, -radius * 0.2), Vector3(PI / 2, 0, 0), "glass" if k.wreck else "armor_glass", Color(0.13, 0.20, 0.23) if k.wreck else VehicleMounts.OPTIC, 12, false, 1)
 		var rim := VehicleFittings._ring(radius, radius * 1.2)
 		k._add(mount, rim, "metal_dark", null, at + Vector3(0, 0, -radius * 0.28), Vector3(PI / 2, 0, 0), Vector3(1, 0.45, 1))
 	for side: float in [-1.0, 1.0]:
@@ -840,16 +843,24 @@ static func bed_cover(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 		var h := PackedFloat32Array()
 		for j in nz:
 			# the cover dips between the bows and is held up on them; it lies
-			# flat on the side rails, so the sag fades out toward them
+			# flat on the side rails, so the sag fades out toward them. (Two
+			# centimetres and more at mid-span, as vinyl a few summers old
+			# hangs: at one and a half it lay dead flat from the battle
+			# camera, a black mat over the bed; each bow now stands as a
+			# ridge with the slack falling away from it, held up a little on
+			# the bed's centreline where it rests on the bow's crown.)
 			var f := fmod(float(j), 4.0) / 4.0
 			for i in nx:
 				var u := -1.0 + 2.0 * i / float(nx - 1)
-				var sag := 0.014 * sin(PI * f) * (1.0 - pow(absf(u), 3.0))
-				h.append(0.006 - sag)
+				var sag := 0.026 * pow(sin(PI * f), 0.8) * (1.0 - pow(absf(u), 2.4))
+				h.append(0.008 - sag)
 		_sheets[key] = _sheet(size, nx, nz, h, 0.035)
 	var m := k._pivot(parent, center)
 	k._add(m, _sheets[key], mat, col, Vector3.ZERO)
-	# the snap rail's aluminium edge showing under the flap's hem along each side
+	# The rail's anodised aluminium edge, clamped along the top of each bed
+	# side over the cover's edge: a bright line from cab to tailgate that
+	# frames the cover from above (under the hem, as it was, nothing of it
+	# showed, and the cover read as a mat laid edge to edge).
 	for s: float in [-1.0, 1.0]:
-		k._add(m, _plate(Vector3(0.012, 0.012, size.y * 0.96)), "steel", Color(0.55, 0.56, 0.55), Vector3(s * (size.x * 0.5 - 0.004), -0.041, 0), Vector3.ZERO, Vector3.ONE, false)
+		k._add(m, _plate(Vector3(0.016, 0.016, size.y * 0.98)), "steel", Color(0.6, 0.61, 0.6), Vector3(s * (size.x * 0.5 - 0.007), 0.014, 0), Vector3.ZERO, Vector3.ONE, false)
 	k._fold(m)

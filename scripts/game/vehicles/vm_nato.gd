@@ -801,6 +801,9 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 	for s in [-1.0, 1.0]:
 		for z in [-2.55, -1.05, 0.8, 2.3]:
 			k._box(m, Vector3(0.5, 0.03, 1.3), Vector3(s * 1.12, 1.245, z), "gunmetal_w", null, Vector3.ZERO, false)
+	# the lower side plates down between the wheels, an arch over each (the
+	# AMV's paired wheels leave only a narrow web between their arches)
+	VmCore.wheel_wells(k, m, "nato_amv_wells", 1.315, 1.395, 0.8, 1.27, -3.3, 2.99, [-2.55, -1.05, 0.8, 2.3], wr, wr + 0.12, 0.84, cam)
 	# glacis: the trim vane folded flat, the driver's hatch and periscopes,
 	# the engine deck grilles on the right, lights and tow eyes on the nose
 	var ga := Vector2(-3.72, 1.56)
@@ -889,6 +892,9 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 	# hatches, smoke dischargers, bustle stowage, antenna
 	VehicleFittings.hatch(k, t, Vector3(-0.42, 0.69, 0.6), 0.3, cam, null, 1.0, 0.06)
 	k._box(t, Vector3(0.12, 0.08, 0.2), Vector3(-0.2, 0.74, 0.6), "gunmetal_w")
+	# the crew's kit on the roof's bare front right, ahead of the commander's
+	# sight mast (the hull's roof is all hatches and the turret's sweep)
+	VmCore.roof_kit(k, t, Vector3(0.4, 0.74, -0.2), 0.0, Vector2(0.45, 0.5), 0, BAG)
 	for s in [-1.0, 1.0]:
 		_smoke(k, t, Vector3(s * 0.92, 0.5, -0.55), s, 4, s * -0.55)
 		k._box(t, Vector3(0.06, 0.3, 0.9), Vector3(s * 1.0, 0.36, 0.55), cam, null, Vector3(0, 0, s * 0.18))
@@ -931,6 +937,9 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	for s in [-1.0, 1.0]:
 		for z in [-2.45, -0.95, 1.05, 2.5]:
 			k._box(m, Vector3(0.52, 0.03, 1.3), Vector3(s * 1.12, 1.195, z), "gunmetal_w", null, Vector3.ZERO, false)
+	# the lower side plates between the wheels, an arch over each, from the
+	# foot of the arrowhead nose back to the tail block
+	VmCore.wheel_wells(k, m, "nato_rk_wells", 1.335, 1.415, 0.8, 1.22, -2.78, 3.09, [-2.45, -0.95, 1.05, 2.5], wr, wr + 0.12, 0.86, cam)
 	# the driver's hatch centred at the top of the glacis, his periscopes,
 	# lights in guards on the nose, tow eyes
 	VehicleFittings.hatch(k, m, Vector3(0, roof + 0.03, -1.9), 0.28, cam, null, 1.0, 0.06)
@@ -1012,6 +1021,11 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	k._bag(t, Vector3(0.8, 0.36, 0.38), Vector3(0.45, 0.47, 2.5), "canvas", BAG, Vector3(0, -0.1, 0))
 	# the crosswind sensor on its mast
 	VehicleMounts.mast_segment(k, t, Vector3(0.1, 1.0, 1.9), 0.45, 0.018)
+	# the crew's kit on the bustle's roof behind the cupola, and behind the
+	# loader's hatch where the urban package doesn't put its remote .50
+	VmCore.roof_kit(k, t, Vector3(0.55, 0.8, 1.55), PI / 2, Vector2(0.45, 0.6), 0, BAG)
+	if not up:
+		VmCore.roof_kit(k, t, Vector3(-0.5, 0.8, 1.5), PI / 2, Vector2(0.45, 0.6), 1, BAG)
 	k._box(t, Vector3(0.14, 0.05, 0.05), Vector3(0.1, 1.24, 1.9), "gunmetal_w", null, Vector3.ZERO, false)
 	# a small sensor head on each front corner of the roof, its window forward
 	for s in [-1.0, 1.0]:
@@ -1324,6 +1338,10 @@ static func _slammer(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	# an air-recognition panel folded on the bustle's roof, right of the
 	# remote station and behind the commander's cupola
 	VehicleEquipment.recognition_panel(k, k.turret, Vector3(0.66, 0.802, 1.75), Vector3.ZERO, true)
+	# the crew's kit on the bustle's roof, either side of the wind sensor's
+	# mast and ahead of the antennas
+	VmCore.roof_kit(k, k.turret, Vector3(-0.55, 0.8, 2.4), PI / 2, Vector2(0.4, 0.7), 0, BAG)
+	VmCore.roof_kit(k, k.turret, Vector3(0.55, 0.8, 2.4), PI / 2, Vector2(0.4, 0.7), 1, BAG)
 
 
 ## M4 Scorcher: the Merkava IV hull under a tall boxy M109A7-style turret set
@@ -1577,6 +1595,9 @@ static func _panther(k: VehicleModels, team: int, seed := 0) -> void:
 	# an air-recognition panel folded on the roof between the remote station
 	# and the troop hatches, clear of the cupola
 	VehicleEquipment.recognition_panel(k, k.root, Vector3(-0.2, 2.322, 0.8), Vector3.ZERO, true)
+	# the crew's kit across the roof between the troop hatches and the
+	# stowage basket, inboard of the walkways
+	VmCore.roof_kit(k, k.root, Vector3(0, 2.32, 2.25), PI / 2, Vector2(0.4, 1.3), 0, BAG)
 
 
 ## CRV-6e Bobcat: the Namer as an engineering / recovery vehicle: a dozer
@@ -1811,7 +1832,7 @@ static func _hemtt_cab_detail(k: VehicleModels, paint: Color) -> void:
 	var net := Vector3(-0.55, 2.905, -3.58)
 	var rng := VehicleCargo.kit(k, m, net, 17)
 	if rng != null and VehicleCloth.camouflage(k) > 0.0 and rng.randf() < 0.5:
-		VehicleCloth.net(k, m, net, Vector3(1.0, 0.2, 0.7), Vector3.ZERO, rng)
+		VehicleCloth.roof_net(k, m, net, Vector3(1.0, 0.2, 0.7), Vector3.ZERO, rng)
 	else:
 		# or, in its place, an air-recognition panel folded beside the hatch
 		VehicleEquipment.recognition_panel(k, m, Vector3(-0.5, 2.905, -3.62), Vector3.ZERO, true)

@@ -312,6 +312,19 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 		_sec(2.98, 0.88, 0.98, 1.0, 1.03, 1.22, 1.5, 0.8, 2.5),
 		_sec(3.16, 0.84, 1.02, 0.96, 1.06, 1.15, 1.5, 0.75, 2.44)]
 	k._add(m, _hull(body, "csat_ifr_body", 0.035), c, null, Vector3.ZERO)
+	# The body is welded from flat plate, and the welds along its creases are
+	# what make its facets read as plate from any distance: the belt line
+	# where the upper plates start leaning in (on the body ahead of and
+	# behind the doors, which carry their own part of it), the roof's long
+	# edges and the foot of the windscreen. Each bead lies in its crease's
+	# chamfer, half sunk, so it catches the light as a ground weld does (a
+	# wreck's body stays as it was).
+	if not k.wreck:
+		for s: float in [-1.0, 1.0]:
+			_weld(k, m, [Vector3(s * 0.926, 1.28, -3.06), Vector3(s * 1.206, 1.5, -1.3), Vector3(s * 1.206, 1.5, -0.43)])
+			_weld(k, m, [Vector3(s * 1.206, 1.5, 1.89), Vector3(s * 1.206, 1.5, 2.98), Vector3(s * 1.137, 1.5, 3.15)])
+			_weld(k, m, [Vector3(s * 0.789, 2.484, -0.43), Vector3(s * 0.789, 2.484, 2.98), Vector3(s * 0.74, 2.425, 3.15)])
+		_weld(k, m, [Vector3(-0.9, 1.742, -1.296), Vector3(0.9, 1.742, -1.296)])
 	# the lower nose (grille and bumper) and the tail below the rear door
 	k._add(m, _block("csat_ifr_nose", [-0.78, -3.04, 0.78, -3.04, 0.78, -2.45, -0.78, -2.45], [-0.84, -3.19, 0.84, -3.19, 0.84, -2.42, -0.84, -2.42], 0.55, 1.03, 0.03), c, null, Vector3.ZERO)
 	k._add(m, _block("csat_ifr_tail", [-0.86, 2.5, 0.86, 2.5, 0.86, 3.05, -0.86, 3.05], [-1.0, 2.45, 1.0, 2.45, 1.0, 3.15, -1.0, 3.15], 0.6, 1.03, 0.03), c, null, Vector3.ZERO)
@@ -424,6 +437,9 @@ static func _ifrit_side(k: VehicleModels, m: Node3D, s: float, c: String) -> voi
 	# on the lower plate and one on the leaning upper one: a knuckle on the
 	# gap and its strap welded back along the door (plain blocks, since the
 	# roster can't afford a hinge's every knuckle and bolt eight times over).
+	# An armoured door weighs a few hundred kilograms, so its hinges are big:
+	# knuckles 7 cm thick and a hand and a half long, standing well proud of
+	# the plate, where 4 cm ones vanished into the camouflage at any range.
 	var lower_n := Vector3(s * 0.906, -0.424, 0)
 	var upper_n := Vector3(s * 0.922, 0.387, 0)
 	for hz: float in [-0.4, 0.72]:
@@ -431,20 +447,31 @@ static func _ifrit_side(k: VehicleModels, m: Node3D, s: float, c: String) -> voi
 			var at: Vector3 = hinge[0]
 			var n: Vector3 = hinge[1]
 			var axis: Vector3 = hinge[2]
-			VehicleFrames.tube(k, m, at + n * 0.014 - axis * 0.06, at + n * 0.014 + axis * 0.06, 0.02, c, null, 6, false)
-			k._box(m, Vector3(0.016, 0.085, 0.12), at + n * 0.008 + Vector3(0, 0, 0.06), c, null, Vector3(0, 0, atan2(n.y, n.x)), false)
+			VehicleFrames.tube(k, m, at + n * 0.024 - axis * 0.09, at + n * 0.024 + axis * 0.09, 0.035, c, null, 6, false)
+			k._box(m, Vector3(0.022, 0.12, 0.16), at + n * 0.011 + Vector3(0, 0, 0.08), c, null, Vector3(0, 0, atan2(n.y, n.x)), false)
 	# a stowage bin on the rear quarter, hung on the leaning plate behind the
-	# doors: a welded box, its lid's shut line under the top and two latches
+	# doors: a welded box, its lid's shut line under the top and two latches.
+	# A crew's bin holds tools, chains and a jack, so it's deep (34 cm), and
+	# from above it breaks the long plain flank behind the doors.
 	var bin_rot := Vector3(0, 0, s * 0.3977)
 	var bin_up := Vector3(s * -0.387, 0.922, 0)
-	var bin := Vector3(s * 1.144, 1.939, 2.43)
-	k._add(m, BevelMesh.make(Vector3(0.2, 0.42, 0.8), 0.018), c, null, bin, bin_rot)
-	k._box(m, Vector3(0.204, 0.01, 0.804), bin + bin_up * 0.13, "rubber", null, bin_rot, false)
+	var bin := Vector3(s * 1.144, 1.939, 2.43) + upper_n * 0.07
+	k._add(m, BevelMesh.make(Vector3(0.34, 0.42, 0.8), 0.022), c, null, bin, bin_rot)
+	k._box(m, Vector3(0.344, 0.01, 0.804), bin + bin_up * 0.13, "rubber", null, bin_rot, false)
 	for lz: float in [-0.25, 0.25]:
-		k._box(m, Vector3(0.02, 0.06, 0.05), bin + upper_n * 0.1 + bin_up * 0.1 + Vector3(0, 0, lz), "metal_dark", null, bin_rot, false)
+		k._box(m, Vector3(0.02, 0.06, 0.05), bin + upper_n * 0.17 + bin_up * 0.1 + Vector3(0, 0, lz), "metal_dark", null, bin_rot, false)
 	# a grab rail along the roof's edge over the crew, for climbing up to the hatches
 	# (its feet sunk in the roof, its bends gentle enough to need no joint balls)
 	VehicleFrames.path(k, m, [Vector3(s * 0.68, 2.49, -0.22), Vector3(s * 0.68, 2.575, -0.1), Vector3(s * 0.68, 2.575, 0.85), Vector3(s * 0.68, 2.49, 0.97)], 0.016, c, null, 6, false, 0)
+
+
+## A weld bead along `points` riding a crease of the Ifrit's body (see
+## _ifrit): 1.6 cm round, casting no shadow, in a dark sandy brown. A bead
+## left in the camouflage's own pattern vanished into it; the field-applied
+## paint over a weld's ripples weathers darker than the flat plate round it
+## (dirt keeps in them), so each crease reads as a line from range.
+static func _weld(k: VehicleModels, p: Node3D, points: Array, r := 0.016) -> void:
+	VehicleBody.bead(k, p, points, r, "paint", Color(0.27, 0.25, 0.19), 6, false)
 
 
 # --- Qilin: ST Kinetics LSV Mk II --------------------------------------------------
@@ -714,6 +741,10 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 		for wz in [-2.0, -0.2, 1.6]:
 			k._wheel(m, Vector3(s * 1.15, 0.6, wz), 0.6, 0.46)
 		VehicleFittings.mudflap(k, m, Vector3(s * 1.15, 0.5, 2.3), Vector2(0.44, 0.4))
+	# the lower side plates down from the belt line between the wheels, an
+	# arch over each: the hull's underside leans in over the tyres, so the
+	# plate carries the side's line down and each wheel turns in its well
+	VmCore.wheel_wells(k, m, "csat_marid_wells", 1.39, 1.44, 0.8, 1.4, -2.8, 3.25, [-2.0, -0.2, 1.6], 0.6, 0.72, 0.9, c)
 	# the crease's side: vision blocks and firing ports along the troop
 	# compartment, stowage boxes, the exhaust
 	var su := Vector3(-0.3, 0.78, 0)
@@ -1470,16 +1501,16 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 	_roof_net(k, m, Vector3(-0.6, 3.12, -3.1), Vector2(0.58, 0.68))
 
 
-## A camouflage net thrown in a heap on a roof at `foot` (`size` its x and z
-## reach), turned a little as it landed, by a crew that camouflages its
-## vehicle (VehicleCloth.camouflage: always if heavily, often if a little,
-## never on scenery or a wreck), so neighbouring trucks and carriers differ
-## from above.
+## A camouflage net stowed on a roof at `foot` (`size` its x and z reach),
+## rolled and strapped or thrown in a heap, turned a little, by a crew that
+## camouflages its vehicle (VehicleCloth.camouflage: always if heavily, often
+## if a little, never on scenery or a wreck), so neighbouring trucks and
+## carriers differ from above.
 static func _roof_net(k: VehicleModels, p: Node3D, foot: Vector3, size: Vector2) -> void:
 	var rng := VehicleCargo.kit(k, p, foot, 17)
 	var camo := VehicleCloth.camouflage(k)
 	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
-		VehicleCloth.net(k, p, foot, Vector3(size.x, rng.randf_range(0.1, 0.17), size.y), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
+		VehicleCloth.roof_net(k, p, foot, Vector3(size.x, rng.randf_range(0.1, 0.17), size.y), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
 
 
 ## Tempest: the Typhoon-K with its mission module. `kind`: "" (troops under a
