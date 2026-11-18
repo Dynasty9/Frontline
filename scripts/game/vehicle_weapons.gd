@@ -161,10 +161,11 @@ static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	var m := _aimed(k, parent, receiver, muzzle)
 	var s := size
 	var length := receiver.distance_to(muzzle)
-	VehicleMounts.receiver(k, m, Vector3(0.16, 0.19, 0.62) * s, Vector3.ZERO, mat)
-	k._add(m, BevelMesh.make(Vector3(0.17, 0.035, 0.42) * s, 0.008 * s), mat, null, Vector3(0, 0.11, -0.02) * s)
+	# (the side plates stand 13.5 cm apart: the receiver is deep, not broad)
+	VehicleMounts.receiver(k, m, Vector3(0.135, 0.19, 0.62) * s, Vector3.ZERO, mat)
+	k._add(m, BevelMesh.make(Vector3(0.145, 0.035, 0.42) * s, 0.008 * s), mat, null, Vector3(0, 0.11, -0.02) * s)
 	k._box(m, Vector3(0.02, 0.05, 0.03) * s, Vector3(0, 0.15, 0.18) * s, mat, null, Vector3.ZERO, false)
-	k._box(m, Vector3(0.15, 0.16, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
+	k._box(m, Vector3(0.13, 0.16, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
 	if grips:
 		# The spade grips: each a loop off the back plate like a spade's handle,
 		# an arm out at its top and its foot and the grip between them,
@@ -188,12 +189,12 @@ static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	_z(k, m, jacket_end + 0.035 * s, jacket_end, 0.05 * s, 0.05 * s, mat, null, 12, false)
 	k._box(m, Vector3(0.008, 0.035, 0.012) * s, Vector3(0, 0.066 * s, jacket_end + 0.018 * s), mat, null, Vector3.ZERO, false)
 	# the trunnion block under the receiver's front, its pin across
-	k._box(m, Vector3(0.13, 0.05, 0.09) * s, Vector3(0, -0.11, -0.24) * s, mat)
-	VehicleBody.rod(k, m, Vector3(-0.07, -0.115, -0.24) * s, Vector3(0.07, -0.115, -0.24) * s, 0.011 * s, "steel", null, 6, false)
+	k._box(m, Vector3(0.11, 0.05, 0.09) * s, Vector3(0, -0.11, -0.24) * s, mat)
+	VehicleBody.rod(k, m, Vector3(-0.06, -0.115, -0.24) * s, Vector3(0.06, -0.115, -0.24) * s, 0.011 * s, "steel", null, 6, false)
 	# the side plates' rivets, two rows a side
 	for side: float in [-1.0, 1.0]:
 		for y: float in [0.055, -0.055]:
-			_rivets(k, m, Vector3(side * 0.081, y, -0.24) * s, Vector3(side * 0.081, y, 0.2) * s, Vector3(side, 0, 0), 5, 0.006 * s, mat)
+			_rivets(k, m, Vector3(side * 0.0685, y, -0.24) * s, Vector3(side * 0.0685, y, 0.2) * s, Vector3(side, 0, 0), 5, 0.006 * s, mat)
 	# the quick-change barrel's carrying handle, out ahead of the support
 	VehicleDoors.pull(k, m, Vector3(0, 0.028 * s, jacket_end - 0.12 * s), Vector3.UP, Vector3.FORWARD, 0.12 * s, 0.008 * s, mat)
 	_z(k, m, jacket_end, -length + 0.12 * s, 0.028 * s, 0.026 * s, mat, null, 8, true, Vector2.ZERO, false, false)
@@ -204,16 +205,18 @@ static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	_bore(k, m, -length, 0.014 * s)
 	if can != 0.0:
 		var side := signf(can)
-		var can_at := Vector3(side * 0.18, -0.07, 0.08) * s
+		var can_at := Vector3(side * 0.155, -0.07, 0.08) * s
 		var can_size := Vector3(0.12, 0.19, 0.29) * s
 		VehicleFittings.ammo_can(k, m, can_at, can_col, Vector3.ZERO, can_size, true)
 		# The belt rises out of the can into the feed tray under the cover.
-		_belt(k, m, can_at, can_size, Vector3(side * 0.084, 0.072, 0.03) * s, 0.011 * s, 0.138 * s)
+		_belt(k, m, can_at, can_size, Vector3(side * 0.071, 0.072, 0.03) * s, 0.011 * s, 0.138 * s)
 	# The feed cover's latch at its front, the bolt's retracting handle on
 	# the right of the receiver.
 	k._box(m, Vector3(0.05, 0.02, 0.025) * s, Vector3(0, 0.13, -0.24) * s, "metal_dark", null, Vector3.ZERO, false)
-	VehicleBody.rod(k, m, Vector3(0.085, 0.0, 0.08) * s, Vector3(0.13, 0.0, 0.08) * s, 0.008 * s, "steel", null, 6, false)
-	VehicleBody.cylinder(k, m, 0.016 * s, 0.016 * s, 0.03 * s, Vector3(0.135, 0.0, 0.08) * s, Vector3(0, 0, PI / 2), "rubber", null, 6, false)
+	VehicleBody.rod(k, m, Vector3(0.0725, 0.0, 0.08) * s, Vector3(0.115, 0.0, 0.08) * s, 0.008 * s, "steel", null, 6, false)
+	VehicleBody.cylinder(k, m, 0.016 * s, 0.016 * s, 0.03 * s, Vector3(0.12, 0.0, 0.08) * s, Vector3(0, 0, PI / 2), "rubber", null, 6, false)
+	# the slot along the right side plate the handle's stud runs back in
+	k._box(m, Vector3(0.004, 0.014, 0.3) * s, Vector3(0.0685, 0.0, -0.02) * s, "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
 	# a crew-served gun is held by its spade grips
 	k._gun(m, muzzle, [Vector3(0.075, 0.03, 0.4) * s, Vector3(-0.075, 0.03, 0.4) * s] if grips else [])
 	return muzzle

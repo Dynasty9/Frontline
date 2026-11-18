@@ -1525,8 +1525,8 @@ static func _humvee(k: VehicleModels, team: int, seed := 0) -> void:
 	_tube(k, cr, Vector3(0, -0.05, 0.24), Vector3(0, -0.09, 0.25), 0.007, "steel", null, 6, false)
 	_tube(k, cr, Vector3(-0.03, -0.09, 0.25), Vector3(0.03, -0.09, 0.25), 0.007, "steel", null, 6, false)
 	# the can's tray, bolted out from the cradle's left cheek
-	k._add(cr, BevelMesh.make(Vector3(0.16, 0.012, 0.32), 0.003), VehicleWeapons.STEEL, null, rx + Vector3(-0.19, -0.172, 0.08))
-	VehicleFrames.beam(k, cr, Vector3(-0.1, -0.03, 0.05), rx + Vector3(-0.15, -0.168, 0.06), 0.03, 0.012, VehicleWeapons.STEEL)
+	k._add(cr, BevelMesh.make(Vector3(0.16, 0.012, 0.32), 0.003), VehicleWeapons.STEEL, null, rx + Vector3(-0.165, -0.172, 0.08))
+	VehicleFrames.beam(k, cr, Vector3(-0.1, -0.03, 0.05), rx + Vector3(-0.125, -0.168, 0.06), 0.03, 0.012, VehicleWeapons.STEEL)
 	var tip_local := VehicleWeapons.hmg(k, cr, rx, rx + Vector3(0, 0, -1.5), 1.0, -1.0, true, "gunmetal_w", OD)
 	k.gun_assembly(cr, tip_local, [rx + Vector3(0.075, 0.03, 0.4), rx + Vector3(-0.075, 0.03, 0.4)])
 	k.mg_tip = k._tip(t, cradle + tip_local)
