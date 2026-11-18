@@ -257,6 +257,28 @@ negative inset so the frame stands proud of the face and glaze it fully (`glazin
 would show the block behind. Door leaves that swing are built in their own hinge kit (`BuildingKit.nodes(pivot)`);
 `BuildingOpenings.leaf` runs the leaf out along `toward` from the hinge line.
 
+## Headquarters
+
+A side's HQ (Structure `depot`) is drawn by `BuildingDepot.compound` where its three solid parts stand:
+- **Two 20-foot containers** (`BuildingDepot.container`, an ISO 1C box 6.06 by 2.44 by 2.59 m) on sleepers either side
+  of a yard. Each has corrugated walls between the frame's corner posts and rails, a casting at each corner, forklift
+  pockets, and doors with four locking bars and their number plate. One is fitted out as the signals office: a
+  window with its shutter, an air conditioner, a cable run and aerials on the roof, steps to the door. A regular
+  army's are olive, tan or grey (`ARMY`), a militia's rust, faded blue, teal or a grey-white off the docks
+  (`COMMERCIAL`).
+- **The command post** (`BuildingDepot.command_post`): precast panels under a slab, two courses of sandbags round
+  its roof, vision slits with steel shutters, the steel door behind a sandbagged blast wall, a guyed mast on the
+  roof. Sandbags are `BuildingDepot.sandbags`, laid in courses of Structure's filled-sack mesh with the joints
+  broken.
+- **The yard:** the generator (`BuildingDepot.generator`), a camouflage net on guyed poles (`BuildingDepot.net`,
+  its own node, since netting doesn't bake), crated stores on pallets, fuel drums and jerrycans, a map table with
+  the set, the flag on its pole.
+- **The front:** a line of posts and chain, a striped barrier and a sign at the gate (`BuildingDepot.boom`).
+
+The parts stay as they were, so the HQ plays the same; its model is baked. Render both sides' with
+`--building-kinds=depot:0,depot:1` in the studio stage (add `--building-rear` for the other side), and the
+near side's in the map with the `hq` view of `--capture-set=town`.
+
 ## Who uses what
 
 | Component | Users |
@@ -271,8 +293,8 @@ would show the block behind. Door leaves that swing are built in their own hinge
 | `BuildingFittings` rainwater goods | Every pitched and flat house roof, the barracks, the boat shed |
 | `BuildingFittings.chimney`, `flue`, `stack`, `pipe` | House chimneys; barracks stove, bunker vent, factory cowls, generator exhaust; factory chimney and pipe runs |
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
-| `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
-| `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB, research post and HQ command post masts; FOB, bunker and HQ signals aerials; town dump, barracks, HQ, Coalition dock flagpoles; bridge and quay lamps |
+| `BuildingFittings.drum`, `crate`, `pallet` | FOB, HQ yard, town dumps, barracks, barricades, ammunition caches, the dock |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the

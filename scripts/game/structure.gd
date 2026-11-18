@@ -2917,7 +2917,7 @@ func _mk(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, 
 ## their models that end up merged straight into the merged meshes (see
 ## Mats.Bake), with the surfaces _skin would have given them. The rest are made
 ## as nodes as ever: the door leaves (they swing), anything glassy or glowing.
-const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof"]
+const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof", "depot"]
 var _bake: Mats.Bake = null
 
 
@@ -2988,6 +2988,8 @@ func _build_model() -> void:
 			col = Res.vary(col, 0.05, rng)
 		if skind == "rubble":
 			continue  # (drawn as a heap, below)
+		if skind == "depot":
+			continue  # (its containers and command post stand where its parts are, below)
 		if skind == "house_wall":
 			# (what it was tinted, for stains to fade into: see _tone)
 			var drawn := Res.mat(col).albedo_color
@@ -3286,10 +3288,12 @@ func _build_model() -> void:
 			BuildingFittings.flue(rk, Vector3(size.x * 0.5 + 1.4, 1.0, 1.7), 0.05, 0.45)
 			_flag = _box(Vector3(-1.75, 6.9, -2.2), Vector3(0.8, 0.5, 0.04), tc)
 		"depot":
-			for i in 6:
-				Res.mi(model, Res.cyl(0.08, 0.08, 1.6, 6), Res.mat(C_WOOD), Vector3(-9 + i * 3.6, 0.8, -6))
-			Res.mi(model, Res.cyl(0.06, 0.06, 9.0, 6), Res.mat(Color(0.7, 0.7, 0.7)), Vector3(0, 4.5, 0))
-			_flag = _box(Vector3(0.9, 8.4, 0), Vector3(1.8, 1.0, 0.05), tc)
+			# a side's headquarters: two containers either side of a yard under a
+			# net, the command post at the back of it, a barrier at the gate
+			# (BuildingDepot; they stand where its parts are)
+			var hoist := BuildingDepot.compound(_kit(rng), size if size.z > 5.0 else Vector3(17, 3, 11), team, tc, rng)
+			BuildingDepot.net(model, team)
+			_flag = _box(hoist + Vector3(0.72, -0.42, 0), Vector3(1.4, 0.84, 0.04), tc)
 			_add_label(display_name(), 10.0)
 		"sandbags":
 			WorksModels.apron(model, size.x * 0.5 + 0.25, 0.75)

@@ -327,6 +327,14 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A side's HQ stands its containers and command post where its parts are,
+	# within its compound (the posts along its front, the mast and the flag
+	# above, the net's guy pegs driven into the ground), for either side.
+	for side in 2:
+		var hq := Structure.preview_model("depot", side, 0)
+		var hqb := _bounds(hq, Transform3D.IDENTITY)
+		check(hq.get_child_count() > 0 and hqb.size.x <= 18.5 and hqb.size.z <= 13.5 and hqb.position.y >= -0.15 and hqb.end.y < 12.0, "a side's HQ keeps to its compound (%d: %s)" % [side, hqb])
+		hq.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:
