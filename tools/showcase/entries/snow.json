@@ -371,7 +371,7 @@
     },
     "natural_snow_pass": {
       "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window; Compatibility (--rendering-method gl_compatibility) checked for the street, roof and drift views, no script or shader errors",
-      "code": "164c3b7b (the follow-up ac5830f6 only drops the swapped powder patches' normal-map read, for its GPU cost)",
+      "code": "the final head of the overnight pass (town, drifts and tank from ca8efe2f; street and roof from the next commit, which only ribs ordinary roofs' snow)",
       "before": "the same views from today's code with this pass's snow commit reversed (scratch copy), for the PR's before/after sheet",
       "town": "--fixed-fps 30 -- --aivai --seed=3 --mood=snow --nohud --focus=0,0 --focus-struct=town --zoom=220 --pitch=-22 --shot-at=40",
       "street": "--fixed-fps 30 -- --aivai --seed=3 --mood=snow --nohud --focus=0,0 --focus-struct=town --zoom=44 --pitch=-40 --shot-at=40",
@@ -384,19 +384,19 @@
   "sources": [
     {
       "file": "changelog/unreleased/snow/town-in-snow.jpg",
-      "sha256": "7f009a3c6b97c9e5557500aa566445c74296b534e3a40583b88d70f957d9534a"
+      "sha256": "462f4c4588b8deb675446e78a8e9da9151d0e4781c892a211247806f6b9efbed"
     },
     {
       "file": "changelog/unreleased/snow/roofs-in-snow.jpg",
-      "sha256": "118dcee63390f2a73c0e34272212f6487cd5860974d5ea806633fbc01f920bba"
+      "sha256": "55e7d49d0ec36e4833b3d23fa98fbf8604a7193cf95aece6dd83bbd3569fd799"
     },
     {
       "file": "changelog/unreleased/snow/street-in-snow.jpg",
-      "sha256": "5bd923a197b1b426587d40de50a6d9d21951d3f824d9ee02afe38895d08cb72f"
+      "sha256": "ebc029102cab191eefd0a11ea693bd036ab8a322bd027e66bd15e185bfdcc95f"
     },
     {
       "file": "changelog/unreleased/snow/tank-in-snow.jpg",
-      "sha256": "9723eeb727a0f0e330ce6ae4ffe4450c37b0d4beecc025ce261ac9f94c79e155"
+      "sha256": "9f6b1f6d5f7ddae96f9c42f8f2ca1fa6f8de64d6f69623931922a9df9414309c"
     },
     {
       "file": "changelog/unreleased/snow/melt-in-snow.jpg",
@@ -404,7 +404,7 @@
     },
     {
       "file": "changelog/unreleased/snow/drifts-in-snow.jpg",
-      "sha256": "84c19eaf72fcb3c6612d1fb7130cc03fbeba39d28914d19b603c7eb99210d330"
+      "sha256": "f87c060b29b53934f6af03992f668be1dd1aa1f4d0cc43c74c7d5ec799b0deef"
     },
     {
       "file": "changelog/unreleased/snow/comparison.jpg",

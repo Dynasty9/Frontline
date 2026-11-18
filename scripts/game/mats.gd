@@ -2442,10 +2442,11 @@ void fragment() {
 		// (Fires.WIND: drifts run with it)
 		vec2 along = vec2(0.924, 0.382);
 		float pitch_cos = gn.y;
+		float windward = 0.0;
 		if (!vehicle_surface) {
 			// A slope that faces the wind is scoured and the one in its lee is
 			// loaded; the one facing the sun thins first.
-			float windward = -dot(gn.xz, along);
+			windward = -dot(gn.xz, along);
 			carry *= (1.0 - clamp(windward * 1.0, 0.0, 0.3)) * (1.0 + clamp(-windward * 0.8, 0.0, 0.25));
 			vec3 to_sun = vec3(0.415, 0.559, 0.718);  // (the "snow" mood's sun, as SnowLie's)
 			carry *= 1.0 - clamp(dot(gn.xz, normalize(to_sun.xz)) * 0.5, 0.0, 0.18);
@@ -2471,8 +2472,9 @@ void fragment() {
 			? (drift - 0.5) * 3.8 + (0.5 - h) * 0.6 + (depth - 0.68) * 2.4
 			: (drift - 0.5) * 1.5 + (0.5 - h) * 1.8 + (depth - 0.72) * 2.6;
 		lying -= (1.0 - face) * 1.2;
-		// (a roof under a full fall is covered but for the odd thin place)
-		if (snow_k.y < 0.0) { lying += 0.2; }
+		// (a roof under a full fall is covered, but for thin places on the slope
+		// the wind strikes, where the tile edges just show)
+		if (snow_k.y < 0.0) { lying += mix(0.22, 0.02, clamp(windward * 2.5, 0.0, 1.0)); }
 		// (a crisp edge on a hull: snow lies or it doesn't; on anything standing
 		// it thins over a few centimetres, the tiles or stones faintly through)
 		float settled = (vehicle_surface ? smoothstep(0.0, 0.07, lying) : smoothstep(-0.14, 0.1, lying)) * face;
@@ -2539,6 +2541,11 @@ void fragment() {
 			ALBEDO = mix(ALBEDO, vec3(dot(ALBEDO, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.92, 0.72), snow_cover * 0.65);
 		}
 		vec3 snow = vec3(0.8, 0.83, 0.88) * (0.93 + 0.07 * drift);
+		// (on a roof it follows the courses beneath it in faint ribs, and lies
+		// wind-packed and a shade greyer on the slope facing the wind)
+		if (snow_k.y < 0.0) {
+			snow *= mix(0.9, 1.03, smoothstep(0.2, 0.8, h)) * (1.0 - clamp(windward * 2.5, 0.0, 1.0) * 0.07);
+		}
 		// (packed down and trodden grey, the prints in it)
 		snow = mix(snow, vec3(0.36, 0.37, 0.39) * (0.85 + 0.3 * tnoise(wpos.xz * 2.7)), trodden);
 		snow = mix(snow, vec3(0.42, 0.44, 0.47), slushed * 0.8);

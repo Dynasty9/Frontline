@@ -9,11 +9,11 @@ caption = "A town in falling snow. The snow lies unevenly with the land: the ris
 
 [[screenshots]]
 file = "street-in-snow.jpg"
-caption = "The town square: streets ploughed with low banks along the kerbs and black slush in the wheel lines, the paving trodden grey, dead grass showing through the thin snow on the open lot, and a warm house thawing round its chimney."
+caption = "The town square: streets ploughed with low banks along the kerbs and black slush in the wheel lines, the square trodden grey along the ways people take, dead grass showing through the thin snow on the open lot, and a warm house thawing round its chimney through slush to wet tile."
 
 [[screenshots]]
 file = "roofs-in-snow.jpg"
-caption = "A warm house's roof: the snow curls over the eaves in a rounded lip with icicles under it, and has thawed in wet patches with grey slush round them. The wall stays bare."
+caption = "A house's roof under a full fall: the snow follows the tile courses in faint ribs and curls over the eaves in a rounded lip. The wall stays bare."
 
 [[screenshots]]
 file = "tank-in-snow.jpg"
