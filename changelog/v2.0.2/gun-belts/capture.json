@@ -1,0 +1,12 @@
+{
+  "stage": "mounted-guns",
+  "fixture": "tests/fixtures/mounted-gun-clips.tscn",
+  "before_ref": "origin/main b054bb01",
+  "after_ref": "this branch (origin/main b054bb01 with the belt changes)",
+  "engine": "Godot 4.7.2.stable, Forward+, 1280x720, --fixed-fps 30, showroom battlefield seed 712, High preset, day",
+  "commands": [
+    "godot --position -10000,-10000 --fixed-fps 30 --audio-driver Dummy --resolution 1280x720 --path . res://tests/fixtures/mounted-gun-clips.tscn -- --clip=mounted-guns-stills --label=BEFORE|AFTER --kinds=technical,offroad_hmg,mb4wd_lmg --frames=DIR"
+  ],
+  "comparison": "stills technical-c, offroad_hmg-c, mb4wd_lmg-c (each gun's receiver close to); before left, after right, 800x450 each, 1600x1350 JPEG q84",
+  "review": "every vehicle with a laid gun rendered the same way (mounted-guns-stills over the roster, in batches) to check each can and belt, the Humvee's O-GPK, the T-55's and the battle tank's roof guns among them"
+}

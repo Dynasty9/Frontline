@@ -43,6 +43,11 @@ const DIRT := {
 	"aircraft": {"grime": 0.0, "mud": 0.0, "splash": 0.0, "mud_col": Color(0.3, 0.25, 0.19), "dust_col": Color(0.55, 0.49, 0.39)},
 }
 
+## How high (metres) a family's hull is wet above the water it floats on (the
+## surface shader's surface_wet): a boat's topsides are dark and glossy for a
+## hand or two above the slop alongside. Land vehicles and aircraft never are.
+const WET := {"marine": 0.32}
+
 ## Burnt-out wrecks by family (the surface shader's char finish): the colour
 ## the bare metal goes once the paint has burned off it, the pale ash and heat
 ## scale where it burned hottest, and how high (metres) the fire only scorched
@@ -149,6 +154,9 @@ static func preset(material_key: String) -> Dictionary:
 	p["surface_splash"] = dirt.splash
 	p["surface_mud_col"] = dirt.mud_col
 	p["surface_dust_col"] = dirt.dust_col
+	if WET.has(vehicle_family) and finish != "burnt":
+		p["surface_wet"] = WET[vehicle_family]
+		p["surface_sea"] = WaterMap.LEVEL
 	if finish == "burnt":
 		var burnt: Dictionary = CHAR.get(vehicle_family, CHAR.armor)
 		p["surface_char_rust"] = burnt.rust

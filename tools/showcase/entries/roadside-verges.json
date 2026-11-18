@@ -1,0 +1,449 @@
+{
+  "entry": "changelog/unreleased/roadside-verges.md",
+  "summary": "Distinct scanned gravel and earth tracks, weathered bridge paving, clean deck joins, driveway joints and dusty town entrances.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=road-types",
+  "rationale": "Full-width 1600-pixel before/after frames replace the small four-panel sheet; separate views distinguish gravel, supply tracks, bridges and town paving. The 2.67 MB gallery preserves detail requested for review.",
+  "source_ref": "43809d406bcbf80b3946ae2a769a86efc592f058 + working tree",
+  "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+  "sources": [
+    {
+      "file": "changelog/unreleased/roadside-verges/bridge.jpg",
+      "sha256": "2ef8c935a4540aaa44189e0e337ad30340177ae97f93602067012ad3364d5028"
+    },
+    {
+      "file": "changelog/unreleased/roadside-verges/comparison.jpg",
+      "sha256": "ba1cf98871ea56937cb1269d1a860b8f0367b9bb6b520cf51445204daae90e53"
+    },
+    {
+      "file": "changelog/unreleased/roadside-verges/gravel.jpg",
+      "sha256": "bc6a8f95d7dc028492966f47c5a75c2ed5bb7a1f0bb8df6eae6ad483d24c1619"
+    },
+    {
+      "file": "changelog/unreleased/roadside-verges/supply-track.jpg",
+      "sha256": "bf584cce57f4c5a27bf079dbd538d0ddc0d7b4320f91eba395ff74991a9ad632"
+    },
+    {
+      "file": "changelog/unreleased/roadside-verges/town-entrance.jpg",
+      "sha256": "98cefa743ac939b9ba917a3dbe31d92e8671f037ec3b8099aaf92b015f1e9b78"
+    }
+  ],
+  "output": null,
+  "capture": {
+    "command": "godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=roads --capture-prefix=<scratch>/before-or-after",
+    "before": {
+      "mood": "day",
+      "renderer": "forward_plus",
+      "resolution": "(1600, 900)",
+      "seed": 3,
+      "views": [
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/before-shoulder.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -38.0,
+          "time": 2.03333333333334,
+          "yaw": 0.7,
+          "zoom": 20.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/before-route.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -42.0,
+          "time": 2.03333333333334,
+          "yaw": 0.7,
+          "zoom": 65.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/before-town.png",
+          "focus": "(-55.0, 0.0, -4.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -55.0,
+          "time": 2.03333333333334,
+          "yaw": 0.7,
+          "zoom": 15.0
+        }
+      ]
+    },
+    "after": {
+      "mood": "day",
+      "renderer": "forward_plus",
+      "resolution": "(1600, 900)",
+      "seed": 3,
+      "views": [
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/camber-shoulder.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -38.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 20.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/camber-surface.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -32.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 8.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/camber-route.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -42.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 65.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/camber-town.png",
+          "focus": "(-55.0, 0.0, -4.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -55.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 15.0
+        }
+      ]
+    },
+    "compatibility": {
+      "mood": "day",
+      "renderer": "gl_compatibility",
+      "resolution": "(1600, 900)",
+      "seed": 3,
+      "views": [
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/rework-compat-shoulder.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -38.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 20.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/rework-compat-surface.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -32.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 8.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/rework-compat-route.png",
+          "focus": "(3.0, 0.0, 257.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -42.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 65.0
+        },
+        {
+          "cloud_quality": 3,
+          "file": "C:/Users/dines/.codex/tmp/road-review/rework-compat-town.png",
+          "focus": "(-55.0, 0.0, -4.0)",
+          "frame_ms": 0.0,
+          "gpu_ms": 0.0,
+          "mood": "day",
+          "pitch": -55.0,
+          "time": 2.0,
+          "yaw": 0.7,
+          "zoom": 15.0
+        }
+      ]
+    },
+    "road_types": {
+      "before_ref": "43809d406bcbf80b3946ae2a769a86efc592f058",
+      "command": "godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=road-types --capture-prefix=<scratch>/types-before-or-final",
+      "before": {
+        "mood": "day",
+        "renderer": "forward_plus",
+        "resolution": "(1600, 900)",
+        "seed": 3,
+        "views": [
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-before-gravel.png",
+            "focus": "(3.0, 0.0, 257.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -55.0,
+            "time": 2.0,
+            "yaw": -0.8,
+            "zoom": 12.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-before-asphalt.png",
+            "focus": "(-55.0, 0.0, -4.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -65.0,
+            "time": 2.0,
+            "yaw": 0.2,
+            "zoom": 13.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-before-transition.png",
+            "focus": "(-64.0, 0.0, 0.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -60.0,
+            "time": 2.0,
+            "yaw": 0.2,
+            "zoom": 28.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-before-track.png",
+            "focus": "(-1.25, 0.0, 487.0627)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -60.0,
+            "time": 2.0,
+            "yaw": 0.2,
+            "zoom": 14.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-before-driveway.png",
+            "focus": "(-15.6, 0.0, -12.21657)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -65.0,
+            "time": 2.0,
+            "yaw": 6.68318530717959,
+            "zoom": 12.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-before-bridge.png",
+            "focus": "(-252.1718, 0.0, -11.53939)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -50.0,
+            "time": 2.0,
+            "yaw": 0.7,
+            "zoom": 45.0
+          }
+        ]
+      },
+      "after": {
+        "mood": "day",
+        "renderer": "forward_plus",
+        "resolution": "(1600, 900)",
+        "seed": 3,
+        "views": [
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-final-gravel.png",
+            "focus": "(3.0, 0.0, 257.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -55.0,
+            "time": 2.06666666666667,
+            "yaw": -0.8,
+            "zoom": 12.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-final-asphalt.png",
+            "focus": "(-55.0, 0.0, -4.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -65.0,
+            "time": 2.06666666666667,
+            "yaw": 0.2,
+            "zoom": 13.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-final-transition.png",
+            "focus": "(-64.0, 0.0, 0.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -60.0,
+            "time": 2.06666666666667,
+            "yaw": 0.2,
+            "zoom": 28.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-final-track.png",
+            "focus": "(-1.25, 0.0, 487.0627)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -60.0,
+            "time": 2.06666666666667,
+            "yaw": 0.2,
+            "zoom": 14.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-final-driveway.png",
+            "focus": "(-15.6, 0.0, -12.21657)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -65.0,
+            "time": 2.06666666666667,
+            "yaw": 6.68318530717959,
+            "zoom": 12.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-final-bridge.png",
+            "focus": "(-252.1718, 0.0, -11.53939)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "day",
+            "pitch": -50.0,
+            "time": 2.06666666666667,
+            "yaw": 0.7,
+            "zoom": 45.0
+          }
+        ]
+      },
+      "compatibility_rain": {
+        "mood": "rain",
+        "renderer": "gl_compatibility",
+        "resolution": "(1600, 900)",
+        "seed": 3,
+        "views": [
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-wet-final-gravel.png",
+            "focus": "(3.0, 0.0, 257.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "rain",
+            "pitch": -55.0,
+            "time": 2.0,
+            "yaw": -0.8,
+            "zoom": 12.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-wet-final-asphalt.png",
+            "focus": "(-55.0, 0.0, -4.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "rain",
+            "pitch": -65.0,
+            "time": 2.0,
+            "yaw": 0.2,
+            "zoom": 13.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-wet-final-transition.png",
+            "focus": "(-64.0, 0.0, 0.0)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "rain",
+            "pitch": -60.0,
+            "time": 2.0,
+            "yaw": 0.2,
+            "zoom": 28.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-wet-final-track.png",
+            "focus": "(-1.25, 0.0, 487.0627)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "rain",
+            "pitch": -60.0,
+            "time": 2.0,
+            "yaw": 0.2,
+            "zoom": 14.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-wet-final-driveway.png",
+            "focus": "(-15.6, 0.0, -12.21657)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "rain",
+            "pitch": -65.0,
+            "time": 2.0,
+            "yaw": 6.68318530717959,
+            "zoom": 12.0
+          },
+          {
+            "cloud_quality": 3,
+            "file": "C:/Users/dines/.codex/tmp/road-review/types-wet-final-bridge.png",
+            "focus": "(-252.1718, 0.0, -11.53939)",
+            "frame_ms": 0.0,
+            "gpu_ms": 0.0,
+            "mood": "rain",
+            "pitch": -50.0,
+            "time": 2.0,
+            "yaw": 0.7,
+            "zoom": 45.0
+          }
+        ]
+      },
+      "compatibility_command": "godot --rendering-method gl_compatibility --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=rain --focus=0,0 --capture-set=road-types --capture-prefix=<scratch>/types-before-or-final"
+    }
+  },
+  "validation": [
+    "ROAD_UPDATES passed (exit 0): road rasterization, geometry, deck boundary, junction/building/water clearance and deterministic roadside dressing.",
+    "Headless import and attack seed 3 for 60 seconds completed with exit 0 and no script errors.",
+    "Final Forward+ day captures reviewed at 1600x900 for gravel, asphalt, town entrance, supply track, driveway and bridge.",
+    "Final Compatibility rain captures reviewed for all six road views after removing duplicate paving wetness; no script or shader errors. Existing unsupported SSR and exit ObjectDB leak warnings remain.",
+    "Six CC0 source texture checksums verified in the initial pass; no additional textures added for the road-type revision.",
+    "Original gravel comparison retains the original baseline and first-pass final captures; the new track and bridge comparisons use revision 43809d4 as their baseline.",
+    "No isolated FPS benchmark, browser export, low-end hardware check or final-revision multiplayer run."
+  ],
+  "materials": [
+    "https://polyhaven.com/a/gravel_road",
+    "https://polyhaven.com/a/gravel_floor_02"
+  ]
+}

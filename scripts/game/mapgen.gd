@@ -156,6 +156,7 @@ func generate() -> void:
 		_alpine_scatter(tg.decor, area)
 		var dumps := world.rules.town_list.filter(func(t: Structure) -> bool: return t.variant == 1)
 		tg.military_fences(r.depots, dumps)
+	tg._road_verges()
 	_spawn_late()
 	world.set_decor(tg.decor, tg.rect)
 
