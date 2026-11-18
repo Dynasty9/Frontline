@@ -235,50 +235,90 @@ static func foliage_cards(conifer: bool) -> ArrayMesh:
 
 ## Single leaves cut from the broadleaf photo (assets/foliage/broadleaf.png,
 ## 273 by 512): their rectangles in pixels, the leaf's length along x.
-const SINGLE_LEAVES := [Rect2(153, 279, 114, 60), Rect2(157, 392, 91, 53), Rect2(36, 427, 85, 51)]
+const SINGLE_LEAVES := [Rect2(153, 279, 114, 60), Rect2(157, 392, 91, 53), Rect2(36, 427, 85, 51), Rect2(144, 121, 101, 93)]
+## How many different arrangements of leaves each shell has: a plant draws one
+## at random and turns it, so no two neighbours are leaf for leaf alike.
+const LEAF_VARIANTS := 4
 
 
 ## A ball of single leaves about the origin (radius 1): `cards` of them, each
-## `size` long, facing out and tilted every way a little, none underneath
-## (where it sits on the ground). Scaled, it's the shorn skin of a box ball,
-## the leafy skin of a shrub, a head of flowers (Mats.leaf_cards_tinted).
-static func leaf_ball(cards: int, size: float) -> ArrayMesh:
-	var key := "leaf_ball_%d_%.3f" % [cards, size]
+## about `size` long (some smaller, some larger), facing out and tilted every
+## way a little, none below `from_y` (of its radius: under where it sits on
+## the ground; 0.25 or so keeps only its top, a shrub's lighter new growth).
+## `variant` (0 to LEAF_VARIANTS - 1) picks the arrangement. Scaled, it's the
+## shorn skin of a box ball, the leafy skin of a shrub, a head of flowers
+## (Mats.leaf_cards_tinted).
+static func leaf_ball(cards: int, size: float, variant := 0, from_y := -0.95) -> ArrayMesh:
+	var key := "leaf_ball_%d_%.3f_%d_%.2f" % [cards, size, posmod(variant, LEAF_VARIANTS), from_y]
 	if _meshes.has(key):
 		return _meshes[key]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 4241 + cards
+	rng.seed = 4241 + cards + 7919 * posmod(variant, LEAF_VARIANTS)
+	var turn := rng.randf() * TAU
 	for i in cards:
 		var y := 1.0 - 2.0 * (i + 0.5) / cards
 		if y < -0.95:
 			break
 		var rad := sqrt(1.0 - y * y)
-		var out := Vector3(cos(i * 2.399963) * rad, y, sin(i * 2.399963) * rad)
+		var out := Vector3(cos(i * 2.399963 + turn) * rad, y, sin(i * 2.399963 + turn) * rad)
 		var facing := (out + Vector3(rng.randf_range(-0.45, 0.45), rng.randf_range(-0.15, 0.45), rng.randf_range(-0.45, 0.45))).normalized()
-		_leaf(st, out * rng.randf_range(0.9, 1.02), facing, rng.randf() * TAU, size, rng.randi() % SINGLE_LEAVES.size())
+		var at := out * rng.randf_range(0.88, 1.03)
+		var spin := rng.randf() * TAU
+		var grow := size * rng.randf_range(0.72, 1.28)
+		var which := rng.randi() % SINGLE_LEAVES.size()
+		if y < from_y:
+			continue
+		_leaf(st, at, facing, spin, grow, which)
 	_meshes[key] = _commit_leaves(st)
 	return _meshes[key]
 
 
 ## A square of single leaves (x and y from -0.5 to 0.5) facing +z, tilted a
-## little every way: scaled, a clipped hedge's face or top, a strip of
-## bedding flowers.
-static func leaf_patch(cards: int, size: float) -> ArrayMesh:
-	var key := "leaf_patch_%d_%.3f" % [cards, size]
+## little every way: scaled, a strip of bedding flowers or a mat of ivy.
+static func leaf_patch(cards: int, size: float, variant := 0) -> ArrayMesh:
+	var key := "leaf_patch_%d_%.3f_%d" % [cards, size, posmod(variant, LEAF_VARIANTS)]
 	if _meshes.has(key):
 		return _meshes[key]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 5843 + cards
+	rng.seed = 5843 + cards + 7919 * posmod(variant, LEAF_VARIANTS)
 	var g := ceili(sqrt(float(cards)))
 	var rows := ceili(float(cards) / g)
 	for i in cards:
 		var p := Vector3((float(i % g) + rng.randf()) / g - 0.5, (floorf(float(i) / g) + rng.randf()) / rows - 0.5, rng.randf_range(-0.02, 0.02))
 		var facing := Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(-0.3, 0.5), 1.0).normalized()
-		_leaf(st, p, facing, rng.randf() * TAU, size, rng.randi() % SINGLE_LEAVES.size())
+		_leaf(st, p, facing, rng.randf() * TAU, size * rng.randf_range(0.75, 1.25), rng.randi() % SINGLE_LEAVES.size())
+	_meshes[key] = _commit_leaves(st)
+	return _meshes[key]
+
+
+## A rectangle of single leaves `w` by `h` metres (centred on the origin,
+## facing +z), `per_m2` to the square metre, each about `size` long: a shorn
+## face of a hedge, laid in real measure so the leaves keep their shape
+## whatever the hedge's size. Its surface waves a centimetre or two as shears
+## leave it, and its leaves overhang its edges a little, so tiles laid side by
+## side (each a `variant`, turned end for end at random) show no seam.
+static func leaf_tile(w: float, h: float, per_m2: float, size: float, variant := 0) -> ArrayMesh:
+	var key := "leaf_tile_%.2f_%.2f_%d_%.3f_%d" % [w, h, roundi(per_m2), size, posmod(variant, LEAF_VARIANTS)]
+	if _meshes.has(key):
+		return _meshes[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6337 + 7919 * posmod(variant, LEAF_VARIANTS)
+	var ph := [rng.randf() * TAU, rng.randf() * TAU, rng.randf() * TAU]
+	var count := maxi(4, roundi(w * h * per_m2))
+	var cols := maxi(1, roundi(sqrt(count * w / h)))
+	var rows := maxi(1, ceili(float(count) / cols))
+	for i in cols * rows:
+		var x := ((i % cols) + rng.randf()) / cols * w - w * 0.5
+		var y := (floorf(float(i) / cols) + rng.randf()) / rows * h - h * 0.5
+		var wave := 0.012 * (sin(x * 5.3 + ph[0]) + sin(y * 6.1 + ph[1]) + sin((x - y) * 3.7 + ph[2]))
+		var facing := Vector3(rng.randf_range(-0.55, 0.55), rng.randf_range(-0.3, 0.55), 1.0).normalized()
+		_leaf(st, Vector3(x, y, wave + rng.randf_range(-0.012, 0.012)), facing, rng.randf() * TAU, size * rng.randf_range(0.72, 1.28), rng.randi() % SINGLE_LEAVES.size())
 	_meshes[key] = _commit_leaves(st)
 	return _meshes[key]
 

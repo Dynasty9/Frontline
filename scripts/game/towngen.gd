@@ -734,17 +734,22 @@ func _planting(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vector3, w:
 		if roll < 0.45:
 			_d("bed", face + d * mid, axis + PI, Vector3(len - 0.1, minf(0.75, room), 0))
 		elif roll < 0.85:
-			# a row of one kind, as a gardener plants them
+			# a row as a gardener plants one: all of a kind, or (in a longer
+			# row, half the time) box balls at its ends and the kind between;
+			# no two quite the same size
 			var count := maxi(1, int(len / 1.3))
 			var kind: int = FRONT_SHRUBS[pl.randi() % FRONT_SHRUBS.size()]
 			var bloom := pl.randi() % 4 if pl.randf() < 0.85 else -1
+			var framed := count >= 3 and kind != BuildingPlanting.BOX and pl.randf() < 0.5
+			var size := pl.randf_range(0.6, 0.85)
 			for i in count:
+				var end := framed and (i == 0 or i == count - 1)
 				# (no wider than the room left before the hedge or fence: that
 				# stands 0.75 m into the lot, `room` is measured from 1.35 m)
-				var r := minf(pl.randf_range(0.55, 0.9), room - 0.15)
+				var r := minf(size * pl.randf_range(0.85, 1.12) * (0.85 if end else 1.0), room - 0.15)
 				var x := span.x + (i + 0.5) * len / count + pl.randf_range(-0.15, 0.15)
 				if r >= 0.3:
-					_d("shrub", face - n * (r * 0.5 + 0.12) + d * x, pl.randf() * TAU, Vector3(r, kind, bloom))
+					_d("shrub", face - n * (r * 0.5 + 0.12) + d * x, pl.randf() * TAU, Vector3(r, BuildingPlanting.BOX if end else kind, -1 if end else bloom))
 	# a clipped hedge along the front of an unfenced garden
 	if not fenced and pl.randf() < 0.45:
 		var gaps: Array[Vector2] = [Vector2(gate - 0.75, gate + 0.75)]

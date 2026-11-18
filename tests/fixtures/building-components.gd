@@ -591,7 +591,8 @@ func _ready() -> void:
 	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
 
 	# What grows round a house keeps to the room the town gives it: a shrub of
-	# every kind within its spread and under a window's sill, a hedge to its
+	# every kind within its spread (its lowest leaves on the ground) and under a
+	# window's sill, a hedge to its
 	# length and height, a bed flat on the ground within its strip; and the
 	# flowers are their own colour, not the leaves' green.
 	for s in 12:
@@ -600,7 +601,7 @@ func _ready() -> void:
 		pk.rng.seed = s
 		BuildingPlanting.shrub(pk, 0.9, kind, s % 4 if s < 6 else -1, pk.rng)
 		var sb := _bounds(pk.sink.root, Transform3D.IDENTITY)
-		check(sb.position.y >= -0.01 and sb.end.y <= 1.02 and absf(sb.get_center().x) < 0.2 and sb.size.x <= 1.1 and sb.size.z <= 1.1, "a shrub keeps to its spread (%d: %s)" % [kind, sb])
+		check(sb.position.y >= -0.08 and sb.end.y <= 1.02 and absf(sb.get_center().x) < 0.2 and sb.size.x <= 1.1 and sb.size.z <= 1.1, "a shrub keeps to its spread (%d: %s)" % [kind, sb])
 		var petals := 0
 		for child in pk.sink.root.get_children():
 			var tint: Variant = Mats.get_inst(child as GeometryInstance3D, &"tint")

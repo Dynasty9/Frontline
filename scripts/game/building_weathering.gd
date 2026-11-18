@@ -47,9 +47,9 @@ static func _mat(k: BuildingKit, rect: Rect2, col: Color, rag: RandomNumberGener
 	var nx := maxi(1, ceili(rect.size.x / 0.4))
 	var ny := maxi(1, ceili(rect.size.y / 0.4))
 	var tile := rect.size / Vector2(nx, ny)
-	var patch := Res.leaf_patch(96, 0.19)
 	for i in nx:
 		for j in ny:
+			var patch := Res.leaf_patch(96, 0.19, rag.randi() % Res.LEAF_VARIANTS)
 			var edge := i == 0 or i == nx - 1
 			if edge and j == ny - 1 and nx > 2 and rag.randf() < 0.5:
 				continue
@@ -63,7 +63,7 @@ static func _mat(k: BuildingKit, rect: Rect2, col: Color, rag: RandomNumberGener
 		if rag.randf() < 0.6:
 			var sy := rect.position.y + rect.size.y * rag.randf_range(0.2, 0.8)
 			var sx := rect.position.x + (rect.size.x if side > 0.0 else 0.0) + side * 0.1
-			k.part_with(patch, Mats.leaf_cards_tinted(), Transform3D(Basis.from_scale(Vector3(0.26, 0.2, 1.0)), Vector3(sx, sy, 0.05)), col.lightened(0.04), false)
+			k.part_with(Res.leaf_patch(96, 0.19, rag.randi() % Res.LEAF_VARIANTS), Mats.leaf_cards_tinted(), Transform3D(Basis.from_scale(Vector3(0.26, 0.2, 1.0)), Vector3(sx, sy, 0.05)), col.lightened(0.04), false)
 
 
 ## Weeds along the foot of a face `length` long, in tufts, stopping at the
