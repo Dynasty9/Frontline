@@ -13,6 +13,7 @@ caption = "A country road from afar and close up, the edge of town and a town st
 - **Edges by height**: the grass comes back in tufts between the stones over a metre of spilled gravel and soil, then thickens into the meadow, instead of stopping at a line.
 - **Supply tracks** are bare earth: their wheel ruts wander, widen and fade along the track, with a crown of grass between them in places and shoulders that roll off into the turf.
 - **In the rain** water stands in the ruts and the potholes.
+- **At the edge of town** the asphalt breaks up into the gravel in ragged bays, its crumbling rim packed with grit.
 - **In the rain** streets go dark and glossy with standing water in the dips, the same across every junction.
 - **Junctions** no longer show faint outlines or gutter lines where their paving meets the road.
 - **Gutters** collect dead leaves against the kerb in some stretches.

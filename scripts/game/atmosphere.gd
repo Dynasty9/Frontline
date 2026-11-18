@@ -3241,8 +3241,12 @@ void fragment() {
 	// in town: patched asphalt between the curbs, a dashed centre line
 	vec2 inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
 	float distance = min(inside.x, inside.y);
-	float broken_edge = (texture(street_noise, wpos.xz * 0.65).r - 0.5) * 0.6;
-	float paved = smoothstep(-0.3, 0.35, distance + broken_edge) * country * step(1.0, town.z - town.x) * step(0.0, x) * step(x, 1.0);
+	// where the town's paving gives out, its edge has broken up: bays a metre
+	// or two deep where frost and wheels have taken it, chipped at the rim
+	float broken_edge = (texture(street_noise, wpos.xz * 0.06 + 0.4).r - 0.5) * 0.8 + (texture(street_noise, wpos.xz * 0.45).r - 0.5) * 1.6
+		+ (texture(street_noise, wpos.xz * 1.9 + 0.2).r - 0.5) * 0.4;
+	float edge_in = distance + 0.5 + broken_edge;
+	float paved = smoothstep(-0.06, 0.06, edge_in) * country * step(1.0, town.z - town.x) * step(0.0, x) * step(x, 1.0);
 	float pud2 = 0.0;
 	if (paved <= 0.001) {
 		discard;
@@ -3270,6 +3274,8 @@ void fragment() {
 		// Tyres carry loose fines a few metres onto the paving at the town entrance.
 		float entry_dust = (1.0 - smoothstep(0.0, 3.5, distance + (n2 - 0.5))) * (0.25 + wheel * 0.55) * (0.6 + n3 * 0.4);
 		asph = mix(asph, col, entry_dust * 0.65);
+		// the broken rim: crumbling, its cracks packed with the road's grit
+		asph = mix(asph, mix(asph * 0.8, col, 0.4), (1.0 - smoothstep(0.0, 0.35, edge_in)) * 0.8);
 		asph *= 1.0 - (1.0 - smoothstep(0.02, 0.09, kerb)) * 0.35;
 		// Dead leaves and litter drift into the gutter against the kerb, thick
 		// in some stretches and swept clean in others. (Each leaf is a few
