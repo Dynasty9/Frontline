@@ -648,17 +648,22 @@ func _ready() -> void:
 		check(tb.position.y >= 0.0 and tb.end.y <= 1.2 and absf(tb.get_center().x) < 1.0 and absf(tb.get_center().z) < 1.0 and tb.size.x < 3.6 and tb.size.z < 3.6, "a table and its chairs keep to the middle of the room (%s)" % tb)
 		tk.sink.root.free()
 
-	# A shop's fittings keep inside its room, clear of its front (the door)
-	# and of what stands against its walls, and no taller than its shelving.
-	for s5 in 24:
+	# Every shop size is checked with a door on each of its four walls.
+	# Inspect in the entrance frame so end doors exercise the swapped axes.
+	for s5 in 96:
 		var size5: Vector3 = [Vector3(9.0, 0.06, 10.0), Vector3(7.4, 0.06, 9.4), Vector3(12.6, 0.06, 10.5), Vector3(6.5, 0.06, 9.0)][s5 % 4]
+		var entry5 := (s5 / 4) % 4
 		var shk := kit()
 		shk.rng.seed = s5
-		BuildingInteriors.shop(shk, size5, shk.rng)
-		var shb := _bounds(shk.sink.root, Transform3D.IDENTITY)
-		check(shb.position.y >= 0.0 and shb.end.y <= 1.7, "a shop's fittings stand on its floor, waist to head high (%s)" % shb)
-		check(shb.position.x >= -size5.x * 0.5 + 0.2 + BuildingInteriors.REACH - 0.05 and shb.end.x <= size5.x * 0.5 - 0.2 - BuildingInteriors.REACH + 0.05, "they keep off the side walls' furniture (%s, %s)" % [size5, shb])
-		check(shb.position.z >= -size5.z * 0.5 + 1.9 and shb.end.z <= size5.z * 0.5 - 0.2 - BuildingInteriors.REACH + 0.05, "they keep clear of the door and the back wall's furniture (%s, %s)" % [size5, shb])
+		BuildingInteriors.shop(shk, size5, shk.rng, entry5)
+		var turn5: float = [0.0, PI, PI * 0.5, -PI * 0.5][entry5]
+		var frame5 := Transform3D(Basis(Vector3.UP, turn5), Vector3.ZERO).affine_inverse()
+		var shb := _bounds(shk.sink.root, frame5)
+		if entry5 >= 2:
+			size5 = Vector3(size5.z, size5.y, size5.x)
+		check(shb.position.y >= -0.001 and shb.end.y <= 1.7, "a shop's fittings stand on its floor (%s)" % shb)
+		check(shb.position.x >= -size5.x * 0.5 + 0.2 + BuildingInteriors.REACH - 0.05 and shb.end.x <= size5.x * 0.5 - 0.2 - BuildingInteriors.REACH + 0.05, "shop fittings clear side furniture (%d, %s)" % [entry5, shb])
+		check(shb.position.z >= -size5.z * 0.5 + 1.9 and shb.end.z <= size5.z * 0.5 - 0.2 - BuildingInteriors.REACH + 0.05, "shop fittings clear the actual entrance (%d, %s)" % [entry5, shb])
 		shk.sink.root.free()
 
 	# The streets' furniture stands on the pavement inside the box a vehicle

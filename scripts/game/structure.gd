@@ -97,7 +97,7 @@ var bent_skirts := 0
 ## (a roof over a house's wing) the roof whose looks it shares, so its
 ## covering, tint and pitch match the house's: that roof's eid (0: its own)
 var look := 0
-## (a barn's floor) which of its walls the door is in: 0 the front (-z), 1
+## (a furnished floor) which of its walls the door is in: 0 the front (-z), 1
 ## the back, 2 the -x end, 3 the +x end; -1 not known. It's laid out from it.
 var entry := -1
 ## (a shop's walls) fitted out inside as a shop's, not a house's: shelving
@@ -3087,7 +3087,7 @@ func _build_model() -> void:
 				BuildingInteriors.table(_kit(home), size, BuildingInteriors.WOODS[home.randi() % BuildingInteriors.WOODS.size()], home)
 			# a shop's: its shelving, its counter, its stock
 			if variant == 3:
-				BuildingInteriors.shop(_kit(home), size, home)
+				BuildingInteriors.shop(_kit(home), size, home, entry)
 			# a barn's: the hay, the stalls, the cart, the bench (clear of the
 			# wall its door is in)
 			if variant == 2:

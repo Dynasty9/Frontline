@@ -16,3 +16,5 @@ caption = "What a farm keeps round its yard"
 - **Round the yard**: a tractor parked on most farms, a water trough by the barn, a plough and a harrow put away beside it, a churn stand at the gate, a hen house with its run and its hens, a wheelbarrow.
 - **Round bales** now show their rolled ends; some are wrapped in black, white or green plastic.
 - The tractor gives cover like a parked car. The rest is scenery: tanks and blasts knock it over, and what's in the barn doesn't block your men.
+
+- Intact fitted barns no longer receive an extra random solid cover crate through their hay stacks or equipment. Ruins keep their scattered cover.

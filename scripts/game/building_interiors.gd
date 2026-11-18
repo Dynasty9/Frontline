@@ -267,7 +267,13 @@ const GOODS := [Color(0.75, 0.15, 0.1), Color(0.9, 0.75, 0.2), Color(0.2, 0.35, 
 ## of what stands against the side walls), stocked or picked half empty; the
 ## counter across the back with its till and scales, sacks and boxes of stock
 ## stacked at its end.
-static func shop(k: BuildingKit, size: Vector3, rng: RandomNumberGenerator) -> void:
+static func shop(k: BuildingKit, size: Vector3, rng: RandomNumberGenerator, entry: int = 0) -> void:
+	# Furnish from the actual entrance, including shops entered from an end.
+	# This keeps the arrival space clear wherever the generator puts the door.
+	var turn: float = [0.0, PI, PI * 0.5, -PI * 0.5][clampi(entry, 0, 3)]
+	k = k.at_point(Vector3.ZERO, Vector3(0, turn, 0))
+	if entry == 2 or entry == 3:
+		size = Vector3(size.z, size.y, size.x)
 	var wood: Color = WOODS[rng.randi() % WOODS.size()]
 	var hx := size.x * 0.5
 	var hz := size.z * 0.5

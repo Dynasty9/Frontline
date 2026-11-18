@@ -1197,7 +1197,7 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	# a barn's, so it's bare and strewn with straw, and fitted out as a barn)
 	# (a shop's, so it's fitted out as one: TownGen._plan)
 	var fp := {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else (3 if plan.get("shop", false) else 0))}
-	if barn and not ruined:
+	if (barn or plan.get("shop", false)) and not ruined:
 		fp["entry"] = door_side
 	_spawn("floor", c, axis, -1, fp)
 	_unplace_last()
@@ -1270,7 +1270,12 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 		_wing(c, b, axis, w, d, wk0, wk, bays, wd, level, color, ruined, flat or bool(wing[3]), int(plan.get("seed", 0)), roof_id)
 	if rng.randf() < 0.5:
 		var ip := c + b * Vector3(rng.randf_range(-w * 0.25, w * 0.25), 0, rng.randf_range(-d * 0.2, d * 0.2))
-		world.spawn("structure", {"skind": "crates", "pos": ip, "yaw": axis + rng.randf_range(-0.4, 0.4), "variant": 0})
+		var crate_yaw := axis + rng.randf_range(-0.4, 0.4)
+		# Shops and barns already have fitted stock and equipment. A separate
+		# solid cover crate here could intersect their shelving or hay stacks.
+		# Still draw its placement so later map generation keeps the same seed.
+		if ruined or (not barn and not plan.get("shop", false)):
+			world.spawn("structure", {"skind": "crates", "pos": ip, "yaw": crate_yaw, "variant": 0})
 	if ruined and rng.randf() < 0.6:
 		var ip2 := c + b * Vector3(rng.randf_range(-w * 0.25, w * 0.25), 0, rng.randf_range(-d * 0.25, d * 0.25))
 		world.spawn("structure", {"skind": "rubble", "pos": ip2, "yaw": rng.randf() * TAU, "size": Vector3(2.2, 0, 1.4)})

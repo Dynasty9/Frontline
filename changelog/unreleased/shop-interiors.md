@@ -12,3 +12,5 @@ caption = "Two shops with the roof off, before and after"
 - **Along the walls**, where a house has its wardrobe and settee, shelving packed with goods, a cooler of drinks, or crates of fruit and vegetables under a chalked price board. The windows have a blind or nothing.
 - **The counter** stands across the back with its till and scales, sacks and boxes of stock at its end.
 - As with the houses' furniture, it's scenery: it doesn't block your men or give them cover.
+
+- Shelving and the counter now face the actual entrance, including doors in an end wall. The entrance stays clear, and random solid cover crates no longer overlap the shop fittings.
