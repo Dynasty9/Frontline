@@ -656,12 +656,14 @@ void fragment() {
 	float cured = clamp((1.0 - wet) * 0.8 + (1.0 - g) * 0.4 + (rnd - 0.7) * 0.6 - 0.08, 0.0, 0.9);
 	col = mix(col, dry_col, cured * smoothstep(0.2, 1.0, h));
 	col *= mix(1.0, 0.86, wet) * (0.85 + 0.3 * rnd);
-	col = mix(col, vec3(0.09, 0.075, 0.05), burnt * 0.85);
+	// scorched brown at the edge of a scar, burnt to black stubble where it burnt through
+	vec3 scorched = mix(vec3(0.09, 0.075, 0.05), vec3(0.026, 0.024, 0.021), smoothstep(0.55, 1.0, burnt));
+	col = mix(col, scorched, burnt * 0.9);
 	// Under snow the grass is winter straw, its foot buried white and only the
 	// tips standing out of it, those dusted too.
 	if (snow_cover > 0.0) {
 		// (dead and bleached: pale straw, not a dark green)
-		col = mix(col, dry_col * vec3(1.05, 1.0, 0.9), snow_cover * 0.88);
+		col = mix(col, dry_col * vec3(1.05, 1.0, 0.9), snow_cover * 0.88 * (1.0 - burnt));
 		vec3 snow = vec3(0.8, 0.83, 0.88);
 		col = mix(col, snow, snow_cover * mix(mix(0.55, 1.0, drifted), mix(0.2, 0.6, drifted), smoothstep(0.3, 0.85, h)) * (1.0 - burnt) * (1.0 - thawed));
 		col *= 1.0 - thawed * snow_cover * 0.3;  // (wet with the melt)
