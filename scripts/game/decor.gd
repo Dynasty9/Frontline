@@ -500,7 +500,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				var a := TAU * i / 3.0 + 0.4
 				_leaf(0.2, Vector3(cos(a) * 0.32, 0.72, sin(a) * 0.32), [Color(0.75, 0.2, 0.28), Color(0.85, 0.7, 0.2), Color(0.6, 0.35, 0.7)][i], false)
 		"bollard":
-			_m(Res.cyl(0.08, 0.1, 0.85, 8), "metal_dark", Vector3(0, 0.42, 0), Color(0.2, 0.2, 0.2), Vector3.ZERO, false)
+			# a cast-iron bollard where the square meets the streets (BuildingFittings)
+			BuildingFittings.bollard(BuildingKit.baked(_bake, rng, _at), Vector3.ZERO)
 		"fountain":
 			_m(Res.cyl(2.35, 2.35, 0.1, 20), "stone", Vector3(0, 0.05, 0))
 			for i in 16:

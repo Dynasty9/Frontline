@@ -450,6 +450,12 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# A street bollard keeps to its collar's round and stands below the knee.
+	var bok := kit()
+	BuildingFittings.bollard(bok, Vector3.ZERO)
+	var bob := _bounds(bok.sink.root, Transform3D.IDENTITY)
+	check(bob.position.y >= -0.01 and bob.end.y <= 0.95 and bob.size.x <= 0.28 and bob.size.z <= 0.28, "a bollard keeps to its collar (%s)" % bob)
+	bok.sink.root.free()
 
 	# Roofs: a hip rises as high as a gable of the same pitch over the same
 	# walls; its underside comes down to the eaves on all four walls where a

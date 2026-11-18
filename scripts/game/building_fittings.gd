@@ -397,3 +397,17 @@ static func pallet(k: BuildingKit, base: Vector3, size := Vector2(1.15, 1.0), co
 		for s in 3:
 			out.append(BuildingKit.piece(Vector3(size.x, 0.018, 0.1), Vector3(0, 0.009, -size.y * 0.5 + 0.05 + s * (size.y - 0.1) * 0.5)))
 		return out), "wood", Mats.place(base, Vector3(0, yaw, 0)), col)
+
+
+## A cast-iron street bollard, its foot at `base`: a collar where it's set in
+## the paving, a shaft tapering up to a raised band, a white band to catch the
+## headlights, a domed cap with a knob on it. Painted black, worn back to the
+## iron on the collar where kerbing wheels and boots have scuffed it.
+static func bollard(k: BuildingKit, base: Vector3, col := Color(0.07, 0.07, 0.07)) -> void:
+	k.cyl(0.125, 0.135, 0.1, base + Vector3(0, 0.05, 0), "metal_dark", Color(0.24, 0.22, 0.2), Vector3.ZERO, 12)
+	k.cyl(0.074, 0.092, 0.66, base + Vector3(0, 0.43, 0), "paint", col, Vector3.ZERO, 12)
+	k.cyl(0.092, 0.092, 0.05, base + Vector3(0, 0.66, 0), "paint", col, Vector3.ZERO, 12)
+	k.cyl(0.078, 0.078, 0.06, base + Vector3(0, 0.74, 0), "paint", Color(0.88, 0.88, 0.84), Vector3.ZERO, 12)
+	k.cyl(0.08, 0.08, 0.05, base + Vector3(0, 0.795, 0), "paint", col, Vector3.ZERO, 12)
+	k.part(Res.dome(0.08, 10), "paint", Transform3D(Basis.IDENTITY, base + Vector3(0, 0.82, 0)), col)
+	k.part(Res.sphere(0.025, 6), "paint", Transform3D(Basis.IDENTITY, base + Vector3(0, 0.905, 0)), col, false)

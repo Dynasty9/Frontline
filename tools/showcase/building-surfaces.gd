@@ -249,6 +249,14 @@ func _subject(kind: String) -> Node3D:
 				hs.position = spec[0]
 				street.add_child(hs)
 			return street
+		"bollards":
+			# a row of the square's cast-iron bollards on the paving
+			var brow := Node3D.new()
+			var bk := BuildingKit.nodes(brow)
+			bk.box(Vector3(6.0, 0.12, 2.0), Vector3(0, -0.06, 0), "pavement", Color(0.62, 0.6, 0.56))
+			for i in 4:
+				BuildingFittings.bollard(bk, Vector3(-2.4 + i * 1.6, 0, 0))
+			return brow
 		"street_kit":
 			# the streets' new furniture on a stretch of pavement: a hoarding,
 			# a telephone box, a post box, an advertising column, traffic
