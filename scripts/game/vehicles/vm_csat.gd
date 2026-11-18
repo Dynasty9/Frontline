@@ -250,6 +250,60 @@ static func _smoke(k: VehicleModels, p: Node3D, pos: Vector3, s: float, n := 3, 
 	VehicleFittings.smoke_bank(k, p, pos + Vector3(0, -0.06, 0.05), Vector3(0.16, 0.08, 0.1 + n * 0.12), Vector3(0, s * -yaw, 0), tubes, 0.045, 0.26)
 
 
+const X90 := Vector3(PI / 2, 0, 0)  # a cylinder lying along Z (barrels)
+const Z90 := Vector3(0, 0, PI / 2)  # a cylinder lying along X (shafts)
+
+
+## The Kord 12.7 mm (6P49, the vehicle gun) on its own pivot `g` at the
+## receiver's centre, along -Z to its muzzle `length` ahead, `s` its scale.
+## Russian vehicles carry it where a NATO one carries the M2, and it reads
+## nothing like one: a slim receiver under its feed cover, the buffer's round
+## housing on the back plate, and a bare barrel - no perforated jacket, it
+## cools in the air - with the carrying handle on its clamp near the
+## receiver, the gas cylinder slung under its rear half to the gas block, and
+## at its end the big ported muzzle brake that tames its recoil. It feeds
+## from the side `feed` (-1 left, +1 right), the charging handle on the other.
+## The caller hangs its box on the cradle and gives the pivot to
+## k.gun_assembly, so the box elevates with the gun.
+static func _kord(k: VehicleModels, g: Node3D, length: float, s := 1.0, feed := -1.0) -> void:
+	var st := VehicleWeapons.STEEL
+	VehicleMounts.receiver(k, g, Vector3(0.105, 0.14, 0.56) * s, Vector3.ZERO, st)
+	# the feed cover over the front half, its rear sight leaf behind it, the
+	# buffer housing on the back plate
+	k._add(g, BevelMesh.make(Vector3(0.112, 0.035, 0.3) * s, 0.007 * s), st, null, Vector3(0, 0.084, -0.1) * s)
+	k._box(g, Vector3(0.03, 0.032, 0.008) * s, Vector3(0, 0.115, 0.07) * s, st, null, Vector3.ZERO, false)
+	k._cyl(g, 0.04 * s, 0.044 * s, 0.06 * s, Vector3(0, -0.01, 0.305) * s, X90, st, null, 10)
+	# the feedway in the receiver's side under the cover, the charging handle
+	# on the other side
+	k._box(g, Vector3(0.006, 0.04, 0.11) * s, Vector3(feed * 0.0535, 0.035, -0.06) * s, "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+	VehicleBody.rod(k, g, Vector3(-feed * 0.052, -0.01, 0.1) * s, Vector3(-feed * 0.1, -0.01, 0.1) * s, 0.008 * s, "steel", null, 6, false)
+	# the barrel nut where the barrel locks in, then the tube tapering to the brake
+	var brake := 0.15 * s
+	var b0 := -0.3 * s
+	var b1 := -length + brake - 0.01 * s
+	k._cyl(g, 0.036 * s, 0.036 * s, 0.05 * s, Vector3(0, 0, b0), X90, st, null, 12)
+	k._cyl(g, 0.023 * s, 0.018 * s, b0 - b1, Vector3(0, 0, (b0 + b1) * 0.5), X90, st, null, 10)
+	# the carrying handle on its clamp a hand ahead of the receiver
+	var hz := b0 - 0.2 * s
+	k._cyl(g, 0.03 * s, 0.03 * s, 0.035 * s, Vector3(0, 0, hz), X90, st, null, 10, false)
+	VehicleDoors.pull(k, g, Vector3(0, 0.03 * s, hz), Vector3.UP, Vector3.FORWARD, 0.15 * s, 0.009 * s, st)
+	# the gas cylinder under the barrel's rear half, the gas block at its front
+	var gz := lerpf(b0, b1, 0.48)
+	k._cyl(g, 0.014 * s, 0.014 * s, b0 - 0.03 * s - gz, Vector3(0, -0.046 * s, (b0 - 0.03 * s + gz) * 0.5), X90, st, null, 8, false)
+	k._add(g, BevelMesh.make(Vector3(0.04, 0.08, 0.06) * s, 0.006 * s), st, null, Vector3(0, -0.026 * s, gz))
+	# the muzzle brake: a thick ported can on the barrel's end, two rows of
+	# windows a side where the gas turns out (soot-black), its front lip, the bore
+	var r := 0.034 * s
+	var m0 := -length + brake
+	k._cyl(g, r * 0.86, r, brake * 0.18, Vector3(0, 0, m0 - brake * 0.09), X90, st, null, 12)
+	k._cyl(g, r, r, brake * 0.82, Vector3(0, 0, -length + brake * 0.41), X90, st, null, 12)
+	for f: float in [0.36, 0.62, 0.86]:
+		for side: float in [-1.0, 1.0]:
+			k._box(g, Vector3(0.012, 0.036, 0.024) * s, Vector3(side * r * 0.86, 0, lerpf(m0, -length, f)), "plain_dark", Color(0.05, 0.05, 0.045), Vector3.ZERO, false)
+	k._cyl(g, r * 1.06, r * 1.06, 0.01 * s, Vector3(0, 0, -length + 0.005 * s), X90, st, null, 12, false)
+	VehicleWeapons._bore(k, g, -length, 0.012 * s)
+
+
 ## A remote weapon station on the roof: the turntable, the cradle with a
 ## 12.7 mm HMG ("hmg"), a 40 mm grenade launcher ("gmg"), a 7.62 ("mmg") or a
 ## 30 mm cannon ("ac30"), the sight head with its windows, the ammunition box.
@@ -275,7 +329,9 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, mat :=
 			VehicleWeapons.mmg(k, t, Vector3(0, y, 0.0), Vector3(0, y + 0.02, -0.92), 1.4, 0.0, false)
 			k.mg_tip = k._tip(t, Vector3(0, y + 0.02, -0.92))
 		_:
-			VehicleWeapons.hmg(k, t, Vector3(0, y, 0.02), Vector3(0, y, -1.7), 1.0, 0.0)
+			var g := k._pivot(t, Vector3(0, y, 0.02))
+			_kord(k, g, 1.72)
+			k.gun_assembly(g, Vector3(0, 0, -1.72))
 			k.mg_tip = k._tip(t, Vector3(0, y, -1.7))
 	# the sight head beside the gun under its lid, the ammunition box on the other side
 	VehicleMounts.sight(k, t, Vector3(0.33, y + 0.06, -0.02), Vector3(0.24, 0.26, 0.34), [Rect2(Vector2(-0.05, 0.02), Vector2(0.08, 0.08)), Rect2(Vector2(0.06, 0.02), Vector2(0.06, 0.06))], mat)
@@ -696,7 +752,10 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	for s in [-1.0, 1.0]:
 		k._box(t, Vector3(0.05, 0.24, 0.3), Vector3(s * 0.15, y - 0.06, 0.0), c)
 	# 12.7 mm, left, and 40 mm, right, each with its ammunition on the outboard side
-	VehicleWeapons.hmg(k, t, Vector3(-0.3, y, 0.0), Vector3(-0.3, y, -1.66), 1.0, -1.0, false, "gunmetal_w", OLIVE)
+	var g := k._pivot(t, Vector3(-0.3, y, 0.0))
+	_kord(k, g, 1.66)
+	VehicleFittings.ammo_can(k, g, Vector3(-0.2, -0.05, 0.03), OLIVE, Vector3.ZERO, Vector3(0.14, 0.22, 0.36))
+	k.gun_assembly(g, Vector3(0, 0, -1.66))
 	VehicleWeapons.gmg(k, t, Vector3(0.3, y, 0.02), Vector3(0.3, y, -0.75), 1.0, 1.0, false, "gunmetal_w", OLIVE, 0.22)
 	k.mg_tip = k._tip(t, Vector3(0.3, y, -0.75))
 	k.gun_tip = k._tip(t, Vector3(-0.3, y, -1.66))
@@ -932,7 +991,9 @@ static func _cupola_mg(k: VehicleModels, p: Node3D, pos: Vector3, mat := CAM) ->
 	VehicleMounts.cupola(k, p, pos + Vector3(0, 0.1, 0), 0.36, 0.39, 0.2, 4, -0.825, 0.55, mat, null, Vector3(0.12, 0.07, 0.05))
 	k._cyl(p, 0.3, 0.3, 0.06, pos + Vector3(0, 0.23, 0.05), Vector3.ZERO, mat, null, 14)
 	VehicleMounts.pintle(k, p, pos + Vector3(0, 0.26, -0.2), pos + Vector3(0.0, 0.5, -0.25), "gunmetal_w")
-	VehicleWeapons.hmg(k, p, pos + Vector3(0.0, 0.5, -0.25), pos + Vector3(0.0, 0.52, -1.48), 1.0, -1.0, false, "gunmetal_w", OLIVE)
+	var g := k._pivot(p, pos + Vector3(0.0, 0.5, -0.25))
+	_kord(k, g, 1.3)
+	k.gun_assembly(g, Vector3(0, 0, -1.3))
 
 
 ## T-100 Varsuk: the Black Eagle's wide welded turret with reactive armour on
