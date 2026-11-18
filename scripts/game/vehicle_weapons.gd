@@ -184,9 +184,11 @@ static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	_bore(k, m, -length, 0.014 * s)
 	if can != 0.0:
 		var side := signf(can)
-		VehicleFittings.ammo_can(k, m, Vector3(side * 0.18, -0.07, 0.08) * s, can_col, Vector3.ZERO, Vector3(0.12, 0.19, 0.29) * s)
-		# The belt rises from the can's mouth into the feed tray.
-		_belt(k, m, Vector3(side * 0.16, 0.035, 0.06) * s, Vector3(side * 0.085, 0.07, 0.04) * s, 0.011 * s, 0.12 * s, 3)
+		var can_at := Vector3(side * 0.18, -0.07, 0.08) * s
+		var can_size := Vector3(0.12, 0.19, 0.29) * s
+		VehicleFittings.ammo_can(k, m, can_at, can_col, Vector3.ZERO, can_size, true)
+		# The belt rises out of the can into the feed tray under the cover.
+		_belt(k, m, can_at, can_size, Vector3(side * 0.084, 0.072, 0.03) * s, 0.011 * s, 0.138 * s)
 	# The feed cover's latch at its front, the bolt's retracting handle on
 	# the right of the receiver.
 	k._box(m, Vector3(0.05, 0.02, 0.025) * s, Vector3(0, 0.13, -0.24) * s, "metal_dark", null, Vector3.ZERO, false)
@@ -224,8 +226,10 @@ static func mmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	for side: float in [-1.0, 1.0]:
 		_rivets(k, m, Vector3(side * 0.041, 0.035, -0.17) * s, Vector3(side * 0.041, 0.035, 0.13) * s, Vector3(side, 0, 0), 4, 0.004 * s, mat)
 	if can != 0.0:
-		VehicleFittings.ammo_can(k, m, Vector3(signf(can) * 0.08, -0.07, 0.02) * s, can_col, Vector3.ZERO, Vector3(0.08, 0.13, 0.15) * s)
-		_belt(k, m, Vector3(signf(can) * 0.075, 0.0, 0.0) * s, Vector3(signf(can) * 0.04, 0.045, -0.02) * s, 0.0065 * s, 0.065 * s, 2)
+		var can_at := Vector3(signf(can) * 0.08, -0.07, 0.02) * s
+		var can_size := Vector3(0.08, 0.13, 0.15) * s
+		VehicleFittings.ammo_can(k, m, can_at, can_col, Vector3.ZERO, can_size, true)
+		_belt(k, m, can_at, can_size, Vector3(signf(can) * 0.042, 0.045, -0.02) * s, 0.0062 * s, 0.071 * s)
 	# The feed cover's hinge across its back, the rear sight leaf up on it.
 	VehicleBody.rod(k, m, Vector3(-0.045, 0.09, 0.11) * s, Vector3(0.045, 0.09, 0.11) * s, 0.007 * s, "metal_dark", null, 6, false)
 	k._box(m, Vector3(0.03, 0.028, 0.006) * s, Vector3(0, 0.102, 0.08) * s, mat, null, Vector3.ZERO, false)
@@ -234,15 +238,76 @@ static func mmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	return muzzle
 
 
-## A belt of linked rounds from `a` (the can's mouth) to `b` (the feed tray):
-## the blackened steel links and `n` cartridges standing in them, laid along
-## the gun's axis, brass cases and their dark bullet tips forward.
-static func _belt(k: VehicleModels, m: Node3D, a: Vector3, b: Vector3, radius: float, length: float, n: int) -> void:
-	VehicleFrames.beam(k, m, a, b, length * 0.55, radius * 0.9, "metal_dark", null, false)
-	for i in n:
-		var at := a.lerp(b, (i + 0.5) / n) + Vector3(0, radius * 0.5, 0)
-		VehicleBody.cylinder(k, m, radius, radius, length * 0.68, at + Vector3(0, 0, length * 0.16), X90, "paint", Color(0.62, 0.48, 0.2), 6, false, true, false)
-		VehicleBody.cylinder(k, m, radius * 0.95, radius * 0.45, length * 0.32, at - Vector3(0, 0, length * 0.34), X90, "metal_dark", null, 6, false, false, true)
+## Cartridge brass: bright, warm and metallic, dulled a little by handling.
+const BRASS := Color(0.4, 0.32, 0.17)
+
+
+## The belt feeding a gun from the open can beside it (VehicleFittings.ammo_can
+## with `open`), the can centred at `can` and `size` across, in the gun's
+## space: the belt's top fold lies side by side in the can's mouth, then it
+## rises over the lip on the gun's side and runs into the feed tray at `tray`.
+## Each round lies along the gun's axis, its brass case behind and its dark
+## bullet forward, held in a blackened steel link; `radius` and `length` are
+## a round's.
+static func _belt(k: VehicleModels, m: Node3D, can: Vector3, size: Vector3, tray: Vector3, radius: float, length: float) -> void:
+	var case_len := length * 0.72
+	for p in _belt_rounds(can, size, tray, radius):
+		var base := p.z + length * 0.5
+		VehicleBody.cylinder(k, m, radius, radius, case_len, Vector3(p.x, p.y, base - case_len * 0.5), X90, "steel", BRASS, 6, false, true, false)
+		VehicleBody.cylinder(k, m, radius * 0.92, radius * 0.3, length - case_len, Vector3(p.x, p.y, base - case_len - (length - case_len) * 0.5), X90, "metal_dark", null, 6, false, false, true)
+		# the link's loop round the case, the steel gone black
+		VehicleBody.cylinder(k, m, radius * 1.1, radius * 1.1, length * 0.12, Vector3(p.x, p.y, base - case_len * 0.3), X90, "metal_dark", Color(0.06, 0.06, 0.06), 6, false, false, false)
+	# the feedway in the receiver's side, where the belt goes in
+	var side := signf(can.x - tray.x)
+	k._box(m, Vector3(0.004, radius * 3.2, length * 0.75), tray - Vector3(side * 0.003, 0, 0), "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+
+
+## Where the belt's rounds lie (their middles), from the can's far wall to
+## the last before the feed tray: along the can's mouth just under the rim, up
+## over the lip on the gun's side and into the tray, a round every pitch (a
+## little over one case across), so it reads as one belt.
+static func _belt_rounds(can: Vector3, size: Vector3, tray: Vector3, radius: float) -> Array[Vector3]:
+	var side := signf(can.x - tray.x)  # (the can's side of the gun)
+	var pitch := radius * 2.35
+	var top := can.y + size.y * 0.4  # (the can body's rim: see ammo_can)
+	var lip := can.x - side * size.x * 0.5
+	var fold_y := top - radius * 0.35
+	var line: Array[Vector3] = [
+		Vector3(can.x + side * (size.x * 0.5 - radius * 1.4), fold_y, can.z),
+		Vector3(lip + side * radius * 1.5, fold_y, can.z),
+		Vector3(lip - side * radius * 0.3, top + radius * 1.7, lerpf(can.z, tray.z, 0.4)),
+		tray,
+	]
+	# each round a pitch on from the last in a straight line, so where the belt
+	# bends over the lip its rounds fan out rather than run into each other
+	var rounds: Array[Vector3] = [line[0]]
+	var seg := 0
+	var t := 0.0
+	while seg < line.size() - 1:
+		var prev := rounds[rounds.size() - 1]
+		var found := false
+		while seg < line.size() - 1:
+			var a := line[seg].lerp(line[seg + 1], t)
+			var d := line[seg + 1] - a
+			var f := a - prev
+			var qa := d.dot(d)
+			var qb := 2.0 * f.dot(d)
+			var disc := qb * qb - 4.0 * qa * (f.dot(f) - pitch * pitch)
+			if qa > 0.0 and disc >= 0.0:
+				var u := (-qb + sqrt(disc)) / (2.0 * qa)
+				if u >= 0.0 and u <= 1.0:
+					t = lerpf(t, 1.0, u)
+					found = true
+					break
+			seg += 1
+			t = 0.0
+		if not found:
+			break
+		var p := line[seg].lerp(line[seg + 1], t)
+		if p.distance_to(tray) < radius * 1.2:
+			break
+		rounds.append(p)
+	return rounds
 
 
 ## Automatic grenade launcher (40 mm). `feed` puts the linked-round container on
