@@ -327,6 +327,22 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# The street pieces keep to their footprints: the fountain within its
+	# basin, the bus shelter over its pavement (its stop's flag the top of it),
+	# a planter (its trough a square turned on its corner: its bounds are the
+	# turned square's), a bin, the name board.
+	var spieces := [[func(k: BuildingKit): BuildingStreet.fountain(k), Vector3(5.25, 3.2, 5.25)],
+		[func(k: BuildingKit): BuildingStreet.bus_shelter(k, k.rng), Vector3(4.6, 2.85, 1.8)],
+		[func(k: BuildingKit): BuildingStreet.planter(k, k.rng), Vector3(2.05, 1.25, 2.05)],
+		[func(k: BuildingKit): BuildingStreet.litter_bin(k), Vector3(0.55, 0.95, 0.55)],
+		[func(k: BuildingKit): BuildingStreet.town_sign(k, k.rng), Vector3(2.1, 2.35, 0.2)]]
+	for sp: Array in spieces:
+		var spk := kit()
+		(sp[0] as Callable).call(spk)
+		var spb := _bounds(spk.sink.root, Transform3D.IDENTITY)
+		var lim: Vector3 = sp[1]
+		check(spb.size.x <= lim.x and spb.size.z <= lim.z and spb.end.y <= lim.y and spb.position.y >= -0.01, "a street piece keeps to its footprint (%s, %s)" % [spb, lim])
+		spk.sink.root.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:
