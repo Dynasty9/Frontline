@@ -8,7 +8,7 @@ import { Game } from "./lib/game.mjs";
 
 let game;
 before(async () => {
-  game = await Game.start();
+  game = await Game.start({ args: ["--matchmaker=http://127.0.0.1:1", "--no-stun"] });
 });
 after(async () => {
   if (game) assert.equal(await game.close(), 0, "the game's exit code");

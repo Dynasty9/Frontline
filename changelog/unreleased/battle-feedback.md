@@ -3,6 +3,11 @@ title = "Battles that tell you how they're going"
 summary = "The turning points of a battle (an enemy vehicle destroyed, a squad wiped out, a town or FOB taken or lost) now show under the status line with a jump to the spot, alongside a running kill and loss count, an idle-squad readout and alerts for squads under fire off screen."
 kind = "improved"
 
+[[videos]]
+file = "repeated-moments.webm"
+poster = "repeated-moments.jpg"
+caption = "Matched in-game encounter: before, after, then reduced motion. A second HUMVEE destruction changes D4 to E4 and ×2; after the fix it returns to the top with the jump hint. The final segment shows immediate entry with reduced motion. Center viewport crop; controlled seed 3 and scripted damage, fixed-step 30 Hz recording, no runtime performance claim."
+
 [[screenshots]]
 file = "moments-in-battle.jpg"
 caption = "A tank battle: a vehicle lost and an enemy one destroyed, each a line under the status line, with the kill and loss count beside the clock"
