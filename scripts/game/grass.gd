@@ -277,6 +277,7 @@ func _blocked_job() -> BlockedJob:
 		j.water = w.water.mask.get_data()
 	for t in 3:
 		j.roads.append_array(w.roads[t])
+	j.gravel.append_array(w.roads[2])  # (the civilian roads are gravelled; the sides' supply routes are bare earth)
 	return j
 
 
@@ -288,6 +289,7 @@ class BlockedJob:
 	var boxes: Array = []  # [centre, half size, yaw] (x, z)
 	var water := PackedByteArray()  # the water mask's pixels (RGBA8)
 	var roads: Array = []  # PackedVector3Array polylines
+	var gravel: Array = []  # the ones of them that are gravel roads
 	var blocked := PackedByteArray()
 
 	func run() -> void:
@@ -336,7 +338,7 @@ class BlockedJob:
 					var index := z * n + x
 					canopy[index] = mini(255, canopy[index] + int(weight * 215.0))
 		if is_instance_valid(biome):
-			biome = Grass.pack_biome(biome, Image.create_from_data(n, n, false, Image.FORMAT_R8, canopy), Grass.road_field(roads, biome.get_width()))
+			biome = Grass.pack_biome(biome, Image.create_from_data(n, n, false, Image.FORMAT_R8, canopy), Grass.road_field(roads, biome.get_width(), gravel))
 
 	func _mark(x: int, z: int) -> void:
 		var ix := x + MapDims.N / 2
@@ -367,15 +369,17 @@ func _is_blocked(p: Vector3) -> bool:
 
 
 ## How near each texel of a size-by-size map grid is to the middle of a road,
-## 1 on it and falling to 0 at ROAD_REACH metres (the ground shader draws the
-## tracks from it: see Atmosphere.GROUND_SHADER).
+## 1 on it and falling to 0 at ROAD_REACH metres, and whether the nearest is
+## one of the gravel roads: two bytes a texel (the ground shader draws the
+## roads from it: see Atmosphere.GROUND_SHADER).
 const ROAD_REACH := 4.5
-static func road_field(polys: Array, size: int) -> PackedByteArray:
+static func road_field(polys: Array, size: int, gravel := []) -> PackedByteArray:
 	var field := PackedByteArray()
-	field.resize(size * size)
+	field.resize(size * size * 2)
 	var half := float(size) * 0.5
 	var scale := float(size) / MapDims.SIZE
-	for poly in polys:
+	for poly in polys + gravel:
+		var kind := 255 if gravel.has(poly) else 0
 		var pts: PackedVector3Array = poly
 		for i in pts.size() - 1:
 			var a := Vector2(pts[i].x, pts[i].z)
@@ -388,14 +392,15 @@ static func road_field(polys: Array, size: int) -> PackedByteArray:
 					var d := Geometry2D.get_closest_point_to_segment(q, a, b).distance_to(q)
 					if d < ROAD_REACH:
 						var near := int(round((1.0 - d / ROAD_REACH) * 255.0))
-						var at := z * size + x
-						if near > field[at]:
+						var at := (z * size + x) << 1
+						if near > field[at] or (near == field[at] and kind > field[at + 1]):
 							field[at] = near
+							field[at + 1] = kind
 	return field
 
 
 ## Share a sampler with biome noise without changing its red channel or CPU
-## image: the canopy in green, the roads (road_field) in blue.
+## image: the canopy in green, the roads (road_field) in blue and alpha.
 static func pack_biome(source: Image, canopy: Image, roads := PackedByteArray()) -> Image:
 	var noise: Image = source.duplicate()
 	noise.convert(Image.FORMAT_R8)
@@ -404,19 +409,20 @@ static func pack_biome(source: Image, canopy: Image, roads := PackedByteArray())
 	var red := noise.get_data()
 	var green := mask.get_data()
 	var packed := PackedByteArray()
-	if roads.size() != red.size():
+	if roads.size() != red.size() * 2:
 		packed.resize(red.size() * 2)
 		for i in red.size():
 			packed[i << 1] = red[i]
 			packed[(i << 1) + 1] = green[i]
 		return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RG8, packed)
-	packed.resize(red.size() * 3)
+	packed.resize(red.size() * 4)
 	for i in red.size():
-		var at := i * 3
+		var at := i << 2
 		packed[at] = red[i]
 		packed[at + 1] = green[i]
-		packed[at + 2] = roads[i]
-	return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RGB8, packed)
+		packed[at + 2] = roads[i << 1]
+		packed[at + 3] = roads[(i << 1) + 1]
+	return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RGBA8, packed)
 
 
 func canopy_at(p: Vector3) -> float:

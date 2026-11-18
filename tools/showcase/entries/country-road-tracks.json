@@ -1,15 +1,15 @@
 {
   "entry": "changelog/unreleased/country-road-tracks.md",
-  "summary": "Country tracks are drawn into the terrain itself: worn earth with wandering ruts that the meadow takes back stone by stone.",
+  "summary": "Gravel roads and supply tracks are drawn into the terrain itself: compacted wheel paths, loose stone and edges the meadow takes back stone by stone.",
   "medium": "still",
   "stage": "game capture, matched: --fixed-fps 30 -- --aivai --seed=3 --set=dof:false --shot-at=6, with --focus=77,-5 --cam-yaw=0 --zoom=32 --pitch=-35; --focus=74,-3 --cam-yaw=0 --zoom=10 --pitch=-30; --focus=70,0 --cam-yaw=-1.57 --zoom=6 --pitch=-15; --focus=56,-5 --cam-yaw=0 --zoom=26 --pitch=-40 (1600x900, --nohud --perf=0, off-screen window; before from origin/main)",
   "rationale": "Ground materials are an appearance change: matched before/after frames of the same track, town edge and street show the surfaces directly.",
-  "source_ref": "b054bb011215a98816428cbe72fe5b063bf51265 + working tree",
-  "before_ref": "b054bb011215a98816428cbe72fe5b063bf51265",
+  "source_ref": "66fcc4044a3d9cb87afc922557776d5a7c490e64 + working tree",
+  "before_ref": "66fcc4044a3d9cb87afc922557776d5a7c490e64",
   "sources": [
     {
       "file": "changelog/unreleased/country-road-tracks/comparison.jpg",
-      "sha256": "0c1b8346b2645d566115031484f08d1377232e992606ea308bac5b51c77f9e01"
+      "sha256": "49fb6b98451a51b12711e45129a5d276f40f678408e08e712b313be065614814"
     }
   ],
   "output": null
