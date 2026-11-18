@@ -1398,6 +1398,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.55, 0.55, 0.55), "rough": 0.85, "bump": 0.2, "grime": 0.3}
 		"plain_dark":
 			return {"pattern": PLAIN, "col_a": Color(0.18, 0.18, 0.18), "rough": 0.8, "bump": 0.2, "grime": 0.2}
+		"bronze":
+			# cast bronze gone green with weather (a statue, a plaque): smooth,
+			# a little metallic, darker where the rain doesn't wash it
+			return {"pattern": PLAIN, "col_a": Color(0.27, 0.37, 0.31), "rough": 0.42, "metal": 0.55, "bump": 0.15, "grime": 0.5}
 		"rubber":
 			return {"pattern": PLAIN, "col_a": Color(0.07, 0.07, 0.07), "rough": 0.85, "bump": 0.3, "grime": 0.4}
 		"glass":

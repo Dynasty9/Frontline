@@ -191,6 +191,19 @@ func _subject(kind: String) -> Node3D:
 			if kind == "house_yard" and ClassDB.class_exists("Node") and ResourceLoader.exists("res://scripts/game/building_yards.gd"):
 				_yard(yard, 9.0, 7.6)
 			return yard
+		"memorial", "memorial_obelisk":
+			# the town square's war memorial (BuildingSquare), where it exists
+			var mem := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_square.gd"):
+				var mr := RandomNumberGenerator.new()
+				mr.seed = 7
+				var sq: GDScript = load("res://scripts/game/building_square.gd")
+				sq.call("memorial", BuildingKit.nodes(mem, mr), kind == "memorial_obelisk", mr)
+				if kind == "memorial" and sq.get_script_method_list().any(func(m: Dictionary) -> bool: return m["name"] == "stall"):
+					# (and the market's stalls along one side)
+					for i in 3:
+						sq.call("stall", BuildingKit.nodes(mem, mr).at_point(Vector3(-3.2 + i * 3.2, 0, -4.2)), i, mr)
+			return mem
 		"roofscape":
 			# four houses' roofs as the town draws them (their ids pick the
 			# form and wear): a hipped roof mended with a tarp and with a

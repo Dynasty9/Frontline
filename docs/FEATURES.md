@@ -696,8 +696,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs), seen when
   the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
   floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
-- A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
-  stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
+- A town square on one corner of the crossroads (fountain or war memorial, benches, planters, a flagpole, market
+  stalls, bollards): the memorial a bronze soldier at rest on his rifle on a granite pedestal with plaques of
+  names, wreaths at its foot, and the stalls under striped canopies over crates of produce, a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
 - Fences are built as the real ones are (`BuildingFences`), one bay between two posts, climbing with the ground.
   A house keeps one look: white or painted pickets, chestnut paling, or iron railings with spear heads on a dwarf

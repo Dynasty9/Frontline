@@ -327,6 +327,21 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# The town square's war memorial stands within its steps, the soldier (or
+	# the obelisk) on top of it; a market stall keeps to its pitch, its
+	# canopy over a man's head.
+	for obelisk in [false, true]:
+		var mk := kit()
+		BuildingSquare.memorial(mk, obelisk, mk.rng)
+		var mb := _bounds(mk.sink.root, Transform3D.IDENTITY)
+		check(mb.size.x <= 3.05 and mb.size.z <= 3.05 and mb.position.y >= -0.01 and mb.end.y > 4.0 and mb.end.y < 6.0, "the war memorial stands on its steps (%s)" % mb)
+		mk.sink.root.free()
+	for ci in 5:
+		var stk := kit()
+		BuildingSquare.stall(stk, ci, stk.rng)
+		var stb := _bounds(stk.sink.root, Transform3D.IDENTITY)
+		check(stb.size.x <= 2.7 and stb.size.z <= 1.7 and stb.end.y <= 2.5 and stb.position.y >= -0.01, "a market stall keeps to its pitch (%s)" % stb)
+		stk.sink.root.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:

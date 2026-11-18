@@ -135,6 +135,21 @@ a decor list of its own after the rest, so the town is as it was; vehicles and b
 other street furniture (`Decor.BREAKABLE`). Render the pieces with `--building-kinds=street_kit`; the town views
 include the crossroads and the square.
 
+## The square
+
+The town square's monuments are `BuildingSquare`'s:
+- **The war memorial** (`memorial`, Decor `statue`): three steps, a moulded plinth, the die of dressed granite with
+  a bronze plaque of names on each face, a cornice. On top stands a bronze soldier (`soldier`) larger than life,
+  at rest on his rifle with his head bowed, in greatcoat, helmet and pack. Or (the park's) it's an obelisk with its
+  capstone and a bronze wreath. Wreaths of laurel and poppies (`wreath`) lean against its front.
+- **The market's stalls** (`stall`, Decor `stall`): a timber frame under a pitched canopy of striped canvas,
+  scalloped along its eaves, over a trestle of crates heaped with produce, a set of scales and a crate or two
+  under it. The canopies are `AWNINGS`.
+
+Bronze is a surface of its own (`bronze`): smooth, a little metallic, gone green. Render them with
+`--building-kinds=memorial,memorial_obelisk` (the memorial with three stalls beside it) in the studio stage; the
+town views include the square.
+
 ## Furniture
 
 A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it
