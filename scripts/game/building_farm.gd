@@ -9,12 +9,13 @@ extends RefCounted
 ## above 1.45 m. On the barn's walls the tools hung on a batten over it all,
 ## above 1.5 m. Round the yard (Decor, each in a kit at its foot, its front to
 ## -z): a water trough, a plough and a harrow put away by the barn, a churn
-## stand at the gate, a hen house with its run and its hens, a wheelbarrow.
-## Looks only, like the houses' furniture; in the barn in world-space
-## materials, so its walls and floor still draw together.
+## stand at the gate, a hen house with its run and its hens, a wheelbarrow;
+## and its round bales, straw or silage in film (in a kit standing on the
+## ground, x along a row of them). Looks only, like the houses' furniture; in
+## the barn in world-space materials, so its walls and floor still draw
+## together.
 
 const FLOOR := 0.06
-const STRAW := Color(0.74, 0.63, 0.36)
 const TWINE := Color(0.78, 0.4, 0.12)
 const BOARD := Color(0.45, 0.36, 0.25)
 const RUST := Color(0.4, 0.23, 0.13)
@@ -22,8 +23,11 @@ const GALV := Color(0.62, 0.63, 0.61)
 ## The makers' paints on carts and implements, faded.
 const PAINTS := [Color(0.6, 0.2, 0.13), Color(0.22, 0.36, 0.52), Color(0.78, 0.58, 0.2), Color(0.27, 0.42, 0.26)]
 const SACKING := Color(0.66, 0.58, 0.44)
-## Bale wrap: black, white, green.
-const WRAP := [Color(0.06, 0.06, 0.06), Color(0.84, 0.85, 0.83), Color(0.2, 0.3, 0.19)]
+const STRAW := Color(0.76, 0.64, 0.38)
+## Silage wrap: black, a dark green, now and then white.
+const WRAP := [Color(0.07, 0.07, 0.07), Color(0.12, 0.2, 0.13), Color(0.8, 0.8, 0.76)]
+const RADIUS := 0.65
+const LENGTH := 1.2
 ## A small bale: long along x.
 const BALE := Vector3(0.9, 0.36, 0.46)
 ## Nothing on the floor within reach of a wall rises above this, and nothing
@@ -392,37 +396,6 @@ static func wall_tools(k: BuildingKit, length: float, rng: RandomNumberGenerator
 
 # --- the yard -------------------------------------------------------------------------
 
-## Round bales in a row along x (the kit at the row's middle), `count` of
-## them and, on three, one more up on top: straw, its rolled end showing in
-## rings; or wrapped in plastic for silage, black, white or green, a stack
-## all the same.
-static func round_bales(k: BuildingKit, count: int, rng: RandomNumberGenerator) -> void:
-	var wrapped := rng.randf() < 0.35
-	var wrap: Color = WRAP[rng.randi() % WRAP.size()]
-	for i in count:
-		round_bale(k, Vector3((i - (count - 1) * 0.5) * 1.35, 0.65, 0), wrapped, wrap, rng)
-	if count >= 3:
-		round_bale(k, Vector3(0, 1.85, 0), wrapped, wrap, rng)
-
-
-## A round bale lying with its axis along x, its middle at `c`.
-static func round_bale(k: BuildingKit, c: Vector3, wrapped: bool, wrap: Color, rng: RandomNumberGenerator) -> void:
-	var b := k.at_point(c, Vector3(0, 0, PI * 0.5))
-	if wrapped:
-		b.cyl(0.66, 0.66, 1.12, Vector3.ZERO, "paint", wrap.lightened(rng.randf_range(0.0, 0.05)), Vector3.ZERO, 18)
-		for sy: float in [-1.0, 1.0]:
-			b.cyl(0.6 if sy > 0.0 else 0.66, 0.66 if sy > 0.0 else 0.6, 0.05, Vector3(0, sy * 0.585, 0), "paint", wrap, Vector3.ZERO, 18)
-		return
-	var tone := STRAW.darkened(rng.randf_range(0.0, 0.15))
-	b.cyl(0.65, 0.65, 1.2, Vector3.ZERO, "canvas", tone, Vector3.ZERO, 18)
-	for sy: float in [-1.0, 1.0]:
-		# (the rolled end: rings of it round a tight core)
-		b.cyl(0.62, 0.62, 0.012, Vector3(0, sy * 0.603, 0), "canvas", tone.darkened(0.16), Vector3.ZERO, 18, false)
-		b.cyl(0.45, 0.45, 0.012, Vector3(0, sy * 0.607, 0), "canvas", tone.lightened(0.08), Vector3.ZERO, 16, false)
-		b.cyl(0.25, 0.25, 0.012, Vector3(0, sy * 0.611, 0), "canvas", tone.darkened(0.08), Vector3.ZERO, 12, false)
-		b.cyl(0.08, 0.08, 0.012, Vector3(0, sy * 0.615, 0), "canvas", tone.darkened(0.25), Vector3.ZERO, 8, false)
-
-
 ## A water trough (along x): galvanised on bricks, its rolled rim, the ball
 ## valve's box at one end and its pipe up out of the ground; or cast in
 ## concrete. Water in it.
@@ -552,3 +525,69 @@ static func hen(k: BuildingKit, p: Vector3, yaw: float, col: Color, pecking: boo
 	h.box(Vector3(0.02, 0.02, 0.04), head + Vector3(0, -0.005, -0.05), "paint", Color(0.85, 0.65, 0.2), Vector3.ZERO, false)
 	for sx: float in [-0.04, 0.04]:
 		h.box(Vector3(0.012, 0.11, 0.012), Vector3(sx, 0.055, 0.01), "paint", Color(0.85, 0.65, 0.2), Vector3.ZERO, false)
+
+
+# --- the bales --------------------------------------------------------------------------
+
+## `count` round bales (1 to 3) lying in a row along x, a third on the two
+## below where there are three: straw bales settled a little flat on their
+## bellies, their ends showing the spiral of the roll and their twine round
+## them, the straw weathered grey on top; or (`wrapped`) silage bales sealed
+## in plastic, their ends puckered where the film was drawn tight.
+static func bales(k: BuildingKit, count: int, wrapped: bool, rng: RandomNumberGenerator) -> void:
+	var pick := rng.randf()
+	var wrap: Color = WRAP[0 if pick < 0.55 else (1 if pick < 0.88 else 2)]
+	var at: Array[Vector3] = []
+	var n := clampi(count, 1, 3)
+	for i in mini(n, 2):
+		at.append(Vector3((i - (mini(n, 2) - 1) * 0.5) * 1.35 + rng.randf_range(-0.06, 0.06), RADIUS * 0.935, rng.randf_range(-0.08, 0.08)))
+	if n >= 3:
+		at.append(Vector3(rng.randf_range(-0.1, 0.1), RADIUS * 0.94 + RADIUS * 1.75, rng.randf_range(-0.05, 0.05)))
+	for p in at:
+		var tilt := Basis(Vector3.UP, rng.randf_range(-0.12, 0.12))
+		if wrapped:
+			_silage(k.at_point(p, tilt.get_euler()), wrap, rng)
+		else:
+			_straw(k.at_point(p, tilt.get_euler()), rng)
+
+
+## A round bale of straw about its axis (x), settled a little flat: the
+## straw wound round it, a net over it, its ends the spiral of the roll.
+static func _straw(k: BuildingKit, rng: RandomNumberGenerator) -> void:
+	var col := STRAW.lerp(Color(0.6, 0.55, 0.42), rng.randf_range(0.0, 0.35))
+	var lie := Basis(Vector3.BACK, PI * 0.5)
+	# (flattened in its height: the cylinder's own x is the height once it lies)
+	var squash := Basis.from_scale(Vector3(0.94, 1.0, 1.0))
+	k.part(Res.cyl(RADIUS, RADIUS, LENGTH, 20), "straw", Transform3D(lie * squash, Vector3.ZERO), col)
+	# the net wrap, faint pale bands round it
+	for i in 3:
+		var x := -LENGTH * 0.33 + i * LENGTH * 0.33
+		k.part(Res.cyl(RADIUS * 1.006, RADIUS * 1.006, 0.02, 20), "plain", Transform3D(lie * squash, Vector3(x, 0, 0)), col.lightened(0.18), false)
+	for sx: float in [-1.0, 1.0]:
+		# (the end's own frame: its face out along +y)
+		var end := Transform3D(Basis(Vector3.BACK, -sx * PI * 0.5) * squash, Vector3(sx * LENGTH * 0.5, 0, 0))
+		k.part(Res.cyl(RADIUS * 0.985, RADIUS * 0.985, 0.012, 20), "straw", end * Transform3D(Basis.IDENTITY, Vector3(0, 0.004, 0)), col.darkened(0.1), false)
+		for r in 5:
+			var rr := RADIUS * (0.2 + r * 0.16)
+			k.part(BuildingKit.ring(rr - 0.01, rr + 0.01), "plain", end * Transform3D(Basis.IDENTITY, Vector3(0, 0.012, 0)), col.darkened(0.32), false)
+		k.part(Res.cyl(RADIUS * 0.12, RADIUS * 0.12, 0.01, 10), "plain", end * Transform3D(Basis.IDENTITY, Vector3(0, 0.014, 0)), col.darkened(0.5), false)
+
+
+## A silage bale sealed in film about its axis (x): its body smooth and a
+## little shiny, its ends puckered with folds of film round a darker middle.
+static func _silage(k: BuildingKit, wrap: Color, rng: RandomNumberGenerator) -> void:
+	var lie := Basis(Vector3.BACK, PI * 0.5)
+	var squash := Basis.from_scale(Vector3(0.93, 1.0, 1.0))
+	k.part(Res.cyl(RADIUS, RADIUS, LENGTH, 20), "film", Transform3D(lie * squash, Vector3.ZERO), wrap)
+	for i in 3:
+		var x := -LENGTH * 0.3 + i * LENGTH * 0.3
+		k.part(Res.cyl(RADIUS * 1.006, RADIUS * 1.006, 0.05, 20), "film", Transform3D(lie * squash, Vector3(x, 0, 0)), wrap.lightened(0.05), false)
+	for sx: float in [-1.0, 1.0]:
+		var end := Transform3D(Basis(Vector3.BACK, -sx * PI * 0.5) * squash, Vector3(sx * LENGTH * 0.5, 0, 0))
+		k.part(Res.cyl(RADIUS * 0.9, RADIUS * 0.97, 0.04, 20), "film", end * Transform3D(Basis.IDENTITY, Vector3(0, 0.02, 0)), wrap.darkened(0.12), false)
+		# (folds where the film was drawn tight over the corner, short and soft)
+		for f in 11:
+			var a := TAU * f / 11.0 + rng.randf_range(-0.15, 0.15)
+			var long := RADIUS * rng.randf_range(0.25, 0.45)
+			k.part(Res.box(Vector3(0.05, 0.008, long)), "film", end * Transform3D(Basis(Vector3.UP, a), Vector3(0, 0.041, 0)) * Transform3D(Basis.IDENTITY, Vector3(0, 0, RADIUS * 0.92 - long * 0.5)), wrap.lightened(0.03), false)
+		k.part(Res.cyl(RADIUS * 0.2, RADIUS * 0.2, 0.03, 12), "film", end * Transform3D(Basis.IDENTITY, Vector3(0, 0.05, 0)), wrap.darkened(0.25), false)

@@ -436,6 +436,9 @@ func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:
 			prototype.free()
 		prop_types.structure["zc"] = Vector3.ZERO
 		prop_types.structure["zr"] = 0.0
+		# Empty prototypes omit these properties; destroyed vehicles emit them.
+		prop_types.structure.merge({"wreck_turret_yaw": 0.0, "bent_skirts": 0,
+			"wreck_finish": {}, "turret_off": false})
 		prop_types.structure["look"] = 0  # (a wing's roof: the roof whose looks it shares)
 		prop_types.structure["entry"] = 0  # (a furnished floor: the wall its door is in)
 		prop_types.structure["shop"] = false  # (a shop's walls: fitted out as a shop's)
@@ -453,6 +456,12 @@ func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:
 		if values[key] is float and not is_finite(values[key]):
 			return false
 		if values[key] is String and values[key].length() > 1000:
+			return false
+	if values.has("wreck_finish"):
+		var finish: Dictionary = values.wreck_finish
+		if finish.size() != 3 or not finish.get("team") is int or not finish.team in [-1, 0, 1]:
+			return false
+		if not finish.get("seed") is int or not finish.get("since") is float or not is_finite(finish.since) or finish.since < 0.0:
 			return false
 	if values.has("queue"):
 		for item in values.queue:

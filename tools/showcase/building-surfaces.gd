@@ -313,11 +313,8 @@ func _subject(kind: String) -> Node3D:
 			var r := RandomNumberGenerator.new()
 			r.seed = 5
 			var fk := BuildingKit.nodes(yard, r)
-			for i in 3:
-				farm.round_bale(fk, Vector3(-8.6 + i * 1.35, 0.65, 3.2), false, Color.WHITE, r)
-			farm.round_bale(fk, Vector3(-7.25, 1.85, 3.2), false, Color.WHITE, r)
-			for i in 2:
-				farm.round_bale(fk, Vector3(-4.3 + i * 1.35, 0.65, 3.4), true, Color(0.06, 0.06, 0.06), r)
+			farm.bales(fk.at_point(Vector3(-8.3, 0, 3.2)), 3, false, r)
+			farm.bales(fk.at_point(Vector3(-4.6, 0, 3.4)), 2, true, r)
 			var tractor := Structure.preview_model("car", -1, 5, Vector3.ZERO, false, 7)
 			tractor.position = Vector3(0.6, 0, 3.0)
 			tractor.rotation.y = PI * 0.5
@@ -329,6 +326,16 @@ func _subject(kind: String) -> Node3D:
 			farm.churn_stand(fk.at_point(Vector3(2.8, 0, -1.8)), r)
 			farm.barrow(fk.at_point(Vector3(5.6, 0, -1.8), Vector3(0, 0.6, 0)), 0)
 			return yard
+		"bales":
+			# round bales as a farm stacks them: straw, and silage in film
+			var row := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_farm.gd"):
+				var farm: GDScript = load("res://scripts/game/building_farm.gd")
+				for i in 4:
+					var br := RandomNumberGenerator.new()
+					br.seed = 3 + i
+					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
+			return row
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:

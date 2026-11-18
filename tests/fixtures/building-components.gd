@@ -300,7 +300,7 @@ func _ready() -> void:
 		"farm": func(k: BuildingKit):
 			BuildingFarm.barn(k, Vector3(13.0, 0.06, 10.0), 0, k.rng)
 			BuildingFarm.wall_tools(k.at_point(Vector3(0, 0, 8)), 3.2, k.rng)
-			BuildingFarm.round_bales(k.at_point(Vector3(0, 0, 12)), 3, k.rng)
+			BuildingFarm.bales(k.at_point(Vector3(0, 0, 12)), 3, false, k.rng)
 			BuildingFarm.trough(k.at_point(Vector3(4, 0, 12)), k.rng)
 			BuildingFarm.plough(k.at_point(Vector3(8, 0, 12)), k.rng)
 			BuildingFarm.harrow(k.at_point(Vector3(12, 0, 12)), k.rng)
@@ -349,6 +349,15 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A farm's bales keep to their footprint (two side by side, a third on
+	# them), straw or wrapped.
+	for i in 6:
+		var bk := kit()
+		bk.rng.seed = i
+		BuildingFarm.bales(bk, 1 + i % 3, i >= 3, bk.rng)
+		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
+		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
+		bk.sink.root.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:

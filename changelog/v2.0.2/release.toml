@@ -1,0 +1,4 @@
+version = "2.0.2"
+name = "Rooms and narrow spaces take their skylight from the world round them"
+date = "2026-11-18"
+pull_requests = [228, 231, 247, 257, 258]

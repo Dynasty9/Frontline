@@ -211,10 +211,9 @@ Round the yard (`TownGen.farmyards`, after everything else on the map is laid, f
 farm is, so nothing else moves) a farm has its tractor (a parked civilian vehicle: Structure `car`, variant 5, cover
 like any car), a water trough at the barn's end, a plough and a harrow put away by it, a churn stand at the gate,
 a hen house with its run and hens by the farmhouse, a wheelbarrow at the barn door; each at the first of a few
-spots that has level ground and room clear of the buildings, the hedges and woods laid since, and the fence. The
-hay bales round the yard are round bales: straw with their rolled ends showing, or wrapped in black, white or
-green plastic. All of them are Decor pieces a vehicle or a blast knocks over (`Decor.BREAKABLE`). Render the kit
-with `--building-kinds=farm_kit`.
+spots that has level ground and room clear of the buildings, the hedges and woods laid since, and the fence. All
+of them, like the round bales (below), are Decor pieces a vehicle or a blast knocks over (`Decor.BREAKABLE`).
+Render the kit with `--building-kinds=farm_kit`.
 
 ## Shop fronts
 
@@ -285,6 +284,17 @@ them, as a real wall's do. Frames sit back in the reveal (`inset`); on a solid b
 negative inset so the frame stands proud of the face and glaze it fully (`glazing = 1.0`), since a missing pane
 would show the block behind. Door leaves that swing are built in their own hinge kit (`BuildingKit.nodes(pivot)`);
 `BuildingOpenings.leaf` runs the leaf out along `toward` from the hinge line.
+
+## Bales
+
+A farm's bales (Decor `hay`) are `BuildingFarm.bales`: one to three round bales in a row, a third on the two where
+there are three.
+- **Straw bales** (the `straw` surface, fibres wound round the roll) are settled a little flat, with a faint net
+  wrap round them and the spiral of the roll in rings on their ends.
+- **About a third are silage**, sealed in black, dark green or now and then white film (the `film` surface: smooth,
+  a soft sheen), their ends puckered with folds round a darker middle.
+
+Render them with `--building-kinds=bales`.
 
 ## Who uses what
 
