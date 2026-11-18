@@ -573,7 +573,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 	_weld(k, m, _seated(capsule, 0.03), cam)
 	# windscreen: two small thick panes in a heavy frame
 	for s in [-1.0, 1.0]:
-		_zy(k, m, s * 0.47, 0.72, Vector2(-0.905, 1.92), Vector2(-0.745, 2.4), 0.05, 0.0, "glass", glass, false)
+		VehicleMaterials.glaze(k, _zy(k, m, s * 0.47, 0.72, Vector2(-0.905, 1.92), Vector2(-0.745, 2.4), 0.05, 0.0, "glass", glass, false), "armor_glass", glass)
 		_zy(k, m, s * 0.47, 0.84, Vector2(-0.92, 1.87), Vector2(-0.73, 2.45), 0.03, -0.01, "gunmetal_w", null, false)
 	# doors: seams, small thick windows on the upper sides, handles, hinges
 	for s in [-1.0, 1.0]:
@@ -581,7 +581,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 			VehicleBody.seam(k, m, [Vector3(s * 1.245, 1.681, dz), Vector3(s * 1.085, 2.451, dz)])
 		for wz in [-0.28, 0.9]:
 			_xy(k, m, s, wz, 0.5, Vector2(1.2, 1.88), Vector2(1.11, 2.32), 0.07, 0.0, cam)
-			_xy(k, m, s, wz, 0.4, Vector2(1.2, 1.93), Vector2(1.12, 2.28), 0.03, 0.045, "glass", glass, false)
+			VehicleMaterials.glaze(k, _xy(k, m, s, wz, 0.4, Vector2(1.2, 1.93), Vector2(1.12, 2.28), 0.03, 0.045, "glass", glass, false), "armor_glass", glass)
 		for ends in [Vector2(-0.88, 0.32), Vector2(0.32, 1.48)]:
 			var z0: float = ends.x + 0.018
 			var z1: float = ends.y - 0.018
@@ -619,7 +619,7 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 		_shackle(k, m, Vector3(s * 0.55, 1.12, 2.82), 1.0)
 	k._box(m, Vector3(2.3, 0.1, 0.08), Vector3(0, 1.92, 2.74), cam)
 	_zy(k, m, -0.45, 0.5, Vector2(1.537, 2.32), Vector2(1.581, 1.98), 0.06, 0.0, cam)
-	_zy(k, m, -0.45, 0.4, Vector2(1.54, 2.29), Vector2(1.578, 2.01), 0.03, 0.035, "glass", glass, false)
+	VehicleMaterials.glaze(k, _zy(k, m, -0.45, 0.4, Vector2(1.54, 2.29), Vector2(1.578, 2.01), 0.03, 0.035, "glass", glass, false), "armor_glass", glass)
 	# the step up into the bed, on two brackets up to the bed's floor
 	VehicleFrames.step(k, m, Vector3(-0.6, 1.05, 2.86), Vector2(0.5, 0.2))
 	for x: float in [-0.8, -0.4]:
@@ -833,7 +833,7 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 		_xy_module(k, m, s, -1.48, 0.95, Vector2(1.4, 1.56), Vector2(1.16, roof), 0.06, cam, Vector2i(3, 2), 0.05)
 		_xy_bin(k, m, s, 2.6, 1.1, Vector2(1.4, 1.56), Vector2(1.16, roof), 0.14, cam)
 		for z in [-0.9, 1.5]:
-			_xy(k, m, s, z, 0.22, Vector2(1.36, 1.64), Vector2(1.26, 1.86), 0.05, 0.02, "glass", null, false)
+			VehicleMaterials.glaze(k, _xy(k, m, s, z, 0.22, Vector2(1.36, 1.64), Vector2(1.26, 1.86), 0.05, 0.02, "glass", null, false), "armor_glass", VehicleMounts.BLOCK)
 			# the armoured brow welded over the block, so it sits in the side
 			# under its own shadow rather than as a dark tile on the paint
 			if not k.wreck:
@@ -947,7 +947,14 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 		_xy_bin(k, m, s, 1.25, 1.2, Vector2(1.42, 1.45), Vector2(1.12, roof), 0.16, cam)
 		# (the grab rail along the side, painted with the hull it's welded to)
 		k._box(m, Vector3(0.06, 0.06, 2.8), Vector3(s * 1.44, 1.32, 0.3), cam)
-		k._box(m, Vector3(0.05, 0.3, 0.55), Vector3(s * 1.43, 1.0, 3.1), "gunmetal_w")
+		# the engine's exhaust outlets on the hull's rear flanks, a louvred
+		# guard in the hull's paint over each (bare steel slabs there read
+		# from above as black holes in the sides); a wreck keeps the slabs
+		if k.wreck:
+			k._box(m, Vector3(0.05, 0.3, 0.55), Vector3(s * 1.43, 1.0, 3.1), "gunmetal_w")
+		else:
+			k._box(m, Vector3(0.05, 0.3, 0.55), Vector3(s * 1.43, 1.0, 3.1), cam)
+			VehicleFittings.grille(k, m, Vector3(s * 1.485, 1.0, 3.1), Vector2(0.48, 0.24), VmCsat._face_rot(Vector3(s, 0, 0), Vector3.UP), cam, null, 3)
 		_taillight(k, m, Vector3(s * 1.15, 1.5, 3.57))
 		_shackle(k, m, Vector3(s * 0.7, 0.95, 3.58), 1.0)
 		_antenna(k, m, Vector3(s * 0.95, roof, 3.3), 1.5)
@@ -1484,7 +1491,7 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 	var fa := Vector2(-1.35, 1.8)
 	var fb := Vector2(-0.72, roof)
 	for i in 3:
-		_zy(k, m, -0.95 + i * 0.22, 0.16, fa.lerp(fb, 0.55), fa.lerp(fb, 0.8), 0.06, 0.03, "glass", null, false)
+		VehicleMaterials.glaze(k, _zy(k, m, -0.95 + i * 0.22, 0.16, fa.lerp(fb, 0.55), fa.lerp(fb, 0.8), 0.06, 0.03, "glass", null, false), "armor_glass", VehicleMounts.BLOCK)
 	# the armoured brow welded over them, standing out of the plate so its
 	# shadow falls across the prisms' heads and the blocks sit in the armour
 	# (bare, they read from above as three black tiles stuck on the front),
@@ -1663,7 +1670,9 @@ static func _cheetah(k: VehicleModels, team: int, seed := 0) -> void:
 	# the tracking radar (a dish in a drum) on the front of the roof, the
 	# optics beside it
 	k._cyl(t, 0.36, 0.36, 0.3, Vector3(0, 1.08, -0.65), Vector3(PI / 2, 0, 0), cam, null, 16)
-	k._cyl(t, 0.3, 0.3, 0.04, Vector3(0, 1.08, -0.82), Vector3(PI / 2, 0, 0), "plain_dark", null, 16, false)
+	# (the dish behind its radome: a fibreglass cover in pale grey, not the
+	# black hole a bare dark disc read as; a wreck keeps the dark disc)
+	k._cyl(t, 0.3, 0.3, 0.04, Vector3(0, 1.08, -0.82), Vector3(PI / 2, 0, 0), "plain_dark" if k.wreck else "plastic", null if k.wreck else VmCsat.RADOME, 16, false)
 	VehicleMounts.sight(k, t, Vector3(-0.6, 1.05, -0.7), Vector3(0.3, 0.26, 0.3), [Rect2(Vector2(0, 0.02), Vector2(0.22, 0.14))], cam)
 	# hatches, the search radar on its folding mast at the back
 	VehicleFittings.hatch(k, t, Vector3(0.5, 0.95, 0.4), 0.28, cam, null, 1.0, 0.06)
@@ -1917,9 +1926,17 @@ static func _hemtt(k: VehicleModels, team: int, body: String, seed := 0) -> void
 				for i in 5:
 					for s in [-1.0, 1.0]:
 						var pz := -1.7 + i * 1.25
-						k._box(m, Vector3(1.05, 0.12, 1.1), Vector3(s * 0.56, 1.44, pz), "wood")
+						# Pallets forklifted on by hand never sit square: each a
+						# degree or two off the bed's line (as far as the gaps
+						# between them allow), its stack turned with it, so the
+						# bed isn't one block cast ten times.
+						var py := 0.0
+						var prng := VehicleCargo.kit(k, m, Vector3(s * 0.56, 1.44, pz), 73)
+						if prng != null and not k.wreck:
+							py = prng.randf_range(-0.035, 0.035)
+						k._box(m, Vector3(1.05, 0.12, 1.1), Vector3(s * 0.56, 1.44, pz), "wood", null, Vector3(0, py, 0))
 						var hh := 0.62 if (i + int(s > 0.0)) % 3 != 0 else 0.32
-						VehicleCargo.crate_stack(k, m, Vector3(s * 0.56, 1.5, pz), Vector3(1.05, hh, 1.1), Vector3i(2, 1, 2), "paint", STOW, 0.0, [0.0], 0.15)
+						VehicleCargo.crate_stack(k, m, Vector3(s * 0.56, 1.5, pz), Vector3(1.05, hh, 1.1), Vector3i(2, 1, 2), "paint", STOW, 0.0, [0.0], 0.15, Color(0.28, 0.26, 0.2), py)
 				# the crane on its slewing ring and column with the main boom's
 				# luffing ram; the knuckle boom folded back under it, the hook at
 				# its end

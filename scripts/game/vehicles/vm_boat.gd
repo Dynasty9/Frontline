@@ -538,9 +538,11 @@ static func _zodiac(k: VehicleModels, team: int) -> void:
 		var top := 0.21 + 0.12 * f * f
 		rings.append(_rz([0.05, ky, hw * 0.8, ky + 0.07, hw, top, -hw, top, -hw * 0.8, ky + 0.07, -0.05, ky], z))
 	k._add(m, VehicleModels.solid(rings, "boat_crrc_floor"), tm, tc.lightened(0.04), Vector3.ZERO)
-	# aluminium floorboards
+	# aluminium floorboards: bare treadplate, scuffed dull, the one light
+	# metal in the boat against the black of the tubes (in the tubes' grey
+	# they read as more fabric; a wreck's as before)
 	for zz in [[1.88, 0.94], [0.9, -0.06], [-0.1, -1.0]]:
-		k._box(m, Vector3(0.84, 0.02, zz[0] - zz[1]), Vector3(0, 0.218, (zz[0] + zz[1]) * 0.5), "plain_dark", Color(0.2, 0.2, 0.2))
+		k._box(m, Vector3(0.84, 0.02, zz[0] - zz[1]), Vector3(0, 0.218, (zz[0] + zz[1]) * 0.5), "plain_dark" if k.wreck else "tread", Color(0.2, 0.2, 0.2) if k.wreck else Color(0.4, 0.41, 0.4))
 	# the transom with its knees and the motor pad
 	k._box(m, Vector3(1.02, 0.5, 0.07), Vector3(0, 0.38, zt + 0.02), "paint", Color(0.12, 0.12, 0.12), Vector3(0.1, 0, 0))
 	k._box(m, Vector3(0.34, 0.05, 0.15), Vector3(0, 0.635, zt + 0.045), "wood_dark")
@@ -920,8 +922,24 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 			[Vector3(s * 0.585, dy + 0.75, cz - 0.38), Vector3(s * 0.585, dy + 0.75, cz + 0.68), 0.025]], 0.035, am, ac)
 		VehicleFittings.antenna(k, m, Vector3(s * 0.42, ah + 0.02, cz + 0.32), 0.0, Vector3(s * 0.06, 1.98, 0.23), 0.01, "gunmetal_w", null, "whip", Vector3(0.02, 0.025, 0.12))
 	k._box(m, Vector3(1.06, 0.05, 0.5), Vector3(0, ah + 0.01, cz + 0.15), am, ac)
-	k._cyl(m, 0.3, 0.3, 0.2, Vector3(0, ah + 0.14, cz + 0.12), Vector3.ZERO, "plain", Color(0.82, 0.82, 0.79), 18)
-	VehicleMounts.radome(k, m, Vector3(0, ah + 0.24, cz + 0.12), Vector3(1, 0.25, 1) * 0.6, "plain", Color(0.82, 0.82, 0.79))
+	# The radar's radome (a small-boat set's, 0.6 m across and 0.25 m tall): a
+	# short upright base, chamfered at its foot where it's bolted down, the
+	# cover on it tapering in over a well-rounded shoulder to a low crowned
+	# top, and the split line between them. A tall straight wall under a flat
+	# cap read as a drum.
+	# (A wreck's stays the drum it was.)
+	if k.wreck:
+		k._cyl(m, 0.3, 0.3, 0.2, Vector3(0, ah + 0.14, cz + 0.12), Vector3.ZERO, "plain", Color(0.82, 0.82, 0.79), 18)
+		VehicleMounts.radome(k, m, Vector3(0, ah + 0.24, cz + 0.12), Vector3(1, 0.25, 1) * 0.6, "plain", Color(0.82, 0.82, 0.79))
+	else:
+		var rd := [Vector2(0.27, 0.0), Vector2(0.29, 0.012), Vector2(0.3, 0.03), Vector2(0.3, 0.105), Vector2(0.296, 0.14), Vector2(0.287, 0.175),
+			Vector2(0.268, 0.205), Vector2(0.235, 0.228), Vector2(0.17, 0.244), Vector2(0.08, 0.252), Vector2(0.0, 0.254)]
+		k._add(m, VehicleProfiles.revolve(rd, 20, 40.0), "plain", Color(0.82, 0.82, 0.79), Vector3(0, ah + 0.035, cz + 0.12), Vector3(-PI / 2, 0, 0))
+		var split := []
+		for i in 21:
+			var a := TAU * i / 20.0
+			split.append(Vector3(0, ah + 0.14, cz + 0.12) + Vector3(cos(a), 0, sin(a)) * 0.3)
+		VehicleBody.seam(k, m, split, 0.004)
 	# the masthead light's pole runs up into the light's base
 	_rod(k, m, Vector3(0, ah + 0.03, cz + 0.36), Vector3(0, ah + 0.63, cz + 0.36), 0.018, am, ac)
 	VehicleFittings.dome_light(k, m, Vector3(0, ah + 0.66, cz + 0.36), 0.04, Color(0.9, 0.9, 0.86))
@@ -1126,6 +1144,13 @@ static func _surc(k: VehicleModels, team: int, csat: bool) -> void:
 	var y1 := 2.0
 	var y2 := 2.66
 	k._add(m, VehicleModels.solid([_ry(base, y0), _ry(sill, y1), _ry(roof, y2)], "boat_surc_cab", false, 0.04), hm, hc, Vector3.ZERO)
+	# The cabin roof is a working deck (the mast, the radar and the dome are
+	# tended from it): non-skid in the deck's colour inside a margin of the
+	# cabin's paint, as on the patrol ship, so from above it reads as deck,
+	# not as a pale slab in the sun.
+	if not k.wreck and not k.burnt:
+		var rm := _scale_xz(roof, 0.93, -0.15)
+		k._add(m, VehicleModels.solid([_ry(rm, y2), _ry(rm, y2 + 0.012)], "boat_surc_roofmat"), "nonslip", dc, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 	k._add(m, VehicleModels.solid([_ry(_scale_xz(sill, 1.012, -0.4), y1 - 0.035), _ry(_scale_xz(sill, 1.012, -0.4), y1 + 0.01)], "boat_surc_sill"), "gunmetal_w", null, Vector3.ZERO)
 	var inside := Vector3(0, 1.9, -0.5)
 	for f in [[2, 3], [3, 4], [4, 5]]:

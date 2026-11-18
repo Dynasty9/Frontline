@@ -1159,21 +1159,28 @@ func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
 ## ends cut on a slant leaning forward. Two shapes, so the sides read apart
 ## even where the colour doesn't.
 static func _mark_outline(team: int, size: Vector2) -> PackedVector2Array:
-	var w := size.x * 0.5
+	# (a flank's mark box is wide and short: a chevron stretched across all of
+	# it, arms half its height thick, read from the battle camera as a smear.
+	# Painted no wider than 1.6 times its height, centred, with slimmer arms,
+	# it reads as a chevron)
+	var wide := size.x > size.y * 1.6
+	var w := minf(size.x, size.y * 1.6) * 0.5
 	var h := size.y * 0.5
 	if team == 0:
-		var t := size.y * 0.52
+		var t := size.y * (0.34 if wide else 0.52)
 		return PackedVector2Array([Vector2(0, h), Vector2(w, -h + t), Vector2(w, -h), Vector2(0, h - t), Vector2(-w, -h), Vector2(-w, -h + t)])
 	var slant := minf(size.y * 0.6, size.x * 0.3)
 	return PackedVector2Array([Vector2(-w + slant, -h), Vector2(w, -h), Vector2(w - slant, h), Vector2(-w, h)])
 
 
-## A team mark's paint: the side's colour sunk half way to the hull's dark
-## grey and darkened, a service paint that reads as the side's blue or red
-## from above without glowing like a toy's sticker.
+## A team mark's paint: the side's colour lerped toward a pale grey, a pale
+## service blue or a pale brick at about value 0.6, light enough to stand off
+## dark camouflage and dark enough not to glow like a sticker on sand (sunk to
+## the hull's grey and darkened, it was as dark as olive camouflage, and the
+## sides could not be told apart from the battle camera).
 static func _mark_col(team: int) -> Color:
 	var tc: Color = Defs.TEAM_COLORS[team]
-	return tc.lerp(Color(0.2, 0.21, 0.2), 0.5).darkened(0.3)
+	return tc.lerp(Color(0.74, 0.74, 0.7), 0.4)
 
 
 # --- tanks -----------------------------------------------------------------------

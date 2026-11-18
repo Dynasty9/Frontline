@@ -367,7 +367,7 @@ static func sight(k: VehicleModels, parent: Node3D, center: Vector3, size: Vecto
 			k._add(mount, VehicleEquipment._plate(Vector3(bar, h, 0.028)), "gunmetal_w", null, c + Vector3(side * (w + bar) * 0.5, 0, -0.012), Vector3.ZERO, Vector3.ONE, false)
 		k._add(mount, VehicleEquipment._plate(Vector3(w + 0.004, h + 0.004, 0.012)), "rubber", null, c + Vector3(0, 0, -0.004), Vector3.ZERO, Vector3.ONE, false)
 		if not k.burnt:
-			k._add(mount, VehicleEquipment._plate(Vector3(w, h, 0.02)), "glass", null if k.wreck else OPTIC, c + Vector3(0, 0, -0.01), Vector3.ZERO, Vector3.ONE, false)
+			k._add(mount, VehicleEquipment._plate(Vector3(w, h, 0.02)), "glass" if k.wreck else "armor_glass", null if k.wreck else OPTIC, c + Vector3(0, 0, -0.01), Vector3.ZERO, Vector3.ONE, false)
 		# The armoured visor shades the window from above.
 		var depth := minf(0.07, size.z * 0.3)
 		k._add(mount, VehicleEquipment._plate(Vector3(w + bar * 3, 0.016, depth)), mat, col, c + Vector3(0, h * 0.5 + bar + 0.008, -depth * 0.5 + 0.004), Vector3(0.12, 0, 0))
@@ -413,7 +413,7 @@ static func cupola(k: VehicleModels, parent: Node3D, center: Vector3, top_radius
 		k._add(mount, VehicleEquipment._plate(Vector3(block.x + 0.05, 0.012, 0.036)), mat, col, Vector3(0, block.y * 0.5 + 0.018, -block.z * 0.5 - 0.012), Vector3(0.1, 0, 0))
 		k._box(mount, Vector3(block.x + 0.006, block.y + 0.006, 0.008), Vector3(0, 0, -block.z * 0.5 - 0.002), "rubber", null, Vector3.ZERO, false)
 		if not k.burnt:
-			k._add(mount, VehicleEquipment._plate(Vector3(block.x, block.y, 0.012)), "glass", null if k.wreck else BLOCK, Vector3(0, 0, -block.z * 0.5 - 0.005), Vector3.ZERO, Vector3.ONE, false)
+			k._add(mount, VehicleEquipment._plate(Vector3(block.x, block.y, 0.012)), "glass" if k.wreck else "armor_glass", null if k.wreck else BLOCK, Vector3(0, 0, -block.z * 0.5 - 0.005), Vector3.ZERO, Vector3.ONE, false)
 		k._fold(mount)
 
 ## Crew-served weapon pedestal (a pickup technical's pintle post). The static

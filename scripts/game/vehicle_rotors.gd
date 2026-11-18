@@ -7,13 +7,13 @@ extends RefCounted
 ## mesh the size of the rotor (UV 0..1 across it) that turns with the hub:
 ## VehicleModels._blur_mat for rotors, VehiclePropellers.disc_material for
 ## propellers and fans. What a commander looks for from 30-60 m above, as
-## the RTS games draw it: a faint translucent haze a shade lighter than the
+## the RTS games draw it: a faint translucent haze barely lighter than the
 ## blades' paint, never so dense the airframe under it is lost, with a soft
-## pale band where the tips sweep, its edge fading out (the tips cover least
+## band of the paint where the tips sweep, its edge fading out (the tips cover least
 ## of their circle, so a photograph's disc fades there rather than ending on
 ## a line: a crisp ring read as a selection circle), thinner still close to
-## the camera. A few dark ghost blades - each a crisp leading edge trailing
-## its smear, as a moving blade leaves on film - drift slowly round: they are
+## the camera. A few dark ghost blades - each a soft leading edge trailing
+## a short smear, as a moving blade leaves on film - drift slowly round: they are
 ## laid out in the disc's plane against the world, not the turning mesh, so
 ## the hub's 30 rad/s (a tail rotor's 80, a propeller's 40) never strobes
 ## them backwards. Lit, so it darkens with the scene at dusk and at night.
@@ -38,46 +38,53 @@ void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
 	// the blades from their roots beyond the grips (or the spinner) out to
-	// the tip path, its edge fading over the outer tenth of the radius (the
-	// tips sweep the most circle with the least blade: no outline)
-	float body = smoothstep(hub * 0.6, hub + 0.1, r) * (1.0 - smoothstep(0.86, 1.0, r));
-	// how much of each circle the blades cover: a game's share, not the
-	// 5-10% a real rotor's solidity gives, which over grass from 40 m reads
-	// as nothing; a little less over the cabin (the blade roots are narrow
-	// there), so the airframe under it still reads
-	float cover = 0.22 * mix(0.8, 1.0, smoothstep(hub, 0.45, r));
-	// the tip path: the tip caps and painted tip stripes sweep a faint pale
-	// ring just inside the edge, soft both ways (a crisp one read as a
-	// selection circle)
-	float tq = (r - 0.88) * 16.0;
+	// the tip path, its edge fading over the outer fifth of the radius (the
+	// tips sweep the most circle with the least blade, and the blades flex
+	// and flap, so the tip path is never one line: no outline)
+	float body = smoothstep(hub * 0.6, hub + 0.1, r) * (1.0 - smoothstep(0.8, 1.0, r));
+	// how much of each circle the blades cover: a little more than the 5-10%
+	// a real rotor's solidity gives, which over grass from 40 m reads as
+	// nothing, but no more (at a fifth it paved the cabin under it over like
+	// frosted glass); a little less over the cabin (the blade roots are
+	// narrow there), so the airframe under it still reads
+	float cover = 0.15 * mix(0.8, 1.0, smoothstep(hub, 0.45, r));
+	// the tip path: the tips move fastest and smear the most, a soft band
+	// just inside the edge a little denser than the disc, in the blades' own
+	// paint (a pale band there, however faint and soft, still read from the
+	// battle camera as a selection circle round the aircraft)
+	float tq = (r - 0.84) * 10.0;
 	float tip = exp(-tq * tq);
-	cover += 0.025 * tip;
-	// the ghost blades, each a sharp leading edge and a short trailing smear,
-	// swept back a little toward the tips
+	cover += 0.012 * tip;
+	// within a few metres the frame holds a few blades' faint arcs, not a
+	// sheet: a rotor passing the camera thins out rather than smoking it over,
+	// its ghost blades with it
+	float near = mix(0.45, 1.0, smoothstep(3.0, 14.0, length(VERTEX)));
+	// the ghost blades, each a soft leading edge and a short trailing smear,
+	// swept back a little toward the tips (a crisp edge and a long smear
+	// read from above as the dark scythes of a ceiling fan)
 	float a = atan(disc_xy.y, disc_xy.x);
 	float ph = fract((a * blade_count - r * 1.3 - TIME * 1.7) * 0.15915494);
-	float ghost = smoothstep(0.0, 0.03, ph) * exp(-ph * 9.0) * smoothstep(0.15, 0.45, r);
-	cover *= 1.0 + 0.8 * ghost;
-	// within a few metres the frame holds a few blades' faint arcs, not a
-	// sheet: a rotor passing the camera thins out rather than smoking it over
-	cover *= mix(0.45, 1.0, smoothstep(3.0, 14.0, length(VERTEX)));
+	float ghost = smoothstep(0.0, 0.08, ph) * exp(-ph * 14.0) * smoothstep(0.15, 0.45, r) * near;
+	cover *= 1.0 + 1.6 * ghost;
+	cover *= near;
 	float alpha = min(cover * body, 0.9);
 	// a layer of blades seen at a slant: they overlap, the disc thickens
 	float mu = clamp(abs(dot(NORMAL, VIEW)), 0.35, 1.0);
 	float seen = 1.0 - pow(1.0 - alpha, 1.0 / mu);
-	// The swept blades' upper faces catch the sky, so the disc is a haze a
-	// shade lighter than their paint (it lifts dark grass), and each ghost
-	// blade's leading edge is the paint's own dark (it shades sand and
-	// concrete): one of the two reads over any ground. Lit, so it still goes
+	// The swept blades' upper faces catch a little sky, so the disc is a haze
+	// barely lighter than their paint: it shades what's under it a touch, as
+	// a photograph's disc does, rather than paving it pale; each ghost
+	// blade's leading edge is the paint's own dark. Lit, so it still goes
 	// dark with the scene at dusk and at night.
-	float dark = clamp(ghost * 1.3, 0.0, 1.0);
-	vec3 haze = mix(mix(blade_tint.rgb, vec3(0.55), 0.16), vec3(0.6), tip * 0.12);
+	float dark = clamp(ghost * 1.6, 0.0, 1.0);
+	vec3 haze = mix(mix(blade_tint.rgb, vec3(0.55), 0.05), blade_tint.rgb, tip * 0.35);
 	ALBEDO = mix(haze, blade_tint.rgb * 0.35, dark);
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	// (blended after tonemapping, in display space, a dark layer shows about
-	// twice as dense: what keeps the linear blend's look for the dark ghost
-	// blades; the mid-grey haze lies between and keeps its share)
-	seen = 1.0 - pow(1.0 - seen, mix(1.0, 0.4545, dark));
+	// (blended after tonemapping, in display space, a layer darker than the
+	// ground shows denser than the linear blend draws it, the darker the
+	// more, about twice for the ghost blades' dark: thinned to match, so the
+	// browser build's disc reads as Forward+'s does)
+	seen = 1.0 - pow(1.0 - seen, mix(0.75, 0.4545, dark));
 #endif
 	ALPHA = clamp(seen, 0.0, 0.75);
 	ROUGHNESS = 0.7;

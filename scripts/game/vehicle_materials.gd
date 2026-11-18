@@ -36,6 +36,12 @@ const PROFILES := {
 	"coated": {"surface_normal_strength": 0.22, "surface_finish": 1, "surface_weather": 0.18, "surface_grain": 0.22, "surface_roughness": 0.22, "surface_specular": 0.36, "map": "canvas", "rough": 0.6, "metal": 0.0, "bump": 0.03, "grime": 0.14, "surface_scale": 4.0, "surface_tone": 0.06},
 	# Laid rope (lashings, grab lines): hairy twisted fibre, coarser than any
 	# cloth and matte all over, its strands shading light and dark.
+	# Marine canvas (a bimini, a boot, a hatch tarp, sacks aboard): woven
+	# solution-dyed acrylic, the yarn dyed before it is spun, so it keeps its
+	# colour in the sun and salt where cotton blotches; a tighter, finer weave
+	# than cotton duck that still shows, dead matte but for a faint sheen of
+	# its water-repellent finish. It reads as cloth, not as the vinyl beside it.
+	"acrylic": {"surface_normal_strength": 0.62, "surface_finish": 2, "surface_weather": 0.16, "surface_grain": 0.62, "surface_roughness": 0.18, "surface_specular": 0.2, "map": "canvas", "rough": 0.9, "metal": 0.0, "bump": 0.07, "grime": 0.14, "surface_scale": 4.5, "surface_tone": 0.1},
 	"rope": {"surface_normal_strength": 0.9, "surface_finish": 2, "surface_weather": 0.2, "surface_grain": 1.0, "surface_roughness": 0.18, "surface_specular": 0.14, "map": "canvas", "rough": 0.95, "metal": 0.0, "bump": 0.12, "grime": 0.15, "surface_scale": 11.0, "surface_tone": 0.3},
 	"steel": {"surface_normal_strength": 0.4, "surface_finish": 3, "surface_weather": 0.10, "surface_grain": 0.70, "surface_roughness": 0.62, "map": "metal", "rough": 0.36, "metal": 0.9, "bump": 0.012, "grime": 0.2, "surface_scale": 1.0, "surface_tone": 0.1},
 	"weapon": {"surface_normal_strength": 0.25, "surface_finish": 7, "surface_weather": 0.05, "surface_grain": 0.3, "surface_wear": 0.35, "surface_roughness": 0.7, "map": "metal", "rough": 0.5, "metal": 0.5, "bump": 0.02, "grime": 0.05, "surface_scale": 4.0, "surface_tone": 0.16},
@@ -50,6 +56,14 @@ const PROFILES := {
 	"service": {"surface_paint_wear": 0.6, "surface_normal_strength": 0.06, "surface_finish": 0, "surface_weather": 0.26, "surface_grain": 0.1, "surface_wear": 0.08, "surface_roughness": 0.45, "map": "coating", "rough": 0.72, "metal": 0.0, "bump": 0.014, "grime": 0.3, "surface_scale": 1.5, "surface_tone": 0.06},
 	"track": {"surface_normal_strength": 0.5, "surface_finish": 3, "surface_weather": 0.40, "surface_grain": 0.26, "surface_wear": 0.35, "surface_roughness": 0.65, "map": "metal", "rough": 0.69, "metal": 0.65, "bump": 0.16, "grime": 0.4, "surface_scale": 3.0},
 	"glass": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.045, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.8, "surface_glaze": 0.6},
+	# Armoured glass and vision blocks: laminated glass and polycarbonate
+	# several centimetres thick, tinted green-black through its layers and set
+	# deep in a steel frame. No cab shows through it, only its own dark depth,
+	# and each laminate face adds a faint image of its own, so it gives back a
+	# dull, softened sheen of the sky low down rather than the bright blue
+	# mirror of a car's thin screen (from above, a tank's blocks read as dark
+	# slots in the cupola, a protected cab's windows as near-black panes).
+	"armor_glass": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.14, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.5, "surface_glaze": 0.12},
 	"nonslip": {"surface_normal_strength": 0.65, "surface_finish": 4, "surface_weather": 0.23, "surface_grain": 0.75, "surface_roughness": 0.22, "map": "nonslip", "rough": 0.92, "metal": 0.0, "bump": 0.18, "grime": 0.13, "surface_scale": 2.0},
 	"tread": {"surface_normal_strength": 0.7, "surface_finish": 4, "surface_weather": 0.20, "surface_grain": 0.25, "surface_roughness": 0.42, "map": "tread", "rough": 0.76, "metal": 0.0, "bump": 0.65, "grime": 0.13, "surface_scale": 0.65, "surface_tone": 0.18},
 	"oxidized": {"surface_normal_strength": 0.55, "surface_finish": 3, "surface_weather": 0.25, "surface_grain": 0.35, "surface_roughness": 0.62, "map": "oxidized", "rough": 0.43, "metal": 0.85, "bump": 0.08, "grime": 0.15, "surface_scale": 1.0, "surface_corrosion": 1.0, "surface_tone": 0.12},
@@ -109,7 +123,7 @@ static func key(kind: String, vehicle_family: String) -> String:
 
 static func profile(kind: String, vehicle_family: String) -> String:
 	match kind:
-		"rubber", "glass", "mirror", "headlamp", "signal_lens", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor", "weapon":
+		"rubber", "glass", "armor_glass", "mirror", "headlamp", "signal_lens", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor", "weapon":
 			return kind
 		"abrams_scorched":
 			return "burnt"
@@ -119,16 +133,20 @@ static func profile(kind: String, vehicle_family: String) -> String:
 			return "gunmetal"
 		"webbing", "rope":
 			return kind
-		"fabric", "nylon":
+		"fabric", "nylon", "cloth":
+			# ("cloth": a pilot's flight suit and the kit on it, Nomex and
+			# nylon, not the airframe's painted skin)
 			return "nylon"
 		"coated", "boot":
 			return "coated"
 		"canvas", "canvas_white", "canvas_l", "bag":
-			# A boat's covers, dodgers, cushions and dry bags are marine
-			# canvas, coated against the spray; ashore cloth is plain cotton
-			# duck unless its builder asks for "coated" or "nylon".
+			# A boat's cushions, covers and dry bags are vinyl and PVC, coated
+			# against the spray; its plain canvas (a bimini and its boot, a
+			# hold's tarp, the sacks of a sandbag wall) is woven acrylic, which
+			# stays cloth. Ashore cloth is plain cotton duck unless its builder
+			# asks for "coated" or "nylon".
 			if vehicle_family == "marine":
-				return "coated"
+				return "acrylic" if kind == "canvas" else "coated"
 			return "canvas"
 		"wood", "wood_dark", "wood_l", "wood_painted":
 			return "wood"
@@ -144,6 +162,28 @@ static func profile(kind: String, vehicle_family: String) -> String:
 				return "service"
 	return vehicle_family
 
+## Turns a pane VehicleGlazing laid in plain glass (the part k._add handed
+## back for it) to another glass, `kind`, tinted `col`; its shape and rubber
+## seal stay as they were. A protected cab's windows are armoured glass
+## ("armor_glass"), which the shared glazing doesn't choose itself. A wreck's
+## panes are left as they were.
+static func glaze(k: VehicleModels, pane: Variant, kind: String, col = null) -> void:
+	if k.wreck or pane == null:
+		return
+	var mk := key(kind, k.surface_family)
+	var mat := Mats.get_mat(mk)
+	var t := Mats.tint_for(mk, col) if col is Color else Color(1, 1, 1)
+	if pane is Array:
+		# (a part noted for the bake: its material and tint, as _add notes them)
+		var note := pane as Array
+		note[1] = mat
+		note[2] = t
+	elif pane is MeshInstance3D:
+		var mi := pane as MeshInstance3D
+		Mats.set_material(mi, mat)
+		Mats.set_inst(mi, &"tint", t)
+
+
 static func preset(material_key: String) -> Dictionary:
 	if _presets.has(material_key):
 		return _presets[material_key]
@@ -155,6 +195,8 @@ static func preset(material_key: String) -> Dictionary:
 	# basis as the plain painted parts it replaces.
 	if kind in ["nonslip", "tread", "rotor", "mirror", "headlamp", "signal_lens"]:
 		p = Mats._preset("plain").duplicate()
+	if kind == "armor_glass":
+		p = Mats._preset("glass").duplicate()
 	if finish == "wood":
 		p["pattern"] = Mats.WOOD
 	if int(p.get("pattern", 0)) not in [Mats.CAMO, Mats.WOOD, Mats.TRACK]:
@@ -168,6 +210,10 @@ static func preset(material_key: String) -> Dictionary:
 		# Laminated vehicle glass: a dark cab seen through a faintly blue-grey
 		# tint, its coating reflecting a little more than plain window glass.
 		p["col_a"] = Color(0.10, 0.13, 0.15)
+	elif finish == "armor_glass":
+		# (its layers' green-black; the builders' tints, a block's green or a
+		# sight's amber coating, stay within reach of it)
+		p["col_a"] = Color(0.06, 0.08, 0.075)
 	if finish == "gunmetal":
 		# (less metallic, the steel shows more of its own colour: a shade
 		# darker keeps it the near-black it was where the sky isn't on it)

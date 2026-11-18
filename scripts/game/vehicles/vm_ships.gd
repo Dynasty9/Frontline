@@ -771,7 +771,14 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	var zs: float = zt - float(p["len"])
 	_hull_bands(k, m, p, "ship_pb", ["plain", Color(0.3, 0.13, 0.11), "plain", blk, "plain", grey], "plain", grey, 0.07, 0.56)
 	var all := _hull(p)
-	k._add(m, _deck_mesh("ship_pb_deck", all, 0.09, 0.012), "nonslip", dkc, Vector3.ZERO)
+	# The deck runs out under the forward bulwark's inner face (0.07 in), as
+	# on the trawler: 9 cm in, the grey of the hull's top showed as a pale
+	# line along its foot. Aft, the margin it leaves still carries the toe
+	# rail. (A wreck's deck stays as it was.)
+	if k.wreck:
+		k._add(m, _deck_mesh("ship_pb_deck", all, 0.09, 0.012), "nonslip", dkc, Vector3.ZERO)
+	else:
+		k._add(m, _deck_mesh("ship_pb_deck_in", all, 0.06, 0.012), "nonslip", dkc, Vector3.ZERO)
 	# spray rails and chine flats on the bottom, the rubbing strake under the
 	# deck edge, a toe rail round the open decks, a capping on the bulwark
 	for s in [-1.0, 1.0]:
@@ -1092,7 +1099,14 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var zs: float = zt - float(p["len"])
 	_hull_bands(k, m, p, "ship_tr", ["paint", Color(0.42, 0.17, 0.11), "paint", Color(0.14, 0.13, 0.12), "steel", blue], "plain", white, 0.06)
 	var all := _hull(p)
-	k._add(m, _deck_mesh("ship_tr_deck", all, 0.07, 0.012), "nonslip", deckc, Vector3.ZERO)
+	# The deck plating runs out under the bulwark's inner face (0.06 in from
+	# the shell), as it's welded to the shell plate: stopped short of it, the
+	# topsides' blue showed as a bright line round the foot of the bulwark.
+	# (A wreck's deck stays as it was.)
+	if k.wreck:
+		k._add(m, _deck_mesh("ship_tr_deck", all, 0.07, 0.012), "nonslip", deckc, Vector3.ZERO)
+	else:
+		k._add(m, _deck_mesh("ship_tr_deck_in", all, 0.05, 0.012), "nonslip", deckc, Vector3.ZERO)
 	# the transom's bulwark across the stern
 	var tst := _station(p, 0.0)
 	var tw := VmBoat._hw(tst[1], tst[2])
@@ -1203,6 +1217,12 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	k._add(m, VehicleModels.solid([VmBoat._ry(wb, wy0), VmBoat._ry(ws, wy1), VmBoat._ry(wr, wy2)], "ship_tr_wheel"), "plain", white.lightened(0.03), Vector3.ZERO)
 	var wroof := VmBoat._scale_xz(wr, 1.06, 1.5)
 	k._add(m, VehicleModels.solid([VmBoat._ry(wroof, wy2 - 0.02), VmBoat._ry(wroof, wy2 + 0.1)], "ship_tr_wroof", false, 0.035, 0.02), "plain", blue.lightened(0.05), Vector3.ZERO)
+	# The wheelhouse roof is the DShK gunner's platform now, its plating
+	# coated in the foredeck's green non-skid inside a margin of the old
+	# blue: from above, a pale sky-blue slab was the brightest thing aboard.
+	if not k.wreck and not k.burnt:
+		var wmat := VmBoat._scale_xz(wr, 0.97, 1.5)
+		k._add(m, VehicleModels.solid([VmBoat._ry(wmat, wy2 + 0.1), VmBoat._ry(wmat, wy2 + 0.112)], "ship_tr_wroofmat"), "nonslip", deckc, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 	var win := Vector3(0, wy1, 1.6)
 	for f in [[0, 1, 4], [1, 2, 1], [5, 0, 1], [2, 3, 3], [4, 5, 3], [3, 4, 2]]:
 		var a: int = f[0]

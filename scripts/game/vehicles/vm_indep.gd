@@ -225,7 +225,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 	# (armoured glass's green-black, VmCsat.ARMOR_GLASS; a wreck's stays as it was)
 	var glass: Variant = null if k.wreck else VmCsat.ARMOR_GLASS
 	for s: float in [-1.0, 1.0]:
-		_plate(k, m, s * 0.45, 0.7, ws_a.lerp(ws_b, 0.2), ws_a.lerp(ws_b, 0.86), 0.03, "glass", glass, -0.008, false)
+		VehicleMaterials.glaze(k, _plate(k, m, s * 0.45, 0.7, ws_a.lerp(ws_b, 0.2), ws_a.lerp(ws_b, 0.86), 0.03, "glass", glass, -0.008, false), "armor_glass", glass)
 		_plate(k, m, s * 0.45, 0.8, ws_a.lerp(ws_b, 0.13), ws_a.lerp(ws_b, 0.2), 0.035, cam, col, 0.0)
 	_plate(k, m, 0.0, 0.12, ws_a.lerp(ws_b, 0.13), ws_b, 0.04, cam, col, 0.0)
 	# a wiper over each pane, parked along its foot with the spindle in the
@@ -255,7 +255,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 			var out := Vector3(s * cos(sl), absf(sin(sl)), 0)
 			var at := Vector3(s * 1.15, 1.57, -0.52)
 			k._box(m, Vector3(0.68, 0.36, 0.06), at, cam, col, face.get_euler())
-			VehicleGlazing.rectangle(k, m, Vector2(0.58, 0.26), at + out * 0.04, face.get_euler(), false, glass, 0.03)
+			VehicleMaterials.glaze(k, VehicleGlazing.rectangle(k, m, Vector2(0.58, 0.26), at + out * 0.04, face.get_euler(), false, glass, 0.03), "armor_glass", glass)
 			for corner: Vector2 in [Vector2(-0.328, -0.166), Vector2(0.328, -0.166), Vector2(-0.328, 0.166), Vector2(0.328, 0.166)]:
 				VehicleBody.fastener(k, m, at + face.x * corner.x + face.y * corner.y + out * 0.03, out, 0.01, cam, col)
 		# the shut lines up the sill and on up the cabin's leaning side
@@ -266,7 +266,7 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 		VehicleDoors.lever(k, m, Vector3(s * 1.25, 1.06, -0.305), Vector3(s, 0, 0), Vector3.BACK, 0.125, 0.04)
 		VehicleFrames.step(k, m, Vector3(s * 1.18, 0.6, -0.48), Vector2(0.18, 0.5), Vector3.ZERO, "gunmetal_w")
 		# a small rear-quarter window, the stowage bin over the rear wheel
-		VehicleGlazing.rectangle(k, m, Vector2(0.26, 0.18), Vector3(s * 1.15, 1.57, 0.55), face.get_euler(), false, glass, 0.03)
+		VehicleMaterials.glaze(k, VehicleGlazing.rectangle(k, m, Vector2(0.26, 0.18), Vector3(s * 1.15, 1.57, 0.55), face.get_euler(), false, glass, 0.03), "armor_glass", glass)
 		VehicleEquipment.storage(k, m, Vector3(s * 1.33, 1.3, 1.85), Vector3(0.16, 0.3, 0.9), cam, col, Vector3.ZERO)
 		k._box(m, Vector3(0.02, 0.04, 0.9), Vector3(s * 1.415, 1.38, 1.85), "gunmetal_w", null, Vector3.ZERO, false)
 		# smoke dischargers on the deck corners, a whip antenna at each back corner
@@ -282,7 +282,10 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 	# the towing jaw between the tow eyes
 	VehicleMounts.hitch(k, m, Vector3(0, 0.66, 2.895), Vector3(0.16, 0.14, 0.25))
 	# exhaust out of the right flank behind the rear wheel, under a heat shield
-	k._box(m, Vector3(0.12, 0.2, 0.4), Vector3(1.3, 1.0, 2.5), "gunmetal_w")
+	# (the shield painted with the hull, as the army's heat-proof paint takes
+	# it; bare, it read from above as a black slab on the flank. A wreck
+	# keeps the bare one)
+	k._box(m, Vector3(0.12, 0.2, 0.4), Vector3(1.3, 1.0, 2.5), "gunmetal_w" if k.wreck else cam, null if k.wreck else col)
 	VehicleFittings.exhaust(k, m, Vector3(1.27, 0.9, 2.62), Vector3.RIGHT, 0.18, 0.06, false)
 	# roof: the driver's and commander's hatches with periscopes, the
 	# observer's hatch behind
@@ -347,7 +350,7 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gmg: bool, cam: Str
 	# the sight box on the right (the day camera's window over the thermal
 	# imager's round lens), the ammo box on the left
 	VehicleMounts.sight(k, t, Vector3(0.34, 0.46, -0.05) * sc, Vector3(0.16, 0.2, 0.3) * sc, [Rect2(Vector2(0, 0.02) * sc, Vector2(0.11, 0.09) * sc)], cam, col)
-	k._cyl(t, 0.035 * sc, 0.035 * sc, 0.02 * sc, Vector3(0.34, 0.39, -0.205) * sc, X90, "glass", null, 10, false)
+	k._cyl(t, 0.035 * sc, 0.035 * sc, 0.02 * sc, Vector3(0.34, 0.39, -0.205) * sc, X90, "glass" if k.wreck else "armor_glass", null if k.wreck else VehicleMounts.OPTIC, 10, false)
 	if gmg:
 		# HK GMG: a squat receiver, a short thick barrel, the big belt box
 		VehicleWeapons.gmg(k, t, Vector3(0, 0.46, 0.0) * sc, Vector3(0, 0.46, -0.78) * sc, sc, -1.0, false, "gunmetal_w", Color(0.3, 0.33, 0.23), 0.36)
@@ -611,7 +614,7 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 	k._box(t, Vector3(0.34, 0.1, 0.34), Vector3(0.48, 0.91, -0.55), cam, col)
 	k._cyl(t, 0.17, 0.17, 0.3, Vector3(0.48, 1.11, -0.55), Vector3.ZERO, cam, col, 14)
 	k._cyl(t, 0.19, 0.19, 0.04, Vector3(0.48, 1.28, -0.55), Vector3.ZERO, "paint", Color(0.24, 0.27, 0.19), 14)
-	k._box(t, Vector3(0.2, 0.12, 0.02), Vector3(0.48, 1.14, -0.72), "glass", null, Vector3.ZERO, false)
+	k._box(t, Vector3(0.2, 0.12, 0.02), Vector3(0.48, 1.14, -0.72), "glass" if k.wreck else "armor_glass", null if k.wreck else VehicleMounts.OPTIC, Vector3.ZERO, false)
 	VehicleMounts.cupola(k, t, Vector3(0.62, 0.92, 0.25), 0.36, 0.38, 0.12, 5, -0.9, 0.45, cam, col, Vector3(0.12, 0.08, 0.05))
 	VehicleFittings.panel_hatch(k, t, Vector3(-0.62, 0.89, -0.35), Vector3(0.62, 0.06, 0.62), cam, col)
 	VehicleMounts.mast_segment(k, t, Vector3(0.0, 1.08, 1.55), 0.45, 0.03)
@@ -685,7 +688,8 @@ static func _nyx(k: VehicleModels, team: int, kind: String, seed := 0) -> void:
 	for i in 3:
 		VehicleFittings.periscope(k, m, Vector3(-0.56 + i * 0.14, 1.21, -0.9), Vector3(0.12, 0.07, 0.05), Vector3(-0.5, 0, 0))
 	_glacis_grille(k, m, 0.42, 0.72, ga, gb, 0.3, 0.92, cam, col, 5)
-	k._box(m, Vector3(0.1, 0.16, 0.45), Vector3(0.95, 0.98, -0.75), "gunmetal_w")
+	# (the exhaust's heat shield in the hull's paint; a wreck keeps it bare)
+	k._box(m, Vector3(0.1, 0.16, 0.45), Vector3(0.95, 0.98, -0.75), "gunmetal_w" if k.wreck else cam, null if k.wreck else col)
 	VehicleFittings.exhaust(k, m, Vector3(0.98, 0.9, -0.94), Vector3.FORWARD, 0.12, 0.04, false)
 	for s: float in [-1.0, 1.0]:
 		# headlights with guards on the glacis corners, tow eyes, smoke
@@ -727,6 +731,13 @@ static func _nyx(k: VehicleModels, team: int, kind: String, seed := 0) -> void:
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.04, 0), 0.5, 0.52, 0.08, "gunmetal_w", null, 16)
 	k._add(t, _armour([_ring(_oct(-0.42, 0.42, -0.5, 0.45, 0.14), 0.0), _ring(_oct(-0.36, 0.36, -0.38, 0.4, 0.12), 0.3)], "indep_nyx_mount", 0.03), cam, col, Vector3(0, 0.08, 0))
+	# the roof plate welded onto the mount's sloped plates: the bead down the
+	# middle of its ground-off edge (the smooth cast-looking cone had no plate
+	# edge to catch the light); a wreck keeps the plain one
+	if not k.wreck:
+		var rim := Array(_ring(_oct(-0.348, 0.348, -0.371, 0.3875, 0.115), 0.365))
+		rim.append(rim[0])
+		VehicleBody.bead(k, t, rim, 0.01, cam, col, 4, false)
 	match kind:
 		"ac":
 			# the Rh 202 in its cradle on top, ammunition boxes either side, a sight

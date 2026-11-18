@@ -267,11 +267,17 @@ static func cockpit(k: VehicleModels, p: Node3D, key: String, cst: Array, canopy
 	# a solid one; a surface of its own shader casting would also cost the
 	# model its one shadow proxy)
 	k._unshadow(canopy)
+	# Everything under the glass sits in the fuselage's own shadow and is seen
+	# only through the canopy, close up: none of it casts a shadow (each part
+	# cast into the shadow maps is drawn a second time there), and it is made
+	# of as few faces as still read through the glass: small fittings as
+	# plain blocks, the pilot's rounded kit in a few smooth facets.
 	var tub := []
 	for s: Array in cst:
 		var q := _sp(s)
 		tub.append([q[0], q[1], float(q[2]) * 0.9, float(q[3]) * floor, q[4], q[5], q[6], q[7]])
-	body(k, p, key + "_tub", tub, "plain_dark", Color(0.2, 0.21, 0.22), 12, 50.0)
+	# (the tub's floor and walls are dark under the glass: eight sides round)
+	k._unshadow(body(k, p, key + "_tub", tub, "plain_dark", Color(0.2, 0.21, 0.22), 8, 50.0))
 	var z_first := float(_sp(cst[0])[0])
 	# (the seat's cushions olive drab, the harness's webbing a darker olive)
 	var cushion := Color(0.26, 0.27, 0.2)
@@ -289,30 +295,38 @@ static func cockpit(k: VehicleModels, p: Node3D, key: String, cst: Array, canopy
 		# (One black box read as a crate behind the helmet.)
 		var sp := k._pivot(p, Vector3(x, hc - 0.2, z + 0.25))
 		sp.rotation = Vector3(0.3, 0, 0)
-		k._add(sp, BevelMesh.make(Vector3(0.48, 0.6, 0.1), 0.025), "plain_dark", Color(0.11, 0.115, 0.12), Vector3.ZERO)
-		k._add(sp, BevelMesh.make(Vector3(0.4, 0.5, 0.05), 0.02), "fabric", cushion, Vector3(0, -0.03, -0.07), Vector3.ZERO, Vector3.ONE, false)
+		# (the bucket and headbox rolled along their top and bottom edges, the
+		# ones the light runs along from above; the thin cushion in it a slab)
+		k._add(sp, VehicleCab._rolled(Vector3(0.48, 0.6, 0.1), 0.025), "plain_dark", Color(0.11, 0.115, 0.12), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+		k._add(sp, VehicleEquipment._plate(Vector3(0.4, 0.5, 0.05)), "fabric", cushion, Vector3(0, -0.03, -0.07), Vector3.ZERO, Vector3.ONE, false)
 		for s: float in [-1.0, 1.0]:
 			# (they stop under the headbox's top: the canopy curves down low
 			# over the seat's back corners)
-			k._box(sp, Vector3(0.035, 0.5, 0.06), Vector3(s * 0.225, -0.03, 0.0), "metal_dark", null, Vector3.ZERO, false)
-		k._add(sp, BevelMesh.make(Vector3(0.32, 0.17, 0.14), 0.035), "plain_dark", Color(0.19, 0.2, 0.17), Vector3(0, 0.219, -0.03), Vector3.ZERO, Vector3.ONE, false)
+			k._add(sp, VehicleEquipment._plate(Vector3(0.035, 0.5, 0.06)), "steel", null, Vector3(s * 0.225, -0.03, 0.0), Vector3.ZERO, Vector3.ONE, false)
+		k._add(sp, VehicleCab._rolled(Vector3(0.32, 0.17, 0.14), 0.035), "plain_dark", Color(0.19, 0.2, 0.17), Vector3(0, 0.219, -0.03), Vector3.ZERO, Vector3.ONE, false)
 		k._fold(sp)
-		k._box(p, Vector3(0.12, 0.03, 0.035), Vector3(x, hc + 0.12, z + 0.25), "paint", Color(0.72, 0.58, 0.1), Vector3(0.3, 0, 0), false)
+		k._add(p, VehicleEquipment._plate(Vector3(0.12, 0.03, 0.035)), "plain", Color(0.72, 0.58, 0.1), Vector3(x, hc + 0.12, z + 0.25), Vector3(0.3, 0, 0), Vector3.ONE, false)
 		# The pilot: his shoulders in a sage nylon flying suit, the harness's
 		# two olive webbing straps coming off the seat back over them and down
 		# his chest; his helmet, its visor down, and the dark rubber oxygen
 		# mask over his face, its hose down to the chest connector.
-		k._add(p, Res.sphere(0.22, 10), "fabric", suit, Vector3(x, hc - 0.3, z + 0.02), Vector3.ZERO, Vector3(1.0, 0.85, 0.72))
+		k._add(p, Res.sphere(0.22, 6), "fabric", suit, Vector3(x, hc - 0.3, z + 0.02), Vector3.ZERO, Vector3(1.0, 0.85, 0.72), false)
 		# (his shoulders square across the seat, so the suit shows round his
 		# helmet above the cockpit's sill, where the torso alone sank into it)
 		k._add(p, Res.sphere(0.2, 6), "fabric", suit, Vector3(x, hc - 0.2, z + 0.03), Vector3.ZERO, Vector3(1.15, 0.38, 0.4), false)
 		for s: float in [-1.0, 1.0]:
 			var xs := x + s * 0.09
-			VehicleCloth.strap(k, p, [Vector3(xs, hc - 0.1, z + 0.2), Vector3(xs, hc - 0.12, z + 0.05), Vector3(x + s * 0.08, hc - 0.127, z - 0.03), Vector3(x + s * 0.07, hc - 0.183, z - 0.12)], 0.045, harness, Vector3.RIGHT, 0.005)
-		k._add(p, Res.sphere(0.135, 10), "paint", helmet, Vector3(x, hc, z - 0.03))
-		k._add(p, Res.sphere(0.128, 8), "glass", null, Vector3(x, hc - 0.015, z - 0.08), Vector3.ZERO, Vector3(0.98, 0.6, 0.8), false)
-		k._add(p, Res.sphere(0.05, 6), "rubber", Color(0.2, 0.21, 0.19), Vector3(x, hc - 0.1, z - 0.15), Vector3(-0.4, 0, 0), Vector3(0.95, 1.1, 0.9), false)
-		rod(k, p, Vector3(x + 0.02, hc - 0.13, z - 0.16), Vector3(x + 0.07, hc - 0.23, z - 0.13), 0.016, "rubber", Color(0.2, 0.21, 0.19), 6, -1.0, false)
+			# (off the seat back, over the top of his shoulder and down his
+			# chest, lying on the suit)
+			VehicleCloth.strap(k, p, [Vector3(xs, hc - 0.1, z + 0.2), Vector3(x + s * 0.083, hc - 0.118, z - 0.01), Vector3(x + s * 0.07, hc - 0.183, z - 0.12)], 0.045, harness, Vector3.RIGHT, 0.005)
+		# (the helmet's shell in a matte finish, as flying helmets are, and off
+		# the hull's own paint: a part on a casting surface is drawn into the
+		# shadow maps with the rest of that surface)
+		k._add(p, Res.sphere(0.135, 8), "plain", helmet, Vector3(x, hc, z - 0.03), Vector3.ZERO, Vector3.ONE, false)
+		k._add(p, Res.sphere(0.128, 6), "glass", null, Vector3(x, hc - 0.015, z - 0.08), Vector3.ZERO, Vector3(0.98, 0.6, 0.8), false)
+		k._add(p, Res.sphere(0.05, 4), "rubber", Color(0.2, 0.21, 0.19), Vector3(x, hc - 0.1, z - 0.15), Vector3(-0.4, 0, 0), Vector3(0.95, 1.1, 0.9), false)
+		# (the hose's ends are buried in the mask and the connector)
+		VehicleFrames.tube(k, p, Vector3(x + 0.02, hc - 0.13, z - 0.16), Vector3(x + 0.07, hc - 0.23, z - 0.13), 0.016, "rubber", Color(0.2, 0.21, 0.19), 4, false, -1.0, 0)
 		# The side consoles either side of his seat, from his hips to the
 		# panel, under his elbows, in a lighter grey than the tub, the
 		# throttle's grip on the left one.
@@ -320,8 +334,8 @@ static func cockpit(k: VehicleModels, p: Node3D, key: String, cst: Array, canopy
 		var w := float(qs[2]) * 0.9
 		var y_t := float(qs[1]) + float(qs[3]) * floor
 		for s: float in [-1.0, 1.0]:
-			k._box(p, Vector3(w * 0.3, 0.1, 0.5), Vector3(x + s * w * 0.6, y_t - 0.03, z - 0.22), "plain_dark", Color(0.17, 0.175, 0.18), Vector3.ZERO, false)
-		k._box(p, Vector3(0.05, 0.09, 0.07), Vector3(x - w * 0.6, y_t + 0.065, z - 0.3), "plain_dark", Color(0.09, 0.095, 0.1), Vector3(-0.25, 0, 0), false)
+			k._add(p, VehicleEquipment._plate(Vector3(w * 0.3, 0.1, 0.5).snappedf(0.005)), "plain_dark", Color(0.17, 0.175, 0.18), Vector3(x + s * w * 0.6, y_t - 0.03, z - 0.22), Vector3.ZERO, Vector3.ONE, false)
+		k._add(p, VehicleEquipment._plate(Vector3(0.05, 0.09, 0.07)), "plain_dark", Color(0.09, 0.095, 0.1), Vector3(x - w * 0.6, y_t + 0.065, z - 0.3), Vector3(-0.25, 0, 0), Vector3.ONE, false)
 		# the coaming over the panel, low under the glass ahead of the seat
 		var zc := maxf(z - 0.62, z_first + 0.22)
 		var qc := st_at(cst, zc)
@@ -329,10 +343,10 @@ static func cockpit(k: VehicleModels, p: Node3D, key: String, cst: Array, canopy
 		var yt := float(qc[1]) + clampf(hh * 0.55, hh * floor + 0.04, hh - 0.1)
 		# (the glareshield is a matte black moulding, its rear lip rolled
 		# toward the pilot: in ribbed gunmetal it read as a radiator grille)
-		k._add(p, BevelMesh.make(Vector3(float(qc[2]) * 1.1, 0.09, 0.28), 0.03), "plain_dark", Color(0.06, 0.065, 0.07), Vector3(x, yt - 0.045, zc))
+		k._add(p, VehicleCab._rolled(Vector3(float(qc[2]) * 1.1, 0.09, 0.28), 0.03), "plain_dark", Color(0.06, 0.065, 0.07), Vector3(x, yt - 0.045, zc), Vector3.ZERO, Vector3.ONE, false)
 		if i == 0:
 			# the HUD: its glass combiner on a dark frame, leaning toward the pilot
-			k._box(p, Vector3(0.15, 0.04, 0.08), Vector3(x, yt + 0.02, zc + 0.06), "metal_dark", null, Vector3.ZERO, false)
+			k._add(p, VehicleEquipment._plate(Vector3(0.15, 0.04, 0.08)), "plain_dark", Color(0.1, 0.1, 0.11), Vector3(x, yt + 0.02, zc + 0.06), Vector3.ZERO, Vector3.ONE, false)
 			k._box(p, Vector3(0.13, 0.12, 0.008), Vector3(x, yt + 0.09, zc + 0.08), "glass", null, Vector3(0.45, 0, 0), false)
 
 

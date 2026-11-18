@@ -626,7 +626,7 @@ static func _drum_shell(r: float, length: float, hoop: float, segments: int) -> 
 ## panel that has ridden a few weeks on a deck is no longer new dye, it's a
 ## sun-dulled orange or rose under the dust (see recognition_panel), so the
 ## battle camera finds it as a warm patch, not the brightest thing in the field.
-const PANEL_FACES: Array[Color] = [Color(0.8, 0.38, 0.14), Color(0.72, 0.22, 0.38)]
+const PANEL_FACES: Array[Color] = [Color(0.62, 0.3, 0.12), Color(0.56, 0.18, 0.3)]
 ## Parachute cord, olive or black, tied from the panel's corner grommets.
 const PANEL_CORD: Array[Color] = [Color(0.24, 0.24, 0.17), Color(0.09, 0.09, 0.08)]
 
@@ -645,14 +645,16 @@ static func recognition_panel(k: VehicleModels, parent: Node3D, center: Vector3,
 	if k.wreck or k.burnt:
 		return false
 	var rng := VehicleCargo.kit(k, parent, center, 41)
-	if rng == null or rng.randf() >= chance:
+	# (fewer than a crew's kit might suggest: even dulled, a panel is the
+	# loudest patch on a vehicle from the battle camera, so one in eight)
+	if rng == null or rng.randf() >= minf(chance, 0.12):
 		return false
 	var face: Color = PANEL_FACES[rng.randi_range(0, 1)]
 	# a season in the sun bleaches the dye toward a chalky pink or apricot,
-	# and the dust the hull wears lies on it too
+	# and the dust the hull wears lies thick on it
 	face = face.lerp(Color(0.9, 0.78, 0.7), rng.randf_range(0.0, 0.14))
 	var dust: Color = VehicleMaterials.DIRT.get(k.surface_family, VehicleMaterials.DIRT.armor).dust_col
-	face = face.lerp(dust, rng.randf_range(0.15, 0.3))
+	face = face.lerp(dust, rng.randf_range(0.35, 0.5))
 	if not folded and rng.randf() < 0.67:
 		folded = true
 	# (laid by hand, a few degrees off square, in the plane it lies on)

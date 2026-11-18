@@ -1344,9 +1344,15 @@ static func _mohawk(k: VehicleModels, team: int) -> void:
 	_patch(k, m, h, "heli_mo_hinge", 1.55, 1.65, 7.6, 10.4, "gunmetal_w", null, 0.012, 0.03, 1.0)
 	for t in [7.7, 10.3]:
 		_patch(k, m, h, "heli_mo_redge%d" % int(t * 10), 1.6, 4.6, t - 0.05, t + 0.05, "gunmetal_w", null, 0.01, 0.03, 1.0)
-	# sponsons with the twin-wheel main gear, the twin nosewheel
+	# sponsons with the twin-wheel main gear, the twin nosewheel. Each is a
+	# moulded fairing, its section rounded over the bilge and the shoulder
+	# and shaded round: in six flat facets it read from above as a pale
+	# hexagonal drop tank hung on the flank.
 	for s in [-1.0, 1.0]:
-		var base := [1.25, 0.66, 1.9, 0.7, 2.14, 0.95, 2.14, 1.3, 1.92, 1.52, 1.25, 1.58]
+		var base := [1.25, 0.66, 1.62, 0.665, 1.88, 0.7, 2.04, 0.8, 2.13, 0.96, 2.15, 1.14, 2.13, 1.3, 2.05, 1.42, 1.9, 1.52, 1.6, 1.57, 1.25, 1.58]
+		if k.wreck:
+			# (a wreck's keep their old facets)
+			base = [1.25, 0.66, 1.9, 0.7, 2.14, 0.95, 2.14, 1.3, 1.92, 1.52, 1.25, 1.58]
 		var rings := []
 		for zf in [[-1.95, 0.25], [-1.25, 0.88], [-0.8, 1.0], [1.0, 1.0], [1.6, 0.82], [2.35, 0.28]]:
 			var pts := []
@@ -1354,7 +1360,13 @@ static func _mohawk(k: VehicleModels, team: int) -> void:
 				pts.append(s * (1.25 + (float(base[i]) - 1.25) * float(zf[1])))
 				pts.append(1.12 + (float(base[i + 1]) - 1.12) * float(zf[1]))
 			rings.append(_rz(pts, float(zf[0])))
-		k._add(m, VehicleModels.solid(rings, "heli_mo_spon%s" % ("r" if s > 0.0 else "l")), lo[0], lo[1], Vector3.ZERO)
+		if k.wreck:
+			k._add(m, VehicleModels.solid(rings, "heli_mo_spon%s" % ("r" if s > 0.0 else "l")), lo[0], lo[1], Vector3.ZERO)
+		else:
+			# (in the scheme's upper colour, as the Merlin's green runs down
+			# over its sponsons: in the pale belly colour they stood out from
+			# above as a pair of drop tanks)
+			k._add(m, VehicleModels.solid(rings, "heli_mo_sponson%s" % ("r" if s > 0.0 else "l"), true), hi[0], hi[1], Vector3.ZERO)
 		_gear(k, m, Vector3(s * 1.78, 0.72, 0.0), Vector3(s * 1.8, 0.38, 0.12), 0.38, 0.22, true)
 		VmPlane.nav_light(k, m, Vector3(s * 2.15, 1.3, -0.5), Vector3(0.05, 0.06, 0.06), s)
 		VehicleFrames.step(k, m, Vector3(s * 1.4, 0.66, -6.0), Vector2(0.14, 0.32))
