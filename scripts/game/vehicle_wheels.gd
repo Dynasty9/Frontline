@@ -36,6 +36,25 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 			var a := TAU * i / 8.0
 			k._add(pv, nut, "steel", Color(0.35, 0.36, 0.33), Vector3(side * w * 0.38, sin(a) * r * 0.31, cos(a) * r * 0.31), Vector3(0, 0, -side * PI / 2), Vector3.ONE, false)
 	k._add(pv, drum(r * 0.23, r * 0.26, w * 0.89, 16 if fine else 8), hub_kind, hub_col, Vector3.ZERO, AXLE, Vector3.ONE, false)
+	if register and profile == "offroad" and r >= 0.4 and k.surface_family == "armor" and w <= r * 1.2 and not k.wreck:
+		# A military truck or armoured car pumps its tyres up and down on the
+		# move (central tyre inflation): the rotary seal on the hub's end and
+		# the air hose from it to the valve by the rim, on the outer face,
+		# run out between two wheel nuts. (In the wheel's own finishes: each
+		# wheel is a draw of its own, and a new one would cost another.)
+		var s := signf(pos.x) if pos.x != 0.0 else 1.0
+		var end := w * 0.445
+		k._add(pv, drum(r * 0.09, r * 0.12, w * 0.06, 10, false), hub_kind, hub_col, Vector3(s * (end + w * 0.03), 0, 0), Vector3(0, 0, -s * PI / 2), Vector3.ONE, false)
+		# The hose curls round from the seal to the valve seated on the rim's
+		# disc (each point its angle, radius and x out from the disc's face).
+		var route := []
+		var disc := w * 0.335
+		for q: Vector3 in [Vector3(0.0, 0.06, end - disc + w * 0.03), Vector3(-0.35, 0.2, end - disc + w * 0.028), Vector3(-0.1, 0.33, end - disc), Vector3(0.3, 0.43, 0.014)]:
+			var a := q.x + TAU / 16.0
+			route.append(Vector3(s * (disc + q.z), cos(a) * r * q.y, sin(a) * r * q.y))
+		VehicleFrames.path(k, pv, route, 0.008, "rubber", null, 5, false)
+		var valve: Vector3 = route[3]
+		k._add(pv, VehicleEquipment._plate(Vector3(0.026, 0.03, 0.024)), "steel", Color(0.35, 0.36, 0.33), valve, Vector3(0.3 + TAU / 16.0, 0, 0), Vector3.ONE, false)
 	if register:
 		k.wheels.append(pv)
 	else:
@@ -360,6 +379,10 @@ static func _tread(r: float, w: float, offroad: bool) -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var idx := PackedInt32Array()
+	if offroad:
+		_lugs(verts, norms, idx, r, w)
+		_meshes[key] = _mesh(verts, norms, idx)
+		return _meshes[key]
 	var count := 36 if offroad else 48
 	var half := Vector3(w * 0.43, r * (0.055 if offroad else 0.018), r * (0.13 if offroad else 0.095)) * 0.5
 	for i in count:
@@ -376,6 +399,55 @@ static func _tread(r: float, w: float, offroad: bool) -> ArrayMesh:
 					_quad(verts, norms, idx, n * s, f - u - v, f + u - v, f + u + v, f - u + v)
 	_meshes[key] = _mesh(verts, norms, idx)
 	return _meshes[key]
+
+
+## An off-road tyre's tread, as military trucks and armoured cars run on
+## (Michelin XZL and its like): broad lugs in two rows, each from just off the
+## centre line over the shoulder and down onto the sidewall, swept back from
+## the middle in a chevron and staggered half a pitch row to row, with open
+## gaps between them that clear the mud. Each lug follows the carcass's own
+## section (see _carcass) a few centimetres proud of it, its foot sunk into
+## it. A tenth more vertices than the blocks it replaces.
+static func _lugs(verts: PackedVector3Array, norms: PackedVector3Array, idx: PackedInt32Array, r: float, w: float) -> void:
+	var count := 22
+	var pitch := TAU / count
+	var depth := r * 0.07
+	var half_arc := r * pitch * 0.24
+	var sweep := pitch * 0.28
+	# The carcass's radius across the tyre (its section a quarter circle of
+	# r * 0.25 by w * 0.5 about r * 0.75).
+	var section := func(x: float) -> float: return r * (0.75 + 0.25 * sqrt(maxf(0.0, 1.0 - pow(x / (w * 0.5), 2.0))))
+	var steps := [0.04, 0.26, 0.42, 0.49]
+	for row: float in [-1.0, 1.0]:
+		for i in count:
+			var a0 := pitch * (i + (0.5 if row > 0.0 else 0.0))
+			var top: Array[Vector3] = []
+			var foot: Array[Vector3] = []
+			var lead: Array[Vector3] = []
+			var lead_foot: Array[Vector3] = []
+			for f: float in steps:
+				var x := row * f * w
+				var rad: float = section.call(x)
+				# The lug narrows down the shoulder as it turns onto the wall.
+				var half := half_arc / rad * (1.0 - 0.25 * f)
+				var a := a0 + sweep * f * 2.0
+				var out := depth * (1.0 - 0.45 * pow(f / 0.49, 3.0))
+				top.append(Vector3(x, cos(a - half) * (rad + out), sin(a - half) * (rad + out)))
+				lead.append(Vector3(x, cos(a + half) * (rad + out), sin(a + half) * (rad + out)))
+				foot.append(Vector3(x, cos(a - half) * (rad - depth * 0.3), sin(a - half) * (rad - depth * 0.3)))
+				lead_foot.append(Vector3(x, cos(a + half) * (rad - depth * 0.3), sin(a + half) * (rad - depth * 0.3)))
+			for s in steps.size() - 1:
+				var mid := (top[s] + lead[s + 1]) * 0.5
+				var outward := Vector3(0, mid.y, mid.z).normalized() + Vector3(row * float(steps[s] + steps[s + 1]), 0, 0)
+				_quad_toward(verts, norms, idx, outward, top[s], top[s + 1], lead[s + 1], lead[s])
+				var back := (top[s] - lead[s]).normalized()
+				_quad_toward(verts, norms, idx, back, foot[s], foot[s + 1], top[s + 1], top[s])
+				_quad_toward(verts, norms, idx, -back, lead_foot[s], lead_foot[s + 1], lead[s + 1], lead[s])
+			# The lug's two ends: its inner one by the centre line, its outer one
+			# down on the sidewall.
+			_quad_toward(verts, norms, idx, Vector3(-row, 0, 0), foot[0], lead_foot[0], lead[0], top[0])
+			var n := steps.size() - 1
+			_quad_toward(verts, norms, idx, Vector3(row, 0, 0), foot[n], lead_foot[n], lead[n], top[n])
 
 
 ## A flat face of four corners in order round it, facing `n`.
@@ -611,24 +683,71 @@ static func _band(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, widt
 	k._box(parent, Vector3(width, a.distance_to(b), thick), (a + b) * 0.5, mat, col, Basis(x, along, x.cross(along)).get_euler(), false)
 
 
-## Shared drive wheel: teeth remain separate from the smooth road-wheel rim.
-## The hub uses the existing X-axis animation contract, exactly one registration.
+## Shared drive wheel: one registration on the existing X-axis animation
+## contract. Each toothed ring is a cut steel gear (see _gear): squat teeth
+## with sloping flanks between root arcs, its faces flat as a plate, the
+## track's pins riding between them. Its outer face (the side pos.x points
+## to: the pressed disc, or the outer ring where twin rings cover it) shows
+## its lightening holes between the bolts that hold it to the hub, and the
+## hub ends in a short boss and its cap instead of a long stub.
 static func sprocket(k: VehicleModels, parent: Node3D, pos: Vector3, radius: float, width: float, mat: String, col = null, teeth := 8, twin := false) -> Node3D:
 	var pv := k._pivot(parent, pos)
 	var rows: Array = [-0.3, 0.3] if twin else [0.0]
+	var w := width * (0.2 if twin else 0.7)
+	var gear := _gear(radius, w, teeth)
 	for row: float in rows:
-		var w := width * (0.2 if twin else 0.7)
-		k._add(pv, drum(radius * 0.86, radius * 0.86, w, 20), "gunmetal_w", null, Vector3(row * width, 0, 0), AXLE)
-		# One tooth shape serves the ring.
-		var tooth := BevelMesh.make(Vector3(w, radius * 0.20, radius * 0.16), radius * 0.025)
-		for i in teeth:
-			var a := TAU * i / float(teeth)
-			k._add(pv, tooth, "gunmetal_w", null, Vector3(row * width, sin(a) * radius * 0.9, cos(a) * radius * 0.9), Vector3(-a, 0, 0))
+		k._add(pv, gear, "gunmetal_w", null, Vector3(row * width, 0, 0))
 	k._add(pv, drum(radius * 0.66, radius * 0.70, width * 0.76, 20), mat, col, Vector3.ZERO, AXLE)
-	k._add(pv, drum(radius * 0.25, radius * 0.30, width + 0.06, 12), mat, col, Vector3.ZERO, AXLE, Vector3.ONE, false)
-	for side: float in [-1.0, 1.0]:
-		for i in 6:
-			var a := TAU * i / 6.0
-			VehicleBody.fastener(k, pv, Vector3(side * width * 0.39, sin(a) * radius * 0.47, cos(a) * radius * 0.47), Vector3.RIGHT * side, radius * 0.045)
+	var outer := signf(pos.x) if pos.x != 0.0 else 1.0
+	# (the outer ring's face, where the rings cover the disc)
+	var face := outer * maxf(width * 0.38, (0.3 * width if twin else 0.0) + w * 0.5)
+	var out := Vector3(0, 0, -outer * PI / 2)  # a drum's +Y (its cap) facing out
+	var hole := drum(radius * 0.1, radius * 0.1, 0.01, 10, false)
+	for i in 6:
+		var a := TAU * (i + 0.5) / 6.0
+		k._add(pv, hole, "gunmetal_w", Color(0.04, 0.04, 0.04), Vector3(face + outer * 0.001, sin(a) * radius * 0.48, cos(a) * radius * 0.48), out, Vector3.ONE, false)
+		var b := TAU * i / 6.0
+		VehicleBody.fastener(k, pv, Vector3(face, sin(b) * radius * 0.48, cos(b) * radius * 0.48), Vector3.RIGHT * outer, radius * 0.045)
+	# The hub runs on inboard to the final drive as before.
+	var inboard := width * 0.5 + 0.03
+	var boss := absf(face) + 0.02
+	k._add(pv, drum(radius * 0.25, radius * 0.30, inboard + boss, 12), mat, col, Vector3(outer * (boss - inboard) * 0.5, 0, 0), AXLE, Vector3.ONE, false)
+	k._add(pv, drum(radius * 0.14, radius * 0.17, 0.03, 10, false), "gunmetal_w", null, Vector3(outer * (boss + 0.015), 0, 0), out, Vector3.ONE, false)
 	k.wheels.append(pv)
 	return pv
+
+
+## A drive sprocket's toothed ring, `width` thick across X and `radius` to its
+## tips: `teeth` squat teeth, their flanks sloping to root arcs at 84% of the
+## radius where the track's pins seat. One flat-shaded plate, cached by size.
+static func _gear(radius: float, width: float, teeth: int) -> ArrayMesh:
+	var key := "gear_%.3f_%.3f_%d" % [radius, width, teeth]
+	if _meshes.has(key):
+		return _meshes[key]
+	var ring := PackedVector2Array()
+	var period := TAU / teeth
+	for i in teeth:
+		var a := period * i
+		for p: Vector2 in [Vector2(-0.31, 0.84), Vector2(-0.13, 1.0), Vector2(0.13, 1.0), Vector2(0.31, 0.84)]:
+			ring.append(Vector2(cos(a + p.x * period), sin(a + p.x * period)) * radius * p.y)
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var hx := width * 0.5
+	for side: float in [-1.0, 1.0]:
+		var n := Vector3(side, 0, 0)
+		var base := verts.size()
+		verts.append(Vector3(side * hx, 0, 0))
+		norms.append(n)
+		for q in ring:
+			verts.append(Vector3(side * hx, q.x, q.y))
+			norms.append(n)
+		for i in ring.size():
+			_tri(idx, verts, n, base, base + 1 + i, base + 1 + (i + 1) % ring.size())
+	for i in ring.size():
+		var q0 := ring[i]
+		var q1 := ring[(i + 1) % ring.size()]
+		var mid := (q0 + q1) * 0.5
+		_quad_toward(verts, norms, idx, Vector3(0, mid.x, mid.y), Vector3(-hx, q0.x, q0.y), Vector3(hx, q0.x, q0.y), Vector3(hx, q1.x, q1.y), Vector3(-hx, q1.x, q1.y))
+	_meshes[key] = _mesh(verts, norms, idx)
+	return _meshes[key]

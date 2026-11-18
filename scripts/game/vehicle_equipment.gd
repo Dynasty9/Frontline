@@ -26,6 +26,21 @@ static func storage(k: VehicleModels, parent: Node3D, center: Vector3, size: Vec
 		VehicleDoors.hinge(k, mount, Vector3(x * size.x, size.y * 0.5, size.z * 0.43), Vector3.UP, Vector3.RIGHT, pin, mat, col)
 	for side: float in [-1.0, 1.0]:
 		k._add(mount, _plate(Vector3(minf(0.04, size.x * 0.18), lip * 2, 0.015)), "metal_dark", null, Vector3(side * size.x * 0.3, size.y * 0.5 - lip, -size.z * 0.51))
+	# A crew that camouflages its vehicle (VehicleCloth.camouflage) throws its
+	# net on a bin's lid, bundled, or lays a cut branch along it.
+	var camo := VehicleCloth.camouflage(k)
+	if camo > 0.0 and minf(size.x, size.z) >= 0.12 and maxf(size.x, size.z) >= 0.4 and VehicleCloth._upright(k, mount):
+		var rng := VehicleCargo.kit(k, parent, center, 13)
+		var lid := size.y * 0.5 + lip * 0.4
+		if rng.randf() < 0.4 * camo:
+			VehicleCloth.net(k, mount, Vector3(0, lid, 0), Vector3(size.x * 0.9, rng.randf_range(0.07, 0.15), size.z * 0.88), Vector3.ZERO, rng)
+		elif rng.randf() < 0.45 * camo and maxf(size.x, size.z) >= 0.7:
+			# A cut branch is longer than the bin it's laid on and lies low
+			# along it, its leaves hanging past both ends: on a short lid, or
+			# heaped as tall as it is wide, it would read as a planter.
+			var lay := (Vector3.RIGHT if size.x >= size.z else Vector3.BACK) * (1.0 if rng.randf() < 0.5 else -1.0)
+			var reach := maxf(size.x, size.z) * rng.randf_range(0.55, 0.7)
+			VehicleCloth.branch(k, mount, Vector3(0, lid + 0.012, 0) - lay * reach, Vector3(0, lid + 0.012, 0) + lay * reach, rng, clampf(minf(size.x, size.z) * 0.35, 0.1, 0.16))
 	k._fold(mount)
 
 
