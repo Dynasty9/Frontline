@@ -15,6 +15,11 @@ caption = "Before 5656124 (left) and current f14770c (right), same track and com
 file = "rut-lighting.webm"
 poster = "rut-lighting.jpg"
 caption = "Current native material-lighting fixture: opposing grazing light with directional shadows disabled, fixed sky and exposure. Low Compatibility on llvmpipe; not combat or performance evidence."
+[[videos]]
+file = "forward-lighting.webm"
+poster = "forward-lighting.jpg"
+caption = "Current native road under opposing grazing light, with scene shadows retained. High Forward+ on Mesa llvmpipe software rendering; simulation held, not a performance measurement."
+
 +++
 
 - **Drawn by the ground itself**: gravel roads and supply tracks are part of the terrain now, lit and shaded like the meadow round them, so they sit in the land instead of on top of it.
