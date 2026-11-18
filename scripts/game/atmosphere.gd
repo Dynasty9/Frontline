@@ -3194,6 +3194,13 @@ void fragment() {
 	}
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	// CLOUD_FRAGMENT cloud_sun(wpos)
+	// (in snow the crowns are laden and the floor white, so the light under a
+	// wood is grey, not the green the probes' leaves give it in summer)
+	if (snow_cover > 0.0 && wood_floor > 0.0) {
+		float grey_wood = wood_floor * snow_cover * 0.8;
+		ALBEDO = mix(ALBEDO, vec3(dot(ALBEDO, vec3(0.3, 0.5, 0.2))), grey_wood);
+		EMISSION = mix(EMISSION, vec3(dot(EMISSION, vec3(0.3, 0.5, 0.2))), grey_wood);
+	}
 }
 
 void light() {
