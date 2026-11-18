@@ -443,9 +443,11 @@ static func _team_mark(k: VehicleModels, p: Node3D, team: int, pos: Vector3, s: 
 	k._team_mark(p, team, pos, s)
 
 
-## A seat: pan and back, facing f (-1 forward).
+## A seat: pan and back, facing f (-1 forward). A light vehicle's crew seats
+## are covered in Cordura nylon, finer and with more sheen than the canvas of
+## its benches (a wreck's stay the canvas that burns away).
 static func _seat(k: VehicleModels, p: Node3D, pos: Vector3, f := -1.0, yaw := 0.0) -> void:
-	VehicleCab.seat(k, p, pos, Vector3(0.46, 0.5, 0.46), Vector3(0, yaw + (PI if f > 0.0 else 0.0), 0))
+	VehicleCab.seat(k, p, pos, Vector3(0.46, 0.5, 0.46), Vector3(0, yaw + (PI if f > 0.0 else 0.0), 0), Color(0.20, 0.21, 0.17), "canvas" if k.wreck else "nylon")
 
 
 # --- weapons -----------------------------------------------------------------------
@@ -828,6 +830,10 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 		_xy_bin(k, m, s, 2.6, 1.1, Vector2(1.4, 1.56), Vector2(1.16, roof), 0.14, cam)
 		for z in [-0.9, 1.5]:
 			_xy(k, m, s, z, 0.22, Vector2(1.36, 1.64), Vector2(1.26, 1.86), 0.05, 0.02, "glass", null, false)
+			# the armoured brow welded over the block, so it sits in the side
+			# under its own shadow rather than as a dark tile on the paint
+			if not k.wreck:
+				_xy(k, m, s, z, 0.25, Vector2(1.268, 1.88), Vector2(1.251, 1.92), 0.07, 0.035, cam)
 		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.42, 1.38, -2.9), Vector3(s * 1.42, 1.38, 3.3)], 0.025, 0.04)
 		k._box(m, Vector3(0.05, 0.12, 0.3), Vector3(s * 1.42, 1.4, 3.5), "gunmetal_w")
 		_antenna(k, m, Vector3(s * 0.95, roof, 3.45), 1.6)
@@ -1153,10 +1159,13 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 				VehicleMounts.era_brick(k, m, Vector3(x, c.y, c.x), Vector3(0.66, gd.length(), 0.12), glacis, cam)
 	# the rear: the troop door with its lever handle and vision block, steps,
 	# stowage baskets
-	VehicleDoors.leaf(k, m, Vector3(1.0, 1.1, 0.08), Vector3(0.2, 1.3, 3.8), cam, null, Vector3.ZERO, 2)
+	# (the door in the upright back plate, its sill where the tail plate
+	# starts to slope away under it: run on down, its foot hung 15 cm off it)
+	var sill := 0.75 if k.wreck else 1.08
+	VehicleDoors.leaf(k, m, Vector3(1.0, 1.85 - sill, 0.08), Vector3(0.2, (1.85 + sill) * 0.5, 3.8), cam, null, Vector3.ZERO, 2)
 	VehicleDoors.lever(k, m, Vector3(0.55, 1.415, 3.84), Vector3.BACK, Vector3.DOWN, 0.165, 0.05)
 	VehicleGlazing.rectangle(k, m, Vector2(0.24, 0.14), Vector3(0.2, 1.62, 3.85), Vector3.ZERO, false, null, 0.04)
-	for y in [0.88, 1.7]:
+	for y in ([0.88, 1.7] if k.wreck else [1.19, 1.7]):
 		VehicleDoors.hinge(k, m, Vector3(-0.32, y, 3.82), Vector3.BACK, Vector3.UP, 0.04, "gunmetal_w")
 	# (the fold-down tread held level by a stay at each end, back under it to
 	# the sloping tail plate: on its own it stuck out like a shelf)
@@ -1301,6 +1310,9 @@ static func _slammer(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	var cam := _cam(team)
 	_mk_hull(k, team, cam, up)
 	_mk_turret(k, team, cam, up, seed)
+	# an air-recognition panel folded on the bustle's roof, right of the
+	# remote station and behind the commander's cupola
+	VehicleEquipment.recognition_panel(k, k.turret, Vector3(0.66, 0.802, 1.75), Vector3.ZERO, true)
 
 
 ## M4 Scorcher: the Merkava IV hull under a tall boxy M109A7-style turret set
@@ -1469,6 +1481,15 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 	var fb := Vector2(-0.72, roof)
 	for i in 3:
 		_zy(k, m, -0.95 + i * 0.22, 0.16, fa.lerp(fb, 0.55), fa.lerp(fb, 0.8), 0.06, 0.03, "glass", null, false)
+	# the armoured brow welded over them, standing out of the plate so its
+	# shadow falls across the prisms' heads and the blocks sit in the armour
+	# (bare, they read from above as three black tiles stuck on the front),
+	# and the cheeks between the blocks
+	# (wrecks keep their old look)
+	if not k.wreck:
+		_zy(k, m, -0.73, 0.74, fa.lerp(fb, 0.82), fa.lerp(fb, 0.92), 0.13, 0.065, cam)
+		for i in 4:
+			_zy(k, m, -1.06 + i * 0.22, 0.04, fa.lerp(fb, 0.53), fa.lerp(fb, 0.82), 0.08, 0.04, cam, null, false)
 	VehicleFittings.hatch(k, m, Vector3(-0.72, roof + 0.03, -0.3), 0.3, cam, null, 1.0, 0.06)
 	# skirts and side armour: heavy panels low, the superstructure's armour
 	# modules with a channel between them, stowage, tow cable
@@ -1542,6 +1563,9 @@ static func _panther(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	_namer_hull(k, team, cam, true, true, seed)
 	_rcws(k, k.root, Vector3(-0.5, 2.32, -0.05), "both", cam, 1.15)
+	# an air-recognition panel folded on the roof between the remote station
+	# and the troop hatches, clear of the cupola
+	VehicleEquipment.recognition_panel(k, k.root, Vector3(-0.2, 2.322, 0.8), Vector3.ZERO, true)
 
 
 ## CRV-6e Bobcat: the Namer as an engineering / recovery vehicle: a dozer

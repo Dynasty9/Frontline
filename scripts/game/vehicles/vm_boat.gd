@@ -45,7 +45,7 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 		"assault_boat":
 			_zodiac(k, team)
 		"motorboat":
-			_motorboat(k, seed)
+			_motorboat(k, seed, team)
 		"rhib":
 			_rhib(k, team)
 		"sdv":
@@ -500,7 +500,10 @@ static func _bake(k: VehicleModels, pv: Node3D) -> void:
 ## 55 hp tiller outboard; lifelines, paddles and a fuel tank aboard.
 static func _zodiac(k: VehicleModels, team: int) -> void:
 	var m := k.root
-	var tm := "plain_dark"
+	# The tubes and the floor are Hypalon: nylon cloth coated in rubber, a
+	# soft dull sheen with the weave just showing through, not moulded
+	# plastic (a wreck's keep the old finish).
+	var tm := "plain_dark" if k.wreck else "coated"
 	var tc := Color(0.12, 0.12, 0.125)
 	var r := 0.25
 	var zt := 1.95  # the transom
@@ -557,9 +560,17 @@ static func _zodiac(k: VehicleModels, team: int) -> void:
 		var pz := 0.35 if s > 0 else -0.05
 		_rod(k, m, Vector3(s * 0.36, 0.25, pz + 0.75), Vector3(s * 0.36, 0.25, pz - 0.55), 0.016, "paint", Color(0.2, 0.21, 0.19), 6, true)
 		k._box(m, Vector3(0.15, 0.02, 0.4), Vector3(s * 0.36, 0.25, pz - 0.75), "paint", Color(0.2, 0.21, 0.19))
-	# (a soft pack slumped on the floorboards, its lid strapped over, not a crate)
-	VehicleCloth.bag(k, m, Vector3(0.42, 0.42, 0.52), Vector3(-0.12, 0.44, 0.35), "canvas", Color(0.33, 0.35, 0.25), Vector3(0, 0.18, 0))
-	k._add(m, Res.capsule(0.13, 0.62, 12), "rubber", Color(0.1, 0.1, 0.1), Vector3(0.15, 0.36, -0.45), Vector3(0, 0.35, PI / 2))
+	# (a soft pack slumped on the floorboards, its lid strapped over, not a
+	# crate: a raider's pack is Cordura nylon, the dry bag PVC-coated cloth
+	# with its top rolled down three times and buckled; a wreck's as before)
+	VehicleCloth.bag(k, m, Vector3(0.42, 0.42, 0.52), Vector3(-0.12, 0.44, 0.35), "canvas" if k.wreck else "nylon", Color(0.33, 0.35, 0.25), Vector3(0, 0.18, 0))
+	k._add(m, Res.capsule(0.13, 0.62, 12), "rubber" if k.wreck else "coated", Color(0.1, 0.1, 0.1), Vector3(0.15, 0.36, -0.45), Vector3(0, 0.35, PI / 2))
+	if not k.wreck:
+		# the rolled top: a flattened roll across the bag's end, its buckle
+		var bag_axis := Basis.from_euler(Vector3(0, 0.35, PI / 2)) * Vector3.UP
+		var roll_at := Vector3(0.15, 0.35, -0.45) + bag_axis * 0.3
+		k._add(m, Res.capsule(0.05, 0.32, 8), "coated", Color(0.13, 0.13, 0.13), roll_at, Vector3(PI / 2, 0.35, 0.0), Vector3(1, 1, 0.75), false)
+		k._box(m, Vector3(0.05, 0.03, 0.02), roll_at + Vector3(0, 0.04, 0), "plain_dark", Color(0.08, 0.08, 0.08), Vector3(0, 0.35, 0), false)
 	# the bow's towing ring and grab handle
 	k._add(m, Res.torus(0.025, 0.05), "gunmetal_w", null, Vector3(0, 0.33, -2.36), Vector3(0, 0, PI / 2))
 	k._box(m, Vector3(0.24, 0.04, 0.05), Vector3(0, 0.45 + r - 0.01, -1.98), "rubber", null, Vector3.ZERO, false)
@@ -587,10 +598,69 @@ static func _life_jacket(k: VehicleModels, parent: Node3D, pos: Vector3, yaw: fl
 	k._fold(v)
 
 
+## The bimini top over a runabout's helm: acrylic canvas on three stainless
+## bows that all pivot from one deck hinge a side, so the whole top folds
+## aft. Most owners leave it up against the sun, the canvas crowned and
+## slack between the bows, its valance hanging round the edge, two straps
+## holding it back to the stern quarters; a third run with it folded down,
+## the canvas zipped into its boot on the laid-back bows. The canvas comes
+## in the usual chandlery colours, or matched to the hull's stripe.
+static func _bimini(k: VehicleModels, m: Node3D, p: Dictionary, seed: int, stripe: Color) -> void:
+	var cloth: Color = [Color(0.13, 0.17, 0.27), Color(0.52, 0.48, 0.39), Color(0.11, 0.11, 0.115), stripe.darkened(0.2)][(seed >> 2) % 4]
+	var hz := 0.85  # the hinges, on the gunwale beside the helm bench
+	var hst := _station(p, _u(p, hz))
+	var hx := _beam(hst) - 0.07
+	var hy := _top(hst)
+	var top := 2.05
+	var bows: Array[float] = [0.25, 0.85, 1.45]
+	if (seed >> 4) % 3 == 0:
+		# folded: the bows laid back over the stern, the canvas in its boot
+		var boot := Vector3(0, hy + 0.32, hz + 1.05)
+		for s: float in [-1.0, 1.0]:
+			for i in 3:
+				_rod(k, m, Vector3(s * hx, hy + 0.02, hz), Vector3(s * 0.8, boot.y - 0.02 + i * 0.03, boot.z - 0.06 + i * 0.05), 0.012, "steel", STAINLESS, 5)
+			# the rear support it rests in, down to the quarter
+			var qst := _station(p, _u(p, boot.z + 0.35))
+			_rod(k, m, Vector3(s * 0.8, boot.y - 0.05, boot.z), Vector3(s * (_beam(qst) - 0.07), _top(qst), boot.z + 0.35), 0.012, "steel", STAINLESS, 5)
+		# (the boot: a zipped canvas sausage round the folded top, its zip
+		# along the top, a little flattened where the bows press into it)
+		k._add(m, Res.capsule(0.085, 1.72, 10), "canvas", cloth, boot, Vector3(0, 0, PI / 2), Vector3(0.8, 1, 1))
+		k._box(m, Vector3(1.5, 0.006, 0.014), boot + Vector3(0, 0.07, 0), "plain_dark", Color(0.08, 0.08, 0.08), Vector3.ZERO, false)
+		return
+	var corner: Array[float] = [top - 0.02, top + 0.02, top - 0.03]
+	for b in 3:
+		var z: float = bows[b]
+		var y: float = corner[b] - 0.05
+		var path := [Vector3(-hx, hy + 0.02, hz), Vector3(-0.76, y, z), Vector3(0.76, y, z), Vector3(hx, hy + 0.02, hz)]
+		for i in path.size() - 1:
+			_rod(k, m, path[i], path[i + 1], 0.013, "steel", STAINLESS, 5)
+	# the canvas: crowned across, slack between the bows, its valance turned
+	# down along all four edges (columns and rows at the very edge drop)
+	var xs: Array[float] = [-0.9, -0.86, -0.5, 0.0, 0.5, 0.86, 0.9]
+	var zs: Array[float] = [0.18, 0.23, 0.55, 0.85, 1.15, 1.47, 1.52]
+	var pts := PackedVector3Array()
+	for j in zs.size():
+		var z: float = zs[j]
+		var v := clampf((z - 0.25) / 1.2, 0.0, 1.0)
+		var ridge := lerpf(corner[0], corner[1], v * 2.0) if v < 0.5 else lerpf(corner[1], corner[2], v * 2.0 - 1.0)
+		var sag := 0.025 * absf(sin(v * TAU))
+		for i in xs.size():
+			var x: float = xs[i]
+			var y := ridge + 0.06 * (1.0 - x * x / 0.74) - sag * (1.0 - absf(x) / 0.9)
+			if i == 0 or i == xs.size() - 1 or j == 0 or j == zs.size() - 1:
+				y -= 0.08
+			pts.append(Vector3(x, y, z))
+	k._add(m, VehicleMarine.cloth("boat_mb_bimini", pts, xs.size(), zs.size()), "canvas", cloth, Vector3.ZERO)
+	# the straps back to the stern quarters that hold it up against the wind
+	for s: float in [-1.0, 1.0]:
+		var qst := _station(p, _u(p, 2.3))
+		VehicleCloth.strap(k, m, [Vector3(s * 0.82, corner[2] - 0.06, 1.5), Vector3(s * (_beam(qst) - 0.07), _top(qst) + 0.02, 2.3)], 0.025, cloth.darkened(0.3), Vector3(1, 0, 0))
+
+
 ## A small open centre-console runabout: a white V-hull with a coloured stripe
 ## and rub rail, a short foredeck with a bow rail, the console with its wrap
 ## windscreen, a helm bench and a stern bench, a 115 hp outboard.
-static func _motorboat(k: VehicleModels, seed: int) -> void:
+static func _motorboat(k: VehicleModels, seed: int, team := -1) -> void:
 	var m := k.root
 	var p := MOTORBOAT
 	var hm := "plain"
@@ -690,6 +760,8 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 	_rod(k, m, Vector3(-0.44, sole + 0.93, 1.03), Vector3(0.44, sole + 0.93, 1.03), 0.014, "steel", STAINLESS)
 	for s in [-1.0, 1.0]:
 		_rod(k, m, Vector3(s * 0.44, sole + 0.93, 1.03), Vector3(s * 0.44, sole + 0.45, 0.98), 0.014, "steel", STAINLESS)
+	if not k.wreck:
+		_bimini(k, m, p, seed, stripe)
 	# the bow rail on its stanchions
 	var rp := []
 	for u in [uf + 0.03, 0.8, 0.86, 0.91, 0.95, 0.98]:
@@ -710,6 +782,9 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 	# cleats, a bow navigation light, the stern light's pole
 	var bst := _station(p, 0.86)
 	_cleat(k, m, Vector3(0, _top(bst) + 0.04, bst[0]))
+	# the bow line made off on it, its tail coiled down on the foredeck
+	var lz := float(bst[0]) + 0.3
+	VehicleMarine.line_coil(k, m, Vector3(0.04, _top(bst) + 0.07, bst[0]), Vector3(0.26, _top(_station(p, _u(p, lz))) + 0.025, lz), 0.12, 0.008, Color(0.82, 0.8, 0.74))
 	for s in [-1.0, 1.0]:
 		for z in [zt - 0.3, 0.2]:
 			var st := _station(p, _u(p, z))
@@ -721,6 +796,8 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 	var lx := -(_beam(lst) - 0.035)
 	_rod(k, m, Vector3(lx, _top(lst), zt - 0.2), Vector3(lx, _top(lst) + 1.0, zt - 0.2), 0.014, "steel", STAINLESS)
 	VehicleFittings.dome_light(k, m, Vector3(lx, _top(lst) + 1.03, zt - 0.2), 0.04, Color(0.9, 0.9, 0.86))
+	# the flag of whoever has her now, tied on under the stern light
+	VehicleMarine.ensign(k, m, Vector3(lx, _top(lst) + 0.97, zt - 0.18), team, 0.45, 0.28)
 	# a non-skid sole between the topsides
 	var sr := []
 	for st in aft:
@@ -766,7 +843,8 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 	var p := RHIB
 	var hm := "plain"
 	var hc := Color(0.36, 0.38, 0.4)
-	var cm := "plain_dark"
+	# the collar is coated fabric (Hypalon over nylon), as a CRRC's tubes
+	var cm := "plain_dark" if k.wreck else "coated"
 	var cc := Color(0.19, 0.2, 0.21)
 	var zt: float = p["z0"]
 	var r := 0.28
@@ -847,6 +925,9 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 	# the masthead light's pole runs up into the light's base
 	_rod(k, m, Vector3(0, ah + 0.03, cz + 0.36), Vector3(0, ah + 0.63, cz + 0.36), 0.018, am, ac)
 	VehicleFittings.dome_light(k, m, Vector3(0, ah + 0.66, cz + 0.36), 0.04, Color(0.9, 0.9, 0.86))
+	# a small ensign bent on to the pole under the light, flown aft over the
+	# arch as a navy boat flies it underway (clear of the radome below)
+	VehicleMarine.ensign(k, m, Vector3(0, ah + 0.6, cz + 0.385), team, 0.5, 0.28)
 	VehicleFittings.searchlight(k, m, Vector3(0.36, ah + 0.13, cz - 0.08), Vector3.FORWARD, 0.09, 0.14, "", Vector3.ZERO, "gunmetal_w", null, 0.075)
 	k._box(m, Vector3(0.12, 0.06, 0.04), Vector3(-0.32, ah + 0.07, cz - 0.05), "gunmetal_w")
 	# The driver perches on the front of the first starboard seat to reach the wheel.
@@ -858,14 +939,15 @@ static func _rhib(k: VehicleModels, team: int) -> void:
 		for s in [-1.0, 1.0]:
 			var x: float = s * 0.38
 			k._box(m, Vector3(0.34, 0.5, 0.5), Vector3(x, sy + 0.24, zr), hm, hc)
-			VehicleCab.seat(k, m, Vector3(x, sy + 0.55, zr + 0.02), Vector3(0.36, 0.2, 0.6), Vector3.ZERO, Color(0.12, 0.12, 0.12), "rubber")
+			# (upholstered in marine vinyl, a coated cloth that sheds the spray)
+			VehicleCab.seat(k, m, Vector3(x, sy + 0.55, zr + 0.02), Vector3(0.36, 0.2, 0.6), Vector3.ZERO, Color(0.12, 0.12, 0.12), "rubber" if k.wreck else "coated")
 			for dx in [-0.13, 0.13]:
 				_rod(k, m, Vector3(x + dx, sy + 0.58, zr - 0.25), Vector3(x + dx, sy + 0.84, zr - 0.31), 0.015, "steel", STAINLESS)
 			_rod(k, m, Vector3(x - 0.13, sy + 0.84, zr - 0.31), Vector3(x + 0.13, sy + 0.84, zr - 0.31), 0.015, "steel", STAINLESS)
 	# a seat box forward of the console with its cushion, the stern locker
 	var by := _top(_station(p, _u(p, -1.8)))
 	k._box(m, Vector3(1.0, 0.44, 0.62), Vector3(0, by + 0.2, -1.8), hm, hc)
-	VehicleCab.bench(k, m, Vector3(0, by + 0.46, -1.8), Vector3(0.96, 0.09, 0.58), Vector3.FORWARD, Vector3.ZERO, "plain_dark", Color(0.12, 0.12, 0.12))
+	VehicleCab.bench(k, m, Vector3(0, by + 0.46, -1.8), Vector3(0.96, 0.09, 0.58), Vector3.FORWARD, Vector3.ZERO, "plain_dark" if k.wreck else "coated", Color(0.12, 0.12, 0.12))
 	var sy2 := _top(_station(p, _u(p, 2.95)))
 	VehicleEquipment.storage(k, m, Vector3(0, sy2 + 0.18, 2.95), Vector3(1.3, 0.4, 0.75), hm, hc.darkened(0.25))
 	# bow: an anchor locker hatch hinged at its forward edge (laid on the deck
@@ -1103,7 +1185,8 @@ static func _surc(k: VehicleModels, team: int, csat: bool) -> void:
 		k._box(m, Vector3(0.46, 0.4, 3.5), Vector3(s * 1.02, 1.52, 3.45), hm, hc)
 		for i in 4:
 			var z := 1.95 + i * 0.95
-			VehicleCab.bench(k, m, Vector3(s * 1.02, 1.76, z), Vector3(0.44, 0.08, 0.86), Vector3(-s, 0, 0), Vector3(0.03, 0.38, 0.08), "plain_dark", Color(0.14, 0.14, 0.13), 0.0, true, 0.14, 0.06)
+			# (troop seats in coated marine vinyl, a wreck's as they were)
+			VehicleCab.bench(k, m, Vector3(s * 1.02, 1.76, z), Vector3(0.44, 0.08, 0.86), Vector3(-s, 0, 0), Vector3(0.03, 0.38, 0.08), "plain_dark" if k.wreck else "coated", Color(0.14, 0.14, 0.13), 0.0, true, 0.14, 0.06)
 	# the rear gun on its pedestal ring mount, looking aft over the quarter
 	# (the post up from the deck into the race ring the gun's head turns on)
 	var gy := _sheer(p, _u(p, 3.65))
@@ -1150,6 +1233,8 @@ static func _surc(k: VehicleModels, team: int, csat: bool) -> void:
 	# (the bitts' posts 0.24 m apart, 6 cm round and 0.24 m tall)
 	var fst := _station(p, 0.9)
 	VehicleMarine.mooring(k, m, Vector3(0, _top(fst), float(fst[0])), Vector3(0.375, 0.24, 0.19), 0.0, "bitts", "gunmetal_w", null)
+	# the bow line turned up on the bitts, its tail coiled down beside them
+	VehicleMarine.line_coil(k, m, Vector3(0.1, _top(fst) + 0.16, float(fst[0])), Vector3(0.46, _top(fst), float(fst[0]) + 0.16), 0.15, 0.011, Color(0.2, 0.2, 0.19))
 	VehicleMarine.bow_eye(k, m, Vector3(0, 1.05, zt - float(p["len"]) * 0.905), 0.04, 0.075, Vector3.FORWARD, Vector3.RIGHT, "gunmetal_w", null)
 	for s in [-1.0, 1.0]:
 		var cst := _station(p, 0.78)
@@ -1171,6 +1256,8 @@ static func _surc(k: VehicleModels, team: int, csat: bool) -> void:
 	VehicleMarine.bow_eye(k, m, Vector3(0, 0.66, zt + 0.05), 0.035, 0.065, Vector3.BACK, Vector3.RIGHT, "gunmetal_w", null)
 	_rod(k, m, Vector3(1.1, ys0 + 0.6, zt - 0.1), Vector3(1.1, ys0 + 1.2, zt - 0.1), 0.014, "gunmetal_w")
 	VehicleFittings.dome_light(k, m, Vector3(1.1, ys0 + 1.22, zt - 0.1), 0.035, Color(0.9, 0.9, 0.86))
+	# the ensign on the stern light's pole, its fly hanging out over the step
+	VehicleMarine.ensign(k, m, Vector3(1.1, ys0 + 1.16, zt - 0.08), team, 0.6, 0.36)
 
 
 ## A flat outline [x, z, ...] scaled about (0, zc).
@@ -1235,12 +1322,15 @@ static func _scooter(k: VehicleModels, seed: int) -> void:
 	var seat1 := []
 	for q in [[-0.47, 0.15, 0.74], [-0.39, 0.215, 0.785], [0.12, 0.225, 0.795], [0.24, 0.2, 0.775]]:
 		seat1.append(_cushion(q[1], 0.63, q[2], q[0]))
-	# (the saddles are padded vinyl: shaded round across their crowns and ends)
-	k._add(m, _moulded(seat1, "boat_pwc_seat1", 50.0), "plain_dark", dark, Vector3.ZERO)
+	# (the saddles are padded vinyl: shaded round across their crowns and
+	# ends, the coated cloth's soft sheen, not the hull's hard plastic; a
+	# wreck's keep the old finish)
+	var saddle := "plain_dark" if k.wreck else "coated"
+	k._add(m, _moulded(seat1, "boat_pwc_seat1", 50.0), saddle, dark, Vector3.ZERO)
 	var seat2 := []
 	for q in [[0.16, 0.2, 0.815], [0.28, 0.23, 0.85], [0.86, 0.23, 0.85], [0.99, 0.17, 0.805]]:
 		seat2.append(_cushion(q[1], 0.63, q[2], q[0]))
-	k._add(m, _moulded(seat2, "boat_pwc_seat2", 50.0), "plain_dark", dark, Vector3.ZERO)
+	k._add(m, _moulded(seat2, "boat_pwc_seat2", 50.0), saddle, dark, Vector3.ZERO)
 	for s in [-1.0, 1.0]:
 		# footwell mats
 		k._box(m, Vector3(0.2, 0.012, 1.45), Vector3(s * 0.4, _sheer(p, 0.25) + 0.004, 0.35), "plain_dark", Color(0.22, 0.22, 0.22))

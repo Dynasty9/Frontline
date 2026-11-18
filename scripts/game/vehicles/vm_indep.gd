@@ -226,11 +226,13 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 		_plate(k, m, s * 0.45, 0.7, ws_a.lerp(ws_b, 0.2), ws_a.lerp(ws_b, 0.86), 0.03, "glass", null, -0.008, false)
 		_plate(k, m, s * 0.45, 0.8, ws_a.lerp(ws_b, 0.13), ws_a.lerp(ws_b, 0.2), 0.035, cam, col, 0.0)
 	_plate(k, m, 0.0, 0.12, ws_a.lerp(ws_b, 0.13), ws_b, 0.04, cam, col, 0.0)
-	# a wiper over each pane
+	# a wiper over each pane, parked along its foot with the spindle in the
+	# frame under its outer corner, the blade toward the pillar (stood up the
+	# middle of the pane, the arm and blade read as a T drawn on the glass)
 	for s: float in [-1.0, 1.0]:
-		var a := ws_a.lerp(ws_b, 0.22)
-		var b := ws_a.lerp(ws_b, 0.6)
-		VehicleFittings.wiper(k, m, Vector3(s * 0.5, a.y, a.x - 0.025), Vector3(s * 0.5, b.y, b.x - 0.025), Vector3.RIGHT, Vector3(0, ws_b.x - ws_a.x, ws_a.y - ws_b.y), 0.36)
+		var a := ws_a.lerp(ws_b, 0.22 if k.wreck else 0.165)
+		var b := ws_a.lerp(ws_b, 0.6 if k.wreck else 0.27)
+		VehicleFittings.wiper(k, m, Vector3(s * (0.5 if k.wreck else 0.7), a.y, a.x - 0.025), Vector3(s * (0.5 if k.wreck else 0.44), b.y, b.x - 0.025), Vector3.RIGHT, Vector3(0, ws_b.x - ws_a.x, ws_a.y - ws_b.y), 0.36)
 	# the nose: headlight clusters in guards, tow shackles, a plate
 	for s: float in [-1.0, 1.0]:
 		_light(k, m, Vector3(s * 0.92, 1.02, -2.8), 0.3, 0.13)
@@ -276,6 +278,9 @@ static func _strider(k: VehicleModels, team: int, variant: int) -> void:
 		for i in 3:
 			VehicleFittings.periscope(k, m, Vector3(s * 0.48 + (i - 1) * 0.18, 1.83, -1.7), Vector3(0.14, 0.08, 0.06), Vector3(-0.3, 0, 0))
 	VehicleFittings.panel_hatch(k, m, Vector3(-0.45, 1.81, 0.55), Vector3(0.55, 0.05, 0.5), cam, col)
+	# an air-recognition panel folded on the cabin roof behind the front
+	# hatches, clear of the mast's or the weapon station's foot
+	VehicleEquipment.recognition_panel(k, m, Vector3(0, 1.792, -0.6), Vector3.ZERO, true)
 	# engine deck: two grilles with their slats, standing just proud of the
 	# deck so the radiator core shows below them
 	for s: float in [-1.0, 1.0]:
@@ -806,6 +811,9 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.periscope(k, m, Vector3(-0.8 + i * 0.18, 2.09, -2.72), Vector3(0.15, 0.08, 0.06), Vector3(-0.4, 0, 0))
 	VehicleFittings.mirror(k, m, Vector3(-1.46, 1.96, -2.95), Vector2(0.15, 0.24), 0.3, [Vector3(-1.15, 1.92, -2.95)])
 	VehicleFittings.grille(k, m, Vector3(0.62, 2.11, -2.1), Vector2(0.95, 1.15), Vector3(-PI / 2, 0, 0), cam, col, 5)
+	# an air-recognition panel folded on the roof behind the driver's hatch,
+	# beside the engine grille and clear of the turret's sweep
+	VehicleEquipment.recognition_panel(k, m, Vector3(-0.56, 2.082, -1.62), Vector3.ZERO, true)
 	# the exhaust's housing on the flank, its louvres on the outer face, the
 	# soot streaked back from it as far as the forward bin
 	k._box(m, Vector3(0.1, 0.34, 0.55), Vector3(1.38, 1.55, -2.55), "gunmetal_w")
@@ -816,11 +824,14 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.panel_hatch(k, m, Vector3(s * 0.5, 2.1, 2.55), Vector3(0.66, 0.06, 0.8), cam, col, 1.0)
 	# a camouflage net rolled across the roof behind the hatches
 	VehicleCloth.roll(k, m, Vector3(0, 2.2, 3.3), 0.12, 1.5, Z90, Color(0.33, 0.35, 0.24))
-	# the rear door: vision block, handle, hinges; a step under it
-	VehicleDoors.leaf(k, m, Vector3(1.1, 1.25, 0.08), Vector3(0.1, 1.5, 3.74), cam, col, Vector3.ZERO, 2)
+	# the rear door: vision block, handle, hinges; a step under it. (The door
+	# is in the upright back plate, its sill where the lower plate starts to
+	# slope away under it: run on down, its foot hung 15 cm off that plate.)
+	var sill := 0.875 if k.wreck else 1.17
+	VehicleDoors.leaf(k, m, Vector3(1.1, 2.125 - sill, 0.08), Vector3(0.1, (2.125 + sill) * 0.5, 3.74), cam, col, Vector3.ZERO, 2)
 	VehicleGlazing.rectangle(k, m, Vector2(0.2, 0.12), Vector3(0.1, 1.85, 3.79), Vector3.ZERO, false, null, 0.03)
 	VehicleDoors.lever(k, m, Vector3(0.5, 1.45, 3.78), Vector3.BACK, Vector3.DOWN, 0.12, 0.12, 0.025)
-	for hy: float in [1.1, 1.9]:
+	for hy: float in ([1.1, 1.9] if k.wreck else [1.34, 1.9]):
 		VehicleDoors.hinge(k, m, Vector3(-0.45, hy, 3.78), Vector3.BACK, Vector3.UP, 0.028, cam, col)
 	# (the tread held level by a stay at each end, back under it to the
 	# sloping lower plate: 15 cm behind the plate, it hung in the air)
@@ -983,6 +994,15 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	VehicleEquipment.storage(k, m, Vector3(0.98, 0.95, -0.18), Vector3(0.6, 0.4, 0.42), cam, col, Vector3(0, -PI / 2, 0))
 	# the exhaust's silencer under the right side of the cab
 	VehicleFittings.silencer(k, m, Vector3(0.78, 0.8, -1.35), Vector3(0.2, 0.2, 0.6), "metal_dark")
+	# Sandbags laid on the front wings over the wheels on some, a third on
+	# top, where a mine under the front wheel blows up through the wing into
+	# the cab (as convoy drivers have done since Vietnam and Afghanistan); the
+	# Rebels' captured trucks more often than the army's.
+	var lot := VehicleCloth.sack_lot(k)
+	var bags := VehicleCargo.kit(k, m, Vector3(0, 1.445, -2.58), 43)
+	if bags != null and bags.randf() < (0.5 if team == 1 else 0.25):
+		for s: float in [-1.0, 1.0]:
+			VehicleCloth.sandbags(k, m, Vector3(s * 0.93, 1.445, -2.96), Vector3(s * 0.93, 1.445, -2.2), bags, lot, 2 if bags.randf() < 0.6 else 1)
 
 
 ## The flatbed on the chassis, on its runners; `sides` > 0 gives it dropsides
@@ -1072,9 +1092,14 @@ static func _zamak_cargo(k: VehicleModels, tarp: Color, seed: int) -> void:
 	for i in 3:
 		var sack := Vector3(0.5, 1.555 + i * 0.19, 2.95 + (i % 2) * 0.12)
 		var turn := rng.randf_range(-0.4, 0.4)
-		k._add(m, VehicleCloth._shell(Vector3(0.55, 0.24, 0.36)), "canvas_white", Color(0.56, 0.5, 0.38).darkened(0.04 * i), sack, Vector3(0, turn, 0.04 * (i - 1)))
-		var tie := Basis.from_euler(Vector3(0, turn, 0)) * Vector3(0.3, 0, 0)
-		k._add(m, VehicleCloth._shell(Vector3(0.07, 0.1, 0.16)), "canvas_white", Color(0.5, 0.45, 0.33), sack + tie, Vector3(0, turn, 0))
+		if k.wreck:
+			k._add(m, VehicleCloth._shell(Vector3(0.55, 0.24, 0.36)), "canvas_white", Color(0.56, 0.5, 0.38).darkened(0.04 * i), sack, Vector3(0, turn, 0.04 * (i - 1)))
+			var tie := Basis.from_euler(Vector3(0, turn, 0)) * Vector3(0.3, 0, 0)
+			k._add(m, VehicleCloth._shell(Vector3(0.07, 0.1, 0.16)), "canvas_white", Color(0.5, 0.45, 0.33), sack + tie, Vector3(0, turn, 0))
+		else:
+			# (the sandbag's sack, a grain sack's size: rounded at its closed
+			# end, its mouth tied off with an ear of cloth past the tie)
+			k._add(m, VehicleCloth._sack(1 + 2 * (i % 2)), "canvas_white", Color(0.56, 0.5, 0.38).darkened(0.04 * i), sack - Vector3(0, 0.12, 0), Vector3(0, turn, 0.04 * (i - 1)), Vector3(1.1, 1.75, 1.3))
 	for i in 3:
 		_jerrycan(k, m, Vector3(0.38 + i * 0.22, 1.44, 3.55), Color(0.3, 0.33, 0.23), PI / 2)
 

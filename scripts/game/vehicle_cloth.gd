@@ -7,7 +7,12 @@ extends RefCounted
 ## crew's: its own shade of drab (one of four ways it was thrown over, so few
 ## shells are cached), its folds where it fell and its lashings a ring
 ## forward or back of where they were.
-static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Color(0.30, 0.32, 0.23), pallet := true) -> void:
+static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Color(0.30, 0.32, 0.23), pallet := true, mat := "canvas_white") -> void:
+	# (`mat` the cloth: cotton duck by default, "coated" for a polythene or PVC
+	# tarp, smooth and a little glossy, that sheds the rain; a wreck's stays
+	# the duck it always was)
+	if k.wreck:
+		mat = "canvas_white"
 	var rng := VehicleCargo.kit(k, k.root, base, 3)
 	var fold := 0
 	var lashings: Array[int] = [6, 18]
@@ -54,14 +59,14 @@ static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Co
 		smooth.add_vertex(vertex)
 	smooth.index()
 	smooth.generate_normals()
-	k._add(k.root, smooth.commit(), "canvas_white", col, base)
+	k._add(k.root, smooth.commit(), mat, col, base)
 	for index in [0, 24]:
 		var rim: PackedVector3Array = rings[index]
 		for j in rim.size() - 1:
-			VehicleEquipment._rod(k, k.root, base + rim[j], base + rim[j + 1], 0.009, "canvas_white", col.darkened(0.16), 6, false, 3)
+			VehicleEquipment._rod(k, k.root, base + rim[j], base + rim[j + 1], 0.009, mat, col.darkened(0.16), 6, false, 3)
 	var last := rings[0].size() - 1
 	for side in [0, last]:
-		VehicleEquipment._rod(k, k.root, base + rings[0][side], base + rings[24][side], 0.009, "canvas_white", col.darkened(0.16), 6, false, 3)
+		VehicleEquipment._rod(k, k.root, base + rings[0][side], base + rings[24][side], 0.009, mat, col.darkened(0.16), 6, false, 3)
 	if k.wreck:
 		# (a wreck's lashings stay the round cords they always were)
 		for index in lashings:
@@ -820,6 +825,178 @@ static func rope(k: VehicleModels, parent: Node3D, points: Array, radius: float,
 		VehicleEquipment._rod(k, parent, points[i], points[i + 1], r, "rope", col, 5, false, 3)
 	for i: int in knots:
 		k._add(parent, Res.sphere(r * 2.2, 6), "rope", col.darkened(0.1), points[i], Vector3.ZERO, Vector3(1.0, 1.5, 1.0), false)
+
+
+## A filled sandbag's size once it has settled: the standard 14 by 26 inch
+## sack holds about 15 kg of earth and lies some 0.5 m long, 0.28 wide and
+## 0.14 high, its faces bellied out and its top pressed flat.
+const SACK := Vector3(0.5, 0.14, 0.28)
+## Sacks as irregulars find them: hessian (jute, the old issue: brown, hairy,
+## dead matte) and woven polypropylene (the builders' merchant's plastic sack:
+## off-white, olive or sand, finer, with a faint sheen).
+const SACK_HESSIAN: Array[Color] = [Color(0.45, 0.37, 0.25), Color(0.40, 0.33, 0.22), Color(0.51, 0.43, 0.30)]
+const SACK_POLY: Array[Color] = [Color(0.66, 0.64, 0.57), Color(0.36, 0.37, 0.27), Color(0.57, 0.51, 0.38), Color(0.31, 0.33, 0.25)]
+## Earth rubbed into a sack that has been filled, carried and sat on.
+const SACK_EARTH := Color(0.34, 0.29, 0.21)
+
+
+## The sacks one crew filled its sandbags from: [poly, colour], hessian or
+## plastic and the lot's colour, the same for every sandbag on the vehicle
+## (drawn from the kit seed). Empty for a wreck or for scenery, which carry
+## none: a wreck's sacks have split and spilt, and scenery keeps one look.
+static func sack_lot(k: VehicleModels) -> Array:
+	var rng := VehicleCargo.kit(k, k.root, Vector3.ZERO, 41)
+	if rng == null or k.wreck:
+		return []
+	var poly := rng.randf() < 0.55
+	var palette := SACK_POLY if poly else SACK_HESSIAN
+	return [poly, palette[rng.randi_range(0, palette.size() - 1)]]
+
+
+## One sandbag (see SACK), its base's middle at `foot` on what carries it,
+## lying along `along` with its mouth that way, from the crew's `lot`
+## (sack_lot; empty: none). Each is turned, filled and settled its own way,
+## a few from another lot (a crew fills what sacks it finds), the earth rubbed
+## into it; `drape` where it lies over a rail narrower than itself, its sides
+## hanging down either side of it. Four cached sacks (the mouth tied off or
+## folded under, slumped toward either end) and their draped twins, scaled
+## in a few steps, so a roster of sandbags bakes eight small meshes.
+static func sandbag(k: VehicleModels, parent: Node3D, foot: Vector3, along: Vector3, rng: RandomNumberGenerator, lot: Array, drape := false, length := 1.0) -> void:
+	if lot.is_empty() or k.wreck or k.kit_seed < 0:
+		return
+	var poly: bool = lot[0]
+	var col: Color = lot[1]
+	if rng.randf() < 0.18:
+		poly = not poly
+		var palette := SACK_POLY if poly else SACK_HESSIAN
+		col = palette[rng.randi_range(0, palette.size() - 1)]
+	var shade := rng.randf_range(-0.06, 0.06)
+	col = col.lightened(shade) if shade > 0.0 else col.darkened(-shade)
+	col = col.lerp(SACK_EARTH, rng.randf_range(0.05, 0.3) if not poly else rng.randf_range(0.0, 0.2))
+	var variant := rng.randi_range(0, 3) + (4 if drape else 0)
+	var flat := Vector3(along.x, 0.0, along.z).normalized()
+	var yaw := atan2(-flat.z, flat.x) + rng.randf_range(-0.12, 0.12)
+	var fill := snappedf(rng.randf_range(0.88, 1.06), 0.06)
+	var scale := Vector3(snappedf(length, 0.05), fill, snappedf(rng.randf_range(0.92, 1.04), 0.06))
+	var tilt := Vector3(rng.randf_range(-0.05, 0.05), yaw, rng.randf_range(-0.03, 0.03))
+	k._add(parent, _sack(variant), "nylon" if poly else "canvas", col, foot, tilt, scale)
+
+
+## A wall of sandbags along a line of support from `a` to `b` (each a point
+## on what carries them, under the wall's middle): sacks laid end to end
+## along it and pressed together, `courses` high, each course set half a sack
+## along on the one under it and nested into its grooves, as a sandbag wall
+## is laid so no joint runs straight through it; an upper course one sack
+## shorter, its ends stepped in. Mouths are turned in or out at random, as
+## the sacks were thrown up. `drape` the bottom course over a rail.
+static func sandbags(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, rng: RandomNumberGenerator, lot: Array, courses := 1, drape := false) -> void:
+	if lot.is_empty() or rng == null:
+		return
+	var run := b - a
+	var count := maxi(1, roundi(run.length() / (SACK.x * 0.88)))
+	var step := run / count
+	var length := clampf(step.length() / (SACK.x * 0.88), 0.8, 1.15)
+	for course in courses:
+		var n := count - course
+		if n < 1:
+			break
+		for i in n:
+			var at := a + step * (float(i) + 0.5 + 0.5 * float(course)) + Vector3(0, course * SACK.y * 0.78, 0)
+			var mouth := 1.0 if rng.randf() < 0.5 else -1.0
+			sandbag(k, parent, at, run * mouth, rng, lot, drape and course == 0, length)
+
+
+static var _sacks := {}
+
+## A filled sack lying along X on its base (y 0), SACK its size, `variant`'s
+## bits: 1 its mouth (+X) tied off with an ear of cloth past the tie (else
+## folded flat under it), 2 slumped toward the mouth (else toward the closed
+## end), 4 draped over a rail (its sides hanging 5 cm either side of the
+## middle). Rings along its length are rounded rectangles, fullest at mid
+## length and closing to a rounded end, the base flatter than the top; small
+## lumps of the fill push the cloth about. The cloth's UVs end along the
+## base's edges, where the canvas finish sews the sack's seams. About 80
+## triangles a sack.
+static func _sack(variant: int) -> ArrayMesh:
+	if _sacks.has(variant):
+		return _sacks[variant]
+	var tied := variant & 1 != 0
+	var slump := 1.0 if variant & 2 != 0 else -1.0
+	var draped := variant & 4 != 0
+	var h := SACK * 0.5
+	var base := SACK.y * 0.3
+	var top := SACK.y - base
+	# (t along the length from the closed end, its width and height shares,
+	# its middle's height as a share of the sack's)
+	var rings: Array[Vector4] = []
+	for t: float in [-1.0, -0.88, -0.55, 0.45]:
+		var p := pow(1.0 - pow(absf(t), 4.0), 0.25)
+		rings.append(Vector4(t, p, p, lerpf(0.45, 0.3, p)))
+	if tied:
+		# gathered to the tie, the ear of cloth past it flattened
+		rings.append_array([Vector4(0.7, 0.8, 0.78, 0.36), Vector4(0.79, 0.26, 0.26, 0.45), Vector4(0.88, 0.4, 0.16, 0.42), Vector4(0.95, 0.0, 0.0, 0.4)])
+	else:
+		# the spare cloth folded flat under: the end squarer, lower, spread
+		for e: Vector3 in [Vector3(0.78, 1.03, 0.72), Vector3(0.95, 0.92, 0.28), Vector3(1.0, 0.0, 0.0)]:
+			rings.append(Vector4(e.x, e.y, e.z, 0.3 * e.z))
+	# Round each ring from the base's one edge, over the top, to its other:
+	# the base itself rests on what carries the sack, never seen, so it has
+	# no faces (the sides belly out lowest, where the fill settles).
+	var arc: Array[float] = [-0.4, -0.08, 0.25, 0.5, 0.75, 1.08, 1.4]
+	var sides := arc.size() - 1
+	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var idx := PackedInt32Array()
+	var mids := PackedVector3Array()
+	for r in rings.size():
+		var ring := rings[r]
+		var mid := Vector3(ring.x * h.x, SACK.y * ring.w, 0.0)
+		mids.append(mid)
+		for j in sides + 1:
+			var w := PI * arc[j]
+			var s := sin(w)
+			var c := cos(w)
+			var y := signf(s) * pow(absf(s), 0.3 if s < 0.0 else 0.62)
+			var z := signf(c) * pow(absf(c), 0.6)
+			var p := Vector3(ring.x * h.x, 0.0, z * h.z * ring.y)
+			if y >= 0.0:
+				# the top domed by the fill, slumped toward one end, lumpy
+				var lump := 0.05 * sin(ring.x * 7.3 + z * 4.1 + float(variant)) * sin(z * 3.0 + float(variant) * 1.7)
+				p.y = mid.y + y * top * ring.z * (1.0 - 0.07 * slump * ring.x + lump)
+			else:
+				p.y = mid.y + y * base * ring.z
+			if draped:
+				p.y -= 0.05 * pow(absf(p.z) / h.z, 2.0)
+			verts.append(p)
+			uvs.append(Vector2(float(r) / float(rings.size() - 1), float(j) / float(sides)))
+	for r in rings.size() - 1:
+		for j in sides:
+			var a := r * (sides + 1) + j
+			var out := (verts[a] - mids[r]).normalized() + Vector3(signf(rings[r].x) * 0.2 if r == 0 or r == rings.size() - 2 else 0.0, 0, 0)
+			VehicleWheels._tri(idx, verts, out, a, a + sides + 1, a + 1)
+			VehicleWheels._tri(idx, verts, out, a + 1, a + sides + 1, a + sides + 2)
+	# one smooth skin, its seam and its ends' poles included
+	var sums := {}
+	for f in range(0, idx.size(), 3):
+		var n := (verts[idx[f + 2]] - verts[idx[f]]).cross(verts[idx[f + 1]] - verts[idx[f]])
+		for c in 3:
+			var point := Vector3i((verts[idx[f + c]] * 10000.0).round())
+			sums[point] = (sums.get(point, Vector3.ZERO) as Vector3) + n
+	var norms := PackedVector3Array()
+	for q in verts:
+		var total: Vector3 = sums[Vector3i((q * 10000.0).round())]
+		norms.append(total.normalized() if total.length_squared() > 0.0 else Vector3.UP)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	_sacks[variant] = mesh
+	return mesh
 
 
 ## How heavily a crew has camouflaged its vehicle, from 0 to 1. A military

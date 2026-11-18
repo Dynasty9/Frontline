@@ -838,7 +838,9 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	# the canopy: windscreen and bubble, its bows
 	var cst := [[-3.45, 1.45, 0.3, 0.08, 0.08], [-3.0, 1.45, 0.43, 0.36, 0.08], [-2.4, 1.46, 0.47, 0.54, 0.08], [-1.7, 1.47, 0.46, 0.57, 0.08],
 		[-1.0, 1.48, 0.4, 0.46, 0.08], [-0.5, 1.48, 0.27, 0.28, 0.08]]
-	cockpit(k, m, "buz", cst, body(k, m, "buz_can", cst, "glass", null, 18, 60.0), [-1.98])
+	# (the tub's floor low, so the pilot sits up in the bubble with his
+	# shoulders over the sill, as an L-159's does)
+	cockpit(k, m, "buz", cst, body(k, m, "buz_can", cst, "glass", null, 18, 60.0), [-1.98], Color(0.33, 0.37, 0.41), 0.19)
 	band(k, m, "buz_bow0", cst, -2.92, 0.07, 0.02, A, c.darkened(0.2), 18)
 	band(k, m, "buz_bow1", cst, -1.05, 0.08, 0.02, A, c.darkened(0.2), 18)
 	canopy_frame(k, m, "buz_cf", cst, -2.95, -0.75, A, c.darkened(0.2))
@@ -938,7 +940,9 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 	body(k, m, "gry_spine", [[-2.3, 1.42, 0.36, 0.36, 0.1], [-1.0, 1.44, 0.34, 0.34, 0.1], [1.5, 1.44, 0.28, 0.3, 0.1], [3.5, 1.44, 0.18, 0.22, 0.1], [5.2, 1.42, 0.08, 0.1, 0.1]], A, c, 16)
 	var cst := [[-4.55, 1.42, 0.28, 0.06, 0.06], [-4.0, 1.42, 0.4, 0.33, 0.06], [-3.4, 1.43, 0.44, 0.49, 0.06], [-2.7, 1.44, 0.42, 0.47, 0.06],
 		[-2.1, 1.45, 0.34, 0.33, 0.06], [-1.7, 1.45, 0.2, 0.17, 0.06]]
-	cockpit(k, m, "gry", cst, body(k, m, "gry_can", cst, "glass", null, 18, 60.0), [-2.95])
+	# (the tub's floor low, so the pilot's shoulders show in the bubble, as a
+	# Gripen's do)
+	cockpit(k, m, "gry", cst, body(k, m, "gry_can", cst, "glass", null, 18, 60.0), [-2.95], Color(0.33, 0.37, 0.41), 0.19)
 	band(k, m, "gry_bow0", cst, -3.95, 0.07, 0.018, A, c.darkened(0.2), 18)
 	band(k, m, "gry_bow1", cst, -2.15, 0.07, 0.018, A, c.darkened(0.2), 18)
 	canopy_frame(k, m, "gry_cf", cst, -3.95, -1.85, A, c.darkened(0.2))

@@ -458,9 +458,11 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	# the wheels: the trim's silver alloys, but about one pickup in three (and
 	# more of the fighters') on the base model's black-painted steel wheels,
 	# so a row of them isn't stamped from one mould; a wreck's stay silver
+	# (a parked one's chosen by its paint, its look, so each look is one model)
 	var rim_mat := "steel"
 	var rim := Color(0.6, 0.61, 0.6)
-	if not k.wreck and absi(hash(seed * 23 + 9)) % (2 if v != "" else 3) == 0:
+	var rim_pick := absi(hash(seed * 23 + 9)) if v != "" else absi(hash(_paint(seed, 11, false)))
+	if not k.wreck and rim_pick % (2 if v != "" else 3) == 0:
 		rim_mat = "gunmetal_w"
 		rim = Color(0.12, 0.12, 0.12)
 	# ladder frame, the wheel tubs behind the wheels, axles and diffs, exhaust
@@ -576,8 +578,10 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 		VehicleEquipment.bed_cover(k, m, Vector3(0, 1.284, 1.45), Vector2(1.8, 2.1), 2, Color(0.08, 0.08, 0.08))
 	elif v == "" and not k.wreck and absi(hash([col, 37])) % 5 == 2:
 		# or a load roped down in the bed under a tarp: a blue polythene one
-		# from the hardware shop, or an old army drab
-		VehicleCloth.load_cover(k, Vector3(0, 0.99, 1.72), Vector3(1.3, 0.42, 1.2), Color(0.15, 0.29, 0.52) if absi(hash([col, 38])) % 3 != 0 else Color(0.3, 0.32, 0.23), false)
+		# from the hardware shop, glossy and smooth, or an old army drab in
+		# cotton duck
+		var poly := absi(hash([col, 38])) % 3 != 0
+		VehicleCloth.load_cover(k, Vector3(0, 0.99, 1.72), Vector3(1.3, 0.42, 1.2), Color(0.15, 0.29, 0.52) if poly else Color(0.3, 0.32, 0.23), false, "coated" if poly else "canvas_white")
 	match v:
 		"hmg":
 			_off_hmg(k, team)
@@ -599,6 +603,7 @@ static func _off_hmg(k: VehicleModels, team: int) -> void:
 	for i in 2:
 		VehicleFittings.ammo_can(k, m, Vector3(-0.6, floor_y + 0.095 + i * 0.19, 2.25), OD, Vector3(0, PI / 2, 0), Vector3(0.14, 0.19, 0.3))
 	VehicleCargo.crate_stack(k, m, Vector3(0.58, floor_y, 2.24), Vector3(0.38, 0.25, 0.3), Vector3i.ONE, "wood")
+	_bed_guard(k, 0.6, 2.06)
 	k.turret = k._pivot(m, pivot)
 	var t := k.turret
 	# the pintle post braced on its bolted plate, the swivel and cradle on top
@@ -623,6 +628,7 @@ static func _off_at(k: VehicleModels, team: int) -> void:
 	# crates of rounds in the bed, the one by the tailgate strapped down
 	VehicleCargo.crate_stack(k, m, Vector3(-0.35, 0.98, 2.25), Vector3(0.7, 0.24, 0.3), Vector3i.ONE, "wood_dark", null, 0.0, [0.0])
 	VehicleCargo.crate_stack(k, m, Vector3(-0.35, 0.98, 0.7), Vector3(0.7, 0.24, 0.3), Vector3i.ONE, "wood_dark")
+	_bed_guard(k, 0.72, 2.2)
 	k.turret = k._pivot(m, top)
 	var t := k.turret
 	k._cyl(t, 0.07, 0.07, 0.1, Vector3(0, 0.05, 0), Vector3.ZERO, "paint", OD, 10)
@@ -656,6 +662,28 @@ static func _off_repair(k: VehicleModels, team: int) -> void:
 	# the amber beacon on its bar on the cab roof
 	VehicleFittings.light_bar(k, m, Vector3(0, 1.815, 0.0), Vector3(0.5, 0.05, 0.16), [AMBER], "beacon", Vector3(0.08, 0.1, 0.07))
 	_team_side(k, team)
+
+
+## What the fighters have put up round an armed Offroad's bed, z0..z1 along
+## it (clear of the kit in the back corners), from its kit seed: sandbags
+## along both rails, two courses on most, or steel plates bolted up inside
+## the bed's walls to chest height, cut from whatever they found, their bolt
+## heads inside the bed; or nothing. Never on a wreck or scenery.
+static func _bed_guard(k: VehicleModels, z0: float, z1: float) -> void:
+	var m := k.root
+	var rng := VehicleCargo.kit(k, m, Vector3(0, 1.28, (z0 + z1) * 0.5), 43)
+	if rng == null or k.wreck:
+		return
+	var pick := rng.randf()
+	if pick < 0.55:
+		var lot := VehicleCloth.sack_lot(k)
+		for s: float in [-1.0, 1.0]:
+			VehicleCloth.sandbags(k, m, Vector3(s * 0.84, 1.2825, z0), Vector3(s * 0.84, 1.2825, z1), rng, lot, 2 if rng.randf() < 0.5 else 1, true)
+	elif pick < 0.8:
+		var steel: Color = [Color(0.3, 0.29, 0.26), Color(0.4, 0.4, 0.38), Color(0.36, 0.27, 0.19)][rng.randi_range(0, 2)]
+		var length := minf(z1 - z0, 1.4)
+		for s: float in [-1.0, 1.0]:
+			VehicleMounts.applique(k, m, Vector3(s * 0.804, 1.265, z0 + length * 0.5), Vector3(length, 0.57, 0.012), Vector3(0, -s * PI / 2, 0), "rust_steel" if steel.b < 0.2 else "gunmetal_w", steel, Vector2i(4, 2))
 
 
 ## The irregulars' recognition panel on the doors.
@@ -757,10 +785,20 @@ static func _mb4wd(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	VehicleCab.dashboard(k, m, Vector3(1.5, 0.16, 0.24), Vector3(0, 1.2, -0.62), "plain_dark", TRIM)
 	VehicleCab.steering_wheel(k, m, Vector3(-0.38, 1.33, -0.42), 0.19, Vector3(1.1, 0, 0), "plain_dark", TRIM)
 	_rod(k, m, Vector3(-0.38, 1.33, -0.42), Vector3(-0.38, 1.22, -0.6), 0.025, "plain_dark", TRIM, 6)
+	# An open Wrangler's seats are trimmed to sit out the rain: a stain-shedding
+	# woven cloth, black or dark slate, on most, vinyl-faced leather, black or
+	# saddle, on the rest (the paint picks which, as the stock keys a parked
+	# one). (A wreck keeps the trim it always had.)
+	var trim := absi(hash([col, 47]))
+	var vinyl_trim := trim % 3 == 0
+	var seat_mat := "plastic" if k.wreck else ("coated" if vinyl_trim else "nylon")
+	var seat_col := Color(0.16, 0.16, 0.15)
+	if not k.wreck:
+		seat_col = [Color(0.09, 0.09, 0.09), Color(0.3, 0.22, 0.15) if vinyl_trim else Color(0.2, 0.21, 0.22)][(trim >> 3) % 2]
 	for s in [-1.0, 1.0]:
-		VehicleCab.seat(k, m, Vector3(s * 0.38, 1.04, -0.08), Vector3(0.5, 0.62, 0.5), Vector3.ZERO, Color(0.16, 0.16, 0.15), "plastic", true)
+		VehicleCab.seat(k, m, Vector3(s * 0.38, 1.04, -0.08), Vector3(0.5, 0.62, 0.5), Vector3.ZERO, seat_col, seat_mat, true)
 	# the rear bench on the tub floor, its back leaning away from the sitters
-	VehicleCab.bench(k, m, Vector3(0, 1.04, 0.95), Vector3(1.4, 0.12, 0.45), Vector3.FORWARD, Vector3(-0.04, 0.5, 0.12), "plain", Color(0.16, 0.16, 0.15), 0.0, false, 0.12, 0.035)
+	VehicleCab.bench(k, m, Vector3(0, 1.04, 0.95), Vector3(1.4, 0.12, 0.45), Vector3.FORWARD, Vector3(-0.04, 0.5, 0.12), "plain" if k.wreck else seat_mat, seat_col, 0.0, false, 0.12, 0.035)
 	# the sport bar: a hoop behind the front seats, rails forward to the
 	# windscreen frame and back down to the rear corners, a diagonal clamped
 	# between the hoop and each rear rail, the feet bolted down
@@ -1550,9 +1588,10 @@ static func _suv(k: VehicleModels, seed: int) -> void:
 	_car_details(k, m, 0.05, zr, 1.19)
 	# the alloys: silver, but one owner in three ordered them in anthracite (a
 	# street of these on one wheel read as stamped from one mould; a wreck's
-	# stay silver)
+	# stay silver; chosen by the paint, which is the parked car's look, so
+	# every SUV of a paint is the same model)
 	var rim := Color(0.55, 0.56, 0.56)
-	if not k.wreck and absi(hash(seed * 17 + 5)) % 3 == 0:
+	if not k.wreck and absi(hash(_paint(seed, 61, false))) % 3 == 0:
 		rim = Color(0.17, 0.17, 0.18)
 	# the long bonnet's shut line, the tailgate's down the tail to above the
 	# bumper (its glass is the rear window above)
