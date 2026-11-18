@@ -542,7 +542,7 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 	var yaw_d := yaw_along(d)
 	if shop:
 		var shop_kind := rng.randi() % 5
-		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, 0, shop_kind))
+		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, int(plan.get("color", -1)) + 1, shop_kind))
 		_shop_wares(hc, n, w, dep, shop_kind, entrances)
 	# the garden behind: hedge (or a wall) along the back, fences down the sides
 	var back := front + n * _depth

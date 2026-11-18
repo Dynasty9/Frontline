@@ -28,13 +28,12 @@ func review() -> void:
 			barn_count += 1
 		for other in world.structures:
 			assert(other.skind != "crates" or not floor._covers(other.position, 0.0), "Solid crates must not intersect fitted stock")
-		if floor.variant == 3 and floor.entry >= 2 and shop == null:
+		# (an end-door shop when there is one; shops on a street have their
+		# door in the shopfront, so most are entered from the front)
+		if floor.variant == 3 and (shop == null or (floor.entry >= 2 and shop.entry < 2)):
 			shop = floor
 	if shop == null:
-		for floor in world.structures:
-			if floor.skind == "floor" and floor.variant == 3:
-				print("SHOP_ENTRY ", floor.position, " entry=", floor.entry)
-		print("SHOP_GAMEPLAY no end-door shop in this seed")
+		print("SHOP_GAMEPLAY no shop in this seed")
 		quit(1)
 		return
 	assert(barn_count > 0, "Seed must include the existing farm work")

@@ -559,7 +559,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"awning":
 			# a shop's front (BuildingShops): its fascia and name, the awning
 			var a3: Vector3 = ex
-			BuildingShops.front(BuildingKit.baked(_bake, rng, _at), a3.x, int(a3.z), rng)
+			# (a3.y the house's colour index and one, so the fascia matches the
+			# shopfront under it: 0 for none)
+			BuildingShops.front(BuildingKit.baked(_bake, rng, _at), a3.x, int(a3.z), rng, int(a3.y) - 1)
 		"wares":
 			# what the shop puts out on the pavement
 			BuildingShops.wares(BuildingKit.baked(_bake, rng, _at), int(ex), rng)

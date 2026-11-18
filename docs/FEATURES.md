@@ -772,14 +772,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
   supply. (Missions don't have them; the dumps use their own random numbers, so a seed's map is otherwise
   unchanged.)
-- Houses are rendered and painted, bare brick or rough stone, and dressed as they're built: a darker plinth and a
+- Houses are rendered and painted (nine old paint colours, from limewash to a faded pink or sage), bare brick or rough stone (three shades of each), and dressed as they're built: a darker plinth and a
   band under the eaves, sills and lintels in render, concrete or dressed stone (a keystone over stone windows),
   painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
   shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
   often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
   houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; moss and lichen
-  grow on the tiles, and flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  grow on the tiles in uneven patches. Tiled roofs are weathered clay or concrete tile in five shades or slate and grey tile in three,
+  barns dull galvanised, rusted or red sheet; walls are dirty under the eaves and damp at the foot, with the odd run down from a gutter; brick is old red-brown, and stone is coursed rubble (courses of three heights, stones
+  of their own lengths and shades) in pale lime mortar. Flat roofs are felted black or green-grey, bare concrete or old asphalt, and carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
@@ -798,7 +800,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and there a trampoline, all set dressing that a blast or a truck
   knocks over. On the walls are a house's services and the things by its door: meter boxes, outside taps
   with a hose on a hook, air conditioners on brackets or on a pad, satellite dishes on arms, and at the front
-  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
+  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: display windows over panelled stall risers with their stock set out behind the glass, a fascia with the shop's name painted to match, a striped awning, and on the
   pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
