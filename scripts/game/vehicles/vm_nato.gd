@@ -1269,9 +1269,18 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool, seed 
 	k._box(t, Vector3(0.1, 0.06, 0.24), Vector3(-0.35, 0.86, 0.75), "gunmetal_w")
 	k._cyl(t, 0.055, 0.055, 0.7, Vector3(-0.85, 1.0, 1.35), Vector3(PI / 2 - 0.5, 0, 0), "gunmetal_w", null, 8)
 	k._box(t, Vector3(0.16, 0.16, 0.2), Vector3(-0.85, 0.86, 1.62), "gunmetal_w")
-	# the loader's MG on its pintle, the wind sensor mast, antennas
-	VehicleMounts.pintle(k, t, Vector3(-0.6, 0.8, 0.35), Vector3(-0.6, 1.02, 0.35), "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
-	VehicleWeapons.mmg(k, t, Vector3(-0.6, 1.02, 0.35), Vector3(-0.6, 1.03, -0.45), 1.0, 0.0)
+	# the loader's MAG on its pintle ahead of his hatch, as high as his chest
+	# when he stands in it, its 100-round box on the left and the belt rising
+	# into the feed; on the plain tank the commander has one of his own on a
+	# post at his cupola's front (the urban package's remote .50 replaces it)
+	var lg := Vector3(-0.6, 1.3, 0.36)
+	VehicleMounts.pintle(k, t, Vector3(-0.6, 0.8, 0.36), lg, "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
+	VehicleWeapons.mmg(k, t, lg, lg + Vector3(0, 0.01, -0.8), 1.0, -1.0, true, "gunmetal_w", STOW)
+	if not up:
+		k.roof_gun = lg
+		var cg := Vector3(0.34, 1.32, 0.42)
+		VehicleMounts.pintle(k, t, Vector3(0.34, 0.96, 0.42), cg, "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
+		VehicleWeapons.mmg(k, t, cg, cg + Vector3(0, 0.01, -0.8), 1.0, -1.0, true, "gunmetal_w", STOW)
 	VehicleMounts.mast_segment(k, t, Vector3(0.0, 1.05, 2.2), 0.5, 0.02, "gunmetal_w", null)
 	k._box(t, Vector3(0.12, 0.05, 0.05), Vector3(0.0, 1.3, 2.2), "gunmetal_w", null, Vector3.ZERO, false)
 	for s in [-1.0, 1.0]:
@@ -1612,15 +1621,29 @@ static func _cheetah(k: VehicleModels, team: int, seed := 0) -> void:
 	k._add(t, VehicleModels.loft("nato_ch_tur", b0, b1, 0.08, 0.92, 0.05), cam, null, Vector3.ZERO)
 	_weld(k, t, _seated(_rings([b0, 0.08, b1, 0.92]), 0.05), cam)
 	# a 35 mm on each flank: the trunnion housing, the cradle, the long barrel
-	# with its muzzle velocity radar ring and brake
+	# tapering to the muzzle velocity sensor and the brake
 	var gy := 0.52
 	for s in [-1.0, 1.0]:
 		var gx: float = s * 1.42
 		VehicleMounts.mantlet(k, t, Vector3(0.24, 0.42, 0.9), Vector3(s * 1.3, gy, -0.4), cam)
 		# the gun's armoured housing, painted with the turret, its edges broken
 		k._add(t, VehicleMounts._bevel(Vector3(0.24, 0.3, 1.1), 0.025), cam, null, Vector3(gx, gy, -0.75))
-		VehicleWeapons.autocannon(k, t, Vector3(gx, gy, -1.25), Vector3(gx, gy, -4.2), Vector2(0.07, 0.6), Vector2(0.04, 0.045), Vector2(0.06, 0.2))
-		k._cyl(t, 0.075, 0.075, 0.16, Vector3(gx, gy, -3.1), Vector3(PI / 2, 0, 0), "metal_dark", null, 10)
+		# The gun on its own pivot at the breech, laid with all it carries. As
+		# on the Gepard, the muzzle velocity sensor rides just behind the brake:
+		# a drum round the barrel whose coils time each shell leaving, so the
+		# fire control corrects for the next one as the barrel wears and heats.
+		# Its lead runs back along the barrel's top under the clamp.
+		var g := k._pivot(t, Vector3(gx, gy, -1.25))
+		# the housing's front, round the recoil sleeve, elevating with the gun
+		# (at rest it runs the housing on forward; laid high, it rises out of it)
+		k._add(g, VehicleMounts._bevel(Vector3(0.24, 0.3, 0.46), 0.025), cam, null, Vector3(0, 0, -0.26))
+		k._cyl(g, 0.085, 0.085, 0.03, Vector3(0, 0, -0.5), Vector3(PI / 2, 0, 0), "metal_dark", null, 14, false)
+		var tip := VehicleWeapons.autocannon(k, g, Vector3.ZERO, Vector3(0, 0, -2.95), Vector2(0.07, 0.6), Vector2(0.046, 0.038), Vector2(0.06, 0.2))
+		k._cyl(g, 0.072, 0.072, 0.3, Vector3(0, 0, -2.57), Vector3(PI / 2, 0, 0), VehicleWeapons.STEEL, null, 14)
+		for z: float in [-2.425, -2.715]:
+			k._cyl(g, 0.079, 0.079, 0.022, Vector3(0, 0, z), Vector3(PI / 2, 0, 0), "metal_dark", null, 14, false)
+		VehicleFrames.tube(k, g, Vector3(0, 0.05, -2.42), Vector3(0, 0.054, -0.62), 0.008, "rubber", null, 6, false)
+		k.gun_assembly(g, tip)
 		# the ammunition feed chute and the missile box above the gun
 		k._box(t, Vector3(0.18, 0.2, 0.4), Vector3(gx, gy - 0.24, -0.4), "gunmetal_w")
 		# four rounds, mounted by its inboard face on the bracket
