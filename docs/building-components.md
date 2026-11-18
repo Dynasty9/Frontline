@@ -268,6 +268,18 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## The helipad
+
+A side's helipad is `BuildingAirfield.helipad`:
+- **The pad:** a regular army's is aluminium landing mat in a bond with ramp panels round its edge; a militia's is
+  concrete, cracked and patched.
+- **Markings and edge:** a touchdown circle painted round an H, halved tyres painted white for edge markers, tie-down
+  rings.
+- **Round its corners:** a windsock lifting on its mast, a fuel bladder on its berm with its hose and pump, chocks,
+  a fire extinguisher, and the flag. The edge lights glow on their own nodes, as before.
+
+Render both sides' with `--building-kinds=helipad:0,helipad:1`.
+
 ## Who uses what
 
 | Component | Users |

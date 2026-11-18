@@ -336,6 +336,13 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# A helipad keeps its pad flat and its windsock, fuel and flag about its
+	# edge (its edge markers half tyres, half sunk), for either side.
+	for side in 2:
+		var hp := Structure.preview_model("helipad", side)
+		var hpb := _bounds(hp, Transform3D.IDENTITY)
+		check(hp.get_child_count() > 0 and hpb.size.x <= 12.5 and hpb.size.z <= 12.5 and hpb.position.y >= -0.3 and hpb.end.y < 5.0, "a helipad keeps to its pad (%d: %s)" % [side, hpb])
+		hp.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:
