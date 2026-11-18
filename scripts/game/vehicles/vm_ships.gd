@@ -574,33 +574,50 @@ static func _mk38(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	# the barrel: a support sleeve out of the housing's nose, the long tube, a
 	# muzzle device on its end
 	VehicleWeapons.autocannon(k, tv, Vector3(0, 0.58, -0.63), Vector3(0, 0.58, -2.64), Vector2(0.08, 0.3), Vector2(0.03, 0.042), Vector2(0.045, 0.16))
-	# the electro-optical sight on the left, its windows forward
-	_bx(k, tv, Vector3(0.08, 0.1, 0.3), Vector3(-0.34, 0.6, -0.1), cm, col)
-	k._add(tv, VehicleModels.loft("ship_mk38_eos", VmBoat._rr(0.28, 0.46, 0.0, 0.06, 0.04), VmBoat._rr(0.24, 0.4, 0.02, 0.05, 0.03), 0.0, 0.4, 0.02), cm, col, Vector3(-0.53, 0.44, -0.12))
-	_bx(k, tv, Vector3(0.16, 0.1, 0.012), Vector3(-0.53, 0.72, -0.35), "glass", null, Vector3.ZERO, false)
-	_bx(k, tv, Vector3(0.1, 0.08, 0.012), Vector3(-0.53, 0.58, -0.35), "glass", null, Vector3.ZERO, false)
-	_bx(k, tv, Vector3(0.3, 0.02, 0.2), Vector3(-0.53, 0.855, -0.3), cm, col, Vector3(-0.12, 0, 0), false)
-	# the ammunition box on the right and its feed chute into the receiver
+	# the electro-optical sight on the left, on its arm off the housing: the
+	# head's three windows forward (the TV camera's over the thermal
+	# imager's, the laser rangefinder's small one beside), bezelled, under
+	# their visors
+	_bx(k, tv, Vector3(0.12, 0.1, 0.3), Vector3(-0.33, 0.6, -0.1), cm, col)
+	VehicleMounts.sight(k, tv, Vector3(-0.53, 0.64, -0.12), Vector3(0.28, 0.4, 0.46), [Rect2(Vector2(-0.045, 0.09), Vector2(0.15, 0.1)), Rect2(Vector2(-0.045, -0.06), Vector2(0.15, 0.1)), Rect2(Vector2(0.09, -0.06), Vector2(0.05, 0.05))], cm, col)
+	# the ammunition box on the right, its lid's seam and the two latches
+	# that clamp it, and the ribbed chute the linked rounds ride up out of
+	# it and into the receiver's feed
 	_bx(k, tv, Vector3(0.26, 0.38, 0.66), Vector3(0.52, 0.42, 0.18), cm, col.darkened(0.06))
-	_bx(k, tv, Vector3(0.2, 0.06, 0.2), Vector3(0.38, 0.66, 0.0), "gunmetal_w", null, Vector3(0, 0, -0.5))
+	_bx(k, tv, Vector3(0.268, 0.008, 0.668), Vector3(0.52, 0.55, 0.18), "plain_dark", Color(0.12, 0.13, 0.13), Vector3.ZERO, false)
 	for z in [-0.05, 0.4]:
-		_bx(k, tv, Vector3(0.28, 0.03, 0.04), Vector3(0.52, 0.62, z), "gunmetal_w", null, Vector3.ZERO, false)
+		_bx(k, tv, Vector3(0.012, 0.07, 0.04), Vector3(0.656, 0.55, z), "gunmetal_w", null, Vector3.ZERO, false)
+		_bx(k, tv, Vector3(0.28, 0.02, 0.04), Vector3(0.52, 0.62, z), "gunmetal_w", null, Vector3.ZERO, false)
+	var feed: Array[Vector3] = [Vector3(0.5, 0.6, -0.04), Vector3(0.45, 0.71, -0.06), Vector3(0.35, 0.73, -0.08), Vector3(0.26, 0.66, -0.1)]
+	VehicleFrames.path(k, tv, feed, 0.045, "metal_dark", null, 8)
+	for i in feed.size() - 1:
+		k._add(tv, Res.torus(0.04, 0.054), "metal_dark", null, feed[i].lerp(feed[i + 1], 0.5), VehicleFrames.aim(feed[i + 1] - feed[i]).get_euler(), Vector3.ONE, false)
 	# the spent case chute under the housing, a cable loom at the back
 	_bx(k, tv, Vector3(0.12, 0.2, 0.14), Vector3(0, 0.3, -0.2), "gunmetal_w")
 	_rod(k, tv, Vector3(-0.2, 0.42, 0.68), Vector3(-0.32, 0.12, 0.5), 0.03, "rubber", null, 6)
 	return tv
 
 
-## The M2 .50 cal on a pedestal mount: a post with a flange, the cradle,
-## receiver, barrel with its carrying handle and flash hider, spade grips, the
-## ammo can on the left. Trained `yaw` (0 = forward), elevated `el`.
+## The M2 .50 cal on a shipboard stanchion mount: the pedestal on its deck
+## plate with four braced feet, the swivel and yoke on top with the gun's
+## trunnion block between the cheeks, the receiver, barrel with its carrying
+## handle and flash hider, spade grips, the ammo can on the left and the
+## canvas bag under the receiver that catches the spent brass and links (a
+## ship's gun throws them on a deck the crew has to stand on). Trained `yaw`
+## (0 = forward), elevated `el`.
 static func _m2(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float, el := 0.06) -> void:
-	var pv := k._pivot(m, pos + Vector3(0, 0.88, 0))
+	var pv := k._pivot(m, pos + Vector3(0, 0.78, 0))
 	pv.rotation = Vector3(el, yaw, 0)
-	# the post's flange on the deck plate, the post and the cradle under the
-	# receiver (an HMG of size 0.9: 0.144 wide, 0.171 high)
-	VehicleMounts.pintle(k, m, pos + Vector3(0, 0.012, 0), pv.transform * Vector3(0, 0.13, -0.05), "gunmetal_w", null, Vector2(0.05, 0.06), Vector2(0.144, 0.171), -pv.basis.z)
-	VehicleWeapons.hmg(k, pv, Vector3(0, 0.13, -0.05), Vector3(0, 0.13, -1.625), 0.9, -1.0, true, "gunmetal_w", Color(0.3, 0.33, 0.22))
+	# (an HMG of size 0.9: its trunnion block 0.1 under the receiver's axis and
+	# 0.22 ahead of its centre, so the gun sits back over the post)
+	var head := k._pivot(m, pv.position)
+	head.rotation.y = yaw
+	VehicleMounts.pedestal(k, m, pos, pv.position, head, "gunmetal_w", null, 0.42, Vector2(0.055, 0.065), 4, Vector3(0.1, 0.15, 0.16))
+	k._fold(head)
+	VehicleWeapons.hmg(k, pv, Vector3(0, 0.23, 0.216), Vector3(0, 0.23, -1.359), 0.9, -1.0, true, "gunmetal_w", Color(0.3, 0.33, 0.22))
+	# the brass bag under the ejection port, hung off the receiver's back
+	k._bag(pv, Vector3(0.11, 0.15, 0.2), Vector3(0, 0.07, 0.28), "canvas", Color(0.36, 0.35, 0.26))
+	_rod(k, pv, Vector3(-0.05, 0.14, 0.19), Vector3(0.05, 0.14, 0.19), 0.006, "steel", null, 6, false)
 	VmBoat._bake(k, pv)
 
 
@@ -660,28 +677,25 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	return tv
 
 
-## DShK 12.7 mm on a pintle: the post, the cradle, the receiver, the finned
-## barrel and its big muzzle brake, spade grips, a 50-round box on the left,
-## a scrap-steel shield in front. Trained `yaw`.
+## DShK 12.7 mm on a pintle: the post, the cradle, the gun itself (the
+## ground forces' DShK: its finned barrel, the flat muzzle brake, the ring
+## sight, wooden spade grips, the 50-round box on the left), a scrap-steel
+## shield in front. Trained `yaw`.
 static func _dshk(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float) -> void:
 	var gm := "gunmetal_w"
 	var pv := k._pivot(m, pos + Vector3(0, 0.97, 0))
 	pv.rotation = Vector3(0.1, yaw, 0)
 	# the pintle (its socket on the roof, the post, the cradle under the
 	# receiver) and three legs welded on to steady it
-	VehicleMounts.pintle(k, m, pos, pv.transform * Vector3(0, 0.12, 0.0), gm, null, Vector2(0.06, 0.07), Vector2(0.14, 0.17), -pv.basis.z)
+	VehicleMounts.pintle(k, m, pos, pv.transform * Vector3(0, 0.12, 0.0), gm, null, Vector2(0.06, 0.07), Vector2(0.13, 0.15), -pv.basis.z)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(0.35, 0.0, 0.2), 0.025, gm, null, 6, true)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(-0.35, 0.0, 0.2), 0.025, gm, null, 6, true)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(0.0, 0.0, -0.4), 0.025, gm, null, 6, true)
-	VehicleMounts.receiver(k, pv, Vector3(0.14, 0.17, 0.7), Vector3(0, 0.12, 0.0), gm)
-	for i in 6:
-		k._cyl(pv, 0.05, 0.05, 0.035, Vector3(0, 0.13, -0.42 - i * 0.07), Vector3(PI / 2, 0, 0), gm, null, 10, false)
-	k._cyl(pv, 0.026, 0.026, 1.1, Vector3(0, 0.13, -0.92), Vector3(PI / 2, 0, 0), gm, null, 6)
-	_bx(k, pv, Vector3(0.11, 0.09, 0.16), Vector3(0, 0.13, -1.5), gm)
-	for sx in [-0.07, 0.07]:
-		_rod(k, pv, Vector3(sx, 0.1, 0.33), Vector3(sx, 0.2, 0.42), 0.017, "wood_dark", null, 6, true)
-	_bx(k, pv, Vector3(0.14, 0.22, 0.3), Vector3(-0.17, 0.07, 0.0), "paint", Color(0.3, 0.33, 0.22))
-	_bx(k, pv, Vector3(0.5, 0.32, 0.025), Vector3(0, 0.06, -0.4), "steel", Color(0.32, 0.31, 0.27), Vector3(-0.1, 0, 0))
+	VmCore._dshk(k, pv, Vector3(0, 0.12, 0.0))
+	# the shield: a slab of plate cut from the hull's scrap, notched for the
+	# barrel and the gas tube under it, clamped to the cradle just ahead of
+	# the receiver (it turns with the gun), so the ring sight stands over it
+	VmCore._shield_face(k, pv, 0.0, 0.21, 0.52, -0.12, 0.27, [Rect2(-0.05, 0.03, 0.1, 0.16)], [false], "steel", 0.02)
 	VmBoat._bake(k, pv)
 
 
