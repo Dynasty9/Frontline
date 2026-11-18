@@ -28,3 +28,5 @@ caption = "The FOB's net pitched over the block, and a Rebel desert net, before 
 - **Camouflage nets** are cut into leaves on a diamond cord mesh, printed woodland for the Coalition and desert for
   the Rebels. The FOB's net now drapes over the block instead of floating flat above it.
 - From the usual camera height, fine detail fades to the colour the pattern averages to, so nothing shimmers.
+
+Digital camouflage now softens continuously as the camera pulls back. Distant patterns retain the brightness of their printed colours instead of darkening as their fine detail disappears.
