@@ -474,7 +474,7 @@ func _d_clear(kind: String, p: Vector3, yaw: float, extra: Variant, r: float) ->
 func _plan(at: Vector3, w: float, dep: float, room: float, shop: bool, farm := false) -> Dictionary:
 	var pr := RandomNumberGenerator.new()
 	pr.seed = int(absf(at.x) * 11.0) * 7919 + int(absf(at.z) * 11.0) * 31 + 53
-	var plan := {"seed": pr.randi()}
+	var plan := {"seed": pr.randi(), "shop": shop}
 	var central := at.distance_to(center) < 48.0
 	var up := 0.85 if farm else ((0.65 if central else 0.35) if shop else (0.5 if w >= 10.0 else (0.32 if w >= 8.0 else 0.12)))
 	if w >= 7.0 and pr.randf() < up:
@@ -543,7 +543,7 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 	var yaw_d := yaw_along(d)
 	if shop:
 		var shop_kind := rng.randi() % 5
-		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, 0, shop_kind))
+		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, int(plan.get("color", -1)) + 1, shop_kind))
 		_shop_wares(hc, n, w, dep, shop_kind, entrances)
 	# the garden behind: hedge (or a wall) along the back, fences down the sides
 	var back := front + n * _depth
