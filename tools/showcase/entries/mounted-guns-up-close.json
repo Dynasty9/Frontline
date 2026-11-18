@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/mounted-guns-up-close.md",
+  "summary": "Forty-odd passes over every vehicle's mounted guns: each army's real weapons, remote stations elevating whole with sight and ammunition, ballistic glass a hand thick, real muzzles, sights, stocks and feeds, and mounts built as the real ones are.",
+  "medium": "still",
+  "stage": "mounted-guns (tools/showcase/stages.json): tests/fixtures/mounted-gun-clips.tscn --clip=mounted-guns-stills, showroom battlefield seed 712, fixed 30 Hz, Forward+",
+  "rationale": "The changes are the guns' shapes and fittings, seen up close and still; one matched before/after sheet of six stations across the families carries them: the Humvee turret glass, the Abrams loader's shield, a NATO remote station, the dual station, a CSAT Kord station and the DShK's ring sight.",
+  "source_ref": "38b3d6b1",
+  "sources": [
+    {
+      "file": "changelog/unreleased/mounted-guns-up-close/comparison.jpg",
+      "sha256": "9e2fb1c1ee4908fcc66815907ce280efc64b87a35dbeadc4ec50a094e9474845"
+    },
+    {
+      "file": "changelog/unreleased/mounted-guns-up-close/capture.json",
+      "sha256": "b966e489cca25fd5bd5f132030418197a1772edcc2d689386893d3ce7755d24b"
+    }
+  ],
+  "output": null
+}
