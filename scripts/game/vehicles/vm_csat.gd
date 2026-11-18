@@ -989,19 +989,21 @@ static func _varsuk(k: VehicleModels, team: int, seed := 0) -> void:
 	_cupola_mg(k, t, Vector3(0.6, 0.78, 0.25))
 	VehicleMounts.sight(k, t, Vector3(-0.66, 0.95, -0.58), Vector3(0.4, 0.34, 0.46), [Rect2(Vector2(0, 0.03), Vector2(0.28, 0.16))], c)
 	_hatch(k, t, Vector3(-0.55, 0.78, 0.35), 0.26)
-	# Drozd launchers on the flanks, their radar heads on the cheeks, smoke
+	# Drozd launchers on the flanks, forward by the cheeks where the real
+	# system's tubes cover the frontal arc, their radar heads on the cheeks, smoke
 	for s in [-1.0, 1.0]:
-		k._box(t, Vector3(0.12, 0.16, 0.5), Vector3(s * 1.42, 0.4, -0.35), "gunmetal_w")
+		k._box(t, Vector3(0.12, 0.16, 0.5), Vector3(s * 1.415, 0.4, -0.5), "gunmetal_w")
 		for i in 2:
-			VehicleWeapons.missile_box(k, t, Vector3(s * (1.56 + i * 0.03), 0.3 + i * 0.22, -0.42 - i * 0.04), Vector3(0.22, 0.2, 0.46), 1, 2, 0.065, "paint", OLIVE, Vector3(-0.12, s * 0.25, 0), false, Vector3(-s, 0, 0))
+			VehicleWeapons.missile_box(k, t, Vector3(s * (1.555 + i * 0.03), 0.3 + i * 0.22, -0.57 - i * 0.04), Vector3(0.22, 0.2, 0.46), 1, 2, 0.065, "paint", OLIVE, Vector3(-0.12, s * 0.25, 0), false, Vector3(-s, 0, 0))
 		VehicleMounts.radar_array(k, t, Vector3(0.22, 0.14, 0.16), Vector3(s * 1.1, 0.86, -0.82), "gunmetal_w", null, Vector3(0, s * -0.7, 0))
 		_smoke(k, t, Vector3(s * 1.3, 0.7, 0.35), s, 4, 0.9)
 		# antennas at the bustle's back corners
 		_antenna(k, t, Vector3(s * 0.8, 0.76, 2.6), 2.0 if s < 0 else 1.5)
 	# the tactical number on the turret's flanks, under the smoke dischargers
-	# (38 cm figures, the size a crew paints them to be read across a field,
-	# far enough behind the launchers that they don't hide the last figure)
-	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.38, Vector3(1.42, 0.06, 0.95), Vector3(1.38, 0.06, -0.95), Vector3(1.22, 0.78, -0.82), Vector3(1.27, 0.78, 0.88), Vector2(0.235, 0.33))
+	# (36 cm figures, the size a crew paints them to be read across a field,
+	# on the flank's rear half, clear of the launchers' shadow even from a low
+	# front quarter)
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.36, Vector3(1.42, 0.06, 0.95), Vector3(1.38, 0.06, -0.95), Vector3(1.22, 0.78, -0.82), Vector3(1.27, 0.78, 0.88), Vector2(0.22, 0.33))
 	# stowage on the bustle's back, a wind sensor mast
 	k._bag(t, Vector3(1.6, 0.36, 0.3), Vector3(0, 0.5, 3.02), "canvas", Color(0.33, 0.33, 0.24))
 	# the crew's tarpaulin rolled and strapped across the back of the bustle roof
@@ -1121,9 +1123,10 @@ static func _sochor(k: VehicleModels, team: int, seed := 0) -> void:
 # --- Angara: T-14 Armata -----------------------------------------------------------
 
 ## A run of slat armour: horizontal bars between posts, from a to b (the
-## run's bottom line), `h` tall, standing off the hull along `out`.
-static func _slats(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, h: float, out: Vector3) -> void:
-	VehicleMounts.slats(k, p, a, b, h, 0.13)
+## run's bottom line), `h` tall, standing off the hull along `out`. The bars
+## take `mat` (the hull's paint: the cages come painted with the tank).
+static func _slats(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, h: float, out: Vector3, mat := "gunmetal_w") -> void:
+	VehicleMounts.slats(k, p, a, b, h, 0.13, false, mat)
 	for at: Vector3 in [a, b]:
 		VehicleFrames.beam(k, p, at + Vector3.UP * h * 0.5, at + Vector3.UP * h * 0.5 - out * 0.16, 0.04, 0.04, "gunmetal_w")
 
@@ -1178,11 +1181,14 @@ static func _t14(k: VehicleModels, team: int) -> Vector3:
 				_era(k, m, Vector3(s * 1.83, 0.8, z), Vector3(s, 0, 0), Vector3.UP, 1, 3, Vector3(0.31, 0.58, 0.12))
 			else:
 				k._box(m, Vector3(0.07, 0.04, 1.04), Vector3(s * 1.81, 1.08, z), "gunmetal_w", null, Vector3.ZERO, false)
-		_slats(k, m, Vector3(s * 1.84, 1.15, 1.25), Vector3(s * 1.84, 1.15, 4.3), 0.72, Vector3(s, 0, 0))
-	_slats(k, m, Vector3(-1.84, 0.95, 4.5), Vector3(1.84, 0.95, 4.5), 0.92, Vector3(0, 0, 1))
+		_slats(k, m, Vector3(s * 1.84, 1.15, 1.25), Vector3(s * 1.84, 1.15, 4.3), 0.72, Vector3(s, 0, 0), c)
+	_slats(k, m, Vector3(-1.84, 0.95, 4.5), Vector3(1.84, 0.95, 4.5), 0.92, Vector3(0, 0, 1), c)
 	# engine deck: grilles, the exhaust on the left, stowage boxes on the deck
 	VehicleFittings.grille(k, m, Vector3(0, 1.885, 3.1), Vector2(2.4, 1.6), Vector3(-PI / 2, 0, 0), c, null, 6)
 	k._box(m, Vector3(0.12, 0.4, 1.0), Vector3(-1.68, 1.5, 2.2), "gunmetal_w")
+	# the diesel's soot streaked back along the flank behind the cages from
+	# the outlet's after end
+	VehicleBody.soot(k, m, Vector3(-1.659, 1.5, 2.7), Vector3.BACK, Vector3(0.053, 0.9986, 0), Vector3(-0.9986, 0.053, 0), 1.0, 0.3)
 	for s in [-1.0, 1.0]:
 		VehicleEquipment.storage(k, m, Vector3(s * 1.3, 2.03, 3.45), Vector3(0.5, 0.36, 1.2), c)
 		_taillight(k, m, Vector3(s * 1.35, 1.45, 4.36))

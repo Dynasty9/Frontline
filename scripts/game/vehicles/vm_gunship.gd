@@ -397,8 +397,8 @@ static func _ac130(k: VehicleModels, team: int) -> void:
 		k._add(m, Res.sphere(0.1, 10), "glass", null, Vector3(s * 1.6, 3.05, -13.2), Vector3.ZERO, Vector3(0.6, 1, 1), false)
 	# the anti-collision beacons, low flattened domes on the roof and the belly;
 	# the antennas, the SATCOM dome
-	VehicleFittings.dome_light(k, m, Vector3(0, 4.78, -8.4), 0.13, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3))
-	VehicleFittings.dome_light(k, m, Vector3(0, 0.63, -3.6), 0.13, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3), Vector3.DOWN)
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.78, -8.4), 0.13, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3))
+	VehicleFittings.dome_light(k, m, Vector3(0, 0.63, -3.6), 0.13, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3), Vector3.DOWN)
 	k._add(m, Res.sphere(0.42, 16), AIR, c.lightened(0.05), Vector3(0, 4.62, 5.2), Vector3.ZERO, Vector3(1, 0.42, 1.25))
 	for z: float in [-7.5, -6.6, 6.5]:
 		VmPlane.antenna(k, m, Vector3(0, 4.75, z), 0.38)
@@ -709,8 +709,8 @@ static func _blackfish(k: VehicleModels, team: int, armed: bool) -> void:
 		VmPlane.antenna(k, m, Vector3(0, 4.3, z), 0.36)
 	for z: float in [-7.4, -3.4]:
 		VmPlane.antenna(k, m, Vector3(0, 0.61, z), 0.3, true)
-	VehicleFittings.dome_light(k, m, Vector3(0, 4.29, -7.0), 0.12, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3))
-	VehicleFittings.dome_light(k, m, Vector3(0, 0.59, -4.6), 0.12, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3), Vector3.DOWN)
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.29, -7.0), 0.12, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3))
+	VehicleFittings.dome_light(k, m, Vector3(0, 0.59, -4.6), 0.12, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3), Vector3.DOWN)
 	k.gun_tip = k._tip(m, Vector3(0, 0.5, -10.8))
 	if armed:
 		_bf_guns(k, m, st, c)
@@ -805,7 +805,7 @@ static func _bf_nacelle(k: VehicleModels, tl: Node3D, s: float, c: Color, cj: Co
 			k._box(tl, Vector3(0.03, 0.42, 0.07), Vector3(sd * 0.98, 0.1, -1.1 + i * 0.16), "plain_dark", null, Vector3.ZERO, false)
 	VehicleAircraft.turbine_exhaust(k, tl, Vector3(0, 0, 2.55), Vector3(0, 0, 2.95), 0.46, 0.4, "gunmetal_w", c.darkened(0.5))
 	# the navigation light, green on the right, red on the left
-	VehicleFittings.nav_light(k, tl, Vector3(s * 1.0, 0.0, -0.4), Vector3(0.06, 0.12, 0.22), s)
+	VmPlane.nav_light(k, tl, Vector3(s * 1.0, 0.0, -0.4), Vector3(0.06, 0.12, 0.22), s)
 
 
 ## The Blackfish's H tail: the stabiliser on top of the tail boom with its

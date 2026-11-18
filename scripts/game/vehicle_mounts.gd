@@ -41,20 +41,53 @@ const BOOT := Color(0.2, 0.21, 0.16)
 
 ## The mantlet's canvas dust cover (see mantlet): from the casting's face at
 ## `face` (z, in the mount's space) forward along -Z, `length` long, gathered
-## from `radius` at the face down onto the barrel (`barrel` its radius) in
-## three pleats, each fold puffed out where it starts and drawn in where the
-## next laps over it, and a strap cinched round the barrel at its front.
+## from `radius` at the face down onto the barrel (`barrel` its radius). Kept
+## for the families that call it by this name; see gun_boot.
 static func _gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float, barrel: float, length: float) -> void:
+	gun_boot(k, mount, face, radius, barrel, length)
+
+
+## A main gun's canvas dust cover, on `mount` (the mantlet, or a pivot that
+## elevates with the gun: a gun on a slide pivot hangs it there, so it lays
+## with the barrel): from the casting's face at `face` (z, in the mount's
+## space) forward along -Z, `length` long, gathered from `radius` at the face
+## down onto the barrel (`barrel` its radius). A real boot is a bellows of
+## proofed canvas, five or six folds that open and close as the gun recoils
+## and elevates, strapped round the casting at the back and cinched round the
+## barrel at the front; the cloth between hangs a little under its own weight.
+## So: `folds` pleats, each puffed out where it starts and drawn in where the
+## next laps over it, every one but the last dropped a little (the slack of
+## the cloth, never so far that the barrel shows through its top), the strap
+## round the casting's end and the one round the barrel. A crew's boot has
+## faded or been replaced on its own (a shade from the kit seed), so two
+## tanks side by side don't wear one canvas.
+static func gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float, barrel: float, length: float, folds := 5) -> void:
 	var tied := barrel + minf(0.02, barrel * 0.2)
 	if radius <= tied:
 		radius = tied * 1.3
-	var step := length / 3.0
-	for i in 3:
-		var r0 := lerpf(radius, tied, i / 3.0) * (1.0 if i == 0 else 1.06)
-		var r1 := lerpf(radius, tied, (i + 1) / 3.0)
+	var cloth := BOOT
+	var rng := VehicleCargo.kit(k, mount, Vector3(0, 0, face), 23)
+	if rng != null and not k.wreck:
+		# sun-faded toward a pale olive, or a newer, darker issue cover
+		cloth = BOOT.lerp(Color(0.31, 0.3, 0.22), rng.randf_range(0.0, 0.7)) if rng.randf() < 0.7 else BOOT.darkened(0.15)
+	# (a wreck's boot stays the three plain folds it has always been)
+	var n := 3 if k.wreck else maxi(1, folds)
+	var step := length / n
+	for i in n:
+		var r0 := lerpf(radius, tied, float(i) / n) * (1.0 if i == 0 else (1.06 if k.wreck else 1.12))
+		var r1 := lerpf(radius, tied, (i + 1.0) / n)
+		# The slack: a fold hangs by a third of what it stands off its tie, so
+		# its top still clears the barrel; the last, tied round it, not at all.
+		var drop := 0.0 if k.wreck else (r1 - tied) * 0.35
 		# (the first fold's back end a centimetre into the casting's face)
-		k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, 0, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), "canvas", BOOT, 12)
-	k._cyl(mount, tied + 0.008, tied + 0.008, minf(0.035, length * 0.2), Vector3(0, 0, face - length + minf(0.035, length * 0.2) * 0.5), Vector3(PI / 2, 0, 0), "canvas", BOOT.darkened(0.25), 12, false)
+		# (sixteen sides: the folds' outline is what the camera reads)
+		k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, -drop, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), "canvas", cloth, 12 if k.wreck else 16)
+	var band := minf(0.035, length * 0.2)
+	k._cyl(mount, tied + 0.008, tied + 0.008, band, Vector3(0, 0, face - length + band * 0.5), Vector3(PI / 2, 0, 0), "canvas", cloth.darkened(0.25), 12, false)
+	if k.wreck:
+		return
+	# the strap round the casting's end, over the first fold's back edge
+	k._cyl(mount, radius + 0.006, radius + 0.006, band, Vector3(0, 0, face - band * 0.5 - 0.004), Vector3(PI / 2, 0, 0), "canvas", cloth.darkened(0.25), 16, false)
 
 
 ## Width is X. End caps stay within the authored envelope; front and back receive
@@ -250,6 +283,14 @@ static func turret_ring(k: VehicleModels, parent: Node3D, center: Vector3, top_r
 		var normal := Vector3(cos(a), 0, sin(a))
 		VehicleBody.fastener(k, parent, center + normal * radius + Vector3(0, height * 0.12, 0), normal, minf(0.013, height * 0.15))
 
+## A sight's window: coated optics, darker than a cab's glass and warm in
+## their coating's cast (the anti-reflection film on a gunner's or thermal
+## sight's objective reads amber to violet), so a sight head reads as a lens
+## from the battle camera, not a pale blue pane like a windscreen.
+const OPTIC := Color(0.52, 0.47, 0.4)
+## A cupola's vision block: thick laminated armour glass, green-dark.
+const BLOCK := Color(0.5, 0.6, 0.54)
+
 ## Armoured sight head (gunner's box, commander's panoramic head) with its
 ## window on the local -Z face. `windows` holds Rect2s: position is the window
 ## centre on that face (x right, y up), size its width and height; empty gives
@@ -276,7 +317,7 @@ static func sight(k: VehicleModels, parent: Node3D, center: Vector3, size: Vecto
 			k._add(mount, VehicleEquipment._plate(Vector3(bar, h, 0.028)), "gunmetal_w", null, c + Vector3(side * (w + bar) * 0.5, 0, -0.012), Vector3.ZERO, Vector3.ONE, false)
 		k._add(mount, VehicleEquipment._plate(Vector3(w + 0.004, h + 0.004, 0.012)), "rubber", null, c + Vector3(0, 0, -0.004), Vector3.ZERO, Vector3.ONE, false)
 		if not k.burnt:
-			k._add(mount, VehicleEquipment._plate(Vector3(w, h, 0.02)), "glass", null, c + Vector3(0, 0, -0.01), Vector3.ZERO, Vector3.ONE, false)
+			k._add(mount, VehicleEquipment._plate(Vector3(w, h, 0.02)), "glass", null if k.wreck else OPTIC, c + Vector3(0, 0, -0.01), Vector3.ZERO, Vector3.ONE, false)
 		# The armoured visor shades the window from above.
 		var depth := minf(0.07, size.z * 0.3)
 		k._add(mount, VehicleEquipment._plate(Vector3(w + bar * 3, 0.016, depth)), mat, col, c + Vector3(0, h * 0.5 + bar + 0.008, -depth * 0.5 + 0.004), Vector3(0.12, 0, 0))
@@ -322,7 +363,7 @@ static func cupola(k: VehicleModels, parent: Node3D, center: Vector3, top_radius
 		k._add(mount, VehicleEquipment._plate(Vector3(block.x + 0.05, 0.012, 0.036)), mat, col, Vector3(0, block.y * 0.5 + 0.018, -block.z * 0.5 - 0.012), Vector3(0.1, 0, 0))
 		k._box(mount, Vector3(block.x + 0.006, block.y + 0.006, 0.008), Vector3(0, 0, -block.z * 0.5 - 0.002), "rubber", null, Vector3.ZERO, false)
 		if not k.burnt:
-			k._add(mount, VehicleEquipment._plate(Vector3(block.x, block.y, 0.012)), "glass", null, Vector3(0, 0, -block.z * 0.5 - 0.005), Vector3.ZERO, Vector3.ONE, false)
+			k._add(mount, VehicleEquipment._plate(Vector3(block.x, block.y, 0.012)), "glass", null if k.wreck else BLOCK, Vector3(0, 0, -block.z * 0.5 - 0.005), Vector3.ZERO, Vector3.ONE, false)
 		k._fold(mount)
 
 ## Crew-served weapon pedestal (a pickup technical's pintle post). The static

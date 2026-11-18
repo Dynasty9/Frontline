@@ -558,6 +558,13 @@ static func _bottle(radius: float, height: float) -> ArrayMesh:
 ## and 4 cm of strap lug.
 static func drum(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, axis := Vector3.UP, mat := "paint", col := Color(0.28, 0.31, 0.22), bung := Vector3.ZERO, hoop := 0.0, straps: Array = [], segments := 12) -> void:
 	var up := axis.normalized() if not axis.is_zero_approx() else Vector3.UP
+	# On a vehicle with a load of its own (VehicleCargo.kit) each drum came
+	# back from the depot in its own paint, a shade newer or faded: the issue
+	# colour on about half, else a darker green, black, blue or red oxide, so
+	# a bed of drums doesn't read as one stamped row from above.
+	var rng := VehicleCargo.kit(k, parent, center, 14)
+	if rng != null and mat == "paint":
+		col = VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_DRUM, 0.5)
 	var m := k._pivot(parent, center)
 	m.basis = VehicleFrames.aim(up)
 	var r := radius

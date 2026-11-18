@@ -19,12 +19,22 @@ static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Co
 		k._box(k.root, Vector3(size.x - 0.06, 0.12, size.z - 0.06), base + Vector3(0, 0.06, 0), "wood")
 	var rings: Array[PackedVector3Array] = []
 	for i in 25:
-		var z := (float(i) / 24.0 - 0.5) * (size.z - 0.08)
+		var t := float(i) / 24.0
+		var z := (t - 0.5) * (size.z - 0.08)
 		var ripple := sin(float(i) * 0.45 + fold * 1.7) * 0.014 + sin(float(i) * 0.9 + fold * 2.3) * 0.004
-		var w := size.x * 0.5 - 0.05
-		var h := size.y
-		rings.append(PackedVector3Array([Vector3(-w, 0.14, z), Vector3(-w + ripple, h * 0.72, z), Vector3(-w * 0.75, h - 0.035 + ripple, z), Vector3(0, h + ripple * 0.35, z), Vector3(w * 0.75, h - 0.035 - ripple, z), Vector3(w - ripple, h * 0.72, z), Vector3(w, 0.14, z)]))
-	var shell := VehicleModels.solid(rings, "shared_tarp_%s" % str(size) + ("_%d" % fold if fold > 0 else ""))
+		# A lashing cinched over the load pulls the tarp down into a waist
+		# under it, so the cover bellies up between its straps; and the tarp
+		# folds down over the load's ends instead of stopping square.
+		var pinch := 0.0
+		for lashing in lashings:
+			pinch = maxf(pinch, exp(-pow((float(i) - float(lashing)) / 1.7, 2.0)))
+		# (the hem stays where it's tied down along the bed)
+		var end := pow(absf(t - 0.5) * 2.0, 6.0)
+		var hem := size.x * 0.5 - 0.05
+		var w := hem * (1.0 - 0.03 * pinch - 0.025 * end)
+		var h := size.y * (1.0 - 0.065 * pinch - 0.07 * end)
+		rings.append(PackedVector3Array([Vector3(-hem, 0.14, z), Vector3(-w + ripple, h * 0.72, z), Vector3(-w * 0.75, h - 0.035 + ripple, z), Vector3(0, h + ripple * 0.35, z), Vector3(w * 0.75, h - 0.035 - ripple, z), Vector3(w - ripple, h * 0.72, z), Vector3(hem, 0.14, z)]))
+	var shell := VehicleModels.solid(rings, "shared_tarp_%s_%d_%d" % [str(size), lashings[0], lashings[1]] + ("_%d" % fold if fold > 0 else ""))
 	var arrays := shell.surface_get_arrays(0)
 	var smooth := SurfaceTool.new()
 	smooth.begin(Mesh.PRIMITIVE_TRIANGLES)
