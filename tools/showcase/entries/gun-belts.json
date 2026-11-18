@@ -1,0 +1,19 @@
+{
+  "entry": "changelog/unreleased/gun-belts.md",
+  "summary": "A mounted machine gun's can stands open with its lid off and its belt of brass rounds runs out of it into the gun, instead of a few rounds floating over a shut lid; the DShK's rear sight sits on its cover and its grips are shaped.",
+  "medium": "still",
+  "stage": "mounted-guns (tools/showcase/stages.json): tests/fixtures/mounted-gun-clips.tscn --clip=mounted-guns-stills, showroom battlefield seed 712, fixed 30 Hz, Forward+",
+  "rationale": "The belt and can are details seen up close and they do not move, so a matched still of each kind of gun (a heavy on a pickup, a .50 and a 7.62) close to its receiver, before and after, shows the whole change.",
+  "source_ref": "b054bb01",
+  "sources": [
+    {
+      "file": "changelog/unreleased/gun-belts/comparison.jpg",
+      "sha256": "83b91672559675bd70dc5d3bceb5926fe907075293023d94145c52232f3647f2"
+    },
+    {
+      "file": "changelog/unreleased/gun-belts/capture.json",
+      "sha256": "b9fb40564eeb33ad004217e065b5e1bcf62d097b5943379683c6c1c15b697e93"
+    }
+  ],
+  "output": null
+}

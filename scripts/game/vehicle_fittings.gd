@@ -458,8 +458,11 @@ static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 
 ## Sealed ammunition can; feed boxes and wooden ammunition crates are separate.
 ## On a vehicle with a load of its own (VehicleCargo.kit) each can is from its
-## own lot: a shade apart, now and then a sand or dark green one.
-static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, size := Vector3(0.16, 0.2, 0.3)) -> void:
+## own lot: a shade apart, now and then a sand or dark green one. `open`: the
+## can on a gun, feeding it - its lid off, as gunners leave it so the belt runs
+## freely, and the mouth dark round the belt's top fold (the gun's builder lays
+## the belt in it: VehicleWeapons._belt).
+static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, size := Vector3(0.16, 0.2, 0.3), open := false) -> void:
 	var rng := VehicleCargo.kit(k, parent, center, 4)
 	if rng != null:
 		col = VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_PAINT, 0.75)
@@ -467,10 +470,17 @@ static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 	mount.rotation = rotation
 	mount.scale = size / Vector3(0.16, 0.2, 0.3)
 	k._box(mount, Vector3(0.16, 0.18, 0.3), Vector3(0, -0.01, 0), "paint", col)
-	k._box(mount, Vector3(0.162, 0.008, 0.302), Vector3(0, 0.078, 0), "rubber", null, Vector3.ZERO, false)
-	k._box(mount, Vector3(0.17, 0.025, 0.31), Vector3(0, 0.095, 0), "paint", col)
-	# The carrying handle's feet are pinned into the lid.
-	VehicleFrames.path(k, mount, [Vector3(0, 0.108, -0.065), Vector3(0, 0.133, -0.065), Vector3(0, 0.133, 0.065), Vector3(0, 0.108, 0.065)], 0.008, "gunmetal_w", null, 6, true, 0)
+	if open:
+		# the dark of the can's inside, and the lip round its mouth
+		k._box(mount, Vector3(0.146, 0.004, 0.286), Vector3(0, 0.0805, 0), "plain_dark", Color(0.04, 0.04, 0.037), Vector3.ZERO, false)
+		for s: float in [-1.0, 1.0]:
+			k._box(mount, Vector3(0.007, 0.016, 0.3), Vector3(s * 0.0765, 0.088, 0), "paint", col, Vector3.ZERO, false)
+			k._box(mount, Vector3(0.146, 0.016, 0.007), Vector3(0, 0.088, s * 0.1465), "paint", col, Vector3.ZERO, false)
+	else:
+		k._box(mount, Vector3(0.162, 0.008, 0.302), Vector3(0, 0.078, 0), "rubber", null, Vector3.ZERO, false)
+		k._box(mount, Vector3(0.17, 0.025, 0.31), Vector3(0, 0.095, 0), "paint", col)
+		# The carrying handle's feet are pinned into the lid.
+		VehicleFrames.path(k, mount, [Vector3(0, 0.108, -0.065), Vector3(0, 0.133, -0.065), Vector3(0, 0.133, 0.065), Vector3(0, 0.108, 0.065)], 0.008, "gunmetal_w", null, 6, true, 0)
 	for z in [-0.157, 0.157]:
 		k._box(mount, Vector3(0.04, 0.055, 0.012), Vector3(0, 0.065, z), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleFrames.tube(k, mount, Vector3(-0.028, 0.089, z), Vector3(0.028, 0.089, z), 0.007, "gunmetal_w", null, 6, false)
