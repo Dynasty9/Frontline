@@ -267,8 +267,8 @@ void vertex() {
 }
 
 void fragment() {
-	// (drawn both ways, but lit by the normals it was built with, which face
-	// out: the engine flips them on the faces it sees from behind)
+	// Both sides use the original outward-facing normals for lighting.
+	// Undo the engine's normal flip on faces seen from behind.
 	if (!FRONT_FACING) {
 		NORMAL = -NORMAL;
 	}
