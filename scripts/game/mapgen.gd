@@ -961,6 +961,27 @@ func scenario(sname: String) -> void:
 				for sq in sqb:
 					ids2.append(sq.sid)
 				world.execute_cmd(a, {"t": "assault", "squads": ids2, "pos": Vector3(0, 0, -30), "face": Vector3(0, 0, -1)})
+		"church":
+			# a fighter cell holed up in the parish church (its doors shut); two
+			# rifle squads and a gun team sent to clear it, one squad coming up
+			# the road to the west door under the tower, the other round to the
+			# south porch
+			doors_shut = 1
+			var cc := Vector3(0, 0, -40)
+			_church(cc, PI, BuildingMaterials.HOUSE.find("church"), Vector3(8.0, 6.5, 23.0))
+			doors_shut = -1
+			var cell2 := r.spawn_squad("fighter_cell", 1, b, cc + Vector3(0, 0, -1))
+			cell2.order_defend(cc, Vector3(0, 0, 1))
+			for i in 3:
+				_spawn("low_wall", Vector3(-6 + i * 4.2, 0, -12), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
+			for i in 3:
+				_try("tree", Vector3(22 + i * 1.5, 0, -14 - i * 2.5), 0.0, -1)
+			var sqc := [r.spawn_squad("rifle_squad", 0, a, Vector3(-2, 0, 4)), r.spawn_squad("rifle_squad", 0, a, Vector3(26, 0, 0)),
+				r.spawn_squad("mg_team", 0, a, Vector3(8, 0, 6))]
+			if not world.settings.get("static", false):
+				# each squad its own way in
+				world.execute_cmd(a, {"t": "assault", "squads": [sqc[0].sid, sqc[2].sid], "pos": cc + Vector3(0, 0, 14), "face": Vector3(0, 0, -1)})
+				world.execute_cmd(a, {"t": "assault", "squads": [sqc[1].sid], "pos": cc + Vector3(10, 0, 5), "face": Vector3(-1, 0, 0)})
 		"storeys":
 			# a house on two floors with a wing out of the back (as the town
 			# plans the bigger ones), and a charge that blows in one of its
@@ -1325,15 +1346,16 @@ func _wing(c: Vector3, b: Basis, axis: float, w: float, d: float, k0: int, n: in
 
 
 ## A parish church at `c` (its length `size.z` along `axis`, its west tower
-## to -z): the tower solid (Structure "church"), the nave and the chancel
-## built as a house is - a floor (variant 3: flagstones, pews, the altar),
-## house walls in the church's render (`ci`) laid by Structure.church_walls
-## with the door in the nave's south side, and a roof each that draws the
-## walls on up to the eaves. Men go in by the door and fight from the
-## windows, and the roofs lift off for them as a house's does. False if
-## there's no room.
+## to -z): the tower (Structure "church", its ground stage the west porch),
+## the nave and the chancel built as a house is - a floor (variant 3:
+## flagstones, pews, the pulpit, the altar), house walls in the church's
+## stone (`ci`) laid by Structure.church_walls with a door at the west end,
+## under the tower, and one in the south side, and a roof each that draws
+## the walls on up to the eaves; the south porch's dwarf walls are low walls.
+## Men go in by either door and fight from the windows, and the roofs lift
+## off for them as a house's does. False if there's no room.
 func _church(c: Vector3, axis: float, ci: int, size: Vector3) -> bool:
-	var half := Vector2(size.x * 0.5 + 0.6, size.z * 0.5 + 0.6)
+	var half := Vector2(size.x * 0.5 + Structure.CHURCH_PORCH.y + 0.5, size.z * 0.5 + 0.6)
 	if not _is_free(c, half, axis, 0.6):
 		return false
 	var b := Basis(Vector3.UP, axis)
@@ -1353,8 +1375,19 @@ func _church(c: Vector3, axis: float, ci: int, size: Vector3) -> bool:
 		for e: Array in Structure.church_walls(body[1], body[2], body[4]):
 			var p: Vector2 = e[0]
 			var wp := bc + b * Vector3(p.x, 0, p.y)
+			# its doors shut, as most houses' are (or as the scenario has them)
+			var shut := int(e[3]) == 2 and doors_shut != 0 and (doors_shut == 1 or posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7)
 			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": axis + float(e[1]), "variant": e[3],
-				"size": Vector3(e[2], float(ci), 0.4), "door": int(e[3]) == 2})
+				"size": Vector3(e[2], float(ci), 0.4), "door": shut})
+			# the south porch's dwarf walls, either side of its mouth
+			var porch := Structure.church_porch(e)
+			if not porch.is_empty():
+				var pb := Basis(Vector3.UP, float(porch[1]))
+				for sx: float in [-1.0, 1.0]:
+					var q: Vector2 = porch[0]
+					var pp := bc + b * (Vector3(q.x, 0, q.y) + pb * Vector3(sx * (Structure.CHURCH_PORCH.x * 0.5 - 0.25), 0, 0))
+					world.spawn("structure", {"skind": "low_wall", "pos": Vector3(pp.x, level, pp.z), "yaw": axis + float(porch[1]) + PI * 0.5, "team": -1,
+						"size": Vector3(Structure.CHURCH_PORCH.y, 0.9, 0.5), "variant": 0})
 		world.spawn("structure", {"skind": "roof", "pos": bc, "yaw": axis, "size": Vector3(body[1], body[3], body[2]), "variant": ci * 2})
 	_place([Vector2(c.x, c.z), half - Vector2(0.3, 0.3), axis])
 	world.stat("church")

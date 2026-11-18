@@ -1227,8 +1227,9 @@ const CHURCHYARD := Vector3(5.0, 3.6, 0.85)
 
 ## The churchyard round the church at `c` (its tower to local -z, toward the
 ## road): a low stone wall round it (cover, as a garden wall is) with a gap
-## in front for the path up to the west door, rows of graves either side of
-## the nave and behind the chancel, a dark conifer at each front corner.
+## in front for the path up to the west door and round to the south porch,
+## rows of graves either side of the nave and behind the chancel, a dark
+## conifer at each front corner.
 ## (Where the church was put with room for all this, `whole`, the wall is
 ## laid whole over whatever lie the ground has; else where it fits.) Then
 ## the yard is kept clear of whatever the map puts down after it.
@@ -1256,14 +1257,26 @@ func _churchyard(c: Vector3, axis: float, size: Vector3, cr: RandomNumberGenerat
 	var k := maxi(1, int(round(hx * 2.0 / 3.8)))
 	for i in k:
 		wall_at.call(at.call(-hx + (i + 0.5) * hx * 2.0 / k, back), axis, -1, {"size": Vector3(hx * 2.0 / k, 1.0, 0.5), "variant": 0})
-	# the path from the gate to the door
-	_d("path", at.call(0.0, front + 0.9), axis, Vector3(1.6, 0, 2.6))
-	# rows of graves either side of the nave, more behind the chancel
+	# the path from the gate up to the west door, and round to the porch
+	var tower := -size.z * 0.5
+	_d("path", at.call(0.0, (front + tower) * 0.5), axis, Vector3(1.6, 0, tower - front + 0.3))
+	var nl := size.z - Structure.CHURCH_TOWER - Structure.CHURCH_CHANCEL
+	var porch_z := tower + Structure.CHURCH_TOWER + nl / maxi(1, int(round(nl / 2.8))) * 0.5
+	var porch_x := -(size.x * 0.5 + 0.2 + Structure.CHURCH_PORCH.y + 0.8)
+	# (past the conifer at the front corner)
+	var fork := front + 3.4
+	_d("path", at.call(porch_x, (fork - 0.6 + porch_z) * 0.5), axis, Vector3(1.4, 0, porch_z - fork + 0.6))
+	_d("path", at.call((porch_x - 0.1) * 0.5, fork), axis, Vector3(-porch_x - 1.5, 0, 1.2))
+	# rows of graves either side of the nave (clear of the porch and its
+	# path), more behind the chancel
 	for side: float in [-1.0, 1.0]:
 		for i in 7:
 			if cr.randf() < 0.18:
 				continue
-			_d("graves", at.call(side * (size.x * 0.5 + 3.4), -size.z * 0.5 + 2.0 + i * 2.6), axis, cr.randi_range(2, 3))
+			var gz := -size.z * 0.5 + 2.0 + i * 2.6
+			if side < 0.0 and gz < porch_z + Structure.CHURCH_PORCH.x * 0.5 + 0.8:
+				continue
+			_d("graves", at.call(side * (size.x * 0.5 + 3.4), gz), axis, cr.randi_range(2, 3))
 	_d("graves", at.call(cr.randf_range(-1.0, 1.0), size.z * 0.5 + 1.5), axis, cr.randi_range(4, 6))
 	for side: float in [-1.0, 1.0]:
 		mg._try("tree", at.call(side * (hx - 1.6), front + 1.8), cr.randf() * TAU, -1, {"variant": 2})
