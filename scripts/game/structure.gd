@@ -3665,6 +3665,11 @@ func _surf_kind(c: Color, mesh: Mesh) -> String:
 			return "floor_tiles" if variant != 2 else "concrete_floor"
 		"rubble":
 			return "rubble"
+		"low_wall":
+			# a stone garden wall is field stone, random rubble (its coping is
+			# dressed: see _build_model)
+			if variant % 3 == 0 and Res.box_size(mesh) != Vector3.ZERO:
+				return "fieldstone"
 		"crates":
 			return "wood" if not dark else "metal_dark"
 		"car":

@@ -262,7 +262,7 @@ would show the block behind. Door leaves that swing are built in their own hinge
 | Component | Users |
 | --- | --- |
 | `BuildingWalls.face` | House walls (rendered, brick, stone), barracks (weatherboard), factory (sheet), research post (precast) |
-| `BuildingWalls.coping`, `plinth`, `joints` | Garden walls (saddleback stone, brick-on-edge over a blue-brick base), compound walls, flat-roof parapets, bridge parapets |
+| `BuildingWalls.coping`, `plinth`, `joints` | Garden walls (field stone under a saddleback coping, brick-on-edge over a blue-brick base), compound walls, flat-roof parapets, bridge parapets |
 | `BuildingOpenings.window` | House windows (louvred or boarded shutters, cracked panes), barracks windows |
 | `BuildingOpenings.doorway`, `leaf` | House doors (panelled, now and then a hood), barracks (ledged double doors), research post and bunker (steel) |
 | `BuildingOpenings.roller_door`, `ribbon` | Factory shutter; research post glazing |

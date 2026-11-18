@@ -29,6 +29,7 @@ const PAVEMENT := 19
 const TURF := 20
 const WEATHERED_PHOTO := 21
 const ROAD_PAINT := 22
+const FIELDSTONE := 23
 const PHOTO_MEAN := preload("res://assets/town/material_means.tres")
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
@@ -1352,6 +1353,10 @@ static func _preset(kind: String) -> Dictionary:
 		"alpine_stone":
 			# Broken natural stone has grain, without the mortar joints used by masonry.
 			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": preload("res://assets/terrain/rock_face_03_color_height.png")}
+		"fieldstone":
+			# a dry-laid or pointed field-stone wall (a garden's, a field's):
+			# random rubble, grey and brown stones, the mortar darker
+			return {"pattern": FIELDSTONE, "col_a": Color(0.58, 0.55, 0.49), "col_b": Color(0.4, 0.38, 0.34), "col_c": Color(0.5, 0.45, 0.37), "rough": 0.93, "bump": 2.4, "grime": 0.7}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
 		"rubble":
@@ -1846,6 +1851,39 @@ void fragment() {
 		vec3 sc = mix(col_a, col_c, rb) * (0.82 + 0.3 * tnoise(uv * 13.0));
 		col = mix(col_b * 0.8, sc, e);
 		h = e * (0.75 + 0.25 * tnoise(uv * 9.0 + rb * 10.0));
+	} else if (pattern == 23) {
+		// random rubble, laid as a waller lays field stones: stones of every
+		// size and shape (longer than they are tall), each its own tone,
+		// pointed between with mortar sunk back from their faces
+		vec2 sq = uv / vec2(0.3, 0.22);
+		vec2 ic = floor(sq);
+		vec2 fc = fract(sq);
+		float d1 = 8.0;
+		float d2 = 8.0;
+		vec2 id = vec2(0.0);
+		for (int j = -1; j <= 1; j++) {
+			for (int i = -1; i <= 1; i++) {
+				vec2 g = vec2(float(i), float(j));
+				vec2 o = vec2(h12(ic + g + off), h12(ic + g + off + 17.3)) * vec2(0.84, 0.6) + vec2(0.08, 0.2);
+				vec2 dv = g + o - fc;
+				dv.y *= 1.6;
+				float dd = dot(dv, dv);
+				if (dd < d1) { d2 = d1; d1 = dd; id = ic + g; }
+				else if (dd < d2) { d2 = dd; }
+			}
+		}
+		float edge = sqrt(d2) - sqrt(d1);
+		float kb = keep(0.22, px);
+		// each stone rounded: its middle stands proud, its edges fall away
+		// into the joint (so the mortar line wanders, thick at the corners)
+		float dome = 1.0 - smoothstep(0.0, 0.7, sqrt(d1));
+		float e = mix(0.84, smoothstep(0.05, 0.2, edge + dome * 0.06), kb);
+		float rb = mix(0.5, h12(id + off + 3.1), kb);
+		float tone = mix(0.5, h12(id + 7.7), kb);
+		vec3 sc = mix(mix(col_a, col_c, rb), col_a * vec3(1.05, 0.95, 0.82), step(0.82, tone) * 0.6) * (0.8 + 0.3 * tnoise(uv * 11.0)) * mix(1.0, 0.84 + 0.3 * tone, kb);
+		sc *= mix(1.0, 0.82 + 0.24 * dome, kb);
+		col = mix(col_b * 0.7, sc, e);
+		h = e * (0.55 + 0.45 * dome) * (0.85 + 0.15 * tnoise(uv * 7.0 + rb * 9.0));
 	} else if (pattern == 12) {
 		float fib = tfbm(vec2(uv.x * 9.0, uv.y * 0.8) + off);
 		col = mix(col_b, col_a, fib);

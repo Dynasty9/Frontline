@@ -88,6 +88,11 @@ func capture() -> void:
 				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
 				break
 		print("CAPTURE town bounds=", town)
+	# (FL_ONLY_VIEW="name,x,z,distance,pitch,yaw": just that view, to match a
+	# camera another revision chose)
+	if OS.has_environment("FL_ONLY_VIEW"):
+		var f := OS.get_environment("FL_ONLY_VIEW").split(",")
+		views = [[f[0], Vector3(float(f[1]), 0, float(f[2])), float(f[3]), float(f[4]), float(f[5])]]
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
 	if "--capture-set=fortifications" in OS.get_cmdline_user_args():

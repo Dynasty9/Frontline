@@ -777,7 +777,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
   houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; moss and lichen
   grow on the tiles, and flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
-  water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
+  water tanks, air conditioners and dishes on them. Stone garden and field walls are random rubble (field stones of every size, longer than tall, rounded, each its own tone, pointed with darker mortar: the surface `fieldstone`), under saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
   in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
