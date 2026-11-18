@@ -1082,16 +1082,19 @@ void fragment() {
 	// lies on the bed itself (where the bent view meets it) and comes down
 	// along the sun's way through the water, so it slides across the bed as
 	// the sun goes round; it's sharpest a metre or so down (just under the
-	// surface the light hasn't come together yet) and fades out by three
+	// surface the light hasn't come together yet) and fades out by three.
+	// Seen from farther off the lines are finer than the eye picks out and
+	// average back to the light the bed had anyway, so they fade out by
+	// 90 m rather than lay a bright band along every shore at the command view
 	vec3 bedw = (INV_VIEW_MATRIX * vec4(rp.xyz, 1.0)).xyz;
 	float below = max(__LEVEL__ - bedw.y, 0.0);
 	vec2 cp = bedw.xz - sun_dir.xz / max(sun_dir.y, 0.25) * below * 0.75;
-	float reach = smoothstep(0.03, 0.22, below) * (1.0 - smoothstep(1.2, 3.2, below)) * (1.0 - far);
+	float reach = smoothstep(0.03, 0.22, below) * (1.0 - smoothstep(1.2, 3.2, below)) * (1.0 - smoothstep(15.0, 90.0, dist));
 	if (reach > 0.0 && caustic_k > 0.0) {
 		// (sunlight added to the bed's own, in the sun's colour: the sand keeps
 		// its colour, warmer and brighter along the lines)
 		vec3 tint = sun_col / max(max(sun_col.r, sun_col.g), max(sun_col.b, 0.001));
-		bed *= 1.0 + min(caustics(cp, clamp(below / 2.5, 0.0, 1.0)), vec3(3.0)) * tint * 1.8 * caustic_k * reach;
+		bed *= 1.0 + min(caustics(cp, clamp(below / 2.5, 0.0, 1.0)), vec3(3.0)) * tint * 0.8 * caustic_k * reach;
 	}
 #endif
 	// the breakers: a white front with foam trailing behind it, sand stirred up

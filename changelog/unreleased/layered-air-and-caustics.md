@@ -5,7 +5,7 @@ kind = "improved"
 
 [[screenshots]]
 file = "mist-off-on.jpg"
-caption = "Off and on: mist lying in the low ground, glowing toward the dawn sun"
+caption = "Off and on: a thin veil of mist over the low ground toward the dawn sun"
 
 [[screenshots]]
 file = "shafts-off-on.jpg"
@@ -17,7 +17,7 @@ caption = "Off and on: a burning house at dusk, the billows nearest its flames l
 
 [[screenshots]]
 file = "night-off-on.jpg"
-caption = "Off and on at night: the street lamps glow in the damp air over the town"
+caption = "Off and on at night: the street lamps glow softly in the damp air over the town"
 
 [[screenshots]]
 file = "rain-off-on.jpg"
@@ -113,8 +113,8 @@ poster = "barrage-drift-poster.jpg"
 caption = "A barrage's plume drifting off downwind and breaking up."
 +++
 
-- **Ground mist** lies in a thin band in the valley, the hollows and along the water, thickest at dawn and rising
-  off wet ground after rain, torn into wisps by the wind. Look toward a low sun and it glows. A **haze** lies higher
+- **Ground mist** lies in the valley, the hollows and along the water, a soft veil at dawn and rising off wet
+  ground after rain, torn into wisps by the wind. Look toward a low sun and it brightens. A **haze** lies higher
   up; the sun lights it, so clouds throw shafts of shadow through it.
 - **Smoke that hangs**: a barrage or a burning building leaves a plume, dense where it rose, drawn out downwind,
   lit on top and grey underneath, breaking up and thinning away. Over a burning house or wreck the billows nearest the

@@ -30,7 +30,7 @@ extends Node3D
 const MOOD := {
 	"day": [2.5, 0.0002, 0.8, 0.35, 0.0002],
 	"golden": [3.0, 0.0005, 2.6, 0.76, 0.0007],
-	"dawn": [6.0, 0.0006, 3.0, 0.78, 0.0012],
+	"dawn": [14.0, 0.0006, 2.0, 0.66, 0.0012],
 	"dusk": [3.5, 0.0005, 2.6, 0.76, 0.0007],
 	"overcast": [4.0, 0.0003, 0.5, 0.3, 0.0],
 	"night": [3.5, 0.0004, 0.35, 0.6, 0.0045],
@@ -412,8 +412,8 @@ void fog() {
 	// carried along by the wind
 	float n1 = texture(wisps, p * vec3(0.006, 0.02, 0.006) - vec3(wind.x, -0.15, wind.y) * TIME * 0.0035).r;
 	float n2 = texture(wisps, p * vec3(0.025, 0.06, 0.025) - vec3(wind.x, 0.1, wind.y) * TIME * 0.012).r;
-	float wisp = smoothstep(0.3, 0.72, n1) * 1.3 + (n2 - 0.5) * 0.6;
-	wisp = clamp(wisp, 0.0, 1.6);
+	float wisp = 0.25 + smoothstep(0.15, 0.85, n1) * 1.0 + (n2 - 0.5) * 0.3;
+	wisp = clamp(wisp, 0.0, 1.4);
 	// (smoke and dust hang in puffs and rags a few metres across, rising as they go)
 	float rag = smoothstep(0.35, 0.7, texture(wisps, p * vec3(0.06, 0.09, 0.06) - vec3(wind.x, 0.4, wind.y) * TIME * 0.03).r);
 	// the mist, thinning upward from the ground; the haze, clear of the ground
@@ -429,8 +429,10 @@ void fog() {
 			+ terrain_height(deform_tex, uv + vec2(0.0, o)) + terrain_height(deform_tex, uv - vec2(0.0, o))) * 0.25;
 		float hollow = clamp((around - g) / 5.0, 0.0, 1.0);
 		float lie = 0.12 + 1.4 * max(hollow, texture(water_near, uv).a);
-		// (thinning upward with a soft top, not cut off at a height)
-		mist = mist_d * w.r * lie * exp(-h / mist_h) * smoothstep(mist_h * 5.0, mist_h * 1.5, h) * wisp;
+		// (thinning upward with a soft top, not cut off at a height; a deep
+		// layer, dawn's, is as much water spread thinner, so it reads as a
+		// soft veil over the low ground, not a glowing slab)
+		mist = mist_d * min(1.0, 5.0 / mist_h) * w.r * lie * exp(-h / mist_h) * smoothstep(mist_h * 4.0, mist_h * 0.5, h) * wisp;
 	}
 	float haze = haze_d * smoothstep(8.0, 40.0, h) * exp(-max(h - 40.0, 0.0) / 220.0) * (0.6 + 0.8 * n1);
 	// (and the low haze a low sun's shafts show in, thinning upward)

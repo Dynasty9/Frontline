@@ -745,7 +745,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   down through the water, crisp in the first metre and broadening deeper down; from High a net of wandering cells
   worked out per pixel, thin lines brightest at the nodes where they meet and tinted by the sun, so it re-forms
   rather than slides; the same net is thrown back up onto hulls, piles and banks, moving with the bed's,
-  `caustics.gd`), and the sky and
+  `caustics.gd`, faint, since that light is a small share of the sun's; both fade out as the camera pulls back, where
+  the lines would be finer than the eye picks out and only brighten the shore), and the sky and
   its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
   gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
@@ -1338,11 +1339,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Vehicle windows and the opt-in mocap soldiers still take full sun.
 - **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
   far side of the field lies in layers. Mist lies in a thin band a few metres deep, filling the valley, the hollows and
-  the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet
-  ground as it dries after rain), thinning upward to a soft top so the ridges behind stand out as silhouettes. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
+  the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, when it lies deeper and
+  thinner, a soft veil over the low ground rather than a dense band; rising off wet ground as it dries after rain), thinning upward to a soft top so the ridges behind stand out as silhouettes. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
   at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
   mist glows, and turned from it the sky lights it blue-grey. At dawn, golden hour and dusk a faint low haze fills the
-  first tens of metres with the fog's anisotropy near 0.8 and little skylight in it, so it glows close around a low sun
+  first tens of metres with the fog's anisotropy near 0.7-0.8 and little skylight in it, so it glows close around a low sun
   and stays clear across and away from it, and the air in shadow stays dark: the fog reads the sun's shadow map for
   houses and trees, and the air shader marches the sun's ray a few times over the ground's height for the ridges. Close up, the smoke a barrage or a fire leaves is a plume
   of its own (`smoke_plumes.gd`, up to 16 fog volumes laid along the wind): dense where it rose, drawn out, climbing and
@@ -1369,7 +1370,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   fog volumes, each a stretch of the route up to 36 m long): a low, pale bank that billows up behind it, spreads,
   drifts off downwind and settles over about half a minute, so a column's route stays marked; a vehicle behind on the
   same road thickens the stretch rather than laying another. After dark the air lights up round the lights: at night
-  a damp low haze lies over the field that the moon barely lights, and the street lamps, the flares, the muzzle and
+  a damp low haze lies over the field that the moon barely lights, and the street lamps (softly, a halo round each rather than a wash over the town), the flares, the muzzle and
   burst flashes (each light's `light_volumetric_fog_energy`) and the headlights of the vehicles driving near the
   camera (`headlights.gd`, a pair of narrow shadowless spot lights each for the six nearest on the move, none in the
   browser) glow in it: soft halos round the lamps, a brief bloom with each flash. The fog's grid can't hold a beam's

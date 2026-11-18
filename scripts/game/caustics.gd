@@ -144,7 +144,7 @@ void fragment() {
 		discard;
 	}
 	float above = wp.y - (__LEVEL__);
-	if (above < 0.02 || above > 2.6 || length(vp.xyz) > 260.0) {
+	if (above < 0.02 || above > 2.6 || length(vp.xyz) > 160.0) {
 		discard;
 	}
 	vec2 uv = (wp.xz + __MAP_HALF__) / __MAP_SIZE__;
@@ -165,13 +165,16 @@ void fragment() {
 	// farther the light has fanned out off the curved ripples: broader and dimmer
 	vec2 out_dir = normalize(n.xz + vec2(0.0001));
 	float w = caustic_light(wp.xz + out_dir * (0.4 + above * 0.8), clamp(0.25 + above / 1.6, 0.0, 1.0), 0.0);
-	float fade = smoothstep(0.02, 0.12, above) * (1.0 - smoothstep(0.2, 2.2, above)) * smoothstep(0.01, 0.15, near);
+	// (and, like the bed's, gone by the time the camera is far enough off
+	// that the lines would only read as a glow)
+	float fade = smoothstep(0.02, 0.12, above) * (1.0 - smoothstep(0.2, 2.2, above)) * smoothstep(0.01, 0.15, near)
+		* (1.0 - smoothstep(40.0, 160.0, length(vp.xyz)));
 	// the surface's own colour, at a set brightness: the light off the water is
 	// sunlight, as bright on a hull in its own shade as in the sun (brighter to
 	// the eye there), so it mustn't scale with how lit the surface already is
 	vec3 col = textureLod(screen_tex, SCREEN_UV, 0.0).rgb;
 	vec3 hue = col / max(dot(col, vec3(0.3, 0.59, 0.11)), 0.04);
 	vec3 tint = sun_col / max(max(sun_col.r, sun_col.g), max(sun_col.b, 0.001));
-	ALBEDO = min(hue, vec3(3.0)) * tint * 0.14 * w * fade * facing * strength;
+	ALBEDO = min(hue, vec3(3.0)) * tint * 0.06 * w * fade * facing * strength;
 }
 """
