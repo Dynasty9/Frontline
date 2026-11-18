@@ -1365,10 +1365,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
   light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),
   Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off. Reflections are shut in with
-  the sky too (specular occlusion, after Frostbite): the probes' two bands give the share of sky seen in the
-  reflected direction, m0 + 3 m1.r for a glossy surface easing to the cosine's m0 + 2 m1.n for a rough one, and the
-  rest of the reflection shows the room's own bounce instead (Godot's RADIANCE), so wet floors indoors, under eaves
-  and in trenches stop mirroring the bright sky. Tree crowns are laid as leaves, sized to the tree the game grows (a
+  the sky too (specular occlusion): Godot's own cone-against-cone test (after Jimenez et al. 2016), which runs after
+  the battlefield's reflection probe, takes the visible sky's cone from AO (which carries the probes' share of sky) and
+  its axis from a bent normal, so every surface that reads the probes hands it theirs (`BENT_NORMAL_MAP`, in the
+  surface's tangent space, leaning back to its normal where the sky is seen nearly all round). Writing the reflection
+  into RADIANCE, as this first did, came before the reflection probe, which painted over it. Hulls parked under the
+  eaves, wet cobbles in an alley and windows across it stop mirroring the open sky, as do wet floors in
+  trenches. Tree crowns are laid as leaves, sized to the tree the game grows (a
   fir's cone in two tiers, a field tree's dome, an orchard tree's small one), three fifths of the light stopped a
   cube; the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it
   sit in a dimmer, greener shade. The occlusion itself is one grey factor on the ambient, which would take away
@@ -1383,8 +1386,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   so walls keep the glow in (the burning thing's own cubes aside: the flames fill its box), into the atlas's bottom
   block beside the heights; a light that comes, goes, moves a metre or changes by a quarter retraces only its own
   tiles, four a frame. It reaches the browser too, which has no fire lights of its own. The skinned riflemen, whose
-  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, so a
-  man in a room or a wood takes its shade. Vehicles and men shut out a little sky round their feet (after Unreal's
+  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, and the
+  procedural men's flat colours (`LightProbes.probe_surfaces`: every other soldier's uniform, face and kit, and the
+  distant men's baked poses copied from them) a twin that does the same; both go through `CloudShadow` like the
+  world's surfaces, so a man in a room or an alley has the sun cut and the fill light shut out with the sky as the
+  walls round him do, and in a wood takes its green shade, rather than standing in open-sky light. Vehicles and men shut out a little sky round their feet (after Unreal's
   capsule and Frostbite's box occlusion): every frame their footprints, rounded boxes for hulls (half-metre
   corners), darkest along the contact line under tracks and wheels and fading out over a pad of 1 to 1.5 m that
   grows with their height, and faint discs for men (fainter crouched, a longer patch lying down), are

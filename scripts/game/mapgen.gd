@@ -794,6 +794,18 @@ func scenario(sname: String) -> void:
 					v.order_move(Vector3(x * 0.5, 0, -side * 30.0))
 				else:
 					v.order_assault(Vector3(x * 0.6, 0, side * 6.0))
+		"alley":
+			# two houses across a narrow alley with a car parked in it under the
+			# eaves, a gun team holding the houses and a rifle squad out in the
+			# street, all one side's: the light probes' shade on men indoors and in
+			# the open, and on wet paint and glass the sky can't reach (--mood=rain)
+			_house(Vector3(0, 0, -30), 8.0, 6.0, 0.0, 1.0, false, 0.0)
+			_house(Vector3(0, 0, -38.5), 8.0, 6.0, 0.0, -1.0, false, 0.0)
+			_spawn("car", Vector3(1.0, 0, -34.25), PI * 0.5, -1, {"variant": 1})
+			var gq := r.spawn_squad("mg_team", 0, a, Vector3(0, 0, -30))
+			gq.order_defend(Vector3(0, 0, -30), Vector3(0, 0, 1))
+			var rq := r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, -20))
+			rq.order_defend(Vector3(0, 0, -20), Vector3(0, 0, 1))
 		"lean":
 			for i in 3:
 				_spawn("tall_wall", Vector3(-14 + i * 14.0, 0, -10), 0.0, -1, {"size": Vector3(6, 2.6, 0.5)})
