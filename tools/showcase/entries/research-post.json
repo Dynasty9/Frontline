@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/research-post.md",
+  "summary": "The research post dressed with its parapet, cable tray, conduit, blast wall and generator.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (research:0, research:1)",
+  "rationale": "Appearance change: the post from the front and the back in the studio, from the same cameras.",
+  "source_ref": "73748f0e9d852dfb7761f66d609081d30fde4a85",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/research-post/comparison.jpg",
+      "sha256": "46d6e71e1fe58c0f26fc5ed4bb4c9f64364b1ee714901f468c9f359fd9f17166"
+    },
+    {
+      "file": "changelog/unreleased/research-post/capture.json",
+      "sha256": "a3d1e3fccbe9bf5873094c21b5752edd2b7d5ff068063fd390c235bbc1a61d16"
+    }
+  ],
+  "output": null
+}
