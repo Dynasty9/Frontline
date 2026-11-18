@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/playground.md",
+  "summary": "Playground equipment built of tube, chain and rubber.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd (FL_ONLY_VIEW); tools/showcase/building-surfaces.tscn (playground)",
+  "rationale": "Appearance change: the playground in the map from the same camera, and each piece up close in the studio.",
+  "source_ref": "312eb492805552319ab4ff8d6a5b3280bbad78a8",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/playground/comparison.jpg",
+      "sha256": "bd32444c289ae2aab9e5493ce9f780c6652c0893c345409c1e9888cbe20ba463"
+    },
+    {
+      "file": "changelog/unreleased/playground/equipment.jpg",
+      "sha256": "224963ab66365afdcdf8a678083aacffc776b6bc88815ebb1fec48fb961d5ecb"
+    },
+    {
+      "file": "changelog/unreleased/playground/capture.json",
+      "sha256": "c36e914f70f2769c3848ef999e1de2f25b5a6d05a9dbbdb2144abefd08a6aa6d"
+    }
+  ],
+  "output": null
+}

@@ -1,0 +1,32 @@
+{
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "source_ref": "312eb492805552319ab4ff8d6a5b3280bbad78a8",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+  "comparisons": [
+    {
+      "subjects": [
+        "town"
+      ],
+      "view": "play",
+      "env": "FL_ONLY_VIEW=play,-21.1,7.8,15,-42,0.7",
+      "crop": [
+        100,
+        50,
+        1500,
+        900
+      ]
+    },
+    {
+      "subjects": [
+        "playground"
+      ],
+      "file": "equipment.jpg",
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=playground",
+      "after_only": true
+    }
+  ],
+  "notes": "The camera is over the town playground on seed 3 (its seesaw at -21.1, 7.8); both checkouts' views fixture get the FL_ONLY_VIEW hook in the scratch copy.",
+  "composition": "PIL: one matched row, 792 px halves, JPEG quality 82; the studio playground cropped and scaled to 1600 px, JPEG quality 84"
+}
