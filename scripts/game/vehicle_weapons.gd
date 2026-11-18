@@ -211,6 +211,11 @@ static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	_z(k, m, -length + 0.01 * s, -length, 0.043 * s, 0.043 * s, mat, null, 10, false, Vector2.ZERO, false)
 	VehicleBody.cylinder(k, m, 0.038 * s, 0.038 * s, 0.003, Vector3(0, 0, -length + 0.004 * s), X90, "burnt", Color(0.02, 0.02, 0.02), 10, false, false, true)
 	_bore(k, m, -length, 0.014 * s)
+	if can == 0.0:
+		# fed from elsewhere (a remote station's chute): the feedways open
+		# either side under the cover, belt in on one, links out on the other
+		for side: float in [-1.0, 1.0]:
+			k._box(m, Vector3(0.004, 0.03, 0.1) * s, Vector3(side * 0.0685, 0.072, 0.03) * s, "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
 	if can != 0.0:
 		var side := signf(can)
 		var can_at := Vector3(side * 0.155, -0.07, 0.08) * s
@@ -359,25 +364,17 @@ static func _belt_rounds(can: Vector3, size: Vector3, tray: Vector3, radius: flo
 ## Automatic grenade launcher (40 mm). `feed` puts the linked-round container on
 ## the left (-1) or right (+1), 0 for none; `drum` chooses the round drum over
 ## a box, and `feed_offset` is its centre's distance from the gun's axis, so a
-## box clears the mount's yoke arms. Returns the muzzle.
-static func gmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, feed := 1.0, drum := true, mat := "gunmetal_w", feed_col := Color(0.29, 0.31, 0.22), feed_offset := 0.24) -> Vector3:
+## box clears the mount's yoke arms. `style` "mk19" builds the American Mk 19
+## (see _mk19) instead of the jacketed GMG. Returns the muzzle.
+static func gmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, feed := 1.0, drum := true, mat := "gunmetal_w", feed_col := Color(0.29, 0.31, 0.22), feed_offset := 0.24, style := "") -> Vector3:
 	mat = _steel(mat)
 	var m := _aimed(k, parent, receiver, muzzle)
 	var s := size
 	var length := receiver.distance_to(muzzle)
-	VehicleMounts.receiver(k, m, Vector3(0.24, 0.24, 0.62) * s, Vector3.ZERO, mat)
-	k._add(m, BevelMesh.make(Vector3(0.18, 0.08, 0.32) * s, 0.012 * s), mat, null, Vector3(0, 0.15, 0.05) * s)
-	k._box(m, Vector3(0.2, 0.14, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
-	for side: float in [-1.0, 1.0]:
-		VehicleBody.cylinder(k, m, 0.02 * s, 0.02 * s, 0.13 * s, Vector3(side * 0.07, 0, 0.37) * s, Vector3.ZERO, "rubber", null, 6, false)
-	var jacket_end := maxf(-0.66 * s, -length + 0.16 * s)
-	_z(k, m, -0.3 * s, jacket_end, 0.075 * s, 0.075 * s, mat, null, 10, true, Vector2.ZERO, false)
-	for i in 3:
-		var z := lerpf(-0.3 * s, jacket_end, (i + 1) / 4.0)
-		_z(k, m, z + 0.01 * s, z - 0.01 * s, 0.078 * s, 0.078 * s, "metal_dark", null, 10, false)
-	_z(k, m, jacket_end, -length + 0.08 * s, 0.05 * s, 0.05 * s, mat, null, 8, true, Vector2.ZERO, false, false)
-	_z(k, m, -length + 0.08 * s, -length, 0.062 * s, 0.06 * s, mat, null, 8, false)
-	_bore(k, m, -length, 0.04 * s)
+	if style == "mk19":
+		_mk19(k, m, length, s, mat)
+	else:
+		_gmg_body(k, m, length, s, mat)
 	if feed != 0.0:
 		var side := signf(feed)
 		if drum:
@@ -391,6 +388,45 @@ static func gmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 		k._box(m, Vector3(outer - inner + 0.04, 0.08, 0.12) * s, Vector3(side * (inner + outer) * 0.5, 0.05, 0.0) * s, mat)
 	k._gun(m, muzzle)
 	return muzzle
+
+
+## The jacketed GMG's body along -Z in `m`: the boxy receiver and its raised
+## cover, the back plate and grips, the barrel jacket with its bands, the
+## barrel and its muzzle collar.
+static func _gmg_body(k: VehicleModels, m: Node3D, length: float, s: float, mat: String) -> void:
+	VehicleMounts.receiver(k, m, Vector3(0.24, 0.24, 0.62) * s, Vector3.ZERO, mat)
+	k._add(m, BevelMesh.make(Vector3(0.18, 0.08, 0.32) * s, 0.012 * s), mat, null, Vector3(0, 0.15, 0.05) * s)
+	k._box(m, Vector3(0.2, 0.14, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.cylinder(k, m, 0.02 * s, 0.02 * s, 0.13 * s, Vector3(side * 0.07, 0, 0.37) * s, Vector3.ZERO, "rubber", null, 6, false)
+	var jacket_end := maxf(-0.66 * s, -length + 0.16 * s)
+	_z(k, m, -0.3 * s, jacket_end, 0.075 * s, 0.075 * s, mat, null, 10, true, Vector2.ZERO, false)
+	for i in 3:
+		var z := lerpf(-0.3 * s, jacket_end, (i + 1) / 4.0)
+		_z(k, m, z + 0.01 * s, z - 0.01 * s, 0.078 * s, 0.078 * s, "metal_dark", null, 10, false)
+	_z(k, m, jacket_end, -length + 0.08 * s, 0.05 * s, 0.05 * s, mat, null, 8, true, Vector2.ZERO, false, false)
+	_z(k, m, -length + 0.08 * s, -length, 0.062 * s, 0.06 * s, mat, null, 8, false)
+	_bore(k, m, -length, 0.04 * s)
+
+
+## The Mk 19's body along -Z in `m`: the long square receiver under its flat
+## top cover, the feed throat open on its left and the links' exit on its
+## right, the back plate with the spade grips, a charging handle out either
+## side of its back, and the short plain barrel with a collar at its muzzle -
+## no jacket, which is what tells it from the GMG at a glance.
+static func _mk19(k: VehicleModels, m: Node3D, length: float, s: float, mat: String) -> void:
+	VehicleMounts.receiver(k, m, Vector3(0.2, 0.2, 0.7) * s, Vector3(0, 0, 0.02) * s, mat)
+	k._add(m, BevelMesh.make(Vector3(0.21, 0.04, 0.52) * s, 0.008 * s), mat, null, Vector3(0, 0.12, 0.04) * s)
+	for side: float in [-1.0, 1.0]:
+		k._box(m, Vector3(0.006, 0.07 if side < 0.0 else 0.05, 0.14) * s, Vector3(side * 0.101, 0.05, -0.1) * s, "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+	k._box(m, Vector3(0.18, 0.16, 0.03) * s, Vector3(0, 0, 0.385) * s, mat)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.cylinder(k, m, 0.02 * s, 0.02 * s, 0.13 * s, Vector3(side * 0.07, 0, 0.43) * s, Vector3.ZERO, "rubber", null, 6, false)
+		VehicleBody.rod(k, m, Vector3(side * 0.1, -0.02, 0.26) * s, Vector3(side * 0.16, -0.05, 0.3) * s, 0.012 * s, mat, null, 6, false)
+		k._box(m, Vector3(0.03, 0.05, 0.02) * s, Vector3(side * 0.165, -0.055, 0.3) * s, "rubber", null, Vector3.ZERO, false)
+	_z(k, m, -0.33 * s, -length + 0.06 * s, 0.036 * s, 0.034 * s, mat, null, 10, true, Vector2.ZERO, false, false)
+	_z(k, m, -length + 0.06 * s, -length, 0.044 * s, 0.044 * s, mat, null, 10, false)
+	_bore(k, m, -length, 0.026 * s)
 
 
 ## Rotary barrel cluster from its rear carrier to the muzzles: `barrels` tubes

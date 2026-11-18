@@ -487,10 +487,11 @@ static func _rws_sensor(k: VehicleModels, cr: Node3D, center: Vector3, cam: Stri
 ## outboard on its left and the ammunition box outboard on its right, the
 ## chute arching over the arm into the gun's feed, as a real station's does,
 ## so the sight always looks where the gun points. gun: "hmg", "gmg" or
-## "both" (HMG left, GMG right); sc scales the whole station. Becomes
-## k.turret, k.mg_tip at the (HMG's) muzzle - on a tank's turret roof, put
+## "both" (HMG left, GMG right; `fires` names the one the vehicle shoots,
+## whose muzzle is k.mg_tip); sc scales the whole station. Becomes
+## k.turret, k.mg_tip at the gun's muzzle - on a tank's turret roof, put
 ## k.turret back to the main turret afterwards (the station turns with it).
-static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, cam: String, sc := 1.0) -> Node3D:
+static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, cam: String, sc := 1.0, fires := "hmg") -> Node3D:
 	var t := k._pivot(p, pos)
 	t.scale = Vector3.ONE * sc
 	k.turret = t
@@ -508,20 +509,26 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, cam: S
 		_rws_sensor(k, t, Vector3(0, 0.66, -0.02), cam)
 		for s in [-1.0, 1.0]:
 			k._cyl(t, 0.07, 0.07, 0.03, Vector3(s * 0.32, 0.42, -0.05), Vector3(0, 0, PI / 2), "gunmetal_w", null, 14)
-		var bc := k._pivot(t, Vector3(-0.42, 0.42, -0.05))
+		# (the cradle's origin sits on the gun the vehicle fires, so that gun
+		# lies straight down its axis: the model lays the cradle by it)
+		var ox := -0.86 if fires == "gmg" else 0.0
+		var o := Vector3(ox, 0, 0)
+		var bc := k._pivot(t, Vector3(-0.42 - ox, 0.42, -0.05))
 		# the .50's cradle: its tray and cheeks, the box on the left
-		k._box(bc, Vector3(0.24, 0.02, 0.5), Vector3(0, -0.15, -0.02), "gunmetal_w")
+		k._box(bc, Vector3(0.24, 0.02, 0.5), Vector3(0, -0.15, -0.02) + o, "gunmetal_w")
 		for x: float in [-0.11, 0.11]:
-			k._box(bc, Vector3(0.016, 0.15, 0.42), Vector3(x, -0.07, -0.02), "gunmetal_w")
-		var a := VehicleWeapons.hmg(k, bc, Vector3.ZERO, Vector3(0, 0, -1.69), 1.0, 0.0)
-		_rws_box(k, bc, Vector3(-0.2, -0.08, 0.03), Vector3(0.16, 0.26, 0.4), -1.0, Vector3(-0.084, 0.072, 0.03), 0.15, cam)
+			k._box(bc, Vector3(0.016, 0.15, 0.42), Vector3(x, -0.07, -0.02) + o, "gunmetal_w")
+		var a := VehicleWeapons.hmg(k, bc, o, Vector3(0, 0, -1.69) + o, 1.0, 0.0)
+		_rws_box(k, bc, Vector3(-0.2, -0.08, 0.03) + o, Vector3(0.16, 0.26, 0.4), -1.0, Vector3(-0.071, 0.072, 0.03) + o, 0.15, cam)
 		# the grenade gun's, its outboard cheek carrying its box on the right
-		k._box(bc, Vector3(0.3, 0.02, 0.5), Vector3(0.86, -0.15, -0.02), "gunmetal_w")
-		k._box(bc, Vector3(0.016, 0.17, 0.42), Vector3(1.0, -0.07, 0.02), "gunmetal_w")
-		VehicleWeapons.gmg(k, bc, Vector3(0.86, 0, 0), Vector3(0.86, 0, -0.9), 1.0, 0.0, true, "gunmetal_w", STOW)
-		_rws_box(k, bc, Vector3(1.1, -0.08, 0.06), Vector3(0.18, 0.28, 0.42), 1.0, Vector3(0.98, 0.07, 0.06), 0.13, cam)
-		k.gun_assembly(bc, a)
-		k.mg_tip = k._tip(t, Vector3(-0.42, 0.42, -0.05) + a)
+		k._box(bc, Vector3(0.3, 0.02, 0.5), Vector3(0.86, -0.15, -0.02) + o, "gunmetal_w")
+		k._box(bc, Vector3(0.016, 0.17, 0.42), Vector3(1.0, -0.07, 0.02) + o, "gunmetal_w")
+		var g := VehicleWeapons.gmg(k, bc, Vector3(0.86, 0, 0) + o, Vector3(0.86, 0, -0.9) + o, 1.0, 0.0, true, "gunmetal_w", STOW, 0.24, "mk19")
+		_rws_box(k, bc, Vector3(1.1, -0.08, 0.06) + o, Vector3(0.18, 0.28, 0.42), 1.0, Vector3(0.98, 0.07, 0.06) + o, 0.13, cam)
+		var fired := g if fires == "gmg" else a
+		var at := bc.position  # (the assembly folds the cradle away)
+		k.gun_assembly(bc, fired)
+		k.mg_tip = k._tip(t, at + fired)
 		_smoke(k, t, Vector3(0, 0.3, 0.38), 1.0, 3, PI / 2)
 		return t
 	# the cradle's trunnions at the receiver's centre (the grenade gun's sits
@@ -549,12 +556,12 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, cam: S
 	var tip: Vector3
 	var feed: Vector3
 	if gun == "gmg":
-		tip = VehicleWeapons.gmg(k, cr, Vector3.ZERO, Vector3(0, 0, -0.9), 1.0, 0.0, true, "gunmetal_w", STOW)
+		tip = VehicleWeapons.gmg(k, cr, Vector3.ZERO, Vector3(0, 0, -0.9), 1.0, 0.0, true, "gunmetal_w", STOW, 0.24, "mk19")
 		feed = Vector3(0.12, 0.07, 0.06)
 		_rws_box(k, cr, Vector3(0.37, -0.08, 0.06), Vector3(0.22, 0.28, 0.42), 1.0, feed, 0.13, cam)
 	else:
 		tip = VehicleWeapons.hmg(k, cr, Vector3.ZERO, Vector3(0, 0, -1.69), 1.0, 0.0)
-		feed = Vector3(0.084, 0.072, 0.03)
+		feed = Vector3(0.071, 0.072, 0.03)
 		_rws_box(k, cr, Vector3(0.37, -0.07, 0.03), Vector3(0.2, 0.28, 0.42), 1.0, feed, 0.15, cam)
 	_rws_sensor(k, cr, Vector3(-0.38, 0.06, -0.06), cam)
 	# the firing solenoid's lead from the cradle cheek to the gun's back plate
@@ -1561,7 +1568,7 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 static func _panther(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	_namer_hull(k, team, cam, true, true, seed)
-	_rcws(k, k.root, Vector3(-0.5, 2.32, -0.05), "both", cam, 1.15)
+	_rcws(k, k.root, Vector3(-0.5, 2.32, -0.05), "both", cam, 1.15, "gmg")
 
 
 ## CRV-6e Bobcat: the Namer as an engineering / recovery vehicle: a dozer
