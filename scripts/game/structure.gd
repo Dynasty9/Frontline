@@ -3116,7 +3116,7 @@ func _build_model() -> void:
 	var bags: Array = []
 	var works_keep: Array = []
 	for p in parts:
-		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town"] or skind in WorksModels.OWN_KINDS:
+		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town", "crates"] or skind in WorksModels.OWN_KINDS:
 			break
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
@@ -3126,7 +3126,7 @@ func _build_model() -> void:
 		var col: Color = p.color
 		if skind == "house_wall":
 			col = BuildingMaterials.house_color(int(size.y), col)
-		if skind in ["house_wall", "rubble", "crates"]:
+		if skind in ["house_wall", "rubble"]:
 			col = Res.vary(col, 0.05, rng)
 		if skind == "rubble":
 			continue  # (drawn as a heap, below)
@@ -3210,8 +3210,9 @@ func _build_model() -> void:
 				_storey_model(rng)
 			_roof_model(rng)
 		"crates":
-			for p in parts:
-				_bx(p.p + Vector3(0, p.s.y * 0.5 + 0.01, 0), Vector3(p.s.x * 0.9, 0.04, p.s.z * 0.9), C_WOOD.darkened(0.3), p.r)
+			# stores stacked as they came off the lorry: framed crates and ammunition
+			# boxes, each load on its pallet, inside the boxes the parts give for cover
+			BuildingCargo.stack(_kit(rng), variant, rng)
 		"car":
 			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
 			var civ_key: String = ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]

@@ -450,6 +450,18 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# Cover crates: the stores stand on the ground inside the boxes their parts
+	# give for cover, and one stack is loaded differently from the next.
+	var loads := {}
+	for id in 12:
+		for v in 2:
+			var cr := Structure.preview_model("crates", -1, v, Vector3.ZERO, false, id)
+			var cb := _bounds(cr, Transform3D.IDENTITY)
+			var reach := Vector3(0.65, 1.3, 0.65) if v == 0 else Vector3(1.3, 2.45, 0.72)
+			check(cb.position.y >= -0.01 and cb.end.y <= reach.y and absf(cb.position.x) <= reach.x and cb.end.x <= reach.x and absf(cb.position.z) <= reach.z and cb.end.z <= reach.z, "crate stack %d (variant %d) keeps to its cover (%s)" % [id, v, cb])
+			loads["%d|%s" % [v, cb.size.snapped(Vector3.ONE * 0.05)]] = true
+			cr.free()
+	check(loads.size() >= 4, "crate stacks are loaded differently (%d ways)" % loads.size())
 
 	# Roofs: a hip rises as high as a gable of the same pitch over the same
 	# walls; its underside comes down to the eaves on all four walls where a

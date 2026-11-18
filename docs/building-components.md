@@ -268,6 +268,22 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## Crate stacks
+
+The cover crate stacks (structure `crates`) are `BuildingCargo.stack`, drawn inside the boxes their parts give for
+cover: variant 0 is one pallet load, variant 1 two loads side by side with a crate hoisted onto the left one.
+- **A load** is a low crate with two ammunition boxes on it, three layers of ammunition boxes (the top one laid
+  across to tie the stack), or a tall crate, each on its pallet; on the long stack a box is sometimes left on top
+  of the right-hand load.
+- **`shipping_crate`**: boards inside a frame of battens, a brace corner to corner across each long face, cleats
+  over the lid, two steel bands, and the lot number and this-way-up arrows stencilled on the ends (black on bare
+  pine; pale on the third painted olive drab).
+- **`ammo_box`**: sharp-edged painted boards, the lid a shade lighter, hasps and hinges, rope handles through end
+  cleats, the lot number and the yellow band of high explosive on the front.
+
+Each crate's battens, bands, ironwork, rope and stencil are one cached mesh per size, so a stack is a few dozen
+parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
+
 ## Who uses what
 
 | Component | Users |
@@ -284,6 +300,7 @@ Render them with `--building-kinds=bales`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingCargo.stack`, `shipping_crate`, `ammo_box` | Cover crate stacks |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the
