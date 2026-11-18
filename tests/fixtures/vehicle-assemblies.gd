@@ -41,8 +41,16 @@ func _ready() -> void:
 	k.root.free()
 	k = kit()
 	VehicleMounts.slats(k, k.root, Vector3(-1, 0, 0), Vector3(1, 0, 0), 0.6, 0.2)
-	assert(not occupied(k, Vector3(0.4, 0.1, 0)))
-	assert(occupied(k, Vector3(0.4, 0.2, 0)))
+	# (a live cage sets its flat bars no more than 9 cm apart, whatever the
+	# spacing asked: up its height there are still bars, and gaps between them)
+	var solid := 0
+	var gaps := 0
+	for i in 60:
+		if occupied(k, Vector3(0.4, i * 0.01, 0)):
+			solid += 1
+		else:
+			gaps += 1
+	assert(solid >= 4 and gaps > 20, "a slat cage has bars and gaps: %d solid, %d open" % [solid, gaps])
 	valid_static(k)
 	k.root.free()
 	# Sprockets register exactly one X-axis wheel, at the caller's axle position.
