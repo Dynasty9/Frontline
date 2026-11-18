@@ -380,17 +380,19 @@ func _palette(team: int, is_crew: bool, rng: RandomNumberGenerator) -> Dictionar
 		k.top = Res.vary([Color(0.4, 0.38, 0.27), Color(0.48, 0.42, 0.31), Color(0.36, 0.29, 0.21), Color(0.31, 0.33, 0.27), Color(0.22, 0.22, 0.21)][rng.randi() % 5], 0.05, rng)
 		rng.randf()  # (once whether he wore the old camouflage)
 		k.pants = Res.vary([Color(0.22, 0.22, 0.2), Color(0.32, 0.31, 0.23), Color(0.4, 0.36, 0.27), Color(0.2, 0.21, 0.23)][rng.randi() % 4], 0.04, rng)
-		# surplus from every army: a jacket in one pattern or plain, trousers
-		# to match it (an issued set), in another pattern, or plain
+		# surplus from every army: a jacket in one pattern or plain, and
+		# mostly trousers to match it (an issued set) or plain ones; now and
+		# then a second pattern
 		var jacket := Camo.pick(Camo.REBEL_TOPS, crng)
-		var trousers := jacket if crng.randf() < 0.45 else Camo.pick(Camo.REBEL_TOPS, crng)
+		var odd := crng.randf()
+		var trousers := jacket if odd < 0.55 else ("" if odd < 0.86 else Camo.pick(Camo.REBEL_TOPS, crng))
 		if jacket != "":
 			k.top_kind = "camo/" + jacket
 			# faded by the sun and the wash, a little differently on each
-			k.top = Res.vary(Color(Camo.PATTERNS[jacket].cols[0]), 0.03, crng).lightened(crng.randf_range(0.0, 0.08))
+			k.top = Res.vary(Color(Camo.PATTERNS[jacket].cols[0]), 0.03, crng).lightened(crng.randf_range(0.0, 0.04))
 		if trousers != "":
 			k.pants_kind = "camo/" + trousers
-			k.pants = Res.vary(Color(Camo.PATTERNS[trousers].cols[0]), 0.03, crng).lightened(crng.randf_range(0.0, 0.08))
+			k.pants = Res.vary(Color(Camo.PATTERNS[trousers].cols[0]), 0.03, crng).lightened(crng.randf_range(0.0, 0.04))
 		k.swat_pattern = jacket if jacket != "" else (trousers if trousers != "" else "woodland")
 		k.armor = Res.vary([Color(0.33, 0.32, 0.23), Color(0.42, 0.37, 0.27), Color(0.25, 0.26, 0.21)][rng.randi() % 3], 0.05, rng)
 		k.web = Color(0.2, 0.19, 0.15)

@@ -1779,6 +1779,8 @@ void fragment() {
 		cw /= max(cw.x + cw.y + cw.z, 0.0001);
 		vec3 cp = tp * scale;
 		col = camo_print(cp, cw, length(fwidth(cp)) * 0.7);
+		// faded unevenly, panel by panel, by sun and washing
+		col *= 0.93 + 0.14 * tnoise(cp.xz * 0.35 + cp.y * 0.2 + 5.0);
 		h = 0.5 + (tnoise(uv * 40.0) - 0.5) * 0.3 * keep(0.025, px);
 	} else if (pattern == 6) {
 		vec2 camo_uv = vehicle_surface ? uv * 2.4 : uv;
@@ -2080,7 +2082,7 @@ void fragment() {
 	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
 	if (paint_on) {
 		vec3 meant = col_a * tint.rgb * (use_vcolor ? COLOR.rgb * vcolor_k : vec3(1.0));
-		col = camo_paint(col, meant, wpos, tn, wpos.y - ground_y);
+		col = camo_paint(col, meant, wpos, tn, wpos.y - ground_y, r, m);
 	}
 	// Rust is an oxide, not reflective steel tinted orange. Apply after the
 	// part tint so corroded fittings retain their mineral color.
@@ -2448,6 +2450,10 @@ void vertex() {
 	vec2 u = UV * 2.0 - 1.0;
 	VERTEX.y -= (1.0 - u.x * u.x) * (1.0 - u.y * u.y) * sag;
 	VERTEX.y += sin(VERTEX.x * 0.9 + TIME * 0.7) * 0.03;
+	// a net is never drawn tight: it hangs in lumps and folds where the
+	// garnish bunches up on the cord
+	vec2 m = UV * uv_m;
+	VERTEX.y += (vn(m * 0.9 + 3.0) - 0.5) * 0.22 + (vn(m * 2.3 + 11.0) - 0.5) * 0.08;
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
@@ -2456,53 +2462,85 @@ void fragment() {
 	vec2 p = UV * uv_m;
 	vec2 u = UV * 2.0 - 1.0;
 	float edge = max(abs(u.x), abs(u.y));
-	// The garnish: a sheet cut into leaves about 14 cm long, every leaf
-	// turned its own way, tied to a diamond cord mesh. It is thicker in
-	// some places than others, gappy in strips, and frays out at the edge.
-	vec2 g = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 0.14;
-	vec2 cell = floor(g);
+	// The garnish: a sheet cut into leaves about 12 cm across that lift
+	// and overlap, every one turned its own way, tied to a diamond cord
+	// mesh. Each leaf is the nearest of a jittered scatter of points, so
+	// they come out irregular, not in rows; it frays out at the edge.
+	vec2 g = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 0.1;
+	// (pushed about, so the leaves' edges curve rather than run straight)
+	g += vec2(vn(g * 0.8 + 3.1), vn(g * 0.8 + 17.3)) * 0.55 + vec2(vn(g * 2.1 + 5.5), vn(g * 2.1 + 9.1)) * 0.2;
+	vec2 base = floor(g);
+	vec2 cell = base;
+	vec2 f = vec2(0.0);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 c = base + vec2(float(x), float(y));
+			vec2 o = c + 0.5 + (vec2(h12(c + 3.3), h12(c + 9.9)) - 0.5) * 0.8 - g;
+			float d = dot(o, o);
+			if (d < d1) { d2 = d1; d1 = d; cell = c; f = -o; } else if (d < d2) { d2 = d; }
+		}
+	}
+	// how far inside its leaf this point is: 0 on the line where it meets
+	// the next one
+	float inside = sqrt(d2) - sqrt(d1);
 	float r1 = h12(cell);
 	float r2 = h12(cell + 7.1);
 	float r3 = h12(cell + 13.7);
 	float r4 = h12(cell + 21.3);
-	vec2 f = fract(g) - 0.5 - (vec2(h12(cell + 3.3), h12(cell + 9.9)) - 0.5) * 0.3;
 	float a = r1 * 6.2832;
 	vec2 dir = vec2(cos(a), sin(a));
 	vec2 l = vec2(dot(f, dir), dot(f, vec2(-dir.y, dir.x)));
 	float thick = vn(p * 0.8) * 0.55 + vn(p * 2.6 + 5.0) * 0.45 - smoothstep(0.8, 1.0, edge) * 0.4;
 	float thin = 1.0 - smoothstep(0.35, 0.7, thick);
-	// each cut a leaf shape, pointed at both ends: long or short, a sliver
-	// or opened wide where the garnish is thin, and some leaves never cut
-	float len = 0.24 + 0.24 * r2;
+	// a slit down the middle of some leaves, pointed at both ends, opened
+	// wider where the garnish is thin
+	float len = 0.22 + 0.2 * r2;
 	float t = clamp(l.x / len, -1.0, 1.0);
-	float wid = (0.03 + 0.13 * r3 * (0.5 + thin)) * (1.0 - t * t);
-	float cut = step(abs(l.y), wid) * step(abs(l.x), len) * step(r4, 0.45 + 0.45 * thin);
+	float wid = (0.025 + 0.08 * r3 * (0.5 + thin)) * (1.0 - t * t);
+	float cut = step(abs(l.y), wid) * step(abs(l.x), len) * step(r4, 0.3 + 0.4 * thin);
 	// leaves smaller than a few pixels: their cuts would only shimmer, so
-	// they close up, and only the gaps between strips stay open
+	// they close up
 	vec2 gw = fwidth(g);
 	float near = smoothstep(0.45, 0.18, max(gw.x, gw.y));
-	float garnish = (1.0 - cut * near) * step(0.3, thick);
+	// whole gaps only where it frays out at the hem
+	float garnish = (1.0 - cut * near) * step(0.3 * smoothstep(0.7, 0.95, edge), thick);
 	vec2 weave = vec2(p.x + p.y, p.x - p.y) * 7.0;
 	vec2 cord_distance = abs(fract(weave) - 0.5);
-	float cord = (1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y))) * near;
-	if (max(garnish, cord) < 0.5) discard;
+	float cord = (1.0 - smoothstep(0.015, 0.03, min(cord_distance.x, cord_distance.y))) * near;
+	// through most slits there's another layer of garnish, deep in shadow
+	float under = step(0.4, h12(cell + 5.7)) * step(edge, 0.85) * cut;
+	if (max(max(garnish, cord), under) < 0.5) discard;
 	// printed in big blotches like a uniform: the ground colour, a second
-	// shade, a third, and a few near-black
-	float b1 = vn(p * 0.55 + 3.0) * 0.7 + vn(p * 1.7 + 11.0) * 0.3;
-	float b2 = vn(p * 0.62 + 17.0) * 0.7 + vn(p * 1.9 + 3.0) * 0.3;
-	float b3 = vn(p * 0.9 + 31.0) * 0.7 + vn(p * 2.3 + 23.0) * 0.3;
+	// shade, a third, and a few near-black. A whole leaf is one colour, so
+	// the blotches' edges are ragged leaf by leaf.
+	vec2 pc = mat2(vec2(0.8, -0.6), vec2(0.6, 0.8)) * ((g - f) * 0.1);
+	vec2 bp = mix(p, pc, near);
+	float b1 = vn(bp * 0.55 + 3.0) * 0.7 + vn(bp * 1.7 + 11.0) * 0.3;
+	float b2 = vn(bp * 0.62 + 17.0) * 0.7 + vn(bp * 1.9 + 3.0) * 0.3;
+	float b3 = vn(bp * 0.9 + 31.0) * 0.7 + vn(bp * 2.3 + 23.0) * 0.3;
 	vec3 c = tint.rgb;
 	c = mix(c, net_b.rgb, step(0.5, b1));
 	c = mix(c, net_c.rgb, step(0.57, b2));
 	c = mix(c, net_d.rgb, step(0.66, b3));
-	// each leaf faded and catching the light a little differently
-	c *= 0.93 + 0.14 * r3 + (l.x / len) * 0.05;
-	c = mix(tint.rgb * 0.4, c, garnish);
+	// each leaf faded and catching the light its own way, curling so one
+	// side is lit and the other in shadow, and darker where it tucks under
+	// the next leaf
+	float curl = clamp(dot(f, dir) / 0.45, -1.0, 1.0);
+	float dome = smoothstep(0.0, 0.35, inside);
+	c *= mix(1.0, (0.86 + 0.22 * r3 + curl * 0.1) * (0.9 + 0.12 * dome), near);
+	// the leaves overlap like scales, each one casting a thin shadow on the
+	// one below it (down the net, away from the light) and not on the rest
+	float below = smoothstep(-0.05, 0.15, dot(normalize(f + 1e-4), vec2(0.6, 0.8)));
+	c *= mix(1.0, mix(0.6, 1.0, smoothstep(0.0, 0.07, inside)), near * below * step(0.35, r2));
+	c = mix(tint.rgb * 0.35, c, garnish);
+	c = mix(c, c * 0.3, under * (1.0 - garnish));
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 	BACKLIGHT = c * 0.45;
 	// the leaves curl off the cord: each one's own slant
-	vec3 tilt = vec3(r2 - 0.5, 0.0, r3 - 0.5) * 0.5 * garnish * near;
+	vec3 tilt = (vec3(r2 - 0.5, 0.0, r3 - 0.5) * 0.8 + vec3(dir.x, 0.0, dir.y) * curl * 0.25) * garnish * near;
 	NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(tilt, 0.0)).xyz);
 	// CLOUD_FRAGMENT cloud_sun(wp)
 }

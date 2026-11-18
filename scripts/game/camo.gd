@@ -37,7 +37,7 @@ const PATTERNS := {
 	# Vietnam-era leaf pattern: smaller, leafier shapes, more green
 	"leaf": {"style": WOODLAND, "cols": ["8a9264", "3d5135", "6a5134", "1d1e19", "1d1e19"], "cover": [0.26, 0.36, 0.24, 0.14, 0.0], "scale": 7.0, "stretch": Vector3(1.0, 1.35, 1.0)},
 	# three-colour desert: wide pale strokes on sand, no black
-	"desert": {"style": WOODLAND, "cols": ["a99977", "8d8664", "76604c", "76604c", "76604c"], "cover": [0.45, 0.3, 0.25, 0.0, 0.0], "scale": 3.4, "stretch": Vector3(0.75, 1.4, 0.75)},
+	"desert": {"style": WOODLAND, "cols": ["9b8c6d", "847c5c", "6f5a47", "76604c", "76604c"], "cover": [0.45, 0.3, 0.25, 0.0, 0.0], "scale": 3.4, "stretch": Vector3(0.75, 1.4, 0.75)},
 	# five-colour fleck: clusters of dots that merge into blotches
 	"fleck": {"style": FLECK, "cols": ["7e7f5f", "38432e", "626f45", "5a4130", "1d1e19"], "cover": [0.3, 0.25, 0.2, 0.15, 0.1], "scale": 5.2, "stretch": Vector3(1.0, 1.0, 1.0)},
 	# woodland printed in square pixels
@@ -46,14 +46,14 @@ const PATTERNS := {
 	# tiger stripe: narrow green and black brush strokes across khaki
 	"tiger": {"style": TIGER, "cols": ["7a7550", "45502f", "1c1d18", "5a4c33", "1c1d18"], "cover": [0.36, 0.34, 0.22, 0.08, 0.0], "scale": 3.8, "stretch": Vector3(0.5, 2.6, 0.5)},
 	# rain: fine short vertical dashes over a grey-khaki ground
-	"rain": {"style": RAIN, "cols": ["868669", "6e715a", "3b4636", "3b4636", "3b4636"], "cover": [0.55, 0.3, 0.15, 0.0, 0.0], "scale": 3.0, "stretch": Vector3(1.0, 1.0, 1.0)},
+	"rain": {"style": RAIN, "cols": ["7a7a5f", "65684f", "3b4636", "3b4636", "3b4636"], "cover": [0.55, 0.3, 0.15, 0.0, 0.0], "scale": 3.0, "stretch": Vector3(1.0, 1.0, 1.0)},
 	# multi-terrain: a soft tan-to-green ground, brown shapes, thin dark
 	# branches and cream highlights
 	"multi": {"style": MULTI, "cols": ["9c8d68", "707350", "6a553e", "3a3127", "c0b18c"], "cover": [0.35, 0.3, 0.2, 0.08, 0.07], "scale": 3.6, "stretch": Vector3(1.0, 1.0, 1.0)},
 	# the Coalition's tonal slate: their sneaking suits' grey, broken up in
 	# shades of itself
-	"slate": {"style": MULTI, "cols": ["4f5659", "41474b", "33393c", "212527", "5f6669"], "cover": [0.36, 0.3, 0.2, 0.08, 0.06], "scale": 3.6, "stretch": Vector3(1.0, 1.0, 1.0)},
-	"slate_digital": {"style": DIGITAL, "cols": ["434a4d", "393f42", "2e3336", "232729", "232729"], "cover": [0.36, 0.3, 0.22, 0.12, 0.0], "scale": 5.5, "stretch": Vector3(1.0, 1.0, 1.0)},
+	"slate": {"style": MULTI, "cols": ["4e524d", "414540", "343833", "232622", "5d615a"], "cover": [0.36, 0.3, 0.2, 0.08, 0.06], "scale": 3.6, "stretch": Vector3(1.0, 1.0, 1.0)},
+	"slate_digital": {"style": DIGITAL, "cols": ["474a45", "3c3f3a", "30332f", "252724", "252724"], "cover": [0.36, 0.3, 0.22, 0.12, 0.0], "scale": 5.5, "stretch": Vector3(1.0, 1.0, 1.0)},
 }
 
 ## What the Rebels have on: surplus from everywhere, so each man's jacket
@@ -78,7 +78,7 @@ static func cloth_preset(name: String) -> Dictionary:
 	var cols: Array = p.cols
 	return {"pattern": Mats.CAMO, "camo_style": p.style, "col_a": Color(String(cols[0])), "col_b": Color(String(cols[1])),
 		"col_c": Color(String(cols[2])), "col_d": Color(String(cols[3])), "camo_e": Color(String(cols[4])), "camo_mean": mean(name),
-		"camo_stretch": p.stretch, "scale": p.scale, "rough": 0.9, "bump": 0.4, "grime": 0.35, "local_space": true}
+		"camo_stretch": p.stretch, "scale": p.scale, "rough": 0.9, "bump": 0.4, "grime": 0.55, "local_space": true}
 
 
 ## One pattern from a weighted list, or "" for plain cloth.
@@ -202,6 +202,8 @@ vec3 camo_print(vec3 p, vec3 w, float px) {
 		float dash = camo_f(q * vec3(9.0, 0.9, 9.0) + 21.0, w) + (camo_f(q * vec3(2.0, 2.4, 2.0) + 43.0, w) - 0.5) * 0.4;
 		c = mix(c, col_c, camo_cut(dash, 0.63) * keep(0.11, px));
 	}
+	// washed and worn in the field, a print loses some of its contrast
+	c = mix(camo_mean, c, 0.8);
 	return mix(camo_mean, c, keep(0.18, px));
 }
 
@@ -213,30 +215,51 @@ uniform vec3 paint_c : source_color = vec3(0.13, 0.13, 0.12);
 
 // The colour a painted surface is, given what it was (col, as tinted: its
 // relief and grime show through the paint) and the colour it was meant to
-// be (base), `above` metres above the ground. Big blotches several metres across, laid out in the world so
-// they run on round corners and up onto the roof; flaked off here and there.
-vec3 camo_paint(vec3 col, vec3 base, vec3 wp, vec3 wn, float above) {
+// be (base), `above` metres above the ground; r and m become the paint's
+// roughness and metalness. Field paint is sprayed on: blotches two or three
+// metres across with a soft, speckled overspray edge, laid out in the world
+// so they run on round corners and up onto the roof. Then the weather has
+// it: bleached where it faces the sky, streaked where rain runs off the
+// eaves, splashed with mud at the foot, chipped through here and there.
+vec3 camo_paint(vec3 col, vec3 base, vec3 wp, vec3 wn, float above, inout float r, inout float m) {
 	vec3 w = pow(abs(wn), vec3(4.0));
 	w /= max(w.x + w.y + w.z, 0.0001);
-	vec3 q = wp * vec3(0.24, 0.32, 0.24);
+	vec3 q = wp * 0.36;
 	vec2 wv = vec2(camo_f(q * 0.5 + 41.0, w), camo_f(q * 0.5 + 83.0, w)) - 0.5;
-	vec3 wq = q + vec3(wv.x, wv.y, wv.x);
+	vec3 wq = q + vec3(wv.x, wv.y, wv.x) * 0.9;
+	vec2 face = camo_face(wp, w);
+	float px = length(fwidth(wq));
+	// the spray gun's mist: a band a hand's width wide, speckled
+	float speck = (tnoise(face * 18.0) - 0.5) * 0.06 * keep(0.06, px * 3.0);
+	float soft = 0.02 + px * 0.6;
 	vec3 p = paint_a;
-	p = mix(p, paint_b, camo_cut(camo_f(wq, w), 0.5));
-	p = mix(p, paint_c, camo_cut(camo_f(wq * 1.2 + 31.0, w), 0.585));
+	p = mix(p, paint_b, smoothstep(0.5 - soft, 0.5 + soft, camo_f(wq, w) + speck));
+	p = mix(p, paint_c, smoothstep(0.59 - soft, 0.59 + soft, camo_f(wq * 1.25 + 31.0, w) + speck));
+	// one coat, unevenly: thinner and lighter in broad patches
+	p *= 0.93 + 0.14 * camo_n(face * 0.45 + 17.0);
 	float lb = max(dot(base, vec3(0.2126, 0.7152, 0.0722)), 0.01);
-	float shade = clamp(dot(col, vec3(0.2126, 0.7152, 0.0722)) / lb, 0.35, 1.5);
-	// what faces the sky has faded chalky in the sun
+	float shade = clamp(dot(col, vec3(0.2126, 0.7152, 0.0722)) / lb, 0.45, 1.35);
+	float vert = 1.0 - smoothstep(0.35, 0.75, abs(wn.y));
+	// what faces the sky has gone chalky in the sun
 	float up = smoothstep(0.3, 0.9, wn.y);
 	float pl = dot(p, vec3(0.2126, 0.7152, 0.0722));
-	p = mix(p, mix(p, vec3(pl), 0.6) * 1.12, up * 0.4);
-	// brushed or sprayed on in the field: uneven, thinner here and there
-	p *= 0.9 + 0.2 * camo_n(wp.xz * 0.9 + wp.y * 1.7 + 3.0);
-	// and worn through in small flakes, most of all low down where boots and
-	// barrows knock it
+	p = mix(p, mix(p, vec3(pl), 0.45) * 1.08, up * 0.5);
+	// rain off the roof runs down the walls in dark streaks, strongest
+	// near the top
+	float across = (abs(wn.x) > abs(wn.z)) ? wp.z : wp.x;
+	float streak = camo_n(vec2(across * 7.0, wp.y * 0.35 + 5.0)) * 0.7 + camo_n(vec2(across * 23.0, wp.y * 0.8)) * 0.3;
+	float runs = smoothstep(0.52, 0.78, streak) * vert * (0.55 + 0.45 * smoothstep(0.6, 3.0, above));
+	p *= 1.0 - runs * 0.22;
+	// mud splashed up the foot of the walls
+	float splash = 1.0 - smoothstep(0.05, 0.55, above + (camo_n(face * 3.5 + 7.0) - 0.5) * 0.45);
+	p = mix(p, vec3(0.2, 0.17, 0.13), splash * vert * 0.6);
+	// chipped through to what's underneath, sparsely, most of all low down
 	float low = 1.0 - smoothstep(0.2, 1.6, above);
-	float flake = camo_cut(camo_n(wp.xz * 4.3 + wp.y * 3.1 + 9.0) * 0.55 + camo_n(wp.zy * 9.0 + wp.x * 4.0) * 0.45, 0.735 - low * 0.05);
-	return mix(p * shade, col, flake * 0.6);
+	float chip = camo_cut(camo_n(face * 5.5 + 9.0) * 0.55 + camo_n(face * 13.0 + 2.0) * 0.45, 0.76 - low * 0.05) * keep(0.05, px);
+	vec3 bare = col * 0.6;
+	r = mix(0.84, r, chip);
+	m = mix(0.0, m, chip);
+	return mix(p * shade, bare, chip);
 }
 """
 
@@ -250,8 +273,8 @@ const PAINTABLE := ["timber", "corrugated", "roof_sheet", "precast", "steel", "m
 ## Paint schemes by side: the Coalition's green, brown and black; the Rebels'
 ## sand, earth and olive.
 const SCHEMES := [
-	[Color("4c5440"), Color("5a4e3e"), Color("2a2a25")],
-	[Color("9c8e70"), Color("6c5b47"), Color("5c5d48")],
+	[Color("4f523c"), Color("5e503d"), Color("2c2d28")],
+	[Color("958870"), Color("6d5d49"), Color("5e5d49")],
 ]
 
 
@@ -278,7 +301,7 @@ static func paint_preset(kind: String, base: Dictionary) -> Dictionary:
 ## Camouflage nets' garnish, by side: the Coalition's woodland (green, dark
 ## green, brown, near-black), the Rebels' desert (sand, earth, khaki, pale).
 const NETS := [
-	[Color("4a5432"), Color("333b25"), Color("54452f"), Color("1d1e18")],
+	[Color("4b5035"), Color("363b28"), Color("54462f"), Color("23241e")],
 	[Color("5c513d"), Color("4a3e2e"), Color("464432"), Color("6d634d")],
 ]
 

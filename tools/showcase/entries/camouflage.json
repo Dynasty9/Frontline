@@ -11,17 +11,17 @@
   "sources": [
     {
       "file": "changelog/unreleased/camouflage/soldiers.jpg",
-      "sha256": "27dce59a481c2756010926b07572eca6e8c475a9237b3853688990b140b0c3da",
+      "sha256": "c6a1ae944f5f24a189a349fef59e1946f48d4d454fa663cbb9c068e46068c558",
       "caption": "Six Rebel fighters, same seeds, before and after."
     },
     {
       "file": "changelog/unreleased/camouflage/base.jpg",
-      "sha256": "4a08c5db40a2203f04d41b660f6392e0718712bbd002ae1c58d72b1441af213c",
+      "sha256": "de39f8f6930f10da78a621be406b112a5b919b4865a1f8cd1822520c08f088fd",
       "caption": "The showroom's Coalition base, same camera, before and after."
     },
     {
       "file": "changelog/unreleased/camouflage/nets.jpg",
-      "sha256": "3bff6a4aaf9042781a3e2239bd51a2264855ec4f6a99eb9dd84cb085acfa52d0",
+      "sha256": "cc174445ecb70925216bd4cd53b72f73cf77671c56c0b01fafdf7ca7172745b5",
       "caption": "The Coalition FOB's net and a Rebel camouflage net, before and after."
     }
   ],
