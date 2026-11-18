@@ -1,11 +1,19 @@
 extends SceneTree
 ## Native generated-world review: matched views, one map build, simulation held at two seconds.
+## --capture-defer-draw avoids drawing the default camera during map generation.
+## --capture-clip=all (or comma-separated view names) records selected views; --capture-frames sets length.
+## --capture-light-sweep animates the road track-light view, with sky/exposure held.
+## --capture-no-light-shadows isolates material response; label that take as a lighting fixture.
+## Use --fixed-fps to define playback timing. Capture is separate from benchmarking.
 
 func _initialize() -> void:
 	call_deferred("capture")
 
 func capture() -> void:
 	var source_hashes := _source_hashes()
+	var defer_draw := "--capture-defer-draw" in OS.get_cmdline_user_args()
+	if defer_draw:
+		RenderingServer.set_render_loop_enabled(false)
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
 	current_scene = game
@@ -19,10 +27,14 @@ func capture() -> void:
 		world.director.active = false
 	var prefix := "build/terrain/environment-views"
 	var clip := ""
+	var clip_frames := 180
+	var light_sweep := "--capture-light-sweep" in OS.get_cmdline_user_args()
 	var capture_views := PackedStringArray()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-views="):
 			capture_views = arg.get_slice("=", 1).split(",")
+		if arg.begins_with("--capture-frames="):
+			clip_frames = maxi(2, int(arg.get_slice("=", 1)))
 		if arg.begins_with("--capture-clip="):
 			clip = arg.get_slice("=", 1)
 		if arg.begins_with("--capture-prefix="):
@@ -179,6 +191,8 @@ func capture() -> void:
 			quit(1)
 			return
 		views.append(["track", track, 14.0, -60.0, 0.2])
+		views.append(["track-command", track, 50.0, -50.0, 0.2])
+		views.append(["track-light", track, 14.0, -60.0, 0.2])
 		for piece: Array in world.decor:
 			if piece[0] == "drive" and piece[3] is Vector3 and piece[3].x > 2.5 and piece[3].z > 3.0:
 				views.append(["driveway", piece[1], 12.0, -65.0, float(piece[2]) + PI + 0.4])
@@ -313,6 +327,8 @@ func capture() -> void:
 		if view.size() > 5:
 			get_root().get_node("Settings").v.mountain_clouds = view[5]
 			world.atmo.mountain_clouds.apply_settings(world.atmo)
+		if defer_draw:
+			RenderingServer.set_render_loop_enabled(false)
 		world.cam.cam.rotation = Vector3.ZERO
 		world.cam.dist = view[2]
 		world.cam.target_dist = view[2]
@@ -359,6 +375,15 @@ func capture() -> void:
 		if world.atmo.mood == "rain":
 			world.atmo._bolt_t = 100.0
 			world.atmo._flash = 0.0
+		if defer_draw:
+			# Build every newly visible scenery batch before paying for software-rendered warm-up frames.
+			for frame in 2:
+				await process_frame
+			while world.structure_view != null and world.structure_view.warming():
+				await process_frame
+			RenderingServer.set_render_loop_enabled(true)
+		if "--capture-fast" in OS.get_cmdline_user_args():
+			settle_frames = 12
 		for frame in (60 if String(view[0]).begins_with("detail-") else settle_frames):
 			await process_frame
 		while world.structure_view != null and world.structure_view.warming():
@@ -394,13 +419,20 @@ func capture() -> void:
 		await RenderingServer.frame_post_draw
 		var filename: String = prefix + "-" + view[0] + ".png"
 		assert(root.get_texture().get_image().save_png(filename) == OK)
-		if clip == view[0]:
-			# Launch with --fixed-fps 30; Godot consumes that switch before exposing arguments.
-			var frames := prefix + "-" + clip + "-frames"
+		if String(view[0]) in clip.split(",") or clip == "all":
+			# Launch with an explicit --fixed-fps; Godot consumes it before exposing arguments.
+			var frames := prefix + "-" + String(view[0]) + "-frames"
 			assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
-			for frame in 180:
-				if "--capture-set=fortifications" in OS.get_cmdline_user_args():
-					world.cam.yaw = float(view[4]) + 0.18 * sin(float(frame) * TAU / 180.0)
+			for frame in clip_frames:
+				if light_sweep and String(view[0]).ends_with("-light"):
+					# Hold the sky/exposure while testing the same surface from opposing light directions.
+					world.atmo.set_process(false)
+					if "--capture-no-light-shadows" in OS.get_cmdline_user_args():
+						world.atmo.sun.shadow_enabled = false
+					var phase := (1.0 - cos(TAU * float(frame) / float(clip_frames - 1))) * 0.5
+					world.atmo.sun.rotation_degrees = Vector3(-12.0, lerpf(45.0, 225.0, phase), 0)
+				if "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-orbit" in OS.get_cmdline_user_args():
+					world.cam.yaw = float(view[4]) + 0.18 * sin(float(frame) * TAU / float(clip_frames))
 					world.cam._apply()
 				await process_frame
 				await RenderingServer.frame_post_draw
@@ -410,7 +442,7 @@ func capture() -> void:
 	assert(source_hashes == _source_hashes(), "Capture source changed during rendering; discard this take")
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
 	assert(output != null)
-	output.store_string(JSON.stringify({"seed": world.settings.get("seed", 1), "mood": world.atmo.mood, "renderer": RenderingServer.get_current_rendering_method(), "resolution": root.size, "source_sha256": source_hashes, "views": records}, "\t"))
+	output.store_string(JSON.stringify({"light_sweep": light_sweep, "directional_shadows_disabled": "--capture-no-light-shadows" in OS.get_cmdline_user_args(), "seed": world.settings.get("seed", 1), "mood": world.atmo.mood, "renderer": RenderingServer.get_current_rendering_method(), "resolution": root.size, "source_sha256": source_hashes, "views": records}, "\t"))
 	quit()
 
 

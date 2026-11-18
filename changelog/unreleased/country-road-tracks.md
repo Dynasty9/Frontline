@@ -6,6 +6,15 @@ kind = "improved"
 [[screenshots]]
 file = "comparison.jpg"
 caption = "A country road from afar and close up, the edge of town and a town street, from the same cameras before and after"
+[[videos]]
+file = "motion-comparison.webm"
+poster = "motion-comparison.jpg"
+caption = "Before 5656124 (left) and current f14770c (right), same track and command camera. Native world, simulation held; Low Compatibility on llvmpipe software."
+
+[[videos]]
+file = "rut-lighting.webm"
+poster = "rut-lighting.jpg"
+caption = "Current native material-lighting fixture: opposing grazing light with directional shadows disabled, fixed sky and exposure. Low Compatibility on llvmpipe; not combat or performance evidence."
 +++
 
 - **Drawn by the ground itself**: gravel roads and supply tracks are part of the terrain now, lit and shaded like the meadow round them, so they sit in the land instead of on top of it.
