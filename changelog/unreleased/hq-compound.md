@@ -3,6 +3,11 @@ title = "Each side's HQ is a compound, not three boxes"
 summary = "A side's HQ is two shipping containers either side of a yard under a camouflage net, a sandbagged command post behind them, and posts and chain with a barrier at the gate."
 kind = "improved"
 
+[[videos]]
+file = "command-and-orbit.webm"
+poster = "command-and-orbit.jpg"
+caption = "The HQ entry and yard net in the offline showroom, before and after; command view then close orbit."
+
 [[screenshots]]
 file = "comparison.jpg"
 caption = "The Coalition's HQ in the map, and both sides' HQs, before and after"

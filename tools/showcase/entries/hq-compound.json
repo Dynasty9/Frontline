@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/hq-compound.md",
   "summary": "Each side's HQ built as a compound: containers, a sandbagged command post, a yard under a net.",
-  "medium": "still",
-  "stage": "tools/showcase/building-surfaces.tscn (depot:0, depot:1); tests/fixtures/environment-views.gd (town: hq)",
-  "rationale": "Appearance change: the HQ in the map at the game's own camera, and both sides' HQs in the studio from the same cameras.",
+  "medium": "motion",
+  "stage": "tools/showcase/building-surfaces.tscn (depot:0, depot:1); tests/fixtures/environment-views.gd (town: hq); tools/showcase/environment-art-review.tscn",
+  "rationale": "Matched stock in-world command view and close orbit expose the visual delta and ground joins. Existing still evidence is preserved for broader coverage.",
   "source_ref": "104f8e2f32801a991aac6ffd08395b32e7e76b47",
   "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
   "sources": [
@@ -14,7 +14,21 @@
     {
       "file": "changelog/unreleased/hq-compound/capture.json",
       "sha256": "cfd8306bfa817bd931cb4304e7e38ceac60be6e86f5c32b7a1a9377c1c82cd14"
+    },
+    {
+      "file": "changelog/unreleased/hq-compound/command-and-orbit.webm",
+      "sha256": "e79f4f816daa6965ad2cfe18f9206d90886ee583dc5ea9a150f46b001fd3d81d"
+    },
+    {
+      "file": "changelog/unreleased/hq-compound/command-and-orbit.jpg",
+      "sha256": "3c7d740cf9a7aacc78381d7f01ab5728694ed06a1ba0d589ef4428e901a13a3d"
+    },
+    {
+      "file": "changelog/unreleased/hq-compound/motion-capture.json",
+      "sha256": "ba80d55000846264c6086d799e34f15451bfc503e3ade78a9117d5538f493734"
     }
   ],
-  "output": null
+  "output": null,
+  "motion_before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "motion_source_ref": "e9cee5838320244709208faa4e5bada68c41fa0e"
 }
