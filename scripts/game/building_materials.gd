@@ -26,7 +26,7 @@ const PROFILES := {
 		"trim": "concrete", "sill": "concrete", "head": "concrete", "base": "concrete", "base_tone": -0.12, "cap": "concrete"},
 	"precast": {"surface": "precast", "color": Color(0.56, 0.55, 0.52), "finish": "panels", "joints": 2.0,
 		"trim": "precast", "sill": "precast", "head": "precast", "base": "precast", "base_tone": -0.1, "cap": "precast"},
-	"church": {"surface": "stone", "color": Color(0.62, 0.59, 0.53), "finish": "stone",
+	"church": {"surface": "church_stone", "color": Color(0.62, 0.59, 0.53), "finish": "stone",
 		"trim": "stone", "sill": "stone", "head": "stone", "base": "stone", "base_tone": -0.2, "cap": "stone",
 		"trim_color": Color(0.74, 0.7, 0.62)},
 	"timber": {"surface": "wood_painted", "color": Color(0.3, 0.34, 0.22), "finish": "boards", "boards": 0.24,

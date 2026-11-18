@@ -1178,15 +1178,15 @@ func _church_model(rng: RandomNumberGenerator) -> void:
 	# ringing chamber's floor over it
 	var pw := hw - wt - dw * 0.5
 	for sx: float in [-1.0, 1.0]:
-		k.box(Vector3(wt, st, tw), Vector3(sx * (hw - wt * 0.5), st * 0.5, 0), "stone", wall)
-		k.box(Vector3(pw, st, wt), Vector3(sx * (dw * 0.5 + pw * 0.5), st * 0.5, -hw + wt * 0.5), "stone", wall)
-	k.box(Vector3(dw, st - CHURCH_DOOR_H, wt), Vector3(0, (st + CHURCH_DOOR_H) * 0.5, -hw + wt * 0.5), "stone", wall)
+		k.box(Vector3(wt, st, tw), Vector3(sx * (hw - wt * 0.5), st * 0.5, 0), "church_stone", wall)
+		k.box(Vector3(pw, st, wt), Vector3(sx * (dw * 0.5 + pw * 0.5), st * 0.5, -hw + wt * 0.5), "church_stone", wall)
+	k.box(Vector3(dw, st - CHURCH_DOOR_H, wt), Vector3(0, (st + CHURCH_DOOR_H) * 0.5, -hw + wt * 0.5), "church_stone", wall)
 	k.plate(Vector3(tw - wt * 2.0, 0.05, tw - wt), Vector3(0, 0.03, wt * 0.5), "stone", dress.darkened(0.3))
 	k.plate(Vector3(tw - wt * 2.0, 0.04, tw - wt), Vector3(0, st - 0.02, wt * 0.5), "wood_dark", Color(0.2, 0.14, 0.09))
 	k.plate(Vector3(0.05, st - 0.2, tw - wt - 0.1), Vector3(hw - wt - 0.02, st * 0.5, wt * 0.5), "plaster", Color(0.84, 0.82, 0.76))
 	k.plate(Vector3(0.05, st - 0.2, tw - wt - 0.1), Vector3(-hw + wt + 0.02, st * 0.5, wt * 0.5), "plaster", Color(0.84, 0.82, 0.76))
 	# above it, solid to the battlements
-	k.box(Vector3(tw, th - st, tw), Vector3(0, st + (th - st) * 0.5, 0), "stone", wall)
+	k.box(Vector3(tw, th - st, tw), Vector3(0, st + (th - st) * 0.5, 0), "church_stone", wall)
 	# the plinth and its weathering, open across the doorway; string courses
 	_church_course(k, tw, -0.3, 1.3, 0.15, dw, dress.darkened(0.2))
 	_church_course(k, tw, 0.25, 0.5, 0.07, dw, dress.darkened(0.12))
@@ -1459,7 +1459,7 @@ func _church_roof(rng: RandomNumberGenerator, ci: int) -> void:
 		var wk := k.at_point(Vector3(p.x, 0, p.y), Vector3(0, e[1], 0))
 		# (the nave's ends are drawn whole, below)
 		if chancel or absf(sin(float(e[1]))) > 0.5:
-			wk.box(Vector3(len, h - 3.0, 0.4), Vector3(0, 3.0 + (h - 3.0) * 0.5, 0), "stone", wall)
+			wk.box(Vector3(len, h - 3.0, 0.4), Vector3(0, 3.0 + (h - 3.0) * 0.5, 0), "church_stone", wall)
 			wk.box(Vector3(len, 0.14, 0.1), Vector3(0, 3.0, 0.23), "stone", CHURCH_DRESS)
 		if int(e[3]) == 1:
 			var fk := wk.at_point(Vector3(0, 0, 0.2))
@@ -1474,7 +1474,7 @@ func _church_roof(rng: RandomNumberGenerator, ci: int) -> void:
 	# against the tower
 	if not chancel:
 		for ez: float in [-1.0, 1.0]:
-			k.box(Vector3(W - 0.4, h - 3.0, 0.4), Vector3(0, 3.0 + (h - 3.0) * 0.5, ez * L * 0.5), "stone", wall)
+			k.box(Vector3(W - 0.4, h - 3.0, 0.4), Vector3(0, 3.0 + (h - 3.0) * 0.5, ez * L * 0.5), "church_stone", wall)
 			k.box(Vector3(W - 0.4, 0.14, 0.1), Vector3(0, 3.0, ez * (L * 0.5 + 0.23)), "stone", CHURCH_DRESS)
 		# stepped buttresses between the bays
 		var segs := maxi(1, int(round(L / 2.8)))
@@ -1587,7 +1587,7 @@ func _church_floor(rng: RandomNumberGenerator) -> void:
 	if nave:
 		var aisle := 1.4
 		var pew := (size.x - 0.8 - aisle) * 0.5 - 0.1
-		k.plate(Vector3(0.9, 0.006, size.z - 1.2), Vector3(0, top + 0.004, 0.2), "canvas", Color(0.42, 0.1, 0.09))
+		k.plate(Vector3(0.9, 0.006, size.z - 1.2), Vector3(0, top + 0.004, 0.2), "canvas", Color(0.3, 0.08, 0.07))
 		var pz := -size.z * 0.5 + 3.4
 		while pz < size.z * 0.5 - 2.2:
 			for side: float in [-1.0, 1.0]:
@@ -1838,6 +1838,19 @@ static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, s
 	st.remove_child(m)
 	st.free()
 	return m
+
+
+## A structure's parts (cover, collision, pathing) on their own, without a
+## world or a model (for the tests).
+static func preview_parts(kind: String, sz: Vector3, v := 0) -> Array:
+	var st := Structure.new()
+	st.skind = kind
+	st.variant = v
+	st.size = sz
+	st._define_parts()
+	var out: Array = st.parts.duplicate(true)
+	st.free()
+	return out
 
 
 ## A tree. Its id decides the look, so every peer builds the same one and

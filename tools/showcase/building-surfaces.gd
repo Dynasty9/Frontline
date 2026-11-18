@@ -507,7 +507,8 @@ func _yard(root: Node3D, w: float, d: float) -> void:
 
 
 ## The parish church as MapGen._church lays it out (its tower to -z): the
-## tower, then the nave and the chancel, each a floor, its walls and its roof.
+## tower, then the nave and the chancel, each a floor, its walls and its roof,
+## and the south porch's dwarf walls.
 func _church(roofed := true) -> Node3D:
 	var root := Node3D.new()
 	var script: Script = load("res://scripts/game/structure.gd")
@@ -534,6 +535,15 @@ func _church(roofed := true) -> Node3D:
 			wall.position = bc + Vector3(p.x, 0, p.y)
 			wall.rotation.y = e[1]
 			root.add_child(wall)
+			var porch: Array = script.call("church_porch", e)
+			if not porch.is_empty():
+				var pd: Vector2 = consts["CHURCH_PORCH"]
+				for sx: float in [-1.0, 1.0]:
+					var q: Vector2 = porch[0]
+					var dwarf := Structure.preview_model("low_wall", -1, 0, Vector3(pd.y, 0.9, 0.5), false, id + 90 + int(sx))
+					dwarf.position = bc + Vector3(q.x, 0, q.y) + Basis(Vector3.UP, float(porch[1])) * Vector3(sx * (pd.x * 0.5 - 0.25), 0, 0)
+					dwarf.rotation.y = float(porch[1]) + PI * 0.5
+					root.add_child(dwarf)
 		if roofed:
 			var roof := Structure.preview_model("roof", -1, ci * 2, Vector3(body[1], body[3], body[2]), false, id + 50)
 			roof.position = bc
