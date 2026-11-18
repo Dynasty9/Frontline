@@ -635,7 +635,8 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	for sx in [-0.16, 0.16]:
 		# receivers, then each barrel from its jacket to the slotted flash hider
 		VehicleMounts.receiver(k, el, Vector3(0.14, 0.2, 1.05), Vector3(sx, 0.02, 0.05), gm)
-		VehicleWeapons.autocannon(k, el, Vector3(sx, 0.04, -0.46), Vector3(sx, 0.04, -2.7), Vector2(0.06, 0.4), Vector2(0.032, 0.036), Vector2(0.05, 0.3), gm)
+		VehicleWeapons.autocannon(k, el, Vector3(sx, 0.04, -0.46), Vector3(sx, 0.04, -2.7), Vector2(0.06, 0.4), Vector2(0.032, 0.03), Vector2(0.03, 0.001), gm)
+		VehicleWeapons.cone_hider(k, el, Vector3(sx, 0.04, -2.7), 0.03, 0.05, 0.27)
 		# the box magazine on the gun's outer side
 		var ox: float = signf(sx) * 0.37
 		_bx(k, el, Vector3(0.2, 0.36, 0.52), Vector3(ox, 0.08, 0.05), cm, col.darkened(0.08))
@@ -644,7 +645,7 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	_bx(k, el, Vector3(0.5, 0.12, 0.3), Vector3(0, -0.06, -0.2), cm, col)
 	_bx(k, el, Vector3(0.12, 0.34, 0.14), Vector3(-0.08, 0.3, 0.12), gm)
 	VehicleMounts.sight(k, el, Vector3(-0.08, 0.5, 0.1), Vector3(0.24, 0.16, 0.2), [Rect2(Vector2.ZERO, Vector2(0.16, 0.1))], gm)
-	k.mg_tip = k._tip(el, Vector3(0, 0.04, -2.72))
+	k.mg_tip = k._tip(el, Vector3(0, 0.04, -2.74))  # (the hiders' mouths)
 	# two seats with backrests behind the guns, each on its post, handwheels
 	# in front of them
 	for sx in [-1.0, 1.0]:

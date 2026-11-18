@@ -1402,6 +1402,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.07, 0.07, 0.07), "rough": 0.85, "bump": 0.3, "grime": 0.4}
 		"glass":
 			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0}
+		"armor_glass":
+			# ballistic glass: laminated blocks a hand thick, green-dark through
+			# their depth, scuffed and filmed with dust out in the field
+			return {"pattern": PLAIN, "col_a": Color(0.05, 0.075, 0.065), "rough": 0.16, "metal": 0.0, "bump": 0.0, "grime": 0.0}
 		"window_lit":
 			# the same glass with a lamp on in the room behind it (see `lit`)
 			# (a room lamp seen through glass and curtains: warm, and at its

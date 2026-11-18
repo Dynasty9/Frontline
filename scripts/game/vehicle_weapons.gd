@@ -44,6 +44,18 @@ static func _bore(k: VehicleModels, m: Node3D, z: float, radius: float, at := Ve
 	VehicleBody.cylinder(k, m, radius, radius, 0.004, Vector3(at.x, at.y, z - 0.0015), X90, "burnt", Color(0.018, 0.019, 0.018), 12, false, false, true)
 
 
+## A conical flash hider on a barrel's end (the ZU-23's 2A14 and its kin),
+## flaring forward over `length` from the barrel's `radius` to `mouth` and
+## standing a little proud of the barrel's end at `muzzle` (in `m`'s space,
+## the gun along -Z): a lip round its open mouth, the bore dark inside it.
+static func cone_hider(k: VehicleModels, m: Node3D, muzzle: Vector3, radius: float, mouth: float, length: float, mat := "gunmetal_w") -> void:
+	mat = _steel(mat)
+	var front := muzzle.z - length * 0.12
+	VehicleBody.cylinder(k, m, radius * 1.1, mouth, length, Vector3(muzzle.x, muzzle.y, front + length * 0.5), X90, mat, null, 12)
+	VehicleBody.cylinder(k, m, mouth * 1.05, mouth * 1.05, length * 0.06, Vector3(muzzle.x, muzzle.y, front + length * 0.03), X90, mat, null, 12, false)
+	_bore(k, m, front, mouth * 0.8, Vector2(muzzle.x, muzzle.y))
+
+
 ## The barrel's crown standing in a brake's front face: the worn metal lip the
 ## bore is cut through, as the barrel builder draws it, so a closed brake face
 ## still reads as an open muzzle from the camera.
@@ -154,10 +166,18 @@ static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	k._box(m, Vector3(0.02, 0.05, 0.03) * s, Vector3(0, 0.15, 0.18) * s, mat, null, Vector3.ZERO, false)
 	k._box(m, Vector3(0.15, 0.16, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
 	if grips:
+		# The spade grips: each a loop off the back plate like a spade's handle,
+		# an arm out at its top and its foot and the grip between them,
+		# swelling to the palm and leaning out a little; the butterfly trigger
+		# between them, where both thumbs fall.
 		for side: float in [-1.0, 1.0]:
-			VehicleBody.rod(k, m, Vector3(side * 0.05, 0.03, 0.335) * s, Vector3(side * 0.075, 0.03, 0.39) * s, 0.012 * s, mat, null, 6, false, -1.0, false, false)
-			VehicleBody.cylinder(k, m, 0.02 * s, 0.02 * s, 0.14 * s, Vector3(side * 0.075, 0.03, 0.4) * s, Vector3.ZERO, "rubber", null, 6, false)
-		k._box(m, Vector3(0.07, 0.025, 0.02) * s, Vector3(0, 0.03, 0.37) * s, mat, null, Vector3.ZERO, false)
+			var top := Vector3(side * 0.08, 0.095, 0.4) * s
+			var foot := Vector3(side * 0.07, -0.035, 0.4) * s
+			for arm: Array in [[Vector3(side * 0.045, 0.075, 0.335), top], [Vector3(side * 0.045, -0.035, 0.335), foot]]:
+				VehicleBody.rod(k, m, (arm[0] as Vector3) * s, arm[1], 0.011 * s, mat, null, 6, false, -1.0, false, false)
+			VehicleBody.rod(k, m, foot, top, 0.017 * s, "rubber", null, 8, false, 0.019 * s)
+			k._add(m, Res.sphere(0.018 * s, 8), "rubber", null, top, Vector3.ZERO, Vector3(1.0, 0.6, 1.0), false)
+		k._add(m, BevelMesh.make(Vector3(0.075, 0.032, 0.012) * s, 0.004 * s), mat, null, Vector3(0, 0.035, 0.375) * s, Vector3(-0.35, 0, 0), Vector3.ONE, false)
 	# The perforated barrel support, its carrying handle, the barrel and hider.
 	var jacket := -0.31 * s
 	var jacket_end := maxf(-0.57 * s, -length + 0.2 * s)

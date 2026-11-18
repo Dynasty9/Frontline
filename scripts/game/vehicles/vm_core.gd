@@ -1338,13 +1338,14 @@ static func _zu23(k: VehicleModels, team: int) -> void:
 		var gx: float = s * 0.17
 		_bx(k, el, Vector3(0.15, 0.22, 0.82), Vector3(gx, 0.0, 0.05), "paint", g)
 		_bx(k, el, Vector3(0.12, 0.06, 0.5), Vector3(gx, 0.13, 0.0), "gunmetal_w")
-		VehicleWeapons.autocannon(k, el, Vector3(gx, 0.02, -0.325), Vector3(gx, 0.02, -2.62), Vector2(0.048, 0.55), Vector2(0.03, 0.026), Vector2(0.05, 0.24), "gunmetal_w", null, 1)
+		VehicleWeapons.autocannon(k, el, Vector3(gx, 0.02, -0.325), Vector3(gx, 0.02, -2.62), Vector2(0.048, 0.55), Vector2(0.03, 0.026), Vector2(0.026, 0.001), "gunmetal_w", null, 1)
+		VehicleWeapons.cone_hider(k, el, Vector3(gx, 0.02, -2.62), 0.026, 0.048, 0.26)
 		# the ammunition box outboard of each gun, the spent-case chute under it
 		_bx(k, el, Vector3(0.17, 0.3, 0.56), Vector3(s * 0.38, 0.02, 0.1), "paint", g.darkened(0.08))
 		_bx(k, el, Vector3(0.18, 0.03, 0.58), Vector3(s * 0.38, 0.18, 0.1), "paint", g.darkened(0.2))
 		_bx(k, el, Vector3(0.1, 0.16, 0.2), Vector3(gx, -0.18, 0.15), "gunmetal_w")
 	_bx(k, el, Vector3(0.22, 0.1, 0.4), Vector3(0, -0.05, -0.2), "paint", g)
-	k.mg_tip = k._tip(el, Vector3(0, 0.02, -2.63))
+	k.mg_tip = k._tip(el, Vector3(0, 0.02, -2.66))  # (the hiders' mouths)
 	# the gunner's seat and his sight on the left, the hand wheels, the second
 	# seat on the right
 	_bx(k, t, Vector3(0.05, 0.4, 0.06), Vector3(-0.3, 0.75, -0.3), "gunmetal_w")
@@ -1614,8 +1615,19 @@ static func _shield_face(k: VehicleModels, t: Node3D, yaw: float, apothem: float
 		var c := h.get_center()
 		if not bool(glass[n]):
 			continue
+		# The ballistic block is bigger than the hole and clamped to the
+		# plate's inside, so from outside it sits deep in the opening, behind
+		# the plate's cut edge and the frame; inside, a retaining frame holds
+		# it round its face.
+		var block := 0.055
+		var back := thick * 0.5 + block * 0.5
 		if not k.burnt:
-			k._box(p, Vector3(h.size.x, h.size.y, thick + 0.03), Vector3(c.x, c.y, 0.012), "glass", ARMOR_GLASS, Vector3.ZERO, false)
+			k._box(p, Vector3(h.size.x + 0.04, h.size.y + 0.04, block), Vector3(c.x, c.y, back), "armor_glass", null, Vector3.ZERO, false)
+		var inner := thick * 0.5 + block + 0.004
+		for y: float in [h.position.y - 0.006, h.end.y + 0.006]:
+			k._box(p, Vector3(h.size.x + 0.052, 0.026, 0.008), Vector3(c.x, y, inner), mat, null, Vector3.ZERO, false)
+		for x: float in [h.position.x - 0.006, h.end.x + 0.006]:
+			k._box(p, Vector3(0.026, h.size.y - 0.014, 0.008), Vector3(x, c.y, inner), mat, null, Vector3.ZERO, false)
 		# the frame round it on the outside, a bolt at each corner
 		var f := 0.024
 		for y: float in [h.position.y - f * 0.5, h.end.y + f * 0.5]:

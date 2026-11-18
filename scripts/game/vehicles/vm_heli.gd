@@ -585,8 +585,18 @@ static func _gear(k: VehicleModels, p: Node3D, top: Vector3, axle: Vector3, r: f
 static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door := false) -> Vector3:
 	# (on a pivot of its own at the housing: whoever lays it swings it whole)
 	var g := k._pivot(p, pos)
-	k._box(g, Vector3(0.15, 0.17, 0.34), Vector3(0, 0, 0.1), VehicleWeapons.STEEL)
-	k._cyl(g, 0.04, 0.04, 0.16, Vector3(0.09, 0.07, 0.12), Vector3(PI / 2, 0, 0), "metal_dark", null, 8, false)
+	# the housing, a drum round the rotor with the bearing collar at its
+	# face; the feeder-delinker on its left, which strips the rounds from the
+	# belt; the drive motor along its right; the control box under it
+	var x90 := Vector3(PI / 2, 0, 0)
+	k._cyl(g, 0.07, 0.07, 0.32, Vector3(0, 0, 0.1), x90, VehicleWeapons.STEEL, null, 14)
+	k._cyl(g, 0.078, 0.078, 0.035, Vector3(0, 0, -0.065), x90, "metal_dark", null, 14)
+	k._cyl(g, 0.074, 0.074, 0.02, Vector3(0, 0, 0.26), x90, "metal_dark", null, 14, false)
+	k._add(g, BevelMesh.make(Vector3(0.085, 0.12, 0.18), 0.008), VehicleWeapons.STEEL, null, Vector3(-0.1, -0.01, 0.1))
+	k._box(g, Vector3(0.012, 0.07, 0.11), Vector3(-0.146, -0.01, 0.1), "metal_dark", null, Vector3.ZERO, false)
+	k._cyl(g, 0.036, 0.036, 0.19, Vector3(0.09, 0.05, 0.12), x90, "metal_dark", null, 10)
+	k._cyl(g, 0.03, 0.03, 0.02, Vector3(0.09, 0.05, 0.225), x90, VehicleWeapons.STEEL, null, 10, false)
+	k._add(g, BevelMesh.make(Vector3(0.1, 0.05, 0.12), 0.006), VehicleWeapons.STEEL, null, Vector3(0.0, -0.085, 0.16))
 	# the six barrels from the rotor at the housing's face, clamped past
 	# mid-length and just behind the muzzles
 	VehicleWeapons.rotary(k, g, Vector3(0, 0, -0.1), Vector3(0, 0, -0.1 - ln), 6, 0.042, 0.013, [0.62, 1.0 - 0.03 / ln])
@@ -599,7 +609,15 @@ static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door
 			_tube(k, g, Vector3(side * 0.05, 0.0, 0.27), Vector3(side * 0.1, 0.0, 0.34), 0.012, VehicleWeapons.STEEL, null, 6)
 			k._cyl(g, 0.02, 0.02, 0.15, Vector3(side * 0.1, 0.0, 0.35), Vector3.ZERO, "rubber", null, 6, false)
 		k._box(g, Vector3(0.08, 0.03, 0.025), Vector3(0, 0.02, 0.33), "metal_dark", null, Vector3.ZERO, false)
-		_path(k, g, [Vector3(-0.08, -0.02, 0.05), Vector3(-0.13, -0.12, 0.12), Vector3(-0.12, -0.32, 0.22), Vector3(-0.05, -0.5, 0.3)], 0.035, "rubber", null, 6)
+		# the chute out of the feeder's foot, ribbed where its links hinge,
+		# dropping away to the ammunition box on the cabin floor
+		var chute: Array[Vector3] = [Vector3(-0.1, -0.07, 0.1), Vector3(-0.13, -0.18, 0.14), Vector3(-0.12, -0.36, 0.22), Vector3(-0.06, -0.52, 0.3)]
+		_path(k, g, chute, 0.034, "metal_dark", null, 8)
+		for i in 3:
+			var a := chute[i]
+			var b := chute[i + 1]
+			for f: float in [0.3, 0.75]:
+				k._add(g, Res.torus(0.03, 0.041), "metal_dark", null, a.lerp(b, f), VehicleFrames.aim(b - a).get_euler(), Vector3.ONE, false)
 		hands = [Vector3(0.1, 0.0, 0.35), Vector3(-0.1, 0.0, 0.35)]
 	k.gun_assembly(g, Vector3(0, 0, -0.12 - ln), hands)
 	return pos + Vector3(0, 0, -0.12 - ln)

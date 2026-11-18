@@ -729,7 +729,7 @@ func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Ve
 		k = "abrams_scorched" if kind in ["abrams_olive", "abrams_sand"] else "burnt"
 	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
-	if burnt and kind in ["glass", "headlamp", "signal_lens"]:
+	if burnt and kind in ["glass", "armor_glass", "headlamp", "signal_lens"]:
 		# A burnt-out vehicle's windows and lamps have cracked out in the heat:
 		# what's left is a sooty empty frame, not rusted steel (the char shader
 		# leaves anything this dark black with soot).
