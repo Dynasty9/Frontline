@@ -1410,9 +1410,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   uncovered ground never trail a ghost; then an edge-aware blur and a joint bilateral upsample (Kopf et al. 2007)
   keep it off the wrong side of an edge. Forward+ keeps no albedo buffer, so each surface's colour is estimated
   from its pixel against the sky light it gets (exact in shade, where bounce light shows; capped in sun). Where
-  ambient occlusion or a cast shadow has darkened a pixel, that estimate would darken the bounce a second time, so a
-  receiver's colour is held to at least a quarter's reflectance in its own hue: contact shadows lift instead of
-  staying black. A pixel brighter than the sky light alone could make it is taken to be in the sun and its colour is
+  ambient occlusion has darkened a pixel, that estimate would darken the bounce a second time, so a wall's or a
+  room's colour is held to at least a quarter's reflectance in its own hue: contact shadows lift instead of staying
+  black. Not level ground's, or a man's or a vehicle's: a cast shadow there is lit by the shade's light alone, so the
+  estimate is right, and held up to a quarter the dark grass and near-black gear of a squad took several times their
+  own share and lifted grey. On level ground the bounce may raise a pixel by 15% at most, so a cast shadow keeps its
+  depth against the sunlit ground beside it (its rays run into the next blades of grass, and overstate what reaches
+  it); walls and what stands in their shade keep the full light. A pixel brighter than the sky light alone could make it is taken to be in the sun and its colour is
   read against sky and sun together, so sunlit surfaces aren't veiled. The bounce is laid on at twice physical
   strength, to make up for what the rays can't see off screen and past 8 m, and its colour is brought back towards
   the wall it came from (mixed over many rays it greys). Further off (past 15 m, fully by 50 m, so
@@ -1437,9 +1441,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   keep thin things from catching rays that pass behind them, cost a third of the light off real walls and was left
   out. A rough surface also gives the gathered light back as a dielectric's sheen (Karis's split-sum fit), fading
   out on mirror-smooth ones, which the screen-space reflections handle: a few percent of the bounce on rough
-  ground, a little more on wet patches seen at a slant. Vehicles and soldiers (what the renderer marks as moving) take only a fill: at most half
+  ground, a little more on wet patches seen at a slant. Vehicles and soldiers (what the renderer marks as moving) take only a fill: at most 15%
   again the shade's own light on them, at half the colour, and nothing from rays that run into a man or a vehicle
-  (their own body first), so camouflage keeps its colours; a tank's shaded side gains about 6% at midday. The colour
+  (their own body first), so camouflage keeps its colours and their shaded sides their depth; a tank's shaded side
+  gains about 5% at midday. The colour
   the gathered light is laid on with is brought back against the sun's own colour, not white: made richer along with
   the rest, the sun's warmth in everything it lights turned the light off a pale wall or lawn orange, and browned
   soldiers standing by it. In the sun the bounce is a few percent of a surface's light at most, and the short rays overstate

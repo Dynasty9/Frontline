@@ -429,7 +429,7 @@ vec3 albedo_of(vec3 c, vec3 wn) {
 // time: there the colour is held to what a dull real surface reflects
 // (a quarter of the light; asphalt and bark are darker, but little that
 // stands in a street is), keeping the pixel's own hue
-vec3 receiver_albedo(vec3 c, vec3 wn, float sunvis, out float sunny) {
+vec3 receiver_albedo(vec3 c, vec3 wn, float sunvis, float dull, out float sunny) {
 	vec3 a = albedo_of(c, wn);
 	vec3 shade = shade_light(wn);
 	sunny = 0.0;
@@ -460,17 +460,32 @@ vec3 receiver_albedo(vec3 c, vec3 wn, float sunvis, out float sunny) {
 		sunny = in_sun * ls / max(ls + dot(shade, lum), 1e-5);
 	}
 	float l = dot(a, vec3(0.2126, 0.7152, 0.0722));
-	if (l >= 0.25) {
+	if (l >= dull) {
 		return a;
 	}
 	vec3 hue = l > 1e-3 ? a / l : vec3(1.0);
 	// (a near-black pixel has no hue to keep: it takes grey)
-	hue = mix(vec3(1.0), hue, smoothstep(0.0, 0.05, l));
-	return min(hue * 0.25, vec3(P.amb.a));
+	hue = mix(vec3(1.0), hue, smoothstep(0.0, 0.01, l));
+	return min(hue * dull, vec3(P.amb.a));
+}
+
+// how dull a surface may be taken for, at the darkest (see receiver_albedo).
+// A wall or a room darkened by ambient occlusion is held to a quarter. Not
+// level ground: a cast shadow there is lit by the shade's light alone, so its
+// colour read against that is right, and held up to a quarter the dark grass
+// under a squad's feet took twice its own share and lifted grey. Nor a man or
+// a vehicle: dark gear is dark, and lifted as much as the ground round it
+// read as light painted on, not reflected
+float dull_floor(vec3 wn, bool mover) {
+	return mover ? 0.0 : mix(0.25, 0.0, smoothstep(0.6, 0.85, wn.y));
 }
 
 // how much of the bounce light is laid on where all of a pixel's light is the sun's
 #define SUNLIT 0.15
+// how far the bounce light may raise a pixel above what it shows without it:
+// anywhere (a doorway-lit room, a wall's foot), and on level ground in the open
+#define LIFT_MAX 6.0
+#define LEVEL_LIFT 0.15
 
 // a little noise that differs from pixel to pixel and frame to frame, but is
 // even across the screen (Jimenez, interleaved gradient noise, 2014)
@@ -625,7 +640,7 @@ void main() {
 			// to the light of what the rays hit, so a closed room settles
 			// instead of feeding its own light back without end)
 			float sunny;
-			vec3 ra = receiver_albedo(c, wn, sunvis, sunny);
+			vec3 ra = receiver_albedo(c, wn, sunvis, dull_floor(wn, texelFetch(normal_tex, best, 0).a > 0.5), sunny);
 			c += ra * again * P.opt.x * mix(1.0, SUNLIT, sunny);
 		}
 	}
@@ -1027,12 +1042,15 @@ void main() {
 	float enl = dot(en, vec3(0.2126, 0.7152, 0.0722));
 	e = max(vec3(enl) + (en - vec3(enl)) * mix(P.sun.w, P.opt.z, far_k), vec3(0.0)) * sunhue;
 	// on a man or a vehicle the light off the ground round him is a fill, not
-	// a recolouring: at most half again the shade's own light on him, and at
-	// half the colour, so camouflage keeps its colours
+	// a recolouring: at most a sixth again the shade's own light on him (so
+	// his shaded side keeps its depth against his sunlit one, as a cast
+	// shadow does: see LEVEL_LIFT), and at half the colour, so camouflage
+	// keeps its colours. (At half again, dark gear and the shade between the
+	// men filled in, and the squad read washed out)
 	if (nr.a > 0.5) {
 		float ml = dot(e, vec3(0.2126, 0.7152, 0.0722));
 		e = mix(vec3(ml), e, 0.5);
-		float cap = 0.5 * dot(shade_light(wn), vec3(0.2126, 0.7152, 0.0722));
+		float cap = LEVEL_LIFT * dot(shade_light(wn), vec3(0.2126, 0.7152, 0.0722));
 		e *= ml > cap ? cap / ml : 1.0;
 	}
 	vec3 c = clean(col.rgb);
@@ -1057,7 +1075,7 @@ void main() {
 		through = mix(min(lc, lo) / max(max(lc, lo), 1e-5), 1.0, level);
 	}
 	float sunny;
-	vec3 alb = receiver_albedo(c, wn, sunvis, sunny);
+	vec3 alb = receiver_albedo(c, wn, sunvis, dull_floor(wn, nr.a > 0.5), sunny);
 	// (the gathered light already carries its strength: see gather.) In the
 	// shade it is much of what lights a surface; in the sun, a few percent at
 	// most. There the short rays overstate it: from a lawn they run into the
@@ -1066,7 +1084,21 @@ void main() {
 	// shade beside them is what should lift. So it is laid on only in part as
 	// far as the pixel's light is the sun's
 	e *= mix(1.0, SUNLIT, sunny);
-	vec3 outc = c + alb * e * through;
+	// A cast shadow on open level ground faces the sky, not the ground round
+	// it, and takes little of the light off it: its rays run into the next
+	// blades of grass, which overstates it, and the shadows under a squad
+	// filled in, a washed-out grey. There it may raise the shadow by a sixth
+	// at most, so the shadow keeps its depth against the sunlit ground
+	// beside it (the shadow-to-sun ratio within about 15%). Walls, and what
+	// stands in the shade of them, keep the full light
+	vec3 add = alb * e * through;
+	float level_k = smoothstep(0.6, 0.85, wn.y);
+	float la = dot(add, vec3(0.2126, 0.7152, 0.0722));
+	float lmax = dot(c, vec3(0.2126, 0.7152, 0.0722)) * mix(LIFT_MAX, LEVEL_LIFT, level_k);
+	float k = la > lmax ? lmax / la : 1.0;
+	add *= k;
+	e *= k;
+	vec3 outc = c + add;
 	// and a surface gives some back as a sheen, more at a glancing look: a
 	// wet road or a polished hull in shade picks up the colour of the walls
 	// round it as well as the sky's. A rough sheen spreads wide, much as the
@@ -1086,7 +1118,7 @@ void main() {
 	} else if (view_mode == 2) {
 		outc = alb;  // the colour estimated for each surface
 	} else if (view_mode == 3) {
-		outc = (alb * e * through + sheen) * 4.0;  // what is added, four times over
+		outc = (add + sheen) * 4.0;  // what is added, four times over
 	} else if (view_mode == 4) {
 		outc = textureLod(rad_tex, uv, 0.0).rgb;  // the light each surface sends out
 	} else if (view_mode == 5) {

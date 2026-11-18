@@ -13,7 +13,7 @@ caption = "The same, bounce light only (four times brighter): a faint, even fill
 
 [[screenshots]]
 file = "squad-grass.jpg"
-caption = "A squad on grass by a road at midday: their camouflage keeps its colours"
+caption = "A squad on grass by a road at midday: their camouflage and the shadows under them keep their depth"
 
 [[screenshots]]
 file = "squad-grass-light.jpg"
@@ -88,7 +88,7 @@ caption = "Surface-history correction, before and after: the same close and comm
 
 - **Where it belongs:** sunlit grass, roads, roofs and hulls no longer take a yellowish lift. The light lands in the
   shade beside them, where bounce light really shows. Men and vehicles take only a faint fill from the ground round
-  them, so camouflage keeps its colours, and the ground in a tank's shadow warms with the light off its hull.
+  them, so camouflage keeps its colours, and the shadows on open ground keep their depth.
 - **Behind smoke and dust:** a dust cloud in front of a hull or a wall hides its bounce light, as it hides the hull,
   instead of the light showing through.
 - **Coloured walls tint their surroundings:** a red-brick house faintly reddens the shade at its foot, even from
