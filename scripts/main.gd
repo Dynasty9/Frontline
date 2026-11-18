@@ -1186,7 +1186,7 @@ func _process(_dt: float) -> void:
 				print("BY OWNER ", owners)
 			# a headless run draws nothing, so there's no picture to keep (asking
 			# for one only gets an error), just the numbers above
-			var img: Image = get_viewport().get_texture().get_image() if DisplayServer.get_name() != "headless" else null
+			var img: Image = get_viewport().get_texture().get_image() if DisplayServer.get_name() != "headless" and not args.has("no-perf-shot") else null
 			if img:
 				img.save_png(String(args.get("perf-shot", "user://perf.png")))
 			world.measure_ticks = false

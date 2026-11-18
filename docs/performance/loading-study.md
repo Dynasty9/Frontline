@@ -208,7 +208,19 @@ and the selection UI in both renderers before presenting it as finished.
 
 The mean full wait fell from 126.888 s to 51.049 s (59.8% less) in this four-run comparison. This isolates prepared-map reuse: both controls use the final build's other loading improvements. It does not establish a percentage gain over the original public release. Prepared host map restoration itself took 2.609–2.682 s; client scenery still used 16.1–16.2 s of measured construction work. Stages overlap and should not be summed. Every private simulation was at 100 ms when revealed, so the improvement did not advance combat unseen.
 
-The first pan still contains roughly 0.5–0.8 s stalls in both paths. This change does **not** establish smooth first movement or sustained 60 FPS. Peak client RSS was 2.38–2.46 GB prepared versus 2.39–2.44 GB generated; peak server RSS was 0.929–0.930 GB versus 0.933–0.935 GB. These are sampled working sets, not VRAM or total system memory. The measured packages added 118,919,118 bytes before installer compression (the final progress-reporting rebuild is 118,918,039 bytes). Windows includes them; the browser export excludes them.
+The first pan still contains roughly 0.5–0.8 s stalls in both paths. The runner used an in-sample PNG capture, and reveal timing also affects the beginning of this window: these samples cannot isolate scenery-streaming cost. The Deploy-to-playable measurements above are separate from this first-pan diagnosis. This change does **not** establish smooth first movement or sustained 60 FPS. Peak client RSS was 2.38–2.46 GB prepared versus 2.39–2.44 GB generated; peak server RSS was 0.929–0.930 GB versus 0.933–0.935 GB. These are sampled working sets, not VRAM or total system memory. The measured packages added 118,919,118 bytes before installer compression (the final progress-reporting rebuild is 118,918,039 bytes). Windows includes them; the browser export excludes them.
+
+### Repeat controls
+
+Use a new, nonexistent `--output` directory for every attempt. The runner rejects
+even an empty reused directory and requires a new private-host session and report
+for `--local-server`; a leftover `server.json` is never evidence for a retry.
+Rendered runs now use the engine's post-report `--perf-shot`, without scheduling an
+in-sample screenshot. Add `--no-screenshot` to omit that PNG entirely. Compare
+`--battlefield=alder-valley` with the same arguments plus `--no-baked-map` for a
+same-map generated control. Keep renderer, seed, team, camera, warm-up, duration,
+process priority and reveal conditions matched. These runner corrections do not
+constitute a new performance measurement or a 500-alive/60-FPS validation.
 
 Compact machine-readable evidence: [prepared-battlefields-results.json](prepared-battlefields-results.json). Full local logs and captures: C:/temp/frontline-matched-final-{cached-1,generated-1,generated-2,cached-2}/. Generated and prepared town captures were visually inspected for ground, road and scenery consistency. Small-window and reduced-motion selection checks passed; the existing small text and overview road-strip appearance were not redesigned here.
 

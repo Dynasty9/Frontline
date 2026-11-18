@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import socket
 import subprocess
+import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +60,7 @@ p.add_argument("--exported", action="store_true")
 p.add_argument("--above-normal", action="store_true", help="Windows diagnostic: give both owned game processes Above Normal priority")
 p.add_argument("--details", action="store_true", help="Time individual soldier methods; adds profiling overhead")
 p.add_argument("--rendered", action="store_true")
+p.add_argument("--no-screenshot", action="store_true", help="Disable even the post-report PNG for loading/pan controls")
 p.add_argument("--nohud", action="store_true", help="Hide the HUD to isolate its rendering cost")
 p.add_argument("--require-target", action="store_true", help="Fail if any measured rendered frame exceeds 16.67 ms or simulation tick exceeds 33.33 ms")
 p.add_argument("--local-server", action="store_true")
@@ -88,10 +90,11 @@ a = p.parse_args()
 if a.above_normal and os.name != "nt":
     p.error("--above-normal requires Windows")
 out = Path(a.output).resolve()
-out.mkdir(parents=True, exist_ok=True)
+try:
+    out.mkdir(parents=True, exist_ok=False)
+except FileExistsError:
+    raise SystemExit("Use a new output directory for every benchmark attempt")
 report_path = out / "client.json"
-if report_path.exists():
-    raise SystemExit("Use a fresh output directory to avoid stale benchmark results")
 cmd = [str(Path(a.godot).resolve()), "--log-file", str(out / "engine.log")]
 if not a.exported:
     cmd += ["--path", str(ROOT)]
@@ -118,7 +121,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as port_socket:
     port_socket.bind(("127.0.0.1", 0))
     cmd.append(f"--port={port_socket.getsockname()[1]}")
 if a.rendered:
-    cmd += ["--offscreen", f"--screenshot={out / 'battle.png'}", f"--shot-at={a.warmup+min(0.5, a.duration*0.5)}"]
+    cmd += ["--offscreen", f"--perf-shot={out / 'battle.png'}"]
+if a.no_screenshot:
+    cmd += ["--no-perf-shot"]
 if a.details:
     cmd += ["--perf-details"]
 if a.nohud:
@@ -129,13 +134,21 @@ if a.generated:
     cmd += ["--stress-generated", "--scenery=0"]
 if a.commanders:
     cmd += ["--stress-commanders"]
-sessions = Path(os.environ.get("APPDATA", str(Path.home() / ".local/share"))) / "Godot/app_userdata/Frontline/local_servers"
+if os.name == "nt":
+    data_home = Path(os.environ["APPDATA"]) / "Godot"
+elif sys.platform == "darwin":
+    data_home = Path.home() / "Library/Application Support/Godot"
+else:
+    data_home = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "godot"
+sessions = data_home / "app_userdata/Frontline/local_servers"
 server_report = None
 server_log = None
 server_pid = None
 client_pid = None
 memory = []
 priority_applied = {}
+existing_sessions = set(sessions.glob("*.json"))
+started_ns = time.time_ns()
 started = time.monotonic()
 with (out / "stdout.log").open("w", encoding="utf-8") as log:
     proc = subprocess.Popen(cmd, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
@@ -146,9 +159,11 @@ with (out / "stdout.log").open("w", encoding="utf-8") as log:
     while proc.poll() is None and time.monotonic() - started < a.timeout:
         if a.local_server and server_report is None:
             for config in sessions.glob("*.json"):
+                if config in existing_sessions:
+                    continue
                 try:
                     data = json.loads(config.read_text())
-                    if data.get("parent_pid") == proc.pid or data.get("benchmark_output") == str(report_path):
+                    if data.get("benchmark_output") == str(report_path) and config.stat().st_mtime_ns >= started_ns:
                         server_report = config.with_suffix(".perf.json")
                         server_log = config.with_suffix(".log")
                         server_pid = data.get("child_pid")
@@ -172,7 +187,8 @@ with (out / "stdout.log").open("w", encoding="utf-8") as log:
             os.kill(owned_pid, 15)
         except OSError:
             pass
-if server_report and server_report.exists():
+server_produced = bool(server_report and server_report.exists() and server_report.stat().st_mtime_ns >= started_ns)
+if server_produced:
     shutil.copy2(server_report, out / "server.json")
 if server_log and server_log.exists():
     shutil.copy2(server_log, out / "server.log")
@@ -180,10 +196,12 @@ result = {"arguments": vars(a), "wall_seconds": time.monotonic()-started,
           "memory": memory, "priority_applied": priority_applied,
           "exit_code": proc.returncode, "timed_out": timed_out,
           "client": json.loads(report_path.read_text()) if report_path.exists() else None,
-          "server": json.loads((out / "server.json").read_text()) if (out / "server.json").exists() else None}
+          "server": json.loads((out / "server.json").read_text()) if server_produced else None}
 result["errors"] = [f"{path.name}: {line}" for path in [out / "stdout.log", out / "server.log"] if path.exists()
                     for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
                     if "ERROR:" in line and "resources still in use at exit" not in line]
+if a.local_server and not server_produced:
+    result["errors"].append("Private host produced no fresh report in this invocation")
 if a.above_normal and (not priority_applied.get("client") or (a.local_server and not priority_applied.get("server"))):
     result["errors"].append("Could not normalize both owned process priorities")
 frames = (result["client"] or {}).get("frames", {})
