@@ -279,6 +279,17 @@ The parts stay as they were, so the HQ plays the same; its model is baked. Rende
 `--building-kinds=depot:0,depot:1` in the studio stage (add `--building-rear` for the other side), and the
 near side's in the map with the `hq` view of `--capture-set=town`.
 
+## Bales
+
+A farm's bales (Decor `hay`) are `BuildingFarm.bales`: one to three round bales in a row, a third on the two where
+there are three.
+- **Straw bales** (the `straw` surface, fibres wound round the roll) are settled a little flat, with a faint net
+  wrap round them and the spiral of the roll in rings on their ends.
+- **About a third are silage**, sealed in black, dark green or now and then white film (the `film` surface: smooth,
+  a soft sheen), their ends puckered with folds round a darker middle.
+
+Render them with `--building-kinds=bales`.
+
 ## Who uses what
 
 | Component | Users |

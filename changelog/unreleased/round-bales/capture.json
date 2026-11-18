@@ -1,0 +1,32 @@
+{
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "source_ref": "5cd7e0c28d7783cae32aa68e3e8524dffc9584da",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+  "comparisons": [
+    {
+      "subjects": [
+        "town"
+      ],
+      "view": "hay",
+      "env": "FL_ONLY_VIEW=hay,-345.25,9.98,14,-35,0.7",
+      "crop": [
+        200,
+        150,
+        1100,
+        700
+      ]
+    },
+    {
+      "subjects": [
+        "bales"
+      ],
+      "file": "bales.jpg",
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=bales",
+      "after_only": true
+    }
+  ],
+  "notes": "The camera is the town capture set's farm view moved in (seed 3); both checkouts' views fixture get the FL_ONLY_VIEW hook in the scratch copy.",
+  "composition": "PIL: one matched row, 792 px halves, JPEG quality 82; the studio bales cropped and scaled to 1600 px, JPEG quality 84"
+}
