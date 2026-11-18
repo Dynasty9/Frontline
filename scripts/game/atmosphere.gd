@@ -3101,15 +3101,8 @@ void fragment() {
 	vec2 sas_q = vec2(dot(p, sas_w) / 9.0, dot(p, vec2(-sas_w.y, sas_w.x)) / 1.7);
 	// (none under the trees, where the wind can't get at it)
 	float sas_keep = (1.0 - smoothstep(0.08, 0.3, length(fwidth(sas_q)))) * (1.0 - smoothstep(0.75, 1.35, lie)) * snow * (1.0 - wood_floor);
-	vec2 sas_grad = vec2(0.0);
-	float sas_h = 0.5;
-	if (terrain_detail && sas_keep > 0.001) {
-		sas_h = texture(detail_tex, sas_q + 0.29).r;
-		float sas_a = texture(detail_tex, sas_q + vec2(0.03, 0.0) + 0.29).r;
-		float sas_c = texture(detail_tex, sas_q + vec2(0.0, 0.03) + 0.29).r;
-		// (the carving's slope in metres per metre, some five centimetres deep)
-		sas_grad = (sas_w * (sas_a - sas_h) / (0.03 * 9.0) + vec2(-sas_w.y, sas_w.x) * (sas_c - sas_h) / (0.03 * 1.7)) * 0.05 * sas_keep;
-	}
+	// (one read: its slope comes from the pixel's neighbours, surface_relief)
+	float sas_h = terrain_detail ? texture(detail_tex, sas_q + 0.29).r : 0.5;
 	if (terrain_detail && snow > 0.001) {
 		// Metre-scale powder and dirty melt edges stay separate from broad wind drifts.
 		// (the scan read a second time at another size and angle and swapped in
@@ -3190,7 +3183,8 @@ void fragment() {
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, normalize(mix(geometric, snow_n, 0.6)), snow * 0.9));
 	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
-	n = normalize(n - vec3(sas_grad.x, 0.0, sas_grad.y));
+	// (the sastrugi, some five centimetres deep)
+	n = surface_relief(n, sas_h * 0.05, sas_keep);
 	n = normalize(mix(n, shore_normal, shore_stone));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	// The rain rings the standing water and, faintly, wet bare soil. Further
