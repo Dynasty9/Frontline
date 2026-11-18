@@ -4,7 +4,7 @@
   "medium": "motion",
   "stage": "tests/fixtures/environment-views.gd --capture-set=town and tools/showcase/building-surfaces.tscn --building-kinds=house_plans; parent-revision comparison",
   "rationale": "A material and colour change: matched stills from the battle camera, the street and the studio show the roof palette, brick and stone side by side with the parent revision. A matched native render sweep now accompanies the preserved earlier stills.",
-  "source_ref": "b054bb01 (before) + dines/town-buildings-realism-5d2b5a working tree (after)",
+  "source_ref": "b054bb01 (before) + dines/town-buildings-realism-5d2b5a at b385478b with its palette follow-ups (after)",
   "before_ref": "git archive of b054bb01 into a scratch copy, rendered with the same fixtures and flags.",
   "capture": {
     "renderer": "Godot 4.7.2 Forward+, High preset, 1600x900, day; Compatibility renderer checked on the studio stage",
@@ -18,12 +18,13 @@
     "changelog check passes"
   ],
   "limitations": [
-    "Moss-patch shapes and the unchanged parts of each image vary only where the change reaches; no performance change (colours and one shader branch)."
+    "Moss-patch shapes and the unchanged parts of each image vary only where the change reaches; no performance change (colours and one shader branch).",
+    "The after panels show the branch as a whole: the town overview also carries the shop fronts, wall grime and flat-roof coverings of the other entries."
   ],
   "sources": [
     {
       "file": "changelog/unreleased/weathered-town-materials/comparison.jpg",
-      "sha256": "8c8e2cbc89bab28e51ad677daafeed7f7dffb2663cd7af9277cea226580a3f42"
+      "sha256": "2b7bc8c647b34396ca09dd454b97dfb8aab657836db5d0f636c82666c8011f68"
     },
     {
       "file": "changelog/unreleased/weathered-town-materials/material-review.webm",

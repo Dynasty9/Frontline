@@ -60,7 +60,7 @@ const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "timber"]
 const ROOF_CLAY := [Color(0.45, 0.26, 0.19), Color(0.4, 0.25, 0.2), Color(0.35, 0.21, 0.17), Color(0.32, 0.24, 0.2), Color(0.34, 0.18, 0.15)]
 const ROOF_SLATE := [Color(0.25, 0.25, 0.26), Color(0.32, 0.31, 0.29), Color(0.21, 0.21, 0.21)]
 ## A barn's sheet roof: rusted, galvanised gone dull grey, or painted red.
-const BARN_SHEET := [Color(0.38, 0.26, 0.2), Color(0.36, 0.37, 0.37), Color(0.32, 0.16, 0.13)]
+const BARN_SHEET := [Color(0.34, 0.25, 0.21), Color(0.36, 0.37, 0.37), Color(0.32, 0.16, 0.13)]
 
 
 ## What a flat roof is covered in: bitumen felt gone dull black-grey, green-
@@ -117,9 +117,9 @@ static func house(ci: int) -> String:
 ## for brick and stone): limewash and cream, a pale ochre, warm white; beige,
 ## a faded pink, grey render; off-white, a dull sage, a pale yellow. All of
 ## them old paint, a little dirty, none of them bright.
-const RENDERS := [Color(0.72, 0.66, 0.55), Color(0.74, 0.66, 0.51), Color(0.78, 0.76, 0.7),
+const RENDERS := [Color(0.72, 0.66, 0.55), Color(0.73, 0.66, 0.54), Color(0.78, 0.76, 0.7),
 	Color(0.66, 0.6, 0.52), Color(0.72, 0.61, 0.55), Color(0.62, 0.61, 0.58),
-	Color(0.75, 0.72, 0.66), Color(0.61, 0.63, 0.54), Color(0.77, 0.72, 0.59)]
+	Color(0.75, 0.72, 0.66), Color(0.62, 0.63, 0.57), Color(0.76, 0.72, 0.62)]
 
 
 ## The colour its walls show: rendered walls take the house's paint, bare
