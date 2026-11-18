@@ -1,0 +1,39 @@
+{
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "source_ref": "3e055e781684329f11d159462e73d3302f43a1de",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+  "comparisons": [
+    {
+      "subjects": [
+        "town"
+      ],
+      "view": "stonewall",
+      "env": "FL_ONLY_VIEW=stonewall,-209,12,14,-38,1.0",
+      "crop": [
+        0,
+        100,
+        1600,
+        900
+      ]
+    },
+    {
+      "subjects": [
+        "low_wall_stone"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=low_wall_stone",
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "crop": [
+        250,
+        200,
+        1350,
+        800
+      ]
+    }
+  ],
+  "notes": "The field camera is on a line of field walls (MapGen hedgerow walls at x = -209) on seed 3; main's fixture is given the same FL_ONLY_VIEW hook this adds. Checked under gl_compatibility too.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}
