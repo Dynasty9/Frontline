@@ -1401,12 +1401,22 @@ static func _angara(k: VehicleModels, team: int, command: bool, seed := 0) -> vo
 	VehicleMounts.sight(k, t, Vector3(0.55, 1.4, 0.5), Vector3(0.4, 0.3, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.14))], c, null, Vector3(0.12, 0.14, 0.54))
 	# the remote weapon on top: a 12.7 mm, or the command tank's 30 mm turret
 	if command:
+		# the remote 30 mm module (the Epoch pattern): its armoured casing,
+		# the gun's mask out of its face carrying the cannon and the coaxial
+		# PKT beside it, laid with them; the optical unit on its roof, the
+		# dual-feed box on its left with a chute into the casing's flank
 		var rw := k._pivot(t, Vector3(-0.1, 0.86, 0.95))
 		k._add(rw, _chamfer_loft("csat_ang_k30", [-0.4, -0.45, 0.4, -0.45, 0.45, 0.45, -0.45, 0.45], [-0.32, -0.32, 0.32, -0.32, 0.38, 0.38, -0.38, 0.38], 0.04, 0.42, 0.04), c, null, Vector3.ZERO)
-		k._box(rw, Vector3(0.22, 0.22, 0.36), Vector3(0, 0.26, -0.55), c)
-		VehicleWeapons.autocannon(k, rw, Vector3(0, 0.26, -0.65), Vector3(0, 0.26, -2.625), Vector2(0.06, 0.4), Vector2(0.04, 0.035), Vector2(0.055, 0.15))
-		VehicleMounts.sight(k, rw, Vector3(0.32, 0.52, -0.1), Vector3(0.22, 0.2, 0.26), [Rect2(Vector2(0, 0.01), Vector2(0.14, 0.08))], c)
-		k._box(rw, Vector3(0.2, 0.26, 0.4), Vector3(-0.5, 0.2, 0.05), "paint", OLIVE)
+		VehicleMounts.applique(k, rw, Vector3(0.0, 0.43, 0.12), Vector3(0.5, 0.36, 0.02), Vector3(-PI / 2, 0, 0), c, null, Vector2i(3, 2))
+		var g := k._pivot(rw, Vector3(0, 0.26, -0.65))
+		VehicleMounts.mantlet(k, g, Vector3(0.34, 0.24, 0.2), Vector3(0.04, 0.0, 0.12), c)
+		VehicleWeapons.autocannon(k, g, Vector3.ZERO, Vector3(0, 0, -1.975), Vector2(0.06, 0.4), Vector2(0.04, 0.035), Vector2(0.055, 0.15))
+		VehicleWeapons.coax(k, g, Vector3(0.14, -0.04, -0.06), 0.16, 0.018)
+		k.gun_assembly(g, Vector3(0, 0, -1.975))
+		VehicleMounts.sight(k, rw, Vector3(0.28, 0.56, -0.12), Vector3(0.22, 0.22, 0.28), [Rect2(Vector2(-0.035, 0.03), Vector2(0.08, 0.08)), Rect2(Vector2(0.06, 0.035), Vector2(0.05, 0.05)), Rect2(Vector2(0.04, -0.055), Vector2(0.06, 0.035))], c)
+		k._add(rw, BevelMesh.make(Vector3(0.24, 0.025, 0.32), 0.008), c, null, Vector3(0.28, 0.685, -0.13))
+		VehicleFittings.ammo_can(k, rw, Vector3(-0.52, 0.22, 0.05), OLIVE, Vector3.ZERO, Vector3(0.2, 0.28, 0.42))
+		_plate(k, rw, Vector3(-0.45, 0.37, -0.06), Vector3(-0.37, 0.33, -0.06), 0.1, 0.03, "metal_dark", Color(0.12, 0.12, 0.11), Vector3.BACK, false)
 		k.mg_tip = k._tip(rw, Vector3(0, 0.26, -2.65))
 	else:
 		_rcws(k, t, Vector3(-0.1, 0.86, 0.95), "hmg")
