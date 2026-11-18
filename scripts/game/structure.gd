@@ -1187,7 +1187,8 @@ func _tone(p: Vector2) -> Color:
 
 ## The house's painted woodwork (window frames, door frames, fascias and barge
 ## boards), by its colour index.
-const HOUSE_TRIMS := [Color(0.86, 0.85, 0.8), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.84, 0.83, 0.78), Color(0.36, 0.38, 0.43)]
+## (the whites are an old gloss gone dull and a little yellow: never a new paint's glare)
+const HOUSE_TRIMS := [Color(0.77, 0.76, 0.7), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.74, 0.73, 0.67), Color(0.36, 0.38, 0.43)]
 
 
 ## A concrete road bridge on piers - deck, kerbed footways, parapet walls,
@@ -1589,7 +1590,12 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		var flat_wear := RandomNumberGenerator.new()
 		flat_wear.seed = rng.seed ^ 0x6a7e5d
 		roof_pitch = 0.0
-		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear})
+		# (what it's covered in, from a stream of its own too: the wing's
+		# roof the house's)
+		var covering := RandomNumberGenerator.new()
+		covering.seed = rng.seed ^ 0xdec4
+		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear,
+			"deck": BuildingMaterials.deck_color(covering)})
 		var top := h + 0.2
 		# what's up there: a water tank, an air conditioner, a dish
 		if rng.randf() < 0.65:

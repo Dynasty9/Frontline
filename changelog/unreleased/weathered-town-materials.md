@@ -18,5 +18,7 @@ caption = "Before (left) and after (right): native town close and command views 
 - **Stone** houses are coursed rubble: courses of different heights, stones of their own lengths and shades, set
   in pale lime mortar, warm buff and honey rather than grey.
 - Moss and lichen on the tiles grow in uneven patches instead of four-pointed stars.
+- **Flat roofs** are covered house to house in black or green-grey felt, bare concrete or old asphalt, instead of
+  all being the same pale grey.
 
 Stone pointing is narrower, with shallow recessed joints and a matte lime finish. Fine stone grain and mortar soften at a distance to keep the walls steady as the command camera moves.

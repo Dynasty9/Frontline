@@ -79,7 +79,9 @@ five weathered shades), the rest slate or grey tile (`ROOF_SLATE`); barns take `
 from a stream of its own, so the roof's other choices are as they were. None is a new tile's bright orange: the
 tile photograph carries the tile-to-tile variation, the tint only the roof's age and make. Stone (the `stone`
 surface) is coursed rubble: three course heights in turn, a stone length per course, a shade per stone, in pale
-lime mortar.
+lime mortar. A flat roof's deck is covered in one of `FLAT_DECKS` (`deck_color`:
+bitumen felt, mineral felt, bare concrete, old asphalt; its own stream), and its stains and patches are of the
+same stuff.
 
 ## Lived-in houses and lamplight
 

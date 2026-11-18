@@ -58,9 +58,21 @@ const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "timber"]
 ## dulled by dirt and lichen (and the tile photograph carries its own
 ## variation tile by tile on top of this).
 const ROOF_CLAY := [Color(0.45, 0.26, 0.19), Color(0.4, 0.25, 0.2), Color(0.35, 0.21, 0.17), Color(0.32, 0.24, 0.2), Color(0.34, 0.18, 0.15)]
-const ROOF_SLATE := [Color(0.25, 0.26, 0.28), Color(0.33, 0.32, 0.3), Color(0.21, 0.21, 0.22)]
+const ROOF_SLATE := [Color(0.25, 0.25, 0.26), Color(0.32, 0.31, 0.29), Color(0.21, 0.21, 0.21)]
 ## A barn's sheet roof: rusted, galvanised gone dull grey, or painted red.
-const BARN_SHEET := [Color(0.38, 0.26, 0.2), Color(0.36, 0.37, 0.37), Color(0.36, 0.15, 0.12)]
+const BARN_SHEET := [Color(0.38, 0.26, 0.2), Color(0.36, 0.37, 0.37), Color(0.32, 0.16, 0.13)]
+
+
+## What a flat roof is covered in: bitumen felt gone dull black-grey, green-
+## grey mineral felt, the bare concrete deck or pale chippings, old asphalt.
+## Drawn by `deck_color`, felt the most often (it's what goes on a house).
+const FLAT_DECKS := [Color(0.27, 0.27, 0.27), Color(0.34, 0.36, 0.32), Color(0.5, 0.49, 0.46), Color(0.41, 0.39, 0.36)]
+
+
+static func deck_color(rng: RandomNumberGenerator) -> Color:
+	var r := rng.randf()
+	var c: Color = FLAT_DECKS[0 if r < 0.35 else (1 if r < 0.6 else (2 if r < 0.85 else 3))]
+	return c.lightened(rng.randf_range(-0.02, 0.04))
 
 
 ## A pitched roof's tint: clay (shade its few per cent lighter or darker) or
