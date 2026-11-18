@@ -503,6 +503,38 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 	k._team_mark(m, team, Vector3(-0.2, 2.53, 2.65), Vector3(0.7, 0.02, 0.45))
 
 
+## A minigun (the M134 pattern) on its own pivot `g` at its housing, the
+## six barrels `ln` long ahead: the drum round the rotor with the bearing
+## collar at its face, the feeder-delinker on its left that strips the rounds
+## from the belt, the drive motor along its right, the control box under it,
+## and behind it the spade grips with the trigger between them, as a
+## vehicle's gunner works it; the ribbed flexible chute drops from the
+## feeder's foot away to the left and back, where the box is. The caller
+## gives the pivot to k.gun_assembly (the muzzle at -0.12 - ln).
+static func _minigun(k: VehicleModels, g: Node3D, ln: float) -> void:
+	var st := VehicleWeapons.STEEL
+	k._cyl(g, 0.07, 0.07, 0.32, Vector3(0, 0, 0.1), X90, st, null, 14)
+	k._cyl(g, 0.078, 0.078, 0.035, Vector3(0, 0, -0.065), X90, "metal_dark", null, 14)
+	k._cyl(g, 0.074, 0.074, 0.02, Vector3(0, 0, 0.26), X90, "metal_dark", null, 14, false)
+	k._add(g, BevelMesh.make(Vector3(0.085, 0.12, 0.18), 0.008), st, null, Vector3(-0.1, -0.01, 0.1))
+	k._box(g, Vector3(0.012, 0.07, 0.11), Vector3(-0.146, -0.01, 0.1), "metal_dark", null, Vector3.ZERO, false)
+	k._cyl(g, 0.036, 0.036, 0.19, Vector3(0.09, 0.05, 0.12), X90, "metal_dark", null, 10)
+	k._cyl(g, 0.03, 0.03, 0.02, Vector3(0.09, 0.05, 0.225), X90, st, null, 10, false)
+	k._add(g, BevelMesh.make(Vector3(0.1, 0.05, 0.12), 0.006), st, null, Vector3(0.0, -0.085, 0.16))
+	VehicleWeapons.rotary(k, g, Vector3(0, 0, -0.1), Vector3(0, 0, -0.1 - ln), 6, 0.042, 0.013, [0.62, 1.0 - 0.03 / ln])
+	for side: float in [-1.0, 1.0]:
+		_tube(k, g, Vector3(side * 0.05, 0.0, 0.27), Vector3(side * 0.1, 0.0, 0.34), 0.012, st, null, 6)
+		k._cyl(g, 0.02, 0.02, 0.15, Vector3(side * 0.1, 0.0, 0.35), Vector3.ZERO, "rubber", null, 6, false)
+	k._box(g, Vector3(0.08, 0.03, 0.025), Vector3(0, 0.02, 0.33), "metal_dark", null, Vector3.ZERO, false)
+	var chute: Array[Vector3] = [Vector3(-0.1, -0.07, 0.1), Vector3(-0.17, -0.12, 0.17), Vector3(-0.3, -0.15, 0.27), Vector3(-0.4, -0.16, 0.33)]
+	VehicleFrames.path(k, g, chute, 0.032, "metal_dark", null, 8)
+	for i in 3:
+		var a := chute[i]
+		var b := chute[i + 1]
+		for f: float in [0.3, 0.75]:
+			k._add(g, Res.torus(0.028, 0.039), "metal_dark", null, a.lerp(b, f), VehicleFrames.aim(b - a).get_euler(), Vector3.ONE, false)
+
+
 # --- Qilin: ST Kinetics LSV Mk II --------------------------------------------------
 
 ## LSV Mk II: a low flat open body on big tyres, the short sloping nose with its
@@ -599,16 +631,14 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 	VehicleMounts.pedestal(k, t, Vector3.ZERO, Vector3(0, 0.365, 0), null, "gunmetal_w", null, 0.0, Vector2(0.05, 0.06), 0)
 	VehicleMounts.mantlet(k, t, Vector3(0.12, 0.1, 0.2), Vector3(0, 0.34, 0), "gunmetal_w")
 	if arm == "mg":
-		# the minigun: six barrels round a spindle, the motor and feed chute
+		# the minigun on its cradle; its box open on a shelf off the post's
+		# left, under the feeder, the chute dropping into it
 		var gy := 0.42
-		k._box(t, Vector3(0.18, 0.18, 0.36), Vector3(0, gy, 0.02), "gunmetal_w")
-		k._cyl(t, 0.07, 0.07, 0.12, Vector3(0, gy, -0.2), Vector3(PI / 2, 0, 0), "gunmetal_w", null, 10)
-		VehicleWeapons.rotary(k, t, Vector3(0, gy, -0.25), Vector3(0, gy, -0.9), 6, 0.04, 0.012, [0.723, 0.938])
-		k._box(t, Vector3(0.04, 0.06, 0.24), Vector3(0, gy + 0.03, 0.25), "gunmetal_w", null, Vector3.ZERO, false)
-		for s in [-1.0, 1.0]:
-			k._box(t, Vector3(0.03, 0.12, 0.03), Vector3(s * 0.12, gy - 0.02, 0.26), "gunmetal_w", null, Vector3.ZERO, false)
-		_plate(k, t, Vector3(0.1, gy, 0.1), Vector3(0.36, gy - 0.25, 0.25), 0.08, 0.03, "gunmetal_w", null, Vector3.BACK)
-		k._box(t, Vector3(0.22, 0.24, 0.32), Vector3(0.42, gy - 0.32, 0.25), "paint", OLIVE)
+		var g := k._pivot(t, Vector3(0, gy, -0.13))
+		_minigun(k, g, 0.65)
+		k.gun_assembly(g, Vector3(0, 0, -0.77))
+		_plate(k, t, Vector3(-0.04, -0.02, 0.2), Vector3(-0.5, -0.02, 0.2), 0.1, 0.025, "gunmetal_w", null, Vector3.BACK)
+		VehicleFittings.ammo_can(k, t, Vector3(-0.4, 0.12, 0.2), OLIVE, Vector3.ZERO, Vector3(0.2, 0.26, 0.34), true)
 		k.mg_tip = k._tip(t, Vector3(0, gy, -0.9))
 	else:
 		# the Vorona: a fat launch tube on a cradle, the thermal sight beside it
