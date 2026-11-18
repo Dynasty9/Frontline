@@ -1353,9 +1353,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   warm roof thaws in wet, dark patches and bare round the chimney; and `SnowRoof` gives it a body of snow its faces
   can't: a rounded lip curling over the eaves (thicker on steep sheet, broken where some fell, thinner up the
   gables), icicles in runs under a warm house's eaves, and on a flat roof drifts against the parapets, deep in the
-  lee of the one the wind comes over. Under the trees (`Woodland`) the leaf litter and toadstools are buried, every
+  lee of the one the wind comes over. Under the trees (`Woodland`) the leaf litter, toadstools and root flares are buried, every
   trunk stands in a well of bare needles its crown kept the snow off, ferns and nettles go to winter brown with snow
-  in clumps on their upper fronds (the pine saplings keep their green), and deadwood, root flares and mossy stones
+  in clumps on their upper fronds (the pine saplings keep their green), and deadwood and mossy stones
   carry it on their tops. A vehicle
   (`Vehicle._snow_view`, the `snow_k` instance value) keeps it only on its flat tops (deck, turret roof, fenders,
   stowage), in patches of its own, while the glacis and sides shed it and the warm engine deck stays bare and wet;

@@ -5,11 +5,19 @@ kind = "new"
 
 [[screenshots]]
 file = "town-in-snow.jpg"
-caption = "A town in falling snow: white roofs and fields, slushy streets, trees heavy with snow and the mountains lost in the haze."
+caption = "A town in falling snow. The snow lies unevenly with the land: the rises facing the wind are scoured to pale straw, the hollows and lee slopes are deep and white, and the roofs differ house by house."
+
+[[screenshots]]
+file = "street-in-snow.jpg"
+caption = "The town square: streets ploughed with low banks along the kerbs and black slush in the wheel lines, the paving trodden grey, dead grass showing through the thin snow on the open lot, and a warm house thawing round its chimney."
+
+[[screenshots]]
+file = "roofs-in-snow.jpg"
+caption = "A warm house's roof: the snow curls over the eaves in a rounded lip with icicles under it, and has thawed in wet patches with grey slush round them. The wall stays bare."
 
 [[screenshots]]
 file = "tank-in-snow.jpg"
-caption = "A tank that has been fighting carries snow only in patches on its flat tops: it has slid off the glacis and sides, the warm engine deck is bare and wet, and its colours show through."
+caption = "A tank that has been fighting carries snow only in patches on its flat tops: it has slid off the glacis and sides, the warm engine deck is bare and wet, and the shrubs round it have browned for the winter."
 
 [[screenshots]]
 file = "melt-in-snow.jpg"
@@ -17,7 +25,7 @@ caption = "Heat melts it: a burning wreck has thawed the ground round it to dark
 
 [[screenshots]]
 file = "drifts-in-snow.jpg"
-caption = "The wind (blowing left to right here) heaps the snow against a hedgerow and a stone wall: deepest against the side away from the wind and thinning out a few metres beyond, with a smaller bank on the windward side."
+caption = "The wind (blowing left to right here) heaps the snow against a hedgerow and a stone wall: a rounded crest in the lee, tailing off a few metres beyond and meeting the ground with no edge, with a smaller bank on the windward side. The wall's faces stay bare."
 
 [[screenshots]]
 file = "comparison.jpg"

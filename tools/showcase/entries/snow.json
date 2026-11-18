@@ -368,16 +368,35 @@
         },
         "finding": "In this overcast scene, disabling probe strengths barely changes the bank/ground contrast. Equal albedo still leaves a strong boundary, including with flat normals: the remaining discrepancy is not explained by texture colour or normals alone. The separate lighting/AO paths need further isolation. No shader fix is proposed from this limited diagnostic. Sunny conditions and border robustness remain unverified."
       }
+    },
+    "natural_snow_pass": {
+      "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window; Compatibility (--rendering-method gl_compatibility) checked for the street, roof and drift views, no script or shader errors",
+      "code": "164c3b7b (the follow-up ac5830f6 only drops the swapped powder patches' normal-map read, for its GPU cost)",
+      "before": "the same views from today's code with this pass's snow commit reversed (scratch copy), for the PR's before/after sheet",
+      "town": "--fixed-fps 30 -- --aivai --seed=3 --mood=snow --nohud --focus=0,0 --focus-struct=town --zoom=220 --pitch=-22 --shot-at=40",
+      "street": "--fixed-fps 30 -- --aivai --seed=3 --mood=snow --nohud --focus=0,0 --focus-struct=town --zoom=44 --pitch=-40 --shot-at=40",
+      "roofs": "--fixed-fps 30 -- --aivai --seed=3 --mood=snow --nohud --focus=2.6,30 --zoom=13 --pitch=-32 --shot-at=20",
+      "drifts": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=2,15 --zoom=26 --pitch=-48 --shot-at=20, from a scratch copy whose fire scenario adds a hedgerow (4 low_wall variant 1) and a stone wall (3 low_wall variant 0) across Fires.WIND",
+      "tank": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=snow --nohud --focus=-84,24 --focus-vehicle=tank --focus-vehicle-at=9 --zoom=12 --pitch=-34 --shot-at=10",
+      "note": "(--focus=0,0 stops the battle director before --focus-struct applies, so the town views repeat run to run)"
     }
   },
   "sources": [
     {
       "file": "changelog/unreleased/snow/town-in-snow.jpg",
-      "sha256": "687c352f84277f22a72938c5aa611c96e88e444f02be9270507c2e62b0b004a1"
+      "sha256": "7f009a3c6b97c9e5557500aa566445c74296b534e3a40583b88d70f957d9534a"
+    },
+    {
+      "file": "changelog/unreleased/snow/roofs-in-snow.jpg",
+      "sha256": "118dcee63390f2a73c0e34272212f6487cd5860974d5ea806633fbc01f920bba"
+    },
+    {
+      "file": "changelog/unreleased/snow/street-in-snow.jpg",
+      "sha256": "5bd923a197b1b426587d40de50a6d9d21951d3f824d9ee02afe38895d08cb72f"
     },
     {
       "file": "changelog/unreleased/snow/tank-in-snow.jpg",
-      "sha256": "040b329c5405a283e883b1cd54a0285b8aab6ac2ad5456bec193be6bbbb4cbd9"
+      "sha256": "9723eeb727a0f0e330ce6ae4ffe4450c37b0d4beecc025ce261ac9f94c79e155"
     },
     {
       "file": "changelog/unreleased/snow/melt-in-snow.jpg",
@@ -385,7 +404,7 @@
     },
     {
       "file": "changelog/unreleased/snow/drifts-in-snow.jpg",
-      "sha256": "443dac049fc86f0f4fd35008a04bbec81735016a992d8600aefc0f091e7088f2"
+      "sha256": "84c19eaf72fcb3c6612d1fb7130cc03fbeba39d28914d19b603c7eb99210d330"
     },
     {
       "file": "changelog/unreleased/snow/comparison.jpg",
