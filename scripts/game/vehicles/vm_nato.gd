@@ -911,13 +911,17 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 	var tt := [-0.34, -0.76, 0.34, -0.76, 0.76, -0.4, 0.79, 1.02, 0.6, 1.24, -0.6, 1.24, -0.79, 1.02, -0.76, -0.4]
 	k._add(t, VehicleModels.loft("nato_amv_tur", tb, tt, 0.06, 0.74, 0.04), cam, null, Vector3.ZERO)
 	_weld(k, t, _seated(_rings([tb, 0.06, tt, 0.74]), 0.04), cam)
-	# gun: the mantlet with its canvas boot round the recoil sleeve, the
-	# barrel, the muzzle brake
-	VehicleMounts.mantlet(k, t, Vector3(0.44, 0.36, 0.4), Vector3(0, 0.34, -1.18), cam, null, Vector3.ZERO, Vector2(0.1, 0.16))
-	VehicleWeapons.autocannon(k, t, Vector3(0, 0.34, -1.32), Vector3(0, 0.34, -4.59), Vector2(0.1, 0.6), Vector2(0.052, 0.058), Vector2(0.08, 0.36), "paint", GUN)
+	# gun: the trunnion casting in the turret's face; on the cradle, pivoting
+	# in it at the breech, the mantlet's face plate with its canvas boot round
+	# the recoil sleeve, the barrel and its muzzle brake, and the coaxial MG
+	# beside it, so all of them rise together when the gun is laid high
+	VehicleMounts.mantlet(k, t, Vector3(0.44, 0.36, 0.4), Vector3(0, 0.34, -1.18), cam)
+	var g := k._pivot(t, Vector3(0, 0.34, -1.32))
+	VehicleMounts.mantlet(k, g, Vector3(0.4, 0.32, 0.12), Vector3(0, 0, -0.08), cam, null, Vector3.ZERO, Vector2(0.1, 0.16))
+	var tip := VehicleWeapons.autocannon(k, g, Vector3.ZERO, Vector3(0, 0, -3.27), Vector2(0.1, 0.6), Vector2(0.052, 0.058), Vector2(0.08, 0.36), "paint", GUN)
+	VehicleWeapons.coax(k, g, Vector3(0.32, -0.04, 0.02), 0.3, 0.025)
+	k.gun_assembly(g, tip)
 	k.mg_tip = k._tip(t, Vector3(0, 0.34, -4.6))
-	# coaxial MG port beside the mantlet
-	VehicleWeapons.coax(k, t, Vector3(0.32, 0.3, -1.3), 0.3, 0.025)
 	# sights: gunner's forward left, the commander's panoramic sight on a mast
 	VehicleMounts.sight(k, t, Vector3(-0.42, 0.78, -0.5), Vector3(0.3, 0.26, 0.34), [Rect2(Vector2(0, 0.02), Vector2(0.22, 0.16))], cam)
 	VehicleMounts.sight(k, t, Vector3(0.45, 1.05, 0.55), Vector3(0.36, 0.3, 0.36), [Rect2(Vector2(0, 0.02), Vector2(0.24, 0.16))], cam, null, Vector3(0.08, 0.1, 0.33))
