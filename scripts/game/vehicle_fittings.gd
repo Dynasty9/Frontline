@@ -1451,8 +1451,11 @@ static func light_bar(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 					# back across its top: a flat glossy top mirrored the sky
 					# as a white plate from above, where the flutes keep it red
 					# with a streak of light on every other facet.
+					# (the flutes' crests stand at the old lens's top: the slab
+					# under them is that much thinner and sits that much lower)
 					var c: Color = lenses[i]
-					k._add(m, _fluted(Vector2(ls.x, ls.z), ls.y, minf(0.006, ls.y * 0.08), 4), "signal_lens", c, Vector3(x, y, 0), Vector3(-PI / 2, 0, 0), Vector3.ONE, false)
+					var rib := minf(0.006, ls.y * 0.08)
+					k._add(m, _fluted(Vector2(ls.x, ls.z), ls.y - rib, rib, 4), "signal_lens", c, Vector3(x, y - rib * 0.5, 0), Vector3(-PI / 2, 0, 0), Vector3.ONE, false)
 			if bar:
 				# Clamp brackets bolt the bar to the roof rails at both ends.
 				for e: float in [-1.0, 1.0]:
