@@ -687,11 +687,19 @@ static func _abrams(k: VehicleModels, team: int, seed: int) -> void:
 	k._cyl(t, 0.42, 0.42, 0.04, lp + Vector3(0, 0.02, 0), Vector3.ZERO, "gunmetal_w", null, 18, false)
 	VehicleMounts.pintle(k, t, lp + Vector3(0, 0.0, -0.5), lp + Vector3(0, 0.42, -0.62), "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
 	_mmg(k, t, lp + Vector3(0, 0.42, -0.62))
-	_bx(k, t, Vector3(0.74, 0.46, 0.04), lp + Vector3(0, 0.44, -0.78), cam, null, Vector3(0.12, 0, 0))
-	if not k.burnt:
-		_bx(k, t, Vector3(0.26, 0.16, 0.02), lp + Vector3(0.17, 0.52, -0.81), "glass", null, Vector3(0.12, 0, 0), false)
+	# the loader's armoured gun shield: the front plate with the gun's slot
+	# and a ballistic window over it, and a wing either side splayed out to
+	# the front, each with its window, built as the Humvee turret's faces
+	var lags := k._pivot(t, lp)
+	# (the plate stands clear of the gun's receiver: only the barrel goes
+	# through; the wings are hinged on to its edges)
+	_shield_face(k, lags, 0.0, 0.86, 0.74, 0.2, 0.68, [Rect2(-0.05, 0.36, 0.1, 0.13), Rect2(-0.2, 0.545, 0.4, 0.115)], [false, true], cam)
 	for s: float in [-1.0, 1.0]:
-		_bx(k, t, Vector3(0.04, 0.42, 0.42), lp + Vector3(s * 0.39, 0.42, -0.6), cam, null, Vector3(0, s * 0.35, 0))
+		var wing := k._pivot(lags, Vector3(s * (0.37 + 0.21 * sin(0.35)), 0.0, -0.86 + 0.21 * cos(0.35)))
+		wing.rotation.y = -s * (PI / 2.0 - 0.35)
+		_shield_face(k, wing, 0.0, 0.0, 0.42, 0.21, 0.63, [Rect2(-0.13, 0.4, 0.26, 0.16)], [true], cam)
+		k._fold(wing)
+	k._fold(lags)
 	# the crosswind sensor mast at the back of the roof, the blow-off panels
 	# over the ammunition in the bustle, lifting eyes, antennas
 	VehicleMounts.mast_segment(k, t, Vector3(0, tr + 0.25, 1.85), 0.5, 0.025, "gunmetal_w", null)
@@ -892,6 +900,12 @@ static func _dshk(k: VehicleModels, p: Node3D, pos: Vector3) -> Vector3:
 	k._cyl(g, 0.016, 0.016, 0.6, Vector3(0, -0.06, -0.48), X90, VehicleWeapons.STEEL, null, 6, false)
 	_bx(k, g, Vector3(0.025, 0.07, 0.1), Vector3(0, 0.06, -0.62), VehicleWeapons.STEEL, null, Vector3.ZERO, false)
 	_bx(k, g, Vector3(0.02, 0.06, 0.02), Vector3(0, 0.06, -1.12), VehicleWeapons.STEEL, null, Vector3.ZERO, false)
+	# the anti-aircraft ring sight on its stalk over the gas block, spokes
+	# crossed in its middle: the gunner leads an aircraft round the ring
+	_tube(k, g, Vector3(0, 0.09, -0.62), Vector3(0, 0.125, -0.62), 0.006, VehicleWeapons.STEEL, null, 6, false)
+	k._add(g, Res.torus(0.085, 0.093), VehicleWeapons.STEEL, null, Vector3(0, 0.215, -0.62), X90, Vector3.ONE, false)
+	for a: float in [PI / 4.0, -PI / 4.0]:
+		_bx(k, g, Vector3(0.178, 0.005, 0.005), Vector3(0, 0.215, -0.62), VehicleWeapons.STEEL, null, Vector3(0, 0, a), false)
 	k._cyl(g, 0.042, 0.042, 0.13, Vector3(0, 0, -1.29), X90, VehicleWeapons.STEEL, null, 10)
 	_bx(k, g, Vector3(0.12, 0.016, 0.1), Vector3(0, 0, -1.29), VehicleWeapons.STEEL, null, Vector3.ZERO, false)
 	# the 50-round box on its bracket on the left, the belt rising out of it
