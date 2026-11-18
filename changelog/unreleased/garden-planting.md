@@ -20,4 +20,5 @@ caption = "Every plant: box balls, hydrangeas, roses, lavender, laurels and gold
 - **Shrubs** grow at the back corners of many houses, laurels and golden privet among them.
 - **Flowers are their own colours** now, in window boxes and pots by the door too, where before they came out green.
 - **Ivy** on old walls is a thick mat of leaves with ragged edges, where before it was striped clumps.
+- **Shrubs grow from the ground** as broad domes, no two alike, with lighter new growth on top. Box balls are the exception, clipped round.
 - The plants are built from the trees' photographed leaves. Apart from the hedges between gardens they're scenery: a shell or a passing truck flattens them, and they give no cover.

@@ -1,6 +1,6 @@
 {
   "before_ref": "aba7d654b920a349a43f22b66e2dfccd4306858e",
-  "source_ref": "c69e181f65d30bc21e9f52dcffd2f8d95fdde534",
+  "source_ref": "5795b1ae2d1aeb80e089b12f817c6e584c95034b",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
   "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
@@ -11,7 +11,7 @@
       ],
       "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
       "view": "garden",
-      "before_env": "FL_ONLY_VIEW=garden,-380.5016,190.8693,13.0,-45.0,3.64159265358979",
+      "before_env": "FL_ONLY_VIEW=garden,-382.2261,190.8611,13.0,-45.0,3.64159265358979",
       "crop": [
         300,
         130,
@@ -86,10 +86,10 @@
       "cameras": {
         "planting": [
           0.0,
-          1.26517426967621,
+          1.2595477104187,
           -3.0,
           10.3583555221558,
-          52.231632232666
+          52.2368202209473
         ]
       },
       "crop": [

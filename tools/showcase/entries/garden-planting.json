@@ -4,20 +4,20 @@
   "medium": "still",
   "stage": "tools/showcase/building-surfaces.tscn (house_garden, planting); tests/fixtures/environment-views.gd (town: garden, backyard, driveway)",
   "rationale": "Appearance change: the town's garden and backyard views show front and back gardens at the game's own camera, a matched studio garden shows the pieces at a readable size, the driveway view a bed under the windows, and the planting stage every plant side by side.",
-  "source_ref": "c69e181f65d30bc21e9f52dcffd2f8d95fdde534",
+  "source_ref": "5795b1ae2d1aeb80e089b12f817c6e584c95034b",
   "before_ref": "aba7d654b920a349a43f22b66e2dfccd4306858e",
   "sources": [
     {
       "file": "changelog/unreleased/garden-planting/comparison.jpg",
-      "sha256": "2e53ed2cd68f73cc3edbe43e5bd85863e3b383d5eac000b13fe735419101af3e"
+      "sha256": "ce87e174ffafbba98577a16eb1529bb63fb73e6c0edde125b8029a4cd0a3ba3e"
     },
     {
       "file": "changelog/unreleased/garden-planting/planting.jpg",
-      "sha256": "cf952877ade90accf5dae9ccc301acebdf7c5d1dc1823d450e44e27f053a39b0"
+      "sha256": "4cae0de64b1e1da4a5760a21d165f5f4484fcf3659c24583f20a3c43439b470e"
     },
     {
       "file": "changelog/unreleased/garden-planting/capture.json",
-      "sha256": "771f57c1dbd472eae87195e7e7df6fbe80b6e1dce6efb9a90ab57837fead07df"
+      "sha256": "fed9b46ca024d49f1688b669e1225466810d4d71001020b81640132c549e1912"
     }
   ],
   "output": null
