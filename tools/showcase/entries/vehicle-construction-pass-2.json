@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-construction-pass-2.md",
+  "summary": "Twenty more shared vehicle parts: grilles, running gear, truck beds and bodies, launchers, lamps, mounts, missiles, pods and intakes.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Static construction change: one matched close-up sheet of eight representative vehicles. Roster sheets and per-part review captures stay outside Git; much of the added hardware is small at gameplay distance.",
+  "source_ref": "fd7d58061310e3673af7072e2f4afbca64694d2c",
+  "before_ref": "fd7d58061310e3673af7072e2f4afbca64694d2c",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-construction-pass-2/comparison.jpg",
+      "sha256": "2e257a37c69b38d5ccecef62f00b573f1c8bfbcb015bc443b57f6cc43c3b8260"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-construction-pass-2/capture.json",
+      "sha256": "4ca57c8d44e128ada2776cef3408eb6aa6b672008c58f3251e57d52ae10f8760"
+    }
+  ],
+  "output": null
+}

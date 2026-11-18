@@ -37,9 +37,62 @@ var _vis_dirty := true
 ## second: now the nearest go first and the rest follow over the next frames.
 const VISIBLE_BUDGET_US := 6000
 const BATCH_BUDGET_US := 2000
+## Vehicle models (parked cars, hulks) being built a piece at a time, oldest
+## first: [look, VehicleModels.Build, [[structure, its model holder]...]], so
+## the scenery that waits on one look gets the one model (see
+## Structure._vehicle_model). Each frame gives the first of them this long.
+var _vehicle_jobs: Array = []
+const VEHICLE_BUDGET_US := 4000
 
 func _ready() -> void:
 	process_priority = 20
+
+
+func _exit_tree() -> void:
+	# (a distant mesh still being worked out on a worker is waited for)
+	for job: Array in _vehicle_jobs:
+		(job[1] as VehicleModels.Build).abandon()
+	_vehicle_jobs.clear()
+
+
+## Builds a vehicle model with that look for `st` over the next frames.
+func build_vehicle(st: Structure, kind: String, vteam: int, vseed: int, is_burnt: bool, look: String) -> void:
+	for job: Array in _vehicle_jobs:
+		if job[0] == look:
+			(job[2] as Array).append([st, st.model])
+			return
+	_vehicle_jobs.append([look, VehicleModels.start(kind, vteam, vseed, is_burnt), [[st, st.model]]])
+
+
+## The next pieces of the oldest vehicle model being built; done, it goes to
+## the scenery that waits for it (copies after the first) and into the stock.
+func _build_vehicles() -> void:
+	if _vehicle_jobs.is_empty():
+		return
+	var started := Time.get_ticks_usec()
+	var job: Array = _vehicle_jobs[0]
+	var build: VehicleModels.Build = job[1]
+	var finished := build.step(VEHICLE_BUDGET_US)
+	if OS.has_environment("FL_DEBUG_MODELS"):
+		print("MODELSTEP %s %.1f ms%s" % [job[0], (Time.get_ticks_usec() - started) / 1000.0, " done" if finished else ""])
+	if not finished:
+		world.vp("vehicle models", started)
+		return
+	_vehicle_jobs.pop_front()
+	VehicleModels.stock(job[0], build.k)
+	var k: VehicleModels = build.k
+	for waiting: Array in job[2]:
+		var st: Structure = waiting[0]
+		# (gone, or rebuilt meanwhile as something else: not for it any more)
+		if not is_instance_valid(st) or st.gone or st.model != waiting[1]:
+			continue
+		if k == null:
+			k = VehicleModels.stocked(job[0])
+		st._vehicle_ready(k)
+		k = null
+	if k != null:
+		k.root.free()
+	world.vp("vehicle models", started)
 
 
 func add(st: Structure) -> void:
@@ -209,6 +262,7 @@ func _process(_dt: float) -> void:
 	# its own, several draws a wall in each of the four shadow cascades.
 	merge_ready_blocks()
 	world.vp("scenery construction", started)
+	_build_vehicles()
 
 
 ## Merges the waiting blocks that are wholly built, for up to BATCH_BUDGET_US.

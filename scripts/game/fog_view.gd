@@ -128,16 +128,22 @@ func set_hidden(h: bool) -> void:
 		_mi.visible = active and not hidden
 
 
+var _light_rev := -1  # the atmosphere's light the shade was last set for
+
+
 func _process(dt: float) -> void:
 	var team := world.view_team
 	var on := team >= 0 and team <= 1 and bool(Settings.get_v("lyr_vision"))
-	if on != active:
-		active = on
-		_mi.visible = on and not hidden
-		_t = 0.0
+	if on != active or (on and world.atmo and world.atmo.light_rev != _light_rev):
+		if on != active:
+			active = on
+			_mi.visible = on and not hidden
+			_t = 0.0
 		if on and world.atmo:
+			_light_rev = world.atmo.light_rev
 			# at night the whole field is dark already: out of sight is only a little darker
-			_mat.set_shader_parameter("shade", Color(0.74, 0.76, 0.82) if world.atmo.mood == "night" else Color(0.6, 0.62, 0.68))
+			var night := world.atmo.by_mood({"night": 1.0}, 0.0)
+			_mat.set_shader_parameter("shade", Color(0.6, 0.62, 0.68).lerp(Color(0.74, 0.76, 0.82), night) if night < 1.0 else Color(0.74, 0.76, 0.82))
 	if not on:
 		return
 	_t -= dt

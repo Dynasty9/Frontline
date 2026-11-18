@@ -45,6 +45,8 @@ var _yard_decor: Array = []
 var church_at := Vector3.INF  # where the parish church stands (none: INF)
 var _church_decor: Array = []  # its churchyard's dressing (decor, after everything else)
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
+var _street_decor: Array = []  # the streets' furniture (decor, after the shops'; see _street_furniture)
+var _vacant: Array = []  # [front, n, d, W] of each car park and bombed-out lot, for the hoardings
 
 
 func _init(m) -> void:
@@ -59,7 +61,9 @@ func _d(kind: String, p: Vector3, yaw := 0.0, extra = null) -> void:
 		var count := ceili(size.x / 2.2)
 		var length := size.x / count
 		for i in count:
-			_d(kind, p + Basis(Vector3.UP, yaw).x * ((i + 0.5) * length - size.x * 0.5), yaw, Vector3(length, size.y, size.z))
+			# (every bay but the last shares its end post with the next)
+			var linked := BuildingFences.LINKED if i < count - 1 else 0
+			_d(kind, p + Basis(Vector3.UP, yaw).x * ((i + 0.5) * length - size.x * 0.5), yaw, Vector3(length, size.y, int(size.z) | linked))
 		return
 	# Store world heights once so clients, replay and breakage agree on the same positions.
 	p.y += world.terrain.landform.height(p)
@@ -554,18 +558,18 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 1})
 		elif kind < 0.88:
 			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 0})
-	var style := rng.randi() % 3
+	var fences := _house_fences(front, rng.randi() % 3)
 	for e: float in [-1.0, 1.0]:
 		var sp := front + d * (W * 0.5 * e) + n * (_depth * 0.5 + (setback + dep) * 0.5)
 		var flen := _depth - (setback + dep)
 		var key := _key(sp)
 		if flen > 1.5 and not _fence_keys.has(key):
 			_fence_keys[key] = true
-			_d("fence", sp, yaw_along(n), Vector3(flen - 0.6, 1.1, style))
+			_d("fence", sp, yaw_along(n), Vector3(flen - 0.6, fences[3], fences[2]))
 	if not shop:
 		# a low front fence with a gate, a mailbox, a tree or a vegetable patch behind
 		if rng.randf() < 0.55:
-			_front_fence(front, n, d, W, gate, drive_x, style)
+			_front_fence(front, n, d, W, gate, drive_x, fences[0], fences[1])
 		if rng.randf() < 0.4:
 			_d("mailbox", front + n * 0.5 + d * (W * 0.5 - 1.2), axis)
 		var yard := _depth - setback - dep
@@ -717,7 +721,32 @@ func _approach(front: Vector3, n: Vector3, d: Vector3, door: Vector3, side: floa
 	return gate
 
 
-func _front_fence(front: Vector3, n: Vector3, d: Vector3, width: float, gate: float, drive: float, style: int) -> void:
+## The fences a house puts up, from its `family` (picket, rustic, iron) and its
+## own look (drawn apart from the map's numbers, so the map is the same with
+## them or without): [front code, front height, side code, side height]. The
+## sides, behind the house, are taller: the back garden is private.
+func _house_fences(front: Vector3, family: int) -> Array:
+	var look := RandomNumberGenerator.new()
+	look.seed = int(absf(front.x) * 7.0) * 15485863 + int(absf(front.z) * 7.0) * 92821 + 5
+	var timber := look.randi() % 4 + (4 if look.randf() < 0.4 else 0)
+	match family:
+		0:
+			var paint := look.randi() % BuildingFences.PICKET_PAINT.size()
+			if look.randf() < 0.3:
+				return [BuildingFences.code(BuildingFences.PICKET, paint), 0.9, BuildingFences.code(BuildingFences.PICKET, paint), 1.15]
+			return [BuildingFences.code(BuildingFences.PICKET, paint), 0.9, BuildingFences.code(BuildingFences.CLOSE_BOARD, timber), 1.8]
+		1:
+			if look.randf() < 0.5:
+				return [BuildingFences.code(BuildingFences.PALING, look.randi() % 4), 0.95, BuildingFences.code(BuildingFences.PALING, look.randi() % 4), 1.25]
+			return [BuildingFences.code(BuildingFences.PALING, look.randi() % 4), 0.95, BuildingFences.code(BuildingFences.CLOSE_BOARD, timber), 1.8]
+		_:
+			var iron := look.randi() % BuildingFences.RAIL_PAINT.size()
+			if look.randf() < 0.5:
+				return [BuildingFences.code(BuildingFences.RAILINGS, iron), 0.85, BuildingFences.code(BuildingFences.CHAIN_LINK, look.randi() % BuildingFences.LINK_COLOURS.size()), 1.4]
+			return [BuildingFences.code(BuildingFences.RAILINGS, iron), 0.85, BuildingFences.code(BuildingFences.CLOSE_BOARD, timber), 1.8]
+
+
+func _front_fence(front: Vector3, n: Vector3, d: Vector3, width: float, gate: float, drive: float, style: int, height := 0.85) -> void:
 	var openings := [Vector2(gate - 0.8, gate + 0.8)]
 	if is_finite(drive):
 		openings.append(Vector2(drive - 1.4, drive + 1.4))
@@ -727,8 +756,16 @@ func _front_fence(front: Vector3, n: Vector3, d: Vector3, width: float, gate: fl
 	for gap: Vector2 in openings:
 		var end := clampf(gap.x, -width * 0.5, width * 0.5)
 		if end - start > 0.15:
-			_d("fence", front + n * 0.35 + d * ((start + end) * 0.5), yaw_along(d), Vector3(end - start, 0.85, style))
+			_d("fence", front + n * 0.35 + d * ((start + end) * 0.5), yaw_along(d), Vector3(end - start, height, style))
 		start = maxf(start, gap.y)
+	# the garden gate in its opening (put with the yard dressing, after the
+	# rest of the decor, so every older piece keeps its look)
+	if absf(gate) < width * 0.5 - 0.85 and (not is_finite(drive) or absf(drive - gate) > 2.4):
+		var main_decor := decor
+		decor = _yard_decor
+		_d("fence", front + n * 0.35 + d * gate, yaw_along(d), Vector3(1.6, height, style | BuildingFences.GATE))
+		_yard_decor = decor
+		decor = main_decor
 
 
 func _square(c: Vector3, q: Vector3) -> void:
@@ -776,11 +813,12 @@ func _playground(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	_reserve(c, Vector2(W * 0.5, _depth * 0.5), yaw)
 	_d("soft", c, yaw, Vector3(W - 1.0, 0, _depth - 1.0))
 	# a green railing all round, with the gate on the street
-	_d("fence", front + n * 0.3 + d * (-W * 0.25 - 0.5), yaw, Vector3(W * 0.5 - 1.6, 1.0, 2))
-	_d("fence", front + n * 0.3 + d * (W * 0.25 + 0.5), yaw, Vector3(W * 0.5 - 1.6, 1.0, 2))
-	_d("fence", front + n * (_depth - 0.3), yaw, Vector3(W - 0.4, 1.0, 2))
+	var bow := BuildingFences.BOW_TOP
+	_d("fence", front + n * 0.3 + d * (-W * 0.25 - 0.5), yaw, Vector3(W * 0.5 - 1.6, 1.0, bow))
+	_d("fence", front + n * 0.3 + d * (W * 0.25 + 0.5), yaw, Vector3(W * 0.5 - 1.6, 1.0, bow))
+	_d("fence", front + n * (_depth - 0.3), yaw, Vector3(W - 0.4, 1.0, bow))
 	for e: float in [-1.0, 1.0]:
-		_d("fence", front + d * (W * 0.5 - 0.3) * e + n * _depth * 0.5, yaw_along(n), Vector3(_depth - 0.6, 1.0, 2))
+		_d("fence", front + d * (W * 0.5 - 0.3) * e + n * _depth * 0.5, yaw_along(n), Vector3(_depth - 0.6, 1.0, bow))
 	var lx := W * 0.5 - 3.2
 	_d("swing", c + d * (-lx + 0.8) + n * 3.5, yaw)
 	_d("slide", c + d * (lx - 1.2) + n * 3.2, yaw_along(n) + PI)
@@ -822,6 +860,7 @@ func _park(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 func _parking(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	if not _lot_free(front, n, d, W):
 		return
+	_vacant.append([front, n, d, W, 10.6])
 	var c := front + n * 5.5
 	var size := Vector3(W - 1.0, 0, 11.0)
 	_reserve(c, Vector2(W * 0.5, 5.6), yaw_along(d))
@@ -842,7 +881,8 @@ func _allotment(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	_reserve(c, Vector2(W * 0.5, _depth * 0.5), yaw)
 	for i in 2:
 		_d("garden", c + n * (-3.0 + i * 5.0) + d * rng.randf_range(-1, 1), yaw, Vector3(W - 3.0, 0, 3.6))
-	_d("fence", front + n * 0.3, yaw, Vector3(W - 0.6, 1.0, 1))
+	# allotment holders keep the street out with chain-link
+	_d("fence", front + n * 0.3, yaw, Vector3(W - 0.6, 1.5, BuildingFences.code(BuildingFences.CHAIN_LINK, int(absf(front.x + front.z)) % 2)))
 	mg._try("crates", c + d * (W * 0.5 - 1.8) + n * (_depth * 0.5 - 1.5), yaw, -1, {"variant": 0})
 	if rng.randf() < 0.6:
 		mg._try("tree", c - d * (W * 0.5 - 1.8) + n * (_depth * 0.5 - 1.8), 0.0, -1)
@@ -851,12 +891,125 @@ func _allotment(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 func _ruin_lot(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	if not _lot_free(front, n, d, W):
 		return
+	_vacant.append([front, n, d, W, 1.7])
 	var c := front + n * 5.0
 	_reserve(c, Vector2(W * 0.5, _depth * 0.5), yaw_along(d))
 	for i in rng.randi_range(2, 4):
 		world.spawn("structure", {"skind": "rubble", "pos": c + d * rng.randf_range(-W * 0.35, W * 0.35) + n * rng.randf_range(-3, 4), "yaw": rng.randf() * TAU, "size": Vector3(rng.randf_range(2.0, 3.6), 0, rng.randf_range(1.2, 2.0))})
 	if rng.randf() < 0.6:
 		mg._try("low_wall", front + n * 0.6, yaw_along(d), -1, {"size": Vector3(minf(W - 2.0, 6.0), 1.0, 0.5), "variant": 0})
+
+
+## The streets' furniture beyond their lamps and poles (BuildingStreet):
+## traffic lights at the central crossroads, a telephone box and post boxes
+## on the main street's pavements, an advertising column on the square, a
+## hoarding over each car park and bombed-out lot, street names on posts at
+## the junctions, and what people running from the fighting dropped on the
+## pavements. Laid once everything else is down, each kept clear of what's
+## on the pavement already (and off the drives); a stream of its own and a
+## list of its own after the rest, so the town is as it was.
+func _street_furniture() -> void:
+	var sr := RandomNumberGenerator.new()
+	sr.seed = int(absf(center.x) * 13.0) * 7919 + int(absf(center.z) * 13.0) * 31 + 71
+	var main_decor := decor
+	decor = _street_decor
+	var taken: Array = []  # [position, reach] of every piece standing on the ground
+	var drives: Array = []
+	for list: Array in [main_decor, _yard_decor, _shop_decor]:
+		for e: Array in list:
+			var k: String = e[0]
+			if k == "drive":
+				drives.append(e)
+			elif not k in ["walk", "curb", "junction", "zebra", "pave", "lot_pave", "yard", "wire", "drop", "garden", "fence", "soft"]:
+				taken.append([e[1], 1.0])
+	var clear := func(p: Vector3, r: float) -> bool:
+		for t: Array in taken:
+			if Defs.flat((t[0] as Vector3) - p).length() < r + float(t[1]):
+				return false
+		for e: Array in drives:
+			var half: Vector2 = Vector2((e[3] as Vector3).x, (e[3] as Vector3).z) * 0.5 + Vector2(r, r)
+			if Defs.point_in_obb(Vector2(p.x, p.z), Vector2(e[1].x, e[1].z), half, float(e[2])):
+				return false
+		return true
+	var put := func(kind: String, p: Vector3, yaw: float, extra: Variant, r: float) -> bool:
+		if not clear.call(p, r):
+			return false
+		_d(kind, p, yaw, extra)
+		taken.append([p, r])
+		world.stat("street_" + kind)
+		return true
+	# traffic lights at the four corners of the central crossroads, each with
+	# a head down its street and one down the cross street (all dark now)
+	if (node_dirs.get(_key(center), {}) as Dictionary).size() >= 4:
+		for sx: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				var tp := center + Vector3(sx, 0, sz) * (CURB + 0.55)
+				var yaw := Defs.yaw_of(Vector3(sx, 0, 0))
+				var side := signf((Basis(Vector3.UP, yaw) * Vector3.RIGHT).dot(Vector3(0, 0, sz)))
+				put.call("traffic_light", tp, yaw, side, 0.4)
+	# a telephone box and two post boxes along the main street near the middle
+	var mains: Array = []
+	for pc: Array in pieces:
+		if pc[2] and ((pc[0] as Vector3).lerp(pc[1], 0.5)).distance_to(center) < 36.0:
+			mains.append(pc)
+	for item: Array in [["phone_box", 0.75], ["post_box", 0.4], ["post_box", 0.4]]:
+		for attempt in 8:
+			if mains.is_empty():
+				break
+			var pc: Array = mains[sr.randi() % mains.size()]
+			var a: Vector3 = pc[0]
+			var b: Vector3 = pc[1]
+			var dd := (b - a).normalized()
+			var n := _perp(dd) * (1.0 if sr.randf() < 0.5 else -1.0)
+			var L := a.distance_to(b)
+			var pp := a + dd * sr.randf_range(WALK + 1.5, L - WALK - 1.5) + n * (4.15 if item[0] == "phone_box" else 4.3)
+			if put.call(item[0], pp, Defs.yaw_of(-n), sr.randi() % 3, item[1]):
+				break
+	# an advertising column on the square
+	if square != Vector3.INF:
+		for attempt in 8:
+			var cp := square + Vector3(sr.randf_range(-7.5, 7.5), 0, sr.randf_range(-7.5, 7.5))
+			if put.call("ad_column", cp, sr.randf() * TAU, null, 1.1):
+				break
+	# a hoarding over each car park and bombed-out lot, facing the street
+	for v: Array in _vacant:
+		var front: Vector3 = v[0]
+		var n: Vector3 = v[1]
+		var w := minf(float(v[3]) - 2.0, 6.0)
+		if w >= 3.0:
+			put.call("hoarding", front + n * float(v[4]), Defs.yaw_of(-n), snappedf(w, 0.1), 0.3)
+	# street names at the junctions, on whichever corner has room
+	for key in node_dirs:
+		var dirs: Dictionary = node_dirs[key]
+		if dirs.size() < 3:
+			continue
+		var p := Vector3(key.x, 0, key.y)
+		var corners: Array = []
+		for sx: int in [-1, 1]:
+			for sz: int in [-1, 1]:
+				if dirs.has(Vector2i(sx, 0)) and dirs.has(Vector2i(0, sz)):
+					corners.append(Vector3(sx, 0, sz))
+		var first := sr.randi() % maxi(1, corners.size())
+		for i in corners.size():
+			var c: Vector3 = corners[(first + i) % corners.size()]
+			if put.call("street_name", p + c * (CURB + 0.45), Defs.yaw_of(Vector3(0, 0, -c.z)), null, 0.3):
+				break
+	# what people running from the fighting dropped on the pavements
+	for i in sr.randi_range(4, 7):
+		for attempt in 6:
+			var pc: Array = pieces[sr.randi() % pieces.size()]
+			var a: Vector3 = pc[0]
+			var b: Vector3 = pc[1]
+			var dd := (b - a).normalized()
+			var L := a.distance_to(b)
+			if L < WALK * 2.0 + 3.0:
+				break
+			var n := _perp(dd) * (1.0 if sr.randf() < 0.5 else -1.0)
+			var bp := a + dd * sr.randf_range(WALK + 1.0, L - WALK - 1.0) + n * sr.randf_range(3.5, 4.2)
+			if put.call("belongings", bp, sr.randf() * TAU, null, 1.2):
+				break
+	_street_decor = decor
+	decor = main_decor
 
 
 ## Every house within reach of a pole gets its service wire.
@@ -1006,7 +1159,7 @@ func farms(k: int) -> void:
 		_fronts.append(hc - n * 4.0 + Vector3(0, 2.85, 0))
 		var no_doors: Array[Vector3] = []
 		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35, no_doors, true)
-		_d("fence", base - n * 2.0 + t * 1.0, yaw_along(t), Vector3(30.0, 1.1, 1))
+		_d("fence", base - n * 2.0 + t * 1.0, yaw_along(t), Vector3(30.0, 1.1, BuildingFences.code(BuildingFences.POST_RAIL, int(absf(base.x)) % 2)))
 		for j in rng.randi_range(2, 4):
 			var hp := base + n * rng.randf_range(12.0, 15.0) + t * (rng.randf_range(-4, 4))
 			var hy := yaw_along(t) + rng.randf_range(-0.3, 0.3)
@@ -1205,6 +1358,66 @@ func roadside(cars: int, wrecks: int) -> void:
 
 ## Keep the scattered scenery out of town and off the roads; hand the street
 ## furniture to the world.
+## The military's own fences: a security fence across the back of each HQ (the
+## Rebels' an improvised one),
+## along the map's edge where the stores and vehicle park are, and a screen of
+## mesh panels hung with scrim round the back of the town's supply dump. Put
+## after the rest of the decor, so every older piece keeps its look.
+func military_fences(depots: Array, dumps: Array) -> void:
+	for dp in depots:
+		var st: Structure = dp
+		var b := Basis(Vector3.UP, st.yaw)
+		var c := st.position
+		# the Coalition's is put up by engineers to a standard; the Rebels' from
+		# stakes, wire and whatever the town gave up
+		var sec := BuildingFences.code(BuildingFences.SECURITY if st.team == Defs.ARMY else BuildingFences.IMPROVISED)
+		var high := 2.4 if st.team == Defs.ARMY else 1.7
+		# (only the back and its corners: the supply tracks, laid later and
+		# relaid as FOBs go up, leave by the front and the sides)
+		_fence_line(c + b * Vector3(-15.0, 0, 4.5), c + b * Vector3(-15.0, 0, 8.5), high, sec)
+		_fence_line(c + b * Vector3(-15.0, 0, 8.5), c + b * Vector3(15.0, 0, 8.5), high, sec)
+		_fence_line(c + b * Vector3(15.0, 0, 8.5), c + b * Vector3(15.0, 0, 4.5), high, sec)
+	var panels := BuildingFences.code(BuildingFences.PANELS)
+	for dp in dumps:
+		var st: Structure = dp
+		var b := Basis(Vector3.UP, st.yaw)
+		var c := st.position
+		_fence_line(c + b * Vector3(-3.3, 0, -0.5), c + b * Vector3(-3.3, 0, 2.5), 2.0, panels)
+		_fence_line(c + b * Vector3(-3.3, 0, 2.5), c + b * Vector3(3.3, 0, 2.5), 2.0, panels)
+		_fence_line(c + b * Vector3(3.3, 0, 2.5), c + b * Vector3(3.3, 0, -0.5), 2.0, panels)
+
+
+## A fence from `a` to `b` in bays, left open wherever a road or track runs
+## through (a fence is put up beside a road, not across it).
+func _fence_line(a: Vector3, b: Vector3, height: float, c: int) -> void:
+	var length := Defs.flat(b - a).length()
+	var count := ceili(length / 2.2)
+	var bay := length / count
+	var dir := Defs.flat(b - a).normalized()
+	var keep: Array[bool] = []
+	for i in count:
+		keep.append(_road_width_at(a + dir * ((i + 0.5) * bay)) > 1.2)
+	for i in count:
+		if not keep[i]:
+			continue
+		var linked := BuildingFences.LINKED if i < count - 1 and keep[i + 1] else 0
+		_d("fence", a + dir * ((i + 0.5) * bay), yaw_along(dir), Vector3(bay, height, c | linked))
+
+
+## How far `p` is from the edge of the nearest road or track of any kind
+## (negative on it).
+func _road_width_at(p: Vector3) -> float:
+	var best := 1e9
+	var q := Vector3(p.x, 0, p.z)
+	for k in world.roads.size():
+		var half: float = [4.5, 3.5, 3.0, 2.5][mini(k, 3)]
+		for poly in world.roads[k]:
+			var pts: PackedVector3Array = poly
+			for i in range(0, pts.size() - 1):
+				best = minf(best, Defs.dist_point_segment(q, pts[i], pts[i + 1]) - half)
+	return best
+
+
 func finish(build_view := true) -> void:
 	mg._keep_clear([rect.get_center(), REACH + 4.0])
 	for hm in hamlets:
@@ -1213,11 +1426,14 @@ func finish(build_view := true) -> void:
 		var arr: PackedVector3Array = poly
 		for k in range(0, arr.size(), 2):
 			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
+	_street_furniture()
 	decor.append_array(_yard_decor)
 	decor.append_array(_shop_decor)
+	decor.append_array(_street_decor)
+	decor.append_array(_church_decor)
 	_yard_decor = []
 	_shop_decor = []
-	decor.append_array(_church_decor)
+	_street_decor = []
 	_church_decor = []
 	if build_view:
 		world.set_decor(decor, rect)

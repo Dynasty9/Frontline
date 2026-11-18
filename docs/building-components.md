@@ -13,6 +13,7 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_openings.gd` | `BuildingOpenings` | Windows, sills, heads, shutters, doorways, door leaves, roller shutters, louvres, ribbon glazing |
 | `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets (and their wear), single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
 | `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
+| `scripts/game/building_fences.gd` | `BuildingFences` | Fence bays in nine styles (picket, post-and-rail, railings, close-board, paling, chain-link, bow-top, military security, mesh panels) and their gates |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor, roof tarps and holes; stains that fade into a wall (soot, rain streaks, scorch), shell scars, bullet strikes, boarded and sandbagged windows |
 | `scripts/game/building_furnishings.gd` | `BuildingFurnishings` | Curtains, blinds, nets, window boxes, door lanterns, TV aerials; inside: linings and skirting, radiators, pictures, mirrors, clocks, shelves, rugs |
@@ -121,6 +122,18 @@ and shoot through) and some have sandbags laid along the sill. Soot, streaks and
 stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so it fades into the wall with no
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
+
+## Street furniture
+
+A town's streets carry more than lamps and poles (`BuildingStreet`, laid by `TownGen._street_furniture` once
+everything else is down): traffic lights at the four corners of the central crossroads (a head down each street,
+the lenses dark: the power's off; now and then one askew or a pole leaning), a telephone box and pillar post
+boxes on the main street's pavements, an advertising column on the square, a hoarding over each car park and
+bombed-out lot, street names on posts at the junctions, and what people running from the fighting dropped on the
+pavements. Each is kept clear of what's on the pavement already and off the drives, from a stream of its own into
+a decor list of its own after the rest, so the town is as it was; vehicles and blasts knock them down like the
+other street furniture (`Decor.BREAKABLE`). Render the pieces with `--building-kinds=street_kit`; the town views
+include the crossroads and the square.
 
 ## Furniture
 

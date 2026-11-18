@@ -504,12 +504,17 @@ func _on_game_start(s: Dictionary) -> void:
 		cur = _curtain("loading")
 		var mt := _mission_text(s)
 		cur.brief(int(s.get("seed", 1)), String(mt[0]), mt[1], String(mt[2]) if mt.size() > 2 else "", String(mt[3]) if mt.size() > 3 else "")
+		cur.set_stage("Preparing the battlefield", 0.02)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		# Starting immediately after launch must not block the curtain on script compilation.
+		while ResourceLoader.load_threaded_get_status(GameScripts.WORLD) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			if not is_instance_valid(cur):
+				return
+			await get_tree().process_frame
+		if not is_instance_valid(cur):
+			return
 		cur.set_stage("Surveying the ground", 0.14)
-		if multiplayer.is_server():
-			# let it reach the screen before the long build (clients build at once:
-			# their world is small and the host's state is on its way)
-			await get_tree().process_frame
-			await get_tree().process_frame
 	if menu:
 		menu.visible = false
 	Settings.set_ui_menu(false)
@@ -1364,6 +1369,18 @@ func _process(_dt: float) -> void:
 				world.input.set_standing(kv.get_slice(":", 0), int(kv.get_slice(":", 1)))
 	if args.has("nohud") and world.hud and world.hud.root.visible:
 		world.hud.root.visible = false
+	# --gpu-bench[=out.json]: what each graphics setting costs the graphics card,
+	# measured on the battle held still --gpu-bench-at seconds in (scripts/test/gpu_bench.gd)
+	if args.has("gpu-bench") and not has_meta("gpu_bench") and not world.client_loading() and view_time >= float(args.get("gpu-bench-at", 8.0)):
+		set_meta("gpu_bench", true)
+		var gb: Node = (load("res://scripts/test/gpu_bench.gd") as Script).new()
+		gb.set("world", world)
+		gb.set("out", "" if String(args["gpu-bench"]) == "1" else String(args["gpu-bench"]))
+		gb.set("frames", maxi(2, int(args.get("gpu-bench-frames", 20))))
+		gb.set("cycles", maxi(1, int(args.get("gpu-bench-cycles", 10))))
+		if args.has("gpu-bench-only"):
+			gb.set("only", String(args["gpu-bench-only"]).split(",", false))
+		add_child(gb)
 	# --photo-at=S: photo mode opens S seconds into the battle, its values set from
 	# --photo=key:value,... (fov:30,mood:dusk,blur:0.6,pos:x:y:z,yaw:deg,pitch:deg). The battle
 	# is held from then on, so the rest counts real seconds: after --photo-wait (3)
