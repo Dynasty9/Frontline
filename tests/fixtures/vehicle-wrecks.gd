@@ -172,7 +172,11 @@ func _contact_poses() -> void:
 		wreck.model = Node3D.new()
 		wreck.add_child(wreck.model)
 		var wk := VehicleModels.build("slammer", 0, 1, false, true)
+		var cached := wk.copy()
 		wreck._dress_vehicle(wk)
+		for whip: Node3D in wk.antennas:
+			if wk.turret.is_ancestor_of(whip):
+				_check("cook-off snaps the turret radio whip", whip.scale.y < 0.2)
 		field.time = float(wreck.wreck_finish.since) + 10.0
 		wreck._update_turret_pose()
 		var lowest := INF
@@ -181,5 +185,12 @@ func _contact_poses() -> void:
 				for vertex: Vector3 in mi.mesh.get_faces():
 					lowest = minf(lowest, (mi.global_transform * vertex).y)
 		_check("seed %s meshes rest on ground (%.2f m)" % [id, lowest], lowest < 0.05 and lowest > -0.5)
+		var resting := wk.turret.transform
+		wreck.model.free()
+		wreck.model = Node3D.new()
+		wreck.add_child(wreck.model)
+		wreck._dress_vehicle(cached)
+		wreck._update_turret_pose()
+		_check("cached model keeps the same damaged resting pose", cached.turret.transform.is_equal_approx(resting))
 		wreck.model.free()
 		wreck.model = null

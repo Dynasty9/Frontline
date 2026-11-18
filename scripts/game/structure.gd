@@ -1810,6 +1810,11 @@ func _blow_turret(wk: VehicleModels, rng: RandomNumberGenerator) -> void:
 	var debris := model.get_node_or_null("Debris") as Node3D
 	if t == null or debris == null:
 		return
+	# Thin radio whips snap in the cook-off; they cannot prop up inverted armour.
+	for whip: Node3D in wk.antennas:
+		if t.is_ancestor_of(whip):
+			whip.scale.y *= 0.12
+			whip.rotation.x += 0.55
 	var seat := _in_root(wk, t)
 	var box := _bounds_in(t)
 	var aim := seat.basis.inverse() * (_in_root(wk, wk.gun_tip).origin - seat.origin) if wk.gun_tip else Vector3.ZERO  # (the gun, in the turret's own space)
