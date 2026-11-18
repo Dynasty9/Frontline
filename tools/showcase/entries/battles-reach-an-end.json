@@ -4,16 +4,39 @@
   "version": "unreleased",
   "kind": "improved",
   "summary": "Skirmishes against the AI now end in about 20 minutes, on resolve or on bases, instead of grinding on past half an hour.",
-  "medium": "still",
+  "medium": "motion",
   "stage": "game player view (--host --team=0)",
-  "rationale": "The rule players see is the resolve readout on the status line, so one legible still shows it in place. The change in pacing is a measurement, given as end times, kills and first contact over AI-vs-AI seeds 1-6 in the pull request, not as footage.",
+  "rationale": "Matched real-game captures show the player-facing reason on the victory banner and after-action report. The controlled near-zero resolve setup demonstrates feedback only, not normal battle duration or balance.",
   "source_ref": "47194210 (merge of main into claude/pacing-victory-e2061b). Windowed off-screen render: --offscreen --host --team=0 --seed=3 --timescale=6 --perf=0 --screenshot --shot-at=330 at 1600x900; the top-left 1000x300 is kept (status line, order of battle, the FOB), JPEG quality 85.",
   "sources": [
     {
       "file": "changelog/unreleased/battles-reach-an-end/resolve-readout.jpg",
       "sha256": "ab0b612508b74deba006bae128226000fb360c1c98bb84742acb6b6eb7a983af",
       "caption": "Resolve on the status line: yours, theirs, and what you're losing a second (cropped from a 1600x900 frame)."
+    },
+    {
+      "file": "changelog/unreleased/battles-reach-an-end/battle-outcome.webm",
+      "sha256": "a888bba54e9b3aeae5c137fa951ae9c4bb25f25306cf479435a1de213645f22d"
+    },
+    {
+      "file": "changelog/unreleased/battles-reach-an-end/battle-outcome.jpg",
+      "sha256": "7a12ecb1eb4afe905a5f9bdec8fa09c28527824ec819f9f9f378227969837f07"
+    },
+    {
+      "file": "changelog/unreleased/battles-reach-an-end/battle-outcome-comparison.jpg",
+      "sha256": "b3836a72a49b454579626340127dac30a1c4ca393f1b56ddfae04f2540f019f7"
     }
   ],
-  "output": null
+  "output": null,
+  "capture": {
+    "before_ref": "e0ed42606cb97c5d16714586c7406ef8eabf4d14",
+    "after_ref": "16fff15883a13dd3f47d450d709dcd6574eb36a2",
+    "fixture": "tests/fixtures/battle-outcome-clips.gd (same fixture copied into baseline checkout)",
+    "fixture_sha256": "02d1410c1f730e49715c35c3bf70f1d58daa98ae4df6fd186d7c5d474b0ca98c",
+    "engine": "Godot 4.7.2",
+    "renderer": "Compatibility / Mesa llvmpipe",
+    "command": "godot --path . --audio-driver Dummy --rendering-method gl_compatibility --resolution 1280x720 --fixed-fps 15 --write-movie /tmp/capture.avi tests/fixtures/battle-outcome-clips.tscn -- --no-stun",
+    "setup": "Attack scenario, seed 3, low preset; controlled held town; resolve 400 versus 2, bleed enabled immediately. Real victory rules and result UI. Capture-only UI wall clocks advance by 67 ms per frame so slow software rendering does not skip the animation. No performance or battle-duration claim.",
+    "edit": "Each take trimmed 4\u201314 seconds, scaled 1600x900 to 1280x720, labelled BEFORE/AFTER, concatenated; silent 20 seconds at 15 fps."
+  }
 }

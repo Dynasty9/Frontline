@@ -4,6 +4,15 @@ summary = "Each side now has resolve that drains while the enemy holds more of t
 kind = "improved"
 headline = true
 
+[[videos]]
+file = "battle-outcome.webm"
+poster = "battle-outcome.jpg"
+caption = "Before and after: a controlled near-zero resolve finish in the real game. The result now explains why the Rebels lost. Software-rendered; this is not a match-duration or performance measurement."
+
+[[screenshots]]
+file = "battle-outcome-comparison.jpg"
+caption = "Matched victory banners: generic result before, the winning condition after"
+
 [[screenshots]]
 file = "resolve-readout.jpg"
 caption = "Resolve on the status line: yours, theirs, and what you're losing a second"
