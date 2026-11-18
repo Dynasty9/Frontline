@@ -715,7 +715,7 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 	k.turret = pk
 	# (the round post turns in its socket with the gun, the cradle on top)
 	VehicleMounts.pintle(k, pk, pk_base - pk_head, Vector3.ZERO, "gunmetal_w", null, Vector2(0.026, 0.034), Vector2(0.08, 0.13))
-	var pk_muzzle := VehicleWeapons.mmg(k, pk, Vector3.ZERO, Vector3(0, 0, -0.98), 1.0, 1.0, true, "gunmetal_w", Color(0.3, 0.3, 0.26))
+	var pk_muzzle := VehicleWeapons.mmg(k, pk, Vector3.ZERO, Vector3(0, 0, -0.98), 1.0, 1.0, true, "gunmetal_w", Color(0.3, 0.3, 0.26), true)
 	k.mg_tip = k._tip(pk, pk_muzzle + Vector3(0, 0, -0.02))
 
 

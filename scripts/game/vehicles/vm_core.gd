@@ -1588,8 +1588,9 @@ static func _annulus(inner: float, outer: float, height: float, sides := 32) -> 
 ## turret's axis at `yaw` (its outside away from the axis), with `holes` cut
 ## through it (Rect2s in its x and y). A hole whose `glass` is true holds a
 ## thick block of ballistic glass in a bolted frame; the others stay open (a
-## gun's slot). The top edge rolled; wrecks lose the glass.
-static func _shield_face(k: VehicleModels, t: Node3D, yaw: float, apothem: float, width: float, y0: float, y1: float, holes: Array, glass: Array, mat: String, thick := 0.035) -> void:
+## gun's slot). The top edge rolled; wrecks lose the glass. `col` tints the
+## steel (a painted shield).
+static func _shield_face(k: VehicleModels, t: Node3D, yaw: float, apothem: float, width: float, y0: float, y1: float, holes: Array, glass: Array, mat: String, thick := 0.035, col = null) -> void:
 	var p := k._pivot(t, Basis(Vector3.UP, yaw) * Vector3(0, 0, -apothem))
 	p.rotation.y = yaw
 	# the plate in columns between the holes' edges, each column's solid runs
@@ -1619,10 +1620,10 @@ static func _shield_face(k: VehicleModels, t: Node3D, yaw: float, apothem: float
 			if not open and start == INF:
 				start = ya
 			elif open and start != INF:
-				k._box(p, Vector3(xb - xa, ya - start, thick), Vector3((xa + xb) * 0.5, (start + ya) * 0.5, 0), mat)
+				k._box(p, Vector3(xb - xa, ya - start, thick), Vector3((xa + xb) * 0.5, (start + ya) * 0.5, 0), mat, col)
 				start = INF
 		if start != INF:
-			k._box(p, Vector3(xb - xa, y1 - start, thick), Vector3((xa + xb) * 0.5, (start + y1) * 0.5, 0), mat)
+			k._box(p, Vector3(xb - xa, y1 - start, thick), Vector3((xa + xb) * 0.5, (start + y1) * 0.5, 0), mat, col)
 	var out := -thick * 0.5 - 0.006
 	for n in holes.size():
 		var h: Rect2 = holes[n]
@@ -1639,18 +1640,18 @@ static func _shield_face(k: VehicleModels, t: Node3D, yaw: float, apothem: float
 			k._box(p, Vector3(h.size.x + 0.04, h.size.y + 0.04, block), Vector3(c.x, c.y, back), "armor_glass", null, Vector3.ZERO, false)
 		var inner := thick * 0.5 + block + 0.004
 		for y: float in [h.position.y - 0.006, h.end.y + 0.006]:
-			k._box(p, Vector3(h.size.x + 0.052, 0.026, 0.008), Vector3(c.x, y, inner), mat, null, Vector3.ZERO, false)
+			k._box(p, Vector3(h.size.x + 0.052, 0.026, 0.008), Vector3(c.x, y, inner), mat, col, Vector3.ZERO, false)
 		for x: float in [h.position.x - 0.006, h.end.x + 0.006]:
-			k._box(p, Vector3(0.026, h.size.y - 0.014, 0.008), Vector3(x, c.y, inner), mat, null, Vector3.ZERO, false)
+			k._box(p, Vector3(0.026, h.size.y - 0.014, 0.008), Vector3(x, c.y, inner), mat, col, Vector3.ZERO, false)
 		# the frame round it on the outside, a bolt at each corner
 		var f := 0.024
 		for y: float in [h.position.y - f * 0.5, h.end.y + f * 0.5]:
-			k._box(p, Vector3(h.size.x + f * 2.0, f, 0.012), Vector3(c.x, y, out), mat, null, Vector3.ZERO, false)
+			k._box(p, Vector3(h.size.x + f * 2.0, f, 0.012), Vector3(c.x, y, out), mat, col, Vector3.ZERO, false)
 		for x: float in [h.position.x - f * 0.5, h.end.x + f * 0.5]:
-			k._box(p, Vector3(f, h.size.y, 0.012), Vector3(x, c.y, out), mat, null, Vector3.ZERO, false)
+			k._box(p, Vector3(f, h.size.y, 0.012), Vector3(x, c.y, out), mat, col, Vector3.ZERO, false)
 			for y: float in [h.position.y - f * 0.5, h.end.y + f * 0.5]:
 				VehicleBody.fastener(k, p, Vector3(x, y, out - 0.006), Vector3.FORWARD, 0.007)
-	VehicleFrames.tube(k, p, Vector3(-width * 0.5 + 0.01, y1, 0), Vector3(width * 0.5 - 0.01, y1, 0), thick * 0.55, mat, null, 6, false)
+	VehicleFrames.tube(k, p, Vector3(-width * 0.5 + 0.01, y1, 0), Vector3(width * 0.5 - 0.01, y1, 0), thick * 0.55, mat, col, 6, false)
 	# the bolts along its foot, through the angle it stands on
 	for i in 5:
 		VehicleBody.fastener(k, p, Vector3(lerpf(-width * 0.4, width * 0.4, i / 4.0), y0 + 0.04, -thick * 0.5 - 0.001), Vector3.FORWARD, 0.008)

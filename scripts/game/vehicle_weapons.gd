@@ -237,15 +237,22 @@ static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 
 ## General-purpose machine gun (7.62 mm, M240 / PKT pattern). `stock` adds the
 ## butt and pistol grip of a pintle gun; coaxial and remote mounts omit it.
-static func mmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, can := -1.0, stock := true, mat := "gunmetal_w", can_col := Color(0.29, 0.31, 0.22)) -> Vector3:
+static func mmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, can := -1.0, stock := true, mat := "gunmetal_w", can_col := Color(0.29, 0.31, 0.22), pk := false) -> Vector3:
 	mat = _steel(mat)
 	var m := _aimed(k, parent, receiver, muzzle)
 	var s := size
 	var length := receiver.distance_to(muzzle)
 	VehicleMounts.receiver(k, m, Vector3(0.066, 0.108, 0.42) * s, Vector3.ZERO, mat)
 	k._add(m, BevelMesh.make(Vector3(0.072, 0.024, 0.27) * s, 0.005 * s), mat, null, Vector3(0, 0.064, -0.02) * s)
-	if stock:
+	if stock and pk:
+		# the PK's skeleton stock: an open frame, a bar along its comb and
+		# one under it, closed by the butt plate
+		VehicleBody.rod(k, m, Vector3(0, 0.025, 0.2) * s, Vector3(0, 0.018, 0.44) * s, 0.009 * s, mat, null, 6, false)
+		VehicleBody.rod(k, m, Vector3(0, -0.05, 0.21) * s, Vector3(0, -0.068, 0.44) * s, 0.009 * s, mat, null, 6, false)
+		k._add(m, BevelMesh.make(Vector3(0.042, 0.12, 0.02) * s, 0.006 * s), mat, null, Vector3(0, -0.024, 0.448) * s)
+	elif stock:
 		k._add(m, BevelMesh.make(Vector3(0.05, 0.1, 0.24) * s, 0.01 * s), mat, null, Vector3(0, -0.01, 0.32) * s)
+	if stock:
 		k._box(m, Vector3(0.035, 0.1, 0.045) * s, Vector3(0, -0.1, 0.12) * s, mat, null, Vector3(-0.3, 0, 0), false)
 		# the trigger guard's loop in front of the grip
 		VehicleFrames.path(k, m, [Vector3(0, -0.064, 0.05) * s, Vector3(0, -0.098, 0.062) * s, Vector3(0, -0.1, 0.1) * s, Vector3(0, -0.075, 0.115) * s], 0.004 * s, mat, null, 4, false, 0)
