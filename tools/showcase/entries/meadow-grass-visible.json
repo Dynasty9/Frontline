@@ -1,0 +1,30 @@
+{
+  "entry": "changelog/unreleased/meadow-grass-visible.md",
+  "summary": "Meadow grass tufts and leafy bushes read from the battle camera again.",
+  "medium": "still",
+  "stage": "Off-screen --aivai battle render (main.gd --screenshot), parent and fixed builds side by side at the same seed, time and camera",
+  "rationale": "An appearance fix: one matched before/after still shows the meadow with and without visible grass and shrubs, and that the woodland understory is unchanged.",
+  "source_ref": "dines/meadow-grass-visible (2f0f4c05 + 1cdbcae6) on main e2453e14",
+  "before_ref": "main e2453e14, rendered from a scratch copy with the same command",
+  "capture": {
+    "renderer": "Godot 4.7.2 Forward+, Windows, user's settings, 1600x900, seed 3, off-screen window",
+    "command": "godot --path . --fixed-fps 30 -- --offscreen --aivai --seed=3 --nohud --perf=0 --shot-at=6 --set=dof:false --focus=74,-14 --cam-yaw=0 --zoom=3 --pitch=-20 --screenshot=out.png",
+    "comparison": "Uncropped 1600x900 captures reduced to 1200x675 panels; before above, after below, with short labels."
+  },
+  "validation": [
+    "GRASS_STREAM_TEST failures=0 with the fix; 37 failures (blade width, tip height, shrub density) with main's grass.gd",
+    "Shader-tint render on main showed every meadow clump, shrub and stone drawn, so the cause is geometry, not culling",
+    "Wide framing (--focus=74,-3 --zoom=10 --pitch=-30) matches d45e46a2 again; no SCRIPT or SHADER errors in the windowed runs",
+    "Godot import with no SCRIPT ERROR or Parse Error"
+  ],
+  "limitations": [
+    "Not checked in the Compatibility renderer; the restored meadow bush and blade shapes are the ones it drew before PR #232."
+  ],
+  "sources": [
+    {
+      "file": "changelog/unreleased/meadow-grass-visible/comparison.jpg",
+      "sha256": "414cb48b492b5f974f6a7dd40596f8a19a628b88417adad68f84bbdb8371aeb4"
+    }
+  ],
+  "output": null
+}

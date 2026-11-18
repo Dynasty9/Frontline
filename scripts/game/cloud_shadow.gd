@@ -34,6 +34,11 @@ const OWN_LIGHT := 8  # has a light() of its own, which calls cloud_sun()
 ## With the setting off, still darkened, by folding the share into the albedo:
 ## most of a meadow's light is the sun's, so near enough, and it costs nothing
 const FOLD := 16
+## Takes its skylight and bounce from the light probes as well (LightProbes.inject).
+const PROBES := 32
+## The same, worked out once a vertex rather than a pixel (LightProbes.inject_vertex):
+## grass, ferns and undergrowth, drawn many times over, a blade at a time.
+const PROBES_VERTEX := 64
 
 ## Cumulus shadows span a few hundred metres: the biome noise's features are
 ## about 83 texels across, stretched over 4.5 texture widths to ~370 m.
@@ -69,6 +74,10 @@ static func make(src: String, flags := 0) -> Shader:
 
 ## The source with its marks filled in.
 static func shader(src: String, flags := 0, on := false) -> String:
+	if flags & PROBES:
+		src = LightProbes.inject(src)
+	elif flags & PROBES_VERTEX:
+		src = LightProbes.inject_vertex(src)
 	var lit := vertex_lit()
 	var head := ""
 	if on:
@@ -237,7 +246,15 @@ void light() {
 	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
 		att *= cloud_k;
 		A = cloud_sun_disc.w;
+#ifdef PROBE_LIGHT
+		att *= probe_sun();  // indoors, under a lifted roof (LightProbes)
+#endif
 	}
+#ifdef PROBE_LIGHT
+	else if (LIGHT_IS_DIRECTIONAL) {
+		att *= probe_fill;  // the sky's fill light, shut out as the sky is (LightProbes)
+	}
+#endif
 	float cNdotL = clamp(A + dot(NORMAL, LIGHT), 0.0, 1.0);
 	float cNdotV = max(dot(NORMAL, VIEW), 1e-4);
 	vec3 H = normalize(VIEW + LIGHT);

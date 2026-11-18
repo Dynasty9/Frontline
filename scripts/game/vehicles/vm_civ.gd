@@ -130,9 +130,21 @@ static func _flare(k: VehicleModels, parent: Node3D, key: String, zc: float, yc:
 	VehicleWheelArches._flare(k, parent, key, zc, yc, r0, r1, x0, x1, a0, a1, mat, col, segs)
 
 
+## How far a pressed roof's shading normals lean out at the middle of each
+## edge (the tangent of the lean): a car's roof, a cab's top, is pressed with
+## a crown, so the sun's highlight is a soft patch sliding across it. A
+## dead-flat top caught the highlight everywhere at once and flared white
+## from the RTS camera, whatever its paint.
+const CROWN := 0.28
+
+
 ## A loft through plan outlines (x, z pairs, convex, same point count) at the
-## given heights, the top edge chamfered by ch. Returns the mesh instance.
-static func _yloft(k: VehicleModels, parent: Node3D, key: String, outlines: Array, ys: Array, ch: float, mat: String, col = null, pos := Vector3.ZERO) -> Variant:
+## given heights, the top edge rolled over by ch: pressed sheet turns over a
+## cab's or a roof's edge in a curve (here a quarter round in two facets,
+## shaded smooth into the sides), not at a single cut chamfer between two
+## hard creases. The top is crowned by `crown` (see CROWN). Returns the mesh
+## instance.
+static func _yloft(k: VehicleModels, parent: Node3D, key: String, outlines: Array, ys: Array, ch: float, mat: String, col = null, pos := Vector3.ZERO, crown := CROWN) -> Variant:
 	var rings := []
 	var n := outlines.size()
 	for i in n:
@@ -145,14 +157,86 @@ static func _yloft(k: VehicleModels, parent: Node3D, key: String, outlines: Arra
 			var mid := PackedVector2Array()
 			for j in o.size():
 				mid.append(o[j].lerp(below[j], t))
-			rings.append(VehicleModels.ring_y(mid, y - ch))
 			var d := []
 			for j in o.size():
 				d.append(ch)
-			rings.append(VehicleModels.ring_y(_inset(o, d), y))
+			var top := _inset(o, d)
+			# (the roll's middle, 45 degrees round the quarter from the side to the top)
+			var shoulder := PackedVector2Array()
+			for j in o.size():
+				shoulder.append(top[j].lerp(mid[j], 0.707))
+			rings.append(VehicleModels.ring_y(mid, y - ch))
+			rings.append(VehicleModels.ring_y(shoulder, y - ch * 0.293))
+			rings.append(VehicleModels.ring_y(top, y))
 		else:
 			rings.append(VehicleModels.ring_y(o, y))
-	return k._add(parent, VehicleModels.solid(rings, key), mat, col, pos)
+	return k._add(parent, roofed(rings, key, crown), mat, col, pos)
+
+
+## A box of `size` at `center` whose top is pressed sheet, rolled over its
+## edges and crowned (see _yloft): a pickup bed's top rail, a roof pod. It
+## catches the light as a rounded edge and a soft highlight, where a box's
+## flat top flashed white end to end from the RTS camera.
+static func _rolled(k: VehicleModels, parent: Node3D, key: String, center: Vector3, size: Vector3, mat: String, col = null) -> void:
+	var h := Vector2(size.x, size.z) * 0.5
+	var outline := [-h.x, -h.y, h.x, -h.y, h.x, h.y, -h.x, h.y]
+	_yloft(k, parent, key, [outline, outline], [-size.y * 0.5, size.y * 0.5], minf(size.y * 0.6, h.x * 0.6), mat, col, center)
+
+
+static var _roofs := {}
+
+
+## A closed solid lofted through `rings` (convex, the same point count) whose
+## last ring is a roof: the sides shaded smooth across edges flatter than
+## ROLL degrees, so a rolled edge reads as one curve; the roof a fan from its
+## middle whose normals lean out toward its edge by `crown` (see CROWN); the
+## first ring capped flat. Cached by `key` (and the crown); public, so any
+## family can crown a cab or a car's roof with it.
+static func roofed(rings: Array, key: String, crown := CROWN) -> ArrayMesh:
+	var cache_key := "%s|%.3f" % [key, crown]
+	if _roofs.has(cache_key):
+		return _roofs[cache_key]
+	var body := VehicleProfiles.loft(rings, ROLL, false)
+	var src: Array = body.get_meta(&"src")
+	var vs: PackedVector3Array = (src[Mesh.ARRAY_VERTEX] as PackedVector3Array).duplicate()
+	var ns: PackedVector3Array = (src[Mesh.ARRAY_NORMAL] as PackedVector3Array).duplicate()
+	for e: int in [0, rings.size() - 1]:
+		var r: PackedVector3Array = rings[e]
+		var c := VehicleModels._centroid(r)
+		var out := c - VehicleModels._centroid(rings[1 if e == 0 else rings.size() - 2])
+		var pn := Vector3.ZERO
+		for i in range(1, r.size() - 1):
+			pn += (r[i] - r[0]).cross(r[i + 1] - r[0])
+		if pn.length_squared() < 1e-10:
+			continue
+		pn = pn.normalized()
+		if pn.dot(out) < 0.0:
+			pn = -pn
+		var lean := crown if e > 0 else 0.0
+		# (the lean measured across and along the roof separately, so a long
+		# narrow top, a bed rail's, is crowned across its width too)
+		var across := (Vector3.RIGHT - pn * pn.x).normalized()
+		var along := pn.cross(across)
+		var reach := Vector2(0.001, 0.001)
+		for q in r:
+			var d := q - c
+			reach = Vector2(maxf(reach.x, absf(d.dot(across))), maxf(reach.y, absf(d.dot(along))))
+		var rn := PackedVector3Array()
+		for q in r:
+			var d := q - c
+			rn.append((pn + (across * d.dot(across) / reach.x + along * d.dot(along) / reach.y) * lean).normalized())
+		for i in r.size():
+			var j := (i + 1) % r.size()
+			VehicleProfiles._tri(vs, ns, c, r[i], r[j], pn, rn[i], rn[j], pn)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vs
+	arrays[Mesh.ARRAY_NORMAL] = ns
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	_roofs[cache_key] = mesh
+	return mesh
 
 
 ## The height of a side profile's (z, y pairs, as _xbody takes) top edge at z.
@@ -375,7 +459,7 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	# bed: walls on the tub, a ribbed liner, wheel tubs, the tailgate
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.08, 0.3, 2.11), Vector3(s * (hw - 0.04), 1.1, 1.445), "car_paint", col)
-		k._box(m, Vector3(0.11, 0.035, 2.11), Vector3(s * (hw - 0.05), 1.265, 1.445), "car_paint", col.darkened(0.08))
+		_rolled(k, m, "civ_off_rail", Vector3(s * (hw - 0.05), 1.265, 1.445), Vector3(0.11, 0.035, 2.11), "car_paint", col.darkened(0.08))
 		VehicleWheelArches.tub(k, m, Vector3(s * 0.71, 1.06, zr), Vector3(0.2, 0.2, 0.92), s)
 	k._box(m, Vector3(hw * 2.0, 0.3, 0.08), Vector3(0, 1.1, 0.43), "car_paint", col)
 	VehicleCargo.sideboard(k, m, Vector3(hw * 2.0 - 0.02, 0.32, 0.07), Vector3(0, 1.1, 2.47), "car_paint", col, Vector3.ZERO, 2)
@@ -447,21 +531,27 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 			_off_repair(k, team)
 
 
-## An M2 on a pedestal in the bed, behind a gunner's shield.
+## An M2 on a tall pedestal in the bed, its bore half a metre over the cab
+## roof so it fires forward over the cab, behind a gunner's shield; the
+## gunner on the bed floor behind it, the grips at his chest. The kit is in
+## the bed's back corners, clear of where he stands.
 static func _off_hmg(k: VehicleModels, team: int) -> void:
 	var m := k.root
-	# ammo cans and a spare box by the gunner's feet
-	for i in 3:
-		VehicleFittings.ammo_can(k, m, Vector3(-0.55 + i * 0.16, 1.08, 2.2), OD, Vector3.ZERO, Vector3(0.14, 0.19, 0.3))
-	VehicleCargo.crate_stack(k, m, Vector3(0.45, 0.975, 2.15), Vector3(0.6, 0.25, 0.35), Vector3i.ONE, "wood")
-	k.turret = k._pivot(m, Vector3(0, 1.62, 1.5))
+	var floor_y := 0.993
+	var base := Vector3(0, floor_y, 1.35)
+	var pivot := Vector3(0, 1.94, 1.35)
+	for i in 2:
+		VehicleFittings.ammo_can(k, m, Vector3(-0.6, floor_y + 0.095 + i * 0.19, 2.25), OD, Vector3(0, PI / 2, 0), Vector3(0.14, 0.19, 0.3))
+	VehicleCargo.crate_stack(k, m, Vector3(0.58, floor_y, 2.24), Vector3(0.38, 0.25, 0.3), Vector3i.ONE, "wood")
+	k.turret = k._pivot(m, pivot)
 	var t := k.turret
 	# the pintle post braced on its bolted plate, the swivel and cradle on top
-	VehicleMounts.pedestal(k, m, Vector3(0, 0.98, 1.5), Vector3(0, 1.62, 1.5), t)
+	VehicleMounts.pedestal(k, m, base, pivot, t, "gunmetal_w", null, 0.46, Vector2(0.048, 0.056))
 	var tip := _m2(k, t, 0.36)
 	k.mg_tip = k._tip(t, tip)
-	# the shield: a flat plate with the barrel slot, angled wings, a vision slit
-	VehicleMounts.gun_shield(k, t, Vector3(0, 0.38, -0.42), Vector2(0.62, 0.52), "paint", Color(0.2, 0.21, 0.19))
+	# the shield: a plate with the barrel's slot, wings wrapped back, a vision slit
+	VehicleMounts.gun_shield(k, t, Vector3(0, 0.388, -0.42), Vector2(0.62, 0.46), "paint", Color(0.2, 0.21, 0.19), 0.1, Vector2(0.2, -0.45), Vector2(0.11, 0.17), 0.02)
+	k.gunner_floor = {"on": m, "y": floor_y, "area": Rect2(Vector2(-0.6, 0.62), Vector2(1.2, 1.68))}
 	_team_side(k, team)
 
 
@@ -661,9 +751,9 @@ static func _mb_top(k: VehicleModels) -> void:
 static func _mb_gun(k: VehicleModels, team: int, at: bool) -> void:
 	var m := k.root
 	_rod(k, m, Vector3(-0.72, 1.76, 1.15), Vector3(0.72, 1.76, 1.15), 0.035, "gunmetal_w", null, 8)
-	# ammunition stowed in the back
-	for i in 2:
-		VehicleFittings.ammo_can(k, m, Vector3(0.45 - i * 0.17, 1.08, 1.6), OD, Vector3.ZERO, Vector3(0.14, 0.19, 0.3))
+	# ammunition stowed in the back corners, clear of the gunner's feet
+	for s in [-1.0, 1.0]:
+		VehicleFittings.ammo_can(k, m, Vector3(s * 0.58, 0.715, 1.84), OD, Vector3(0, PI / 2, 0), Vector3(0.14, 0.19, 0.3))
 	k.turret = k._pivot(m, Vector3(0, 1.94, 1.15))
 	var t := k.turret
 	# the post clamped to the bar; the recoilless rifle's cradle is the
@@ -676,6 +766,8 @@ static func _mb_gun(k: VehicleModels, team: int, at: bool) -> void:
 	else:
 		var tip := _lmg(k, t, 0.17)
 		k.mg_tip = k._tip(t, tip)
+		# the gunner on the tub floor behind the bench, the gun at his chest
+		k.gunner_floor = {"on": m, "y": 0.62, "area": Rect2(Vector2(-0.5, 1.3), Vector2(1.0, 0.55))}
 	_team_side(k, team, 0.85, 0.82, -0.3)
 
 
@@ -922,9 +1014,10 @@ static func _van(k: VehicleModels, team: int, seed: int, v: String) -> void:
 		_:
 			# the minibus's roof: the saloon's air-conditioning pod and an
 			# escape hatch, the only things on the long white roof
-			k._box(m, Vector3(0.8, 0.1, 0.62), Vector3(0, 2.65, 1.55), "plain", Color(0.72, 0.72, 0.7))
+			# (both moulded, their tops rolled over and crowned)
+			_rolled(k, m, "civ_van_ac", Vector3(0, 2.65, 1.55), Vector3(0.8, 0.1, 0.62), "plain", Color(0.72, 0.72, 0.7))
 			VehicleFittings.grille(k, m, Vector3(0, 2.7 + 0.03, 1.55), Vector2(0.56, 0.36), Vector3(-PI / 2, 0, 0), "plain", Color(0.3, 0.3, 0.3), 6)
-			k._box(m, Vector3(0.5, 0.04, 0.5), Vector3(0, 2.62, 0.2), "plain", Color(0.62, 0.63, 0.62))
+			_rolled(k, m, "civ_van_hatch", Vector3(0, 2.62, 0.2), Vector3(0.5, 0.04, 0.5), "plain", Color(0.62, 0.63, 0.62))
 			_gap(k, m, [Vector3(-0.22, 2.643, -0.02), Vector3(0.22, 2.643, -0.02), Vector3(0.22, 2.643, 0.42), Vector3(-0.22, 2.643, 0.42), Vector3(-0.22, 2.643, -0.02)], 0.004)
 			k._team_mark(m, team, Vector3(hw + 0.01, 1.0, 1.2), Vector3(0.02, 0.2, 0.5))
 			k._team_mark(m, team, Vector3(-hw - 0.01, 1.0, 1.2), Vector3(0.02, 0.2, 0.5))
@@ -1173,20 +1266,45 @@ static func _hatch_sport(k: VehicleModels, acc: Color, dy: float) -> void:
 		VehicleFittings.exhaust(k, m, Vector3(x, 0.3 + dy, 2.11), Vector3.BACK, 0.1, 0.035, false)
 
 
-## A glasshouse lofted from the beltline ring up to the roof ring, its roof
-## edge chamfered.
+## A glasshouse lofted from the beltline ring up to the roof ring, its roof's
+## edge rolled over into the pillars and the roof crowned (see _yloft).
 static func _glasshouse(k: VehicleModels, parent: Node3D, key: String, lo: PackedVector3Array, hi: PackedVector3Array, ch: float, col: Color) -> void:
 	var c := VehicleModels._centroid(hi)
+	var n := hi.size()
+	# The pillars and headers stand `proud` out of the glasshouse's faces, and
+	# the roof rolls over from their outer face: its edge in plan is the roof
+	# ring's pushed out by that much along each face (further in plan on a
+	# raked face). (The roof sat on the bare faces, so the strips' tops stood
+	# round it as a thin rim of upturned ledges that caught the sun.)
+	var proud := 0.03
+	var plan := PackedVector2Array()
+	var out := []
+	for i in n:
+		var j := (i + 1) % n
+		plan.append(Vector2(hi[i].x, hi[i].z))
+		var fn := (lo[j] - lo[i]).cross(hi[i] - lo[i]).normalized()
+		out.append(-proud / maxf(Vector2(fn.x, fn.z).length(), 0.3))
+	var wide := _inset(plan, out)
+	var ts: Array[float] = []
 	var mid := PackedVector3Array()
+	var shoulder := PackedVector3Array()
 	var top := PackedVector3Array()
-	for i in hi.size():
+	for i in n:
 		var t := ch / maxf(0.05, hi[i].y - lo[i].y)
-		mid.append(hi[i].lerp(lo[i], t))
+		ts.append(t)
+		var edge := Vector3(wide[i].x, hi[i].y, wide[i].y)
+		mid.append(edge + (lo[i] - hi[i]) * t)
 		var flat := Vector3(c.x, hi[i].y, c.z)
-		top.append(hi[i] + (flat - hi[i]).normalized() * ch)
-	k._add(parent, VehicleModels.solid([mid, top], key + "_open_roof"), "car_paint", col, Vector3.ZERO)
+		top.append(edge + (flat - edge).normalized() * ch)
+		# (45 degrees round the quarter about the roll's centre, level with
+		# the pillars' top and in under the roof's edge)
+		var centre := Vector3(top[i].x, mid[i].y, top[i].z)
+		shoulder.append(centre + (mid[i] - centre) * 0.707 + (top[i] - centre) * 0.707)
+	k._add(parent, roofed([mid, shoulder, top], key + "_open_roof"), "car_paint", col, Vector3.ZERO)
 	var inside := VehicleModels._centroid(lo).lerp(c, 0.5)
 	for face in 4:
+		# (the strips stop where the roof's roll starts on this face)
+		var vt := 1.0 - minf(ts[face], ts[(face + 1) % n])
 		var corners := _face(lo, hi, face)
 		var openings: Array = [[0.03, 0.97]]
 		var v0 := 0.04
@@ -1209,7 +1327,9 @@ static func _glasshouse(k: VehicleModels, parent: Node3D, key: String, lo: Packe
 		# cowl the wipers park on.
 		var sill_black := face == 0
 		_pane(k, parent, "%s_sill_%d" % [key, face], corners, inside, 0, 1, 0, v0, 0, 0.03, "plain" if sill_black else "car_paint", TRIM if sill_black else col)
-		_pane(k, parent, "%s_header_%d" % [key, face], corners, inside, 0, 1, v1, 1, 0, 0.03, "car_paint", col)
+		v1 = minf(v1, vt)
+		if vt - v1 > 0.004:
+			_pane(k, parent, "%s_header_%d" % [key, face], corners, inside, 0, 1, v1, vt, 0, 0.03, "car_paint", col)
 		var last := 0.0
 		for i in openings.size() + 1:
 			var finish: float = openings[i][0] if i < openings.size() else 1.0
