@@ -39,7 +39,7 @@ const WIND := Vector2(0.924, 0.382)  # (Fires.WIND, flat and normalised)
 var atmo  # Atmosphere
 var n := 0  # texels across the map
 var data := PackedByteArray()
-var roofed := PackedByteArray()  # texels under a roof: nothing drifts there
+var roofed := PackedInt32Array()  # roof count per texel: overlapping roofs stay covered
 var img: Image
 var tex: ImageTexture
 var _obst := {}  # eid -> drift spec (see _spec)
@@ -98,9 +98,16 @@ func _look() -> void:
 			continue
 		if st.skind == "roof":
 			roofs[st.eid] = true
+			var roof := _spec(st, 0.0)
 			if not _roofs.has(st.eid):
-				_roofs[st.eid] = _spec(st, 0.0)
-				_cover(_roofs[st.eid])
+				_roofs[st.eid] = roof
+				_cover(roof)
+			elif not _same(_roofs[st.eid], roof):
+				var previous: Array = _roofs[st.eid]
+				_uncover(previous)
+				_clear.append(previous[9])
+				_roofs[st.eid] = roof
+				_cover(roof)
 			continue
 		var k := _kind(st)
 		if k <= 0.0:
@@ -209,7 +216,7 @@ func _cover(sp: Array) -> void:
 
 
 func _uncover(sp: Array) -> void:
-	_mark_roof(sp, 0)
+	_mark_roof(sp, -1)
 
 
 func _mark_roof(sp: Array, v: int) -> void:
@@ -222,7 +229,7 @@ func _mark_roof(sp: Array, v: int) -> void:
 			var lx := dx * float(sp[2]) - dz * float(sp[3])
 			var lz := dx * float(sp[3]) + dz * float(sp[2])
 			if absf(lx) <= float(sp[4]) and absf(lz) <= float(sp[5]):
-				roofed[z * n + x] = v
+				roofed[z * n + x] = maxi(0, roofed[z * n + x] + v)
 
 
 ## Stamps and clears within the frame's budget.
@@ -253,6 +260,9 @@ func _work() -> void:
 			_mark_tiles(r)
 		elif not _stamp.is_empty():
 			var sp: Array = _stamp.pop_back()
+			# A removed or moved obstacle may still be waiting behind the clears.
+			if not _obst.has(sp[11]) or _obst[sp[11]] != sp:
+				continue
 			stamp(sp, sp[9])
 			_mark_tiles(sp[9])
 		else:
@@ -449,7 +459,11 @@ float drift_deep(vec2 p) {
 
 float drift_top(vec2 p) {
 	float d = drift_deep(p);
-	return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__) + 0.02 + d * d * (3.0 - 2.0 * d) * 0.6;
+	// The thin skirt sinks into the terrain instead of floating above it.
+	// Keep the full lee crest; only the outer few centimetres are recessed.
+	float rise = d * d * (3.0 - 2.0 * d) * 0.55;
+	float skirt = 0.045 * (1.0 - smoothstep(0.0, 0.3, d));
+	return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__) + rise - skirt;
 }
 
 void vertex() {
@@ -469,11 +483,9 @@ void vertex() {
 }
 
 void fragment() {
-	// (its edge ragged only a little where the wind has worked at it, and so
-	// shallow there it meets the snow on the ground with no step)
-	float n1 = texture(detail_tex, wpos.xz / 5.3 + 0.27).r;
-	float edge = deep + (n1 - 0.5) * 0.08;
-	ALPHA = smoothstep(0.035, 0.06, edge);
+	// Clip only empty tiles. The buried skirt makes the visible boundary,
+	// so an alpha threshold cannot cut an elevated sheet across the ground.
+	ALPHA = smoothstep(0.0, 0.01, deep);
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
 	// the ground's own snow (Atmosphere's ground shader: its powder scan read
 	// twice and its grain softened, linear), so the two meet without a seam

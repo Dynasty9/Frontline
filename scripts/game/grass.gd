@@ -621,19 +621,19 @@ void vertex() {
 	// snow buries the blades and weighs the rest down: all but buried where
 	// it lies deep, standing out of it in clumps where it's thin (by the
 	// ground's own rule, SnowLie, so they stand where the ground shows)
-	drifted = 0.5;
+	drifted = 0.0;
 	if (snow_cover > 0.0) {
 		float sp = 10.0 / __MAP_SIZE__;
 		vec4 around = vec4(terrain_height(deform_tex, at + vec2(sp, 0.0)), terrain_height(deform_tex, at - vec2(sp, 0.0)),
 			terrain_height(deform_tex, at + vec2(0.0, sp)), terrain_height(deform_tex, at - vec2(0.0, sp)));
 		drifted = smoothstep(0.2, 1.0, snow_lie(o.xz, here, around, 10.0, snow_sun()));
+		// (and where a fire or an engine has thawed it, the grass stands up again;
+		// heaped against a wall or a hedge, SnowDrift, it's buried altogether)
+		float banked = smoothstep(0.08, 0.4, texture(drift_tex, at).r) * (1.0 - burnt);
+		// (what stands out of it is bowed by the weight it carried: lower still)
+		float bury = clamp(drifted + (rnd - 0.5) * 0.25, 0.05, 0.97) * 0.75 + 0.25;
+		VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(bury, 1.0, banked);
 	}
-	// (and where a fire or an engine has thawed it, the grass stands up again;
-	// heaped against a wall or a hedge, SnowDrift, it's buried altogether)
-	float banked = smoothstep(0.08, 0.4, texture(drift_tex, at).r) * (1.0 - burnt);
-	// (what stands out of it is bowed by the weight it carried: lower still)
-	float bury = clamp(drifted + (rnd - 0.5) * 0.25, 0.05, 0.97) * 0.75 + 0.25;
-	VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(bury, 1.0, banked);
 	// stand on the ground as it is now (shell holes, rims)
 	VERTEX.y += here / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;

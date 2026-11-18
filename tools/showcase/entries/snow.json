@@ -1,11 +1,11 @@
 {
   "entry": "changelog/unreleased/snow.md",
   "summary": "A snow weather: falling flakes, a white battlefield with wind-scoured drifts and churned mud, patchy snow on roofs, trees and the flat tops of vehicles, and thaws round fires and idling engines.",
-  "medium": "still",
-  "stage": "game capture flags (--screenshot, --offscreen, --fixed-fps 30)",
-  "rationale": "Snow is above all a change of appearance. A wide view over a town in falling snow shows the whole look at once (flakes, drifted ground, roofs that differ, trees holding it in lumps, mountains in the haze); a close-up shows how a tank that has been fighting carries it (patches on the flat tops, a bare engine deck); and one matched sheet shows the same town and the same moment of a tank battle under the overcast sky and in snow. A third still shows heat melting it, a fourth the drifts against a hedge and a wall: a burning wreck, a burning hedgerow and an idling tank in one frame. The flakes' drift, the shedding as a vehicle drives, a fired barrel going bare and the slow re-whitening once a fire is out are described in text.",
-  "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
-  "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+  "medium": "motion",
+  "stage": "Native fire scenario capture at fixed 24 fps; retained historical stills",
+  "rationale": "A short current-build clip shows the snow bank and active fire at a close gameplay camera. A matched dry-grass sheet checks preservation of main\u2019s meadow geometry. Earlier stills retain their historical capture notes; this is not a before/after film or a completed art sign-off.",
+  "source_ref": "85169252e97c1934a77dfc514020e6940f79d081",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
   "capture": {
     "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window, the user's settings",
     "town": "--aivai --seed=3 --mood=overcast / --mood=snow --nohud --focus-struct=town --shot-at=20; overcast from bd4f1b598ae80c6543cd4816e3f49a6ead730876, snow from this branch",
@@ -14,7 +14,41 @@
     "wide": "--aivai --seed=3 --mood=snow --nohud --focus-struct=town --zoom=220 --pitch=-22 --shot-at=15",
     "tank": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=snow --nohud --focus=-84,24 --focus-vehicle=tank --focus-vehicle-at=9 --zoom=12 --pitch=-34 --shot-at=10",
     "melt": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=9,-6 --zoom=15 --pitch=-36 --shot-at=90, from a scratch copy whose fire scenario adds a burning wreck (variant 6 at 4,-6, given 600 s of fuel) and a stopped tank (13,-5); rendered on 51dfff0e plus the melt commit; the before/after for the pull request is the same setup from c0043fca. Compatibility checked with --rendering-method gl_compatibility (OpenGL 3.3)",
-    "drifts": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=2,15 --zoom=26 --pitch=-48 --shot-at=20, from a scratch copy whose fire scenario adds a hedgerow (4 low_wall variant 1) and a stone wall (3 low_wall variant 0) at yaw 1.178, across Fires.WIND; the pull request also shows a burning town house (--aivai --seed=3, roof at 2.6,30 lit at once) before/after"
+    "drifts": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=2,15 --zoom=26 --pitch=-48 --shot-at=20, from a scratch copy whose fire scenario adds a hedgerow (4 low_wall variant 1) and a stone wall (3 low_wall variant 0) at yaw 1.178, across Fires.WIND; the pull request also shows a burning town house (--aivai --seed=3, roof at 2.6,30 lit at once) before/after",
+    "cloud_review_2026_11_18": {
+      "source_ref": "85169252e97c1934a77dfc514020e6940f79d081",
+      "main_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+      "renderer": "Godot 4.7.2, Compatibility, Mesa llvmpipe software rendering, Medium, 960x540, fixed 24 fps; not a performance measurement",
+      "dry_command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x540 --fixed-fps 24 -- --scenario=fire --seed=3 --mood=day --nohud --preset=medium --set=perf:0 --focus=15,15 --zoom=15 --pitch=-30 --screenshot=OUT.png --shot-at=2",
+      "dry_comparison": "Same command on both refs. Full uncropped frames, stacked with revision labels. Lower 420 rows of the two raw 960x540 captures are pixel-identical; upper background fire effects differ.",
+      "validation": [
+        "Full project import; lighting/terrain/visibility checks; grass stream failures=0; 19 of 20 affected integration tests pass. Breach leaves one defender fighting at 60 seconds on both this revision and untouched main.",
+        "The new drift removal test fails against the original snow_drift.gd and passes against this revision. This negative control is a regression diagnostic, not full-build validation.",
+        "Compatibility normal camera and dry close view render without SCRIPT ERROR or SHADER ERROR. Resource/RID leaks on shutdown also occur on untouched main.",
+        "Beginning, middle and end frames inspected; complete VP9 decode verified by ffmpeg and 96 frames counted by ffprobe. Exact code-commit CI 8516925: Check, Website and Changelog passed."
+      ],
+      "limitations": [
+        "No hardware GPU is exposed in the cloud workspace. High-preset software attempts and Medium Forward+ did not complete usable captures.",
+        "GPU performance, full engine-thaw/tracked-slush sequences, weather/camera transitions and broader High-preset art review remain unverified. Retained older stills are historical evidence.",
+        "The bank reads as a sharp pale band in the close Compatibility view. Snowfall is subtle against the white ground. Edge treatment and readability need further art review on Forward+ hardware."
+      ],
+      "motion_command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x540 --fixed-fps 24 -- --scenario=fire --seed=3 --mood=snow --nohud --preset=medium --set=perf:0 --focus=4,-18 --zoom=18 --pitch=-35 --screenshot=OUT/fire.png --shot-at=2 --shots=96 --shot-every=0.041666667",
+      "encode": "ffmpeg -framerate 24 -i fire_%d.png -an -c:v libvpx-vp9 -crf 31 -b:v 0 -pix_fmt yuv420p -row-mt 1 hedge-motion.webm",
+      "media": {
+        "duration_seconds": 4,
+        "frames": 96,
+        "fps": 24,
+        "width": 960,
+        "height": 540,
+        "audio": "none",
+        "bytes": 1087309
+      }
+    },
+    "historical_inventory_refs": {
+      "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+      "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+      "note": "The existing town, tank, melt, drifts and overcast comparison stills predate the cloud review. Their original capture notes above are retained."
+    }
   },
   "sources": [
     {
@@ -36,6 +70,18 @@
     {
       "file": "changelog/unreleased/snow/comparison.jpg",
       "sha256": "b41b4c6e7a2511e78385987333b9e5efd0ec779534d140f04bf807b98268e1d5"
+    },
+    {
+      "file": "changelog/unreleased/snow/dry-grass-comparison.jpg",
+      "sha256": "8749b219e7913e70db7221af21b775f44f812eec9bd9e62de697d4ddd31ce9de"
+    },
+    {
+      "file": "changelog/unreleased/snow/hedge-motion.webm",
+      "sha256": "57fe3d11f8534e0d0809d867677d392aff4e510f24c037dd602e18c8747b9243"
+    },
+    {
+      "file": "changelog/unreleased/snow/hedge-motion.jpg",
+      "sha256": "9c6e52f8d5f2321a3c42357e2fd8aa6b3a571805a36c5ebf5524e7bf16db52b7"
     }
   ],
   "output": null
