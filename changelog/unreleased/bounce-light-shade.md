@@ -5,11 +5,19 @@ kind = "improved"
 
 [[screenshots]]
 file = "tank.jpg"
-caption = "A tank on sunlit grass: its shaded side and skirts pick up the grass's light (off above, on below)"
+caption = "A tank on sunlit grass: its shaded side and skirts lift a little with the grass's light (off above, on below)"
 
 [[screenshots]]
 file = "tank-light.jpg"
-caption = "The same, bounce light only (four times brighter): on the shaded hull side, while the sunlit deck and lawn stay dark"
+caption = "The same, bounce light only (four times brighter): a faint, even fill on the shaded hull side; the sunlit deck and lawn stay as they were"
+
+[[screenshots]]
+file = "squad-grass.jpg"
+caption = "A squad on grass by a road at midday: their camouflage keeps its colours"
+
+[[screenshots]]
+file = "squad-grass-light.jpg"
+caption = "The same, bounce light only (four times brighter): a faint fill on the men, and nothing on the sunlit grass and road"
 
 [[screenshots]]
 file = "dust.jpg"
@@ -79,8 +87,8 @@ caption = "Surface-history correction, before and after: the same close and comm
 +++
 
 - **Where it belongs:** sunlit grass, roads, roofs and hulls no longer take a yellowish lift. The light lands in the
-  shade beside them, where bounce light really shows. A tank's shaded side and skirts pick up the green of the grass
-  below them, and the ground in its shadow warms with the light off its hull.
+  shade beside them, where bounce light really shows. Men and vehicles take only a faint fill from the ground round
+  them, so camouflage keeps its colours, and the ground in a tank's shadow warms with the light off its hull.
 - **Behind smoke and dust:** a dust cloud in front of a hull or a wall hides its bounce light, as it hides the hull,
   instead of the light showing through.
 - **Coloured walls tint their surroundings:** a red-brick house faintly reddens the shade at its foot, even from

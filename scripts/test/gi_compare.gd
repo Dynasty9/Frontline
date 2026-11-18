@@ -60,6 +60,7 @@ const MODES := {
 	"view_through": {"ssil": false, "gi": false, "ssgi": 2, "view": 11},
 	"view_opaque": {"ssil": false, "gi": false, "ssgi": 2, "view": 12},
 	"view_sun": {"ssil": false, "gi": false, "ssgi": 2, "view": 13},
+	"view_moving": {"ssil": false, "gi": false, "ssgi": 2, "view": 14},
 	# with the light probes off (every other mode leaves them as the preset has them)
 	"ssgi2_greyfar": {"ssil": false, "gi": false, "ssgi": 2, "env": "FL_DEBUG_SSGI_GREYFAR"},
 	# the far view's strength, as it was and weaker (FL_DEBUG_SSGI_FAR: from, full, reach, strength)

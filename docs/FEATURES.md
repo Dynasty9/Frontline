@@ -1437,9 +1437,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   keep thin things from catching rays that pass behind them, cost a third of the light off real walls and was left
   out. A rough surface also gives the gathered light back as a dielectric's sheen (Karis's split-sum fit), fading
   out on mirror-smooth ones, which the screen-space reflections handle: a few percent of the bounce on rough
-  ground, a little more on wet patches seen at a slant. Vehicles and soldiers standing on sunlit ground take its
-  light from below like anything else: a tank's shaded side and skirts gain about 15% (linear) in the green of the
-  grass at midday. In the sun the bounce is a few percent of a surface's light at most, and the short rays overstate
+  ground, a little more on wet patches seen at a slant. Vehicles and soldiers (what the renderer marks as moving) take only a fill: at most half
+  again the shade's own light on them, at half the colour, and nothing from rays that run into a man or a vehicle
+  (their own body first), so camouflage keeps its colours; a tank's shaded side gains about 6% at midday. The colour
+  the gathered light is laid on with is brought back against the sun's own colour, not white: made richer along with
+  the rest, the sun's warmth in everything it lights turned the light off a pale wall or lawn orange, and browned
+  soldiers standing by it. In the sun the bounce is a few percent of a surface's light at most, and the short rays overstate
   it (from a lawn they run into the next sunlit blades, whose faces turn every way), so where a pixel's light is the
   sun's it is laid on at 0.15: sunlit lawn, decks and roofs gain under 1.5% while the shade beside them gains 11-16%.
   Which pixels the sun reaches can't be read from brightness (a dark lawn in the sun is no brighter than a pale wall

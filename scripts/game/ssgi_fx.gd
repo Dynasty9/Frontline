@@ -632,7 +632,11 @@ void main() {
 	// (fires and muzzle flashes are far brighter than any wall: kept in
 	// bounds so a single hot pixel can't light the street)
 	vec3 r = min(c, vec3(8.0));
-	imageStore(rad_img, h, vec4(r, sunvis));
+	// (alpha: whether the sun reaches it, and 2 more for something that moves,
+	// a man or a vehicle: the renderer marks them in the top bit of the
+	// roughness. See gather and composite)
+	float mover = texelFetch(normal_tex, best, 0).a > 0.5 ? 2.0 : 0.0;
+	imageStore(rad_img, h, vec4(r, sunvis + mover));
 }
 """,
 	# a few rays from each pixel through the depth buffer
@@ -649,6 +653,10 @@ void main() {
 		return;
 	}
 	vec4 g = texelFetch(gbuf_tex, h, 0);
+	// a man's or a vehicle's own rays run into himself first, and would bring
+	// his own colour back onto him, a muddy cast that greys his camouflage:
+	// what moves takes nothing from what moves
+	bool mover = texelFetch(rad_tex, h, 0).a > 1.5;
 	if (g.w <= 0.0) {
 		imageStore(raw_img, h, vec4(0.0));
 		return;
@@ -720,9 +728,13 @@ void main() {
 			// own depth instead lost a third of the light off real walls.)
 			if (behind > 0.02 && behind < max(0.4, dist * P.misc.w)) {
 				// a surface lights the ray's start only with its front
+				vec4 hr = texelFetch(rad_tex, qp, 0);
+				if (mover && hr.a > 1.5) {
+					break;  // (as if it went on into the open sky)
+				}
 				vec3 sn = normalize(to_view * sg.xyz);
 				float facing = clamp(-dot(sn, d) * 4.0, 0.0, 1.0);
-				sum += texelFetch(rad_tex, qp, 0).rgb * facing;
+				sum += hr.rgb * facing;
 				hit += facing;
 				break;
 			}
@@ -926,7 +938,7 @@ void main() {
 		sum += texelFetch(filt_tex, q, 0).rgb * w;
 		vec4 rq = texelFetch(rad_tex, q, 0);
 		float wb = w * exp(-4.0 * abs(log((dot(rq.rgb, lumw) + 1e-3) / (pl + 1e-3))));
-		vis += rq.a * wb;
+		vis += (rq.a > 1.5 ? rq.a - 2.0 : rq.a) * wb;
 		vsum += wb;
 		wsum += w;
 	}
@@ -1006,7 +1018,23 @@ void main() {
 	// command height, a little over gathered)
 	float far_k = smoothstep(P.far.x, P.far.y, z);
 	float el = dot(e, vec3(0.2126, 0.7152, 0.0722));
-	e = max(vec3(el) + (e - vec3(el)) * mix(P.sun.w, P.opt.z, far_k), vec3(0.0));
+	// (brought back against the sun's own colour, not white: the sun's warmth
+	// is in everything it lights, and made richer with the rest it turned the
+	// light off a pale wall or lawn orange, which browned a soldier's camouflage)
+	vec3 sunhue = P.sun_col.rgb / max(dot(P.sun_col.rgb, vec3(0.2126, 0.7152, 0.0722)), 1e-4);
+	sunhue = P.sun_col.r > 1e-4 ? sunhue : vec3(1.0);
+	vec3 en = e / max(sunhue, vec3(0.05));
+	float enl = dot(en, vec3(0.2126, 0.7152, 0.0722));
+	e = max(vec3(enl) + (en - vec3(enl)) * mix(P.sun.w, P.opt.z, far_k), vec3(0.0)) * sunhue;
+	// on a man or a vehicle the light off the ground round him is a fill, not
+	// a recolouring: at most half again the shade's own light on him, and at
+	// half the colour, so camouflage keeps its colours
+	if (nr.a > 0.5) {
+		float ml = dot(e, vec3(0.2126, 0.7152, 0.0722));
+		e = mix(vec3(ml), e, 0.5);
+		float cap = 0.5 * dot(shade_light(wn), vec3(0.2126, 0.7152, 0.0722));
+		e *= ml > cap ? cap / ml : 1.0;
+	}
 	vec3 c = clean(col.rgb);
 	// smoke, dust or a flame drawn over this pixel: the bounce light lands on
 	// the world behind them, and shows only as much as they let through. How
@@ -1075,6 +1103,8 @@ void main() {
 		outc = vec3(best < 0.2 ? 1.0 : 0.0, e.g * 4.0, 0.0);  // where the upsample looked further out; the light
 	} else if (view_mode == 11) {
 		outc = vec3(1.0 - through, e.g * 4.0, 0.0);  // where smoke or a flame hides it; the light
+	} else if (view_mode == 14) {
+		outc = vec3(nr.a > 0.5 ? 1.0 : 0.0, rough, 0.0);  // things that move (the renderer's flag); roughness
 	} else if (view_mode == 13) {
 		vec3 rw = c / max(shade_light(wn), vec3(1e-4));
 		outc = vec3(sunny, max(rw.r, max(rw.g, rw.b)) * 0.1, sunvis);  // the sun's share of its light; brightness against the shade's light / 10; whether the sun reaches it
