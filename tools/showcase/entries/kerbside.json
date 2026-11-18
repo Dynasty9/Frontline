@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/kerbside.md",
+  "summary": "Street lamps, lanterns, hydrants, signs, mailboxes and the electricity cabinet rebuilt.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (kerbside); tests/fixtures/environment-views.gd (FL_ONLY_VIEW)",
+  "rationale": "Appearance change of small pieces: the studio shows each up close; a matched row by the square shows them at the game's camera.",
+  "source_ref": "8318774b76c5aedc980f68c63ac7f987a35a4a6a",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/kerbside/pieces.jpg",
+      "sha256": "6c3006c5cc53c106f176bff09e5da2ada870f7daa811c6d7f7add73cd6bd7b7b"
+    },
+    {
+      "file": "changelog/unreleased/kerbside/comparison.jpg",
+      "sha256": "3c7c8ad3c75c753d6f29b778d9e5b9814cf7a7b4f0dc4ea9da917d98edbc9d73"
+    },
+    {
+      "file": "changelog/unreleased/kerbside/capture.json",
+      "sha256": "7152fd9b6df7c8a44a61f642dc5d3321c4d905c3a7cf44ab0dffa0a918bc9b82"
+    }
+  ],
+  "output": null
+}
