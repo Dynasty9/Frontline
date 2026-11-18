@@ -71,6 +71,11 @@ caption = "The same, the bounce light alone (brightened): it moves with the men 
 file = "pan.webm"
 poster = "pan.jpg"
 caption = "The bounce light alone (brightened) while the camera pans: it stays on what it lights, with no smears or trails."
+
+[[videos]]
+file = "surface-history.webm"
+poster = "surface-history.jpg"
+caption = "Surface-history correction, before and after: the same close and command camera motion, seed and exposure. Subtle correction; no grading. Historical 5aac3f1 versus 959238e, before later renderer changes."
 +++
 
 - **Where it belongs:** sunlit grass, roads, roofs and hulls no longer take a yellowish lift. The light lands in the
@@ -98,3 +103,7 @@ existing shade strength, sunlight restraint and exposure unchanged.
 The device regression is `godot --path . --rendering-method forward_plus --script
 tests/fixtures/ssgi-feedback.gd`. It checks a stable surface, newly revealed ground,
 a different-facing neighbour and an interpolation footprint crossing their edges.
+
+The matched clip is a software-Vulkan capture at 30 fixed simulation frames per
+second. It demonstrates the in-game view, not hardware speed. Source revisions,
+camera settings and renderer setup are recorded in `bounce-light-shade/surface-history-capture.json`.

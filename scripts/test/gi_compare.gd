@@ -29,10 +29,13 @@ extends Node
 ## AB_ROUNDS times, so whatever else loads the machine falls on both halves
 ## alike; the first frames after each switch are left out.
 ##
-## FL_DEBUG_GI_PAN="vx,vz,frames[,zoom]": instead, from the first pose and in the
+## FL_DEBUG_GI_PAN="vx,vz,frames[,zoom]": instead, from each pose and in the
 ## first mode, the camera pans at (vx, vz) m/s while the battle runs on, and
 ## every frame is saved (DIR/pan_000.png...): run it with --fixed-fps 30 for
 ## frames 1/30 s apart, to see the light hold (or smear) while the view moves.
+## Multiple poses each get that many frames, named <pose>_pan_NNN.png;
+## camera.json records their exact transforms. Input, director motion and
+## lens shake are held out so a slow renderer cannot change the camera path.
 ## FL_DEBUG_GI_BLAST=frame bursts a shell where it looks on that frame.
 
 const MODES := {
@@ -109,6 +112,7 @@ var _pan: PackedStringArray = OS.get_environment("FL_DEBUG_GI_PAN").split(",", f
 var _series := int(OS.get_environment("FL_DEBUG_GI_SERIES"))
 var _found := {}
 var _probes := -1  # the light probes as the preset has them
+var _pan_views: Array = []
 
 
 func _ready() -> void:
@@ -130,6 +134,15 @@ func _process(dt: float) -> void:
 			return
 		DirAccess.make_dir_recursive_absolute(_dir)
 		if _pan.size() >= 3:
+			# The off-screen pointer can sit on a window edge. This stage
+			# owns the camera: its wall-clock input and director must not
+			# move it between fixed-step captures.
+			var cam: Node = world.get("cam")
+			cam.set("edge_pan", false)
+			cam.set_process(false)
+			var director: Node = world.get("director")
+			if director != null:
+				director.set("active", false)
 			_i = 0
 			_set_pose(_poses[0])
 			_apply(_modes[0])
@@ -375,19 +388,20 @@ func _pan_tick(dt: float) -> void:
 	if _pan_at == Vector3.INF:
 		_pan_at = cam.get("focus_pos")
 	var fp := _pan_at
+	cam.set("_shake", 0.0)  # identical lens offsets on both revisions
 	# (a fourth number zooms, metres a second; with --fixed-fps every frame
 	# is the same step of the battle's time)
 	if _pan.size() >= 4:
 		var d: float = cam.get("dist") + float(_pan[3]) * dt
 		cam.set("target_dist", d)
 		cam.set("dist", d)
-	elif _poses[0].split(":").size() >= 5:
-		cam.set("target_dist", float(_poses[0].split(":")[2]))
-		cam.set("dist", float(_poses[0].split(":")[2]))
+	elif _poses[_pose].split(":").size() >= 5:
+		cam.set("target_dist", float(_poses[_pose].split(":")[2]))
+		cam.set("dist", float(_poses[_pose].split(":")[2]))
 	_pan_at = fp + Vector3(float(_pan[0]), 0.0, float(_pan[1])) * dt
 	# (the heading and tilt are held as the pose has them: something in a
 	# running battle turned the camera through a still shot)
-	var f := _poses[0].split(":")
+	var f := _poses[_pose].split(":")
 	if f.size() >= 5:
 		cam.set("pitch_deg", NAN if f[3] == "auto" else float(f[3]))
 		cam.set("yaw", float(f[4]) + (0.0 if f[1].contains(",") else float(_find(f[1])[1])))
@@ -396,8 +410,28 @@ func _pan_tick(dt: float) -> void:
 	# frame, to see how soon its flash is thrown about (and how soon it goes)
 	if OS.has_environment("FL_DEBUG_GI_BLAST") and _frames == int(OS.get_environment("FL_DEBUG_GI_BLAST")):
 		world.call("fx_event", [1, cam.get("focus_pos"), 1.0, "he"])  # (Fx.EXPLODE)
+	var camera: Camera3D = cam.get("cam")
+	var xf := camera.global_transform
+	var pose_name := _poses[_pose].get_slice(":", 0)
+	_pan_views.append({"pose": pose_name, "transform": [xf.origin.x, xf.origin.y, xf.origin.z,
+		xf.basis.x.x, xf.basis.x.y, xf.basis.x.z,
+		xf.basis.y.x, xf.basis.y.y, xf.basis.y.z,
+		xf.basis.z.x, xf.basis.z.y, xf.basis.z.z]})
+	# Capture the frame just posed, rather than the preceding render.
+	await RenderingServer.frame_post_draw
 	# (the first frames settle the history from scratch: they're kept too)
-	get_viewport().get_texture().get_image().save_png(_dir.path_join("pan_%03d.png" % _frames))
+	var prefix := pose_name + "_" if _poses.size() > 1 else ""
+	get_viewport().get_texture().get_image().save_png(_dir.path_join(prefix + "pan_%03d.png" % _frames))
 	_frames += 1
 	if _frames >= int(_pan[2]):
+		_pose += 1
+		if _pose < _poses.size():
+			_frames = 0
+			_pan_at = Vector3.INF
+			_set_pose(_poses[_pose])
+			return
+		set_process(false)  # quit is deferred; do not index beyond the last pose
+		var record := FileAccess.open(_dir.path_join("camera.json"), FileAccess.WRITE)
+		if record != null:
+			record.store_string(JSON.stringify({"fps": roundi(1.0 / dt), "frames": _pan_views}, "  "))
 		get_tree().quit()
