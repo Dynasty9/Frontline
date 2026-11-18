@@ -23,6 +23,11 @@ caption = "The wind (blowing left to right here) heaps the snow against a hedger
 file = "comparison.jpg"
 caption = "The same town and the same tank battle under an overcast sky and in snow: white roofs and fields, slushy streets with white gutters, patchy snow on the tanks that have been fighting, tread marks through it and mud round the burning wreck."
 [[videos]]
+file = "track-engine-thaw.webm"
+poster = "track-engine-thaw.jpg"
+caption = "An untouched bank, a tank leaving tracks through the powder, then 96 seconds of engine thaw and the drive-away reveal. Actual gameplay in Compatibility, Medium: driving at 2× speed, idling at 36× time lapse, with brief control and result holds. Nearby powder stays unchanged."
+
+[[videos]]
 file = "hedge-motion.webm"
 poster = "hedge-motion.jpg"
 caption = "Earlier close view of snow along a burning hedgerow, before the bank-edge correction below. Four seconds at normal speed, Medium settings, Compatibility renderer."

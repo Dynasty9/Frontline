@@ -100,7 +100,7 @@ func _shot(phase: String, frame: int) -> void:
 
 func _write_records() -> void:
 	var output := FileAccess.open(prefix + "/records.json", FileAccess.WRITE)
-	output.store_string(JSON.stringify({"renderer": RenderingServer.get_current_rendering_method(), "camera": str(world.cam.cam.global_transform), "fixed_fps": 24, "playback_fps": 12, "rates": {"rolling": 2, "idle": 36, "reveal": 2}, "source_hashes": {"vfx": FileAccess.get_sha256("res://scripts/game/vfx.gd"), "snow_melt": FileAccess.get_sha256("res://scripts/game/snow_melt.gd"), "fixture": FileAccess.get_sha256("res://tests/fixtures/snow-sequence.gd")}, "records": records}, "\t"))
+	output.store_string(JSON.stringify({"renderer": RenderingServer.get_current_rendering_method(), "camera": str(world.cam.cam.global_transform), "fixed_fps": 24, "playback_fps": 12, "rates": {"rolling": 2, "idle": 36, "reveal": 2}, "source_hashes": {"vfx": FileAccess.get_sha256("res://scripts/game/vfx.gd"), "snow_melt": FileAccess.get_sha256("res://scripts/game/snow_melt.gd"), "fixture": String(get_script().source_code).sha256_text()}, "records": records}, "\t"))
 
 
 ## Diagnostic images only: never splice these material overrides into gameplay footage.
@@ -111,19 +111,28 @@ func _diagnostic() -> void:
 	var bank: ShaderMaterial = world.atmo.snow_drift._mat
 	var ground_original: Shader = ground.shader
 	var bank_original: Shader = bank.shader
-	for lighting in ["snow", "day"]:
-		world.atmo.apply_mood(lighting)
+	var ground_params := _shader_parameters(ground)
+	var bank_params := _shader_parameters(bank)
+	await _shot("diagnostic-native", 0)
+	var moods := ["snow"] if "--diagnostic-snow-only" in OS.get_cmdline_user_args() else ["snow", "day"]
+	for lighting in moods:
+		var changed: bool = world.atmo.mood != lighting
+		if changed:
+			world.atmo.apply_mood(lighting)
+		load("res://scripts/game/cloud_shadow.gd").set_sun(world.atmo.sun)
 		# Frozen snow after the weather clears, to compare sunny and overcast light.
 		RenderingServer.global_shader_parameter_set("snow_cover", 1.0)
 		var probes = world.atmo.light_probes
-		probes.relight()
-		for warm in 48:
+		if changed:
+			probes.relight()
+		for warm in (48 if changed else 1):
 			probes._process(1.0 / 24.0)
 			RenderingServer.force_draw(false, 1.0 / 24.0)
 			await process_frame
 			if probes._tile_queue.is_empty() and probes._brick_queue.is_empty() and probes._light_queue.is_empty():
 				break
 		print("SNOW_PROBE_STATE ", lighting, " quality=", probes.quality, " tiles=", probes._tile_queue.size(), " bricks=", probes._brick_queue.size(), " relight=", probes._light_queue.size())
+		assert(probes._tile_queue.is_empty() and probes._brick_queue.is_empty() and probes._light_queue.is_empty(), "Diagnostic requires completed probe lighting")
 		for treatment in ["baseline", "probes-off", "flat-normals", "equal-albedo", "flat-equal"]:
 			var g: String = ground_original.code
 			var b: String = bank_original.code
@@ -133,10 +142,16 @@ func _diagnostic() -> void:
 			if treatment in ["equal-albedo", "flat-equal"]:
 				g = g.replace("ALBEDO = col * (1.0 - aerial);", "ALBEDO = vec3(0.5);")
 				b = b.replace("if (OUTPUT_IS_SRGB) {\n\t\tcol =", "col = vec3(0.5);\n\tif (OUTPUT_IS_SRGB) {\n\t\tcol =")
-			ground.shader = Shader.new()
-			ground.shader.code = g
-			bank.shader = Shader.new()
-			bank.shader.code = b
+			var gs := Shader.new()
+			gs.code = g
+			var bs := Shader.new()
+			bs.code = b
+			ground.shader = gs
+			bank.shader = bs
+			for key in ground_params:
+				ground.set_shader_parameter(key, ground_params[key])
+			for key in bank_params:
+				bank.set_shader_parameter(key, bank_params[key])
 			RenderingServer.global_shader_parameter_set("probe_mix", Vector4(0, 0, 0, 1) if treatment == "probes-off" else Vector4(1, 0.8, 0, 1))
 			await _shot("diagnostic-" + lighting + "-" + treatment, 0)
 		ground.shader = ground_original
@@ -160,3 +175,12 @@ func _prepare_probes() -> void:
 	print("SNOW_PROBE_PREPARED quality=", probes.quality, " tiles=", probes._tile_queue.size(), " bricks=", probes._brick_queue.size(), " relight=", probes._light_queue.size())
 	assert(probes._tile_queue.is_empty() and probes._brick_queue.is_empty() and probes._light_queue.is_empty(), "Capture requires a completed probe atlas")
 	world.process_mode = mode
+
+
+func _shader_parameters(material: ShaderMaterial) -> Dictionary:
+	var parameters := {}
+	for uniform in material.shader.get_shader_uniform_list():
+		var value: Variant = material.get_shader_parameter(uniform.name)
+		if value != null:
+			parameters[uniform.name] = value
+	return parameters
