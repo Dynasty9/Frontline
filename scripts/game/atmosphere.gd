@@ -66,6 +66,7 @@ var backdrop_tex: ImageTexture
 var road_mat: ShaderMaterial
 var grass: Grass
 var mountain_clouds: Node3D
+var light_probes: LightProbes  # (view) the skylight and bounce of streets and rooms
 var forest: DistantForest
 var wildlife: Wildlife
 var _d := {}
@@ -97,6 +98,9 @@ func setup(w: World) -> void:
 	_build_env()
 	CloudShadow.set_sun(sun)
 	_build_ground()
+	light_probes = LightProbes.new()
+	add_child(light_probes)
+	light_probes.setup(self)
 	_build_post()
 	mountain_clouds = preload("res://scripts/game/mountain_clouds.gd").new()
 	add_child(mountain_clouds)
@@ -580,7 +584,7 @@ func _build_ground() -> void:
 	ground = MeshInstance3D.new()
 	ground.mesh = _ground_ring(GROUND_HALF, MapDims.HALF + 1800.0)
 	ground_mat = ShaderMaterial.new()
-	ground_mat.shader = CloudShadow.make(MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT).replace("// RAIN_DROPS", Mats.RAIN_DROPS)), CloudShadow.OWN_LIGHT)
+	ground_mat.shader = CloudShadow.make(MapDims.shader(GROUND_SHADER.replace("// BACKDROP_HEIGHT", BACKDROP_HEIGHT).replace("// RAIN_DROPS", Mats.RAIN_DROPS)), CloudShadow.OWN_LIGHT | CloudShadow.PROBES)
 	ground_mat.set_shader_parameter("vertex_lit", ProjectSettings.get_setting_with_override("rendering/shading/overrides/force_vertex_shading"))
 	ground_mat.set_shader_parameter("biome_tex", biome_tex)
 	ground_mat.set_shader_parameter("detail_tex", detail_tex)
@@ -632,11 +636,15 @@ func _build_ground() -> void:
 	trench_net = TrenchNet.new(world)
 	add_child(trench_net)
 	road_mat = ShaderMaterial.new()
-	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER).replace("// RAIN_DROPS", Mats.RAIN_DROPS))))
+	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER).replace("// RAIN_DROPS", Mats.RAIN_DROPS))), CloudShadow.PROBES)
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
 	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
 	road_mat.set_shader_parameter("street_noise", Mats.noise_tex())
+	road_mat.set_shader_parameter("gravel_color", preload("res://assets/town/gravel_floor_02_color.jpg"))
+	road_mat.set_shader_parameter("roadbed_color", preload("res://assets/town/gravel_road_color.jpg"))
+	road_mat.set_shader_parameter("roadbed_surface", preload("res://assets/town/gravel_road_surface.png"))
+	road_mat.set_shader_parameter("gravel_surface", preload("res://assets/town/gravel_floor_02_surface.png"))
 	road_mat.set_shader_parameter("paving_surface", preload("res://assets/town/road_damaged_clean_surface.png"))
 	# see-through (its edges fade into the verges), so it draws with the smoke
 	# and fire: before them, or it paints over every blast on a road
@@ -1035,12 +1043,16 @@ func apply_mood(m: String) -> void:
 		world.fx.vfx.apply_lighting()
 	if cine:
 		cine.reset_adaptation = true  # a new light: the eye starts afresh
+	if light_probes:
+		light_probes.relight()
 
 
 func apply_settings() -> void:
 	var s := Settings
 	ground_mat.set_shader_parameter("terrain_detail", int(s.get_v("lod")) >= 1)
 	CloudShadow.refresh()
+	if light_probes:
+		light_probes.apply_settings()
 	if forest:
 		forest.apply_settings()
 	# the battle's own mood stands (the host's choice, or a mission's) until
@@ -2139,6 +2151,8 @@ func _update_deform(dt: float) -> void:
 			_deform_tiles.mark_dirty(rect)
 			if world.phys:
 				world.phys.update_deform(rect)
+			if light_probes:
+				light_probes.terrain_changed(rect)
 		tm.deform_dirty.clear()
 	_deform_tiles.flush()
 
@@ -2146,7 +2160,9 @@ func _update_deform(dt: float) -> void:
 func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var hw := 2.9 if team == 2 else 2.4
+	var road_hw := 2.9 if team == 2 else 2.4
+	var hw := road_hw + 1.5
+	var uv_edge := 1.5 / (road_hw * 2.0)
 	var y := Vector3(0, 0.02 if team == 2 else 0.026 + team * 0.004, 0)
 	for poly in polys:
 		var src: PackedVector3Array = poly
@@ -2154,13 +2170,19 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 		var pts := PackedVector3Array()
 		for p in src:
 			if pts.is_empty() or Defs.flat(p - pts[pts.size() - 1]).length() > 0.3:
-				pts.append(Vector3(p.x, 0, p.z))
+				# Short panels follow the terrain instead of bridging over its folds.
+				var end := Vector3(p.x, 0, p.z)
+				if not pts.is_empty():
+					var start := pts[pts.size() - 1]
+					var steps := ceili(start.distance_to(end) / 2.0)
+					for step in range(1, steps):
+						pts.append(start.lerp(end, float(step) / steps))
+				pts.append(end)
 		if pts.size() < 2:
 			continue
 		# one continuous strip with mitred joints (no gaps or spikes on curves)
 		var lefts := PackedVector3Array()
 		var rights := PackedVector3Array()
-		var acrosses := PackedVector2Array()  # (the shader shades the ruts across the road)
 		var vs := PackedFloat32Array()
 		var along := 0.0
 		for i in pts.size():
@@ -2173,19 +2195,23 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 			var miter := 1.0 / maxf(0.5, side.dot(d_out.cross(Vector3.UP).normalized()))
 			if i > 0:
 				along += Defs.flat(pts[i] - pts[i - 1]).length()
-			acrosses.append(Vector2(side.x, side.z))
 			lefts.append(pts[i] - side * hw * miter + y)
 			rights.append(pts[i] + side * hw * miter + y)
 			vs.append(along)
 		for i in pts.size() - 1:
-			var q := [lefts[i], rights[i], rights[i + 1], lefts[i + 1]]
-			var uv := [Vector2(0, vs[i]), Vector2(1, vs[i]), Vector2(1, vs[i + 1]), Vector2(0, vs[i + 1])]
-			var uv2 := [acrosses[i], acrosses[i], acrosses[i + 1], acrosses[i + 1]]
-			for idx in [0, 2, 1, 0, 3, 2]:
-				st.set_normal(Vector3.UP)
-				st.set_uv(uv[idx])
-				st.set_uv2(uv2[idx])
-				st.add_vertex(q[idx])
+			# Crosswise panels follow the camber and the ground beneath both shoulders.
+			for strip in 8:
+				var u0 := float(strip) / 8.0
+				var u1 := float(strip + 1) / 8.0
+				var q := [lefts[i].lerp(rights[i], u0), lefts[i].lerp(rights[i], u1), lefts[i + 1].lerp(rights[i + 1], u1), lefts[i + 1].lerp(rights[i + 1], u0)]
+				var x0 := lerpf(-uv_edge, 1.0 + uv_edge, u0)
+				var x1 := lerpf(-uv_edge, 1.0 + uv_edge, u1)
+				var uv := [Vector2(x0, vs[i]), Vector2(x1, vs[i]), Vector2(x1, vs[i + 1]), Vector2(x0, vs[i + 1])]
+				for idx in [0, 2, 1, 0, 3, 2]:
+					st.set_normal(Vector3.UP)
+					st.set_uv(uv[idx])
+					st.set_uv2(Vector2(_road_deck_distance(q[idx]), 0))
+					st.add_vertex(q[idx])
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = road_mat
@@ -2193,6 +2219,26 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	Mats.set_inst(mi, &"country", 1.0 if team == 2 else 0.0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
+
+
+## A signed deck boundary keeps the gravel ribbon out of the bridge's own paving.
+func _road_deck_distance(p: Vector3) -> float:
+	var distance := 10000.0
+	if world == null or world.water == null:
+		return distance
+	for bridge: Array in world.water.bridges:
+		var a: Vector3 = bridge[0]
+		var b: Vector3 = bridge[1]
+		var axis := Defs.flat(b - a)
+		var length := axis.length()
+		if length < 0.001:
+			continue
+		axis /= length
+		var offset := p - (a + b) * 0.5
+		var across := absf(offset.dot(axis.cross(Vector3.UP))) - float(bridge[2])
+		var along := absf(offset.dot(axis)) - length * 0.5
+		distance = minf(distance, maxf(across, along))
+	return distance
 
 
 ## The photographed midday sky (Atmosphere._apply_sky turns it to the sun).
@@ -3052,7 +3098,15 @@ void light() {
 	float cloud = 1.0;
 	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
 		cloud = cloud_sun(wpos);
+#ifdef PROBE_LIGHT
+		cloud *= probe_sun();  // indoors, under a lifted roof (LightProbes)
+#endif
 	}
+#ifdef PROBE_LIGHT
+	else if (LIGHT_IS_DIRECTIONAL) {
+		cloud = probe_fill;  // the sky's fill light, shut out as the sky is (LightProbes)
+	}
+#endif
 	// (and the ground itself: its bake of where the hills shadow it, for the
 	// sun where it was baked; sun_direction is the sun the meadows grew under)
 	if (LIGHT_IS_DIRECTIONAL && cloud_is_sun(LIGHT, VIEW_MATRIX)) {
@@ -3081,17 +3135,22 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 instance uniform float country = 0.0;
 uniform sampler2D paving_noise : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D street_noise : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D gravel_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D roadbed_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D roadbed_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 // CLOUD_SHADOW
 // STREET_SURFACE
 // RAIN_DROPS
 varying vec3 wpos;
-varying vec2 across;  // the road's across direction in the world (x, z)
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	across = UV2;
 	float h = terrain_geology(deform_tex, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__);
-	VERTEX.y += h; wpos.y += h;
+	vec2 town_inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
+	float unpaved = 1.0 - smoothstep(-0.5, 0.5, min(town_inside.x, town_inside.y)) * country;
+	float camber = 0.045 * (1.0 - smoothstep(0.0, 0.5, abs(UV.x - 0.5))) * unpaved;
+	VERTEX.y += h + camber; wpos.y += h + camber;
 }
 void fragment() {
 	if (texture(trench_mask, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__).r > 0.5) {
@@ -3102,29 +3161,73 @@ void fragment() {
 		discard;
 	}
 	float x = UV.x;
+	vec2 town_inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
+	float town_distance = min(town_inside.x, town_inside.y);
+	// Town kerbs keep their original width; loose shoulders belong outside them.
+	if (UV2.x < 0.0) { discard; }
+	if (country > 0.5 && town_distance > 0.0 && (x < 0.0 || x > 1.0)) { discard; }
 	float n = texture(detail_tex, wpos.xz / 3.0).r;
 	float n2 = texture(detail_tex, wpos.xz / 11.0 + 0.5).r;
 	float n3 = texture(detail_tex, wpos.xz / 0.6 + 0.2).r;
-	// Outside town the tracks are the ground's own (GROUND_SHADER draws them
-	// from the road map the grass job packs into the biome texture). The
-	// ribbon draws only the town's asphalt, crumbling at its edge onto them.
-	float pud = 0.0;
-	ROUGHNESS = 0.9;
-	SPECULAR = 0.3;
+	float across = abs(x - 0.5) * mix(4.8, 5.8, country);
+	float half_width = mix(2.4, 2.9, country);
+	// Two metre scans retain stone-sized detail; the broad variation never replaces it.
+	vec2 road_uv = wpos.xz / 2.0;
+	vec2 gravel_uv = wpos.xz / 2.0;
+	vec3 road = texture(roadbed_color, road_uv).rgb;
+	vec3 gravel = texture(gravel_color, gravel_uv).rgb;
+	if (OUTPUT_IS_SRGB) {
+		road = mix(road / 12.92, pow((road + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), road));
+		gravel = mix(gravel / 12.92, pow((gravel + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), gravel));
+	}
+	// Local limestone fines mute the red soil, but leave the photographed aggregate intact.
+	float road_light = dot(road, vec3(0.2126, 0.7152, 0.0722));
+	road = mix(road, vec3(road_light), 0.72) * vec3(1.05, 1.02, 0.94);
+	road *= mix(vec3(0.72, 0.61, 0.45), vec3(1.0), country);
+	gravel *= vec3(0.30, 0.29, 0.27);
+	float wander = (texture(detail_tex, vec2(UV.y / 19.0, 0.37)).r - 0.5) * 0.22;
+	float inner_wheels = abs(abs((x - 0.5) * half_width * 2.0 - wander) - mix(0.85, 0.72, country));
+	float outer_wheels = abs(abs((x - 0.5) * half_width * 2.0 + wander * 0.7) - 2.05);
+	float wheel_distance = mix(inner_wheels, min(inner_wheels, outer_wheels), country);
+	float ruts = 1.0 - smoothstep(0.14, 0.33, wheel_distance);
+	float shoulder = smoothstep(half_width - 0.25, half_width + 0.3, across + (n2 - 0.5) * 0.35);
+	float grit = smoothstep(0.30, 0.70, n * 0.35 + n3 * 0.65 + shoulder * 0.18 - ruts * 0.22);
+	grit *= mix(0.18, 1.0, country);
+	vec3 col = mix(road, gravel, grit * 0.72);
+	col *= mix(0.86, 1.13, n2);
+	// Tyres compact the fines; the unworn centre and edges keep loose aggregate.
+	col *= 1.0 - ruts * 0.16;
+	float outer = half_width + 0.45 + n2 * 0.8;
+	float edge_noise = (n - 0.5) * 0.38 + (n3 - 0.5) * 0.18;
+	float edge = 1.0 - smoothstep(outer - 0.16, outer + 0.12, across + edge_noise);
+	float soil = smoothstep(half_width - 0.25, outer - 0.18, across + edge_noise);
+	col = mix(col, road * vec3(0.55, 0.48, 0.37), soil * 0.95);
+	// Single-lane supply tracks keep a wider, broken strip of vegetation between the wheels.
+	float mid = (1.0 - smoothstep(mix(0.20, 0.06, country), mix(0.55, 0.28, country), across + (n3 - 0.5) * 0.12)) * smoothstep(mix(0.32, 0.51, country), mix(0.58, 0.69, country), n2);
+	vec3 centre_grass = mix(vec3(0.075, 0.095, 0.025) * (0.65 + n3 * 0.7), road * vec3(0.45, 0.53, 0.24), country);
+	col = mix(col, centre_grass, mid * 0.7);
+	float pud = wet * smoothstep(0.56, 0.75, n2 * 0.65 + ruts * 0.35);
+	col *= 1.0 - wet * 0.28;
+	col = mix(col, col * 0.55, pud);
+	ALBEDO = col;
+	vec4 road_data = texture(roadbed_surface, road_uv);
+	vec4 gravel_data = texture(gravel_surface, gravel_uv);
+	vec3 road_n = road_data.rgb * 2.0 - 1.0;
+	vec3 gravel_n = gravel_data.rgb * 2.0 - 1.0;
+	vec3 surface_n = normalize(mix(road_n, gravel_n, grit * 0.72));
+	surface_n.xy *= mix(0.85, 0.4, ruts) * (1.0 - pud * 0.9);
 	mat3 ground_basis = ground_surface_basis(wpos);
-	NORMAL = normalize((VIEW_MATRIX * vec4(ground_basis[2], 0.0)).xyz);
+	NORMAL = normalize((VIEW_MATRIX * vec4(ground_basis * surface_n, 0.0)).xyz);
+	ROUGHNESS = mix(clamp(mix(road_data.a, gravel_data.a, grit), 0.72, 1.0), 0.12, pud);
+	SPECULAR = mix(0.18, 0.45, pud);
+	ALPHA = edge;
 	// in town: patched asphalt between the curbs, a dashed centre line
 	vec2 inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
 	float distance = min(inside.x, inside.y);
-	// where the town's paving gives out, the asphalt's edge crumbles away
-	// into the gravel over a metre or two, not along a ruled line
-	float broken_edge = (texture(street_noise, wpos.xz * 0.05 + 0.4).r - 0.5) * 2.4 + (texture(street_noise, wpos.xz * 0.3).r - 0.5) * 0.7 + (n3 - 0.5) * 0.2;
-	float paved = smoothstep(-0.12, 0.12, distance + 1.2 + broken_edge) * country * step(1.0, town.z - town.x);
+	float broken_edge = (texture(street_noise, wpos.xz * 0.65).r - 0.5) * 0.6;
+	float paved = smoothstep(-0.3, 0.35, distance + broken_edge) * country * step(1.0, town.z - town.x) * step(0.0, x) * step(x, 1.0);
 	float pud2 = 0.0;
-	if (paved <= 0.001) {
-		discard;
-	}
-	{
+	if (paved > 0.001) {
 		float tar = 0.0;
 		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz, tar);
 		if (OUTPUT_IS_SRGB) { asph = mix(asph / 12.92, pow((asph + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), asph)); }
@@ -3144,6 +3247,9 @@ void fragment() {
 		asph *= 1.0 - oil * 0.24;
 		asph = mix(asph, asph * 1.14 + 0.004, wheel * 0.45);
 		asph = mix(asph, vec3(0.115, 0.105, 0.09) * (0.75 + 0.5 * n), gutter * 0.5);
+		// Tyres carry loose fines a few metres onto the paving at the town entrance.
+		float entry_dust = (1.0 - smoothstep(0.0, 3.5, distance + (n2 - 0.5))) * (0.25 + wheel * 0.55) * (0.6 + n3 * 0.4);
+		asph = mix(asph, col, entry_dust * 0.65);
 		asph *= 1.0 - (1.0 - smoothstep(0.02, 0.09, kerb)) * 0.35;
 		// Dead leaves and litter drift into the gutter against the kerb, thick
 		// in some stretches and swept clean in others. (Each leaf is a few
@@ -3192,7 +3298,7 @@ void fragment() {
 		vec2 rain = street_wetness(wet, street_puddle(street_noise, wpos.xz) + wheel * 0.06 + gutter * 0.1);
 		pud2 = rain.y * (1.0 - metal_part);
 		asph *= 1.0 - rain.x * 0.45;
-		ALBEDO = mix(asph, asph * 0.5, pud2);
+		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
 		vec4 surface = texture(paving_surface, wpos.xz / 2.2);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
 		normal.xy *= 0.18 * (1.0 - metal_part) * (1.0 - dash * 0.5) * (1.0 - pud2);
@@ -3203,7 +3309,7 @@ void fragment() {
 		ROUGHNESS = mix(ROUGHNESS, mix(mix(asphalt_rough, 0.3, rain.x), 0.03, pud2), paved);
 		SPECULAR = mix(SPECULAR, mix(0.4, 0.5, pud2), paved);
 		METALLIC = metal_part * 0.45 * paved;
-		ALPHA = paved;
+		ALPHA = mix(edge, 1.0, paved);
 	}
 	// the rain rings the puddles, and faintly the wet film on the road
 	float ring_on = mix(max(pud, wet * 0.2), max(pud2, wet * 0.25), paved);

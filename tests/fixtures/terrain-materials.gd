@@ -220,9 +220,9 @@ void fragment() { float tar; ALBEDO = street_surface(scan, noise, vec2(0.0), tar
 		await RenderingServer.frame_post_draw
 	var bare := view.get_texture().get_image().get_pixel(32, 32)
 	mesh.visible = true
-	# Outside town the ground itself draws the tracks (GROUND_SHADER, from
-	# Grass.road_field); the ribbon draws only the town's asphalt.
-	assert(track.is_equal_approx(bare), "Outside town the road ribbon leaves the ground to draw the track: %s vs %s" % [track, bare])
+	# Outside town the ribbon lays the gravel over the worn soil the ground
+	# itself draws along every road (GROUND_SHADER, from Grass.road_field).
+	assert(not track.is_equal_approx(bare), "Outside town the road ribbon lays its gravel: %s vs %s" % [track, bare])
 	for kind in ["roof_tile", "roof_concrete", "wood_dark", "bark"]:
 		var photographed := Mats.get_mat(kind).duplicate() as ShaderMaterial
 		assert(photographed.get_shader_parameter("pattern") == Mats.WEATHERED_PHOTO)

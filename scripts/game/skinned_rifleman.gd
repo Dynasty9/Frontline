@@ -102,7 +102,8 @@ func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null, u
 				material.metallic = 0.0
 				material.roughness = 0.85
 				material.metallic_specular = 0.25
-				mesh.set_surface_override_material(surface, material)
+				# (the same, reading the light probes: a man indoors or under trees takes their shade)
+				mesh.set_surface_override_material(surface, LightProbes.skin_material(material))
 
 	skeleton = visual.find_children("*", "Skeleton3D", true, false)[0]
 	for player in visual.find_children("*", "AnimationPlayer", true, false):

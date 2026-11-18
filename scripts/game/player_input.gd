@@ -891,6 +891,12 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 			_marker(tgt.position, Color(0.6, 0.9, 1.0))
 			Sfx.ui("click")
 			return
+		# a dugout's doorway (anywhere else on a trench is a place to move to)
+		if tgt.skind == "trench" and TrenchNet.has_dugout(tgt) and Defs.flat(world.cam.ground_point(screen) - TrenchNet.dugout_door(tgt)).length() < 1.6:
+			world.send_cmd({"t": "enter", "squads": sel_squads, "target": tgt.eid})
+			_marker(TrenchNet.dugout_door(tgt), Color(0.6, 0.9, 1.0))
+			Sfx.ui("click")
+			return
 	if tgt is Vehicle and tgt.team == lt and not sel_vehicles.is_empty() and sel_squads.is_empty():
 		# a lift helicopter picks up one of our vehicles on its sling
 		for id in sel_vehicles:

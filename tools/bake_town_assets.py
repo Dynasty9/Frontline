@@ -26,7 +26,7 @@ def mean_colour(image):
     return result
 
 
-NAMES = ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand", "road_damaged_clean", "rocky_trail_02"]
+NAMES = ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand", "road_damaged_clean", "gravel_road", "gravel_floor_02", "rocky_trail_02"]
 COLOUR_ONLY = {"asphalt_02"}  # repair patches share the road relief
 WITH_HEIGHT = {"rocky_trail_02"}  # its height rides in the colour's alpha: the terrain's track layer height-blends by it
 
@@ -49,7 +49,7 @@ def main(only=None):
         if line.startswith("metadata/"):
             means[line.split(" = ")[0][len("metadata/"):]] = line
     for name in names:
-        size = (2048, 2048) if name == "aerial_asphalt_01" else (1024, 1024)
+        size = (2048, 2048) if name in {"aerial_asphalt_01", "gravel_road"} else (1024, 1024)
         def read(channel):
             return Image.open(CACHE / f"{name}_{channel}_2k.jpg").resize(size, Image.Resampling.LANCZOS)
         if name in WITH_HEIGHT:
