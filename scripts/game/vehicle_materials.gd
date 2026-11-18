@@ -15,7 +15,26 @@ const PROFILES := {
 	"marine": {"surface_paint_wear": 0.60,"surface_normal_strength": 0.06, "surface_finish": 0, "surface_weather": 0.23, "surface_grain": 0.08, "surface_coat_roughness": 0.24, "surface_roughness": 0.42, "map": "coating", "rough": 0.42, "metal": 0.0, "bump": 0.012, "grime": 0.25, "surface_scale": 1.5, "surface_tone": 0.05, "surface_coat": 0.2},
 	"rubber": {"surface_normal_strength": 0.65, "surface_finish": 1, "surface_weather": 0.22, "surface_grain": 0.65, "surface_roughness": 0.38, "surface_specular": 0.22, "map": "rubber", "rough": 0.88, "metal": 0.0, "bump": 0.09, "grime": 0.11, "surface_scale": 2.0, "surface_tone": 0.18},
 	"plastic": {"surface_normal_strength": 0.28, "surface_finish": 7, "surface_weather": 0.10, "surface_grain": 0.35, "surface_roughness": 0.30, "surface_specular": 0.30, "map": "rubber", "rough": 0.63, "metal": 0.0, "bump": 0.025, "grime": 0.2, "surface_scale": 5.0},
+	# Cotton duck (tilts, tarps, the old kit): a coarse open weave, dead matte,
+	# mottled where it has been rained on, sun-faded and dried out again.
 	"canvas": {"surface_normal_strength": 0.75, "surface_finish": 2, "surface_weather": 0.30, "surface_grain": 0.70, "surface_roughness": 0.25, "surface_specular": 0.16, "map": "canvas", "rough": 0.96, "metal": 0.0, "bump": 0.10, "grime": 0.18, "surface_scale": 3.0, "surface_tone": 0.28},
+	# Woven webbing (straps, slings, the bands round a roll): a tight nylon or
+	# polyester twill, its ribs a third the size of canvas's, one even colour
+	# that hardly fades, with a dull satin sheen running along it where the
+	# fibres lie straight. It reads as a strap, not a strip cut from the tilt.
+	"webbing": {"surface_normal_strength": 0.55, "surface_finish": 2, "surface_weather": 0.10, "surface_grain": 0.95, "surface_roughness": 0.12, "surface_specular": 0.36, "map": "canvas", "rough": 0.66, "metal": 0.0, "bump": 0.06, "grime": 0.12, "surface_scale": 9.0, "surface_tone": 0.07},
+	# Nylon kit cloth and upholstery (Cordura bags, seat covers, flight suits):
+	# finer and smoother than cotton, a faint sheen, its dye holding its colour
+	# better than canvas does.
+	"nylon": {"surface_normal_strength": 0.42, "surface_finish": 2, "surface_weather": 0.16, "surface_grain": 0.45, "surface_roughness": 0.20, "surface_specular": 0.28, "map": "canvas", "rough": 0.81, "metal": 0.0, "bump": 0.05, "grime": 0.15, "surface_scale": 6.0, "surface_tone": 0.12},
+	# Rubberised and PVC-coated cloth (mantlet and NBC covers, marine canvas,
+	# a soft top, fuel bladders): the coating fills the weave, which only
+	# shows faintly through it; smooth, a little glossy, even in tone, and
+	# shedding the rain that stains cotton.
+	"coated": {"surface_normal_strength": 0.22, "surface_finish": 1, "surface_weather": 0.18, "surface_grain": 0.22, "surface_roughness": 0.22, "surface_specular": 0.36, "map": "canvas", "rough": 0.6, "metal": 0.0, "bump": 0.03, "grime": 0.14, "surface_scale": 4.0, "surface_tone": 0.06},
+	# Laid rope (lashings, grab lines): hairy twisted fibre, coarser than any
+	# cloth and matte all over, its strands shading light and dark.
+	"rope": {"surface_normal_strength": 0.9, "surface_finish": 2, "surface_weather": 0.2, "surface_grain": 1.0, "surface_roughness": 0.18, "surface_specular": 0.14, "map": "canvas", "rough": 0.95, "metal": 0.0, "bump": 0.12, "grime": 0.15, "surface_scale": 11.0, "surface_tone": 0.3},
 	"steel": {"surface_normal_strength": 0.4, "surface_finish": 3, "surface_weather": 0.10, "surface_grain": 0.70, "surface_roughness": 0.62, "map": "metal", "rough": 0.36, "metal": 0.9, "bump": 0.012, "grime": 0.2, "surface_scale": 1.0, "surface_tone": 0.1},
 	"weapon": {"surface_normal_strength": 0.25, "surface_finish": 7, "surface_weather": 0.05, "surface_grain": 0.3, "surface_wear": 0.35, "surface_roughness": 0.7, "map": "metal", "rough": 0.5, "metal": 0.5, "bump": 0.02, "grime": 0.05, "surface_scale": 4.0, "surface_tone": 0.16},
 	# (dark steel and its black paint: half metallic and a little rough, so a
@@ -96,7 +115,18 @@ static func profile(kind: String, vehicle_family: String) -> String:
 			return "oxidized"
 		"metal_dark", "gunmetal_w", "wire":
 			return "gunmetal"
-		"canvas", "canvas_white", "canvas_l", "fabric", "bag", "webbing", "boot":
+		"webbing", "rope":
+			return kind
+		"fabric", "nylon":
+			return "nylon"
+		"coated", "boot":
+			return "coated"
+		"canvas", "canvas_white", "canvas_l", "bag":
+			# A boat's covers, dodgers, cushions and dry bags are marine
+			# canvas, coated against the spray; ashore cloth is plain cotton
+			# duck unless its builder asks for "coated" or "nylon".
+			if vehicle_family == "marine":
+				return "coated"
 			return "canvas"
 		"wood", "wood_dark", "wood_l", "wood_painted":
 			return "wood"

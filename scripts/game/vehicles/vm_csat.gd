@@ -1437,7 +1437,12 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 				for s in [-1.0, 1.0]:
 					_plate(k, m, Vector3(s * 1.262, 2.1, z), Vector3(s * 1.132, 3.2, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)
 					_plate(k, m, Vector3(s * 1.135, 3.2, z), Vector3(s * 0.95, 3.31, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)
-			k._box(m, Vector3(2.1, 0.9, 0.04), Vector3(0, 2.62, 4.4), "canvas_white", tilt.darkened(0.12))
+			# the back flap hanging half down from the rear bow: cloth, slack
+			# between its corners, not a board
+			if k.wreck:
+				k._box(m, Vector3(2.1, 0.9, 0.04), Vector3(0, 2.62, 4.4), "canvas_white", tilt.darkened(0.12))
+			else:
+				VehicleCloth.panel(k, m, Vector3(0, 2.62, 4.4), Vector2(2.1, 0.9), Vector3.ZERO, tilt.darkened(0.12))
 			for s in [-1.0, 1.0]:
 				k._box(m, Vector3(0.06, 0.08, 0.02), Vector3(s * 0.7, 2.15, 4.43), "gunmetal_w", null, Vector3.ZERO, false)
 			# the boarding ladder hung on the tailgate, its stiles toward the truck

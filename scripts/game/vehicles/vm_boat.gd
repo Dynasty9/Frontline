@@ -471,9 +471,13 @@ static func _outboard(k: VehicleModels, parent: Node3D, pos: Vector3, s: float, 
 	var zc := 0.3 * s
 	var y0 := 0.12 * s
 	# (a moulded cowling: shaded round its corners and over its shoulder into
-	# the top, as the light rolls over a real one; flat facets read as a box)
+	# the top, as the light rolls over a real one; flat facets read as a box.
+	# A real cowl's shoulder is one rolled radius into a domed top, so the
+	# shoulder is two rings on that curve and the lid a low crown over it,
+	# not a step onto a flat cap)
 	k._add(mo, VehicleProfiles.loft([_ry(_rnd(w, l, zc, 0.1 * s, 0.2 * s), y0), _ry(_rnd(w * 1.03, l * 1.02, zc + 0.01 * s, 0.11 * s, 0.21 * s), y0 + h * 0.55),
-		_ry(_rnd(w * 0.94, l * 0.96, zc + 0.03 * s, 0.1 * s, 0.2 * s), y0 + h * 0.86), _ry(_rnd(w * 0.7, l * 0.78, zc + 0.06 * s, 0.08 * s, 0.15 * s), y0 + h)], 50.0), cowl, ccol, Vector3.ZERO)
+		_ry(_rnd(w * 0.97, l * 0.98, zc + 0.02 * s, 0.105 * s, 0.205 * s), y0 + h * 0.8), _ry(_rnd(w * 0.9, l * 0.93, zc + 0.035 * s, 0.1 * s, 0.19 * s), y0 + h * 0.9),
+		_ry(_rnd(w * 0.79, l * 0.86, zc + 0.05 * s, 0.09 * s, 0.17 * s), y0 + h * 0.965), _ry(_rnd(w * 0.6, l * 0.72, zc + 0.07 * s, 0.07 * s, 0.13 * s), y0 + h * 1.015)], 50.0), cowl, ccol, Vector3.ZERO)
 	k._add(mo, VehicleModels.solid([_ry(_rr(w + 0.014, l + 0.014, zc, 0.1 * s, 0.17 * s), y0 + 0.015), _ry(_rr(w + 0.014, l + 0.014, zc, 0.1 * s, 0.17 * s), y0 + 0.05 * s)], key + "_band"), low, lcol, Vector3.ZERO)
 	k._box(mo, Vector3(w * 0.42, 0.05 * s, 0.03), Vector3(0, y0 + h * 0.8, zc + l * 0.5 + 0.01), "gunmetal_w", null, Vector3.ZERO, false)
 	return mo
@@ -560,6 +564,25 @@ static func _zodiac(k: VehicleModels, team: int) -> void:
 
 
 # --- civilian motorboat -----------------------------------------------------------
+
+## A buoyancy vest left lying on a seat, front up: the nylon shell over its
+## foam panels, the collar at its neck end, the zip down the middle and two
+## webbing straps across it, each with its plastic buckle. `pos` is the
+## middle of its underside, `yaw` turns it on the seat.
+static func _life_jacket(k: VehicleModels, parent: Node3D, pos: Vector3, yaw: float, col: Color) -> void:
+	var v := k._pivot(parent, pos)
+	v.rotation.y = yaw
+	# (the foam panels make it a soft pad, its corners rounded and its face
+	# crowned, not a slab)
+	k._add(v, VehicleProfiles.loft([_ry(_rnd(0.36, 0.46, 0.0, 0.07, 0.05), 0.0), _ry(_rnd(0.36, 0.46, 0.0, 0.07, 0.05), 0.03),
+		_ry(_rnd(0.31, 0.41, 0.0, 0.055, 0.04), 0.05)], 50.0), "fabric", col, Vector3.ZERO)
+	k._box(v, Vector3(0.3, 0.035, 0.09), Vector3(0, 0.06, -0.19), "fabric", col.darkened(0.12), Vector3.ZERO, false)
+	k._box(v, Vector3(0.022, 0.006, 0.34), Vector3(0, 0.052, 0.04), "plain_dark", Color(0.1, 0.1, 0.1), Vector3.ZERO, false)
+	for z: float in [-0.02, 0.13]:
+		k._box(v, Vector3(0.372, 0.008, 0.032), Vector3(0, 0.051, z), "webbing", Color(0.08, 0.08, 0.08), Vector3.ZERO, false)
+		k._box(v, Vector3(0.045, 0.014, 0.036), Vector3(0, 0.057, z), "plain_dark", Color(0.12, 0.12, 0.12), Vector3.ZERO, false)
+	k._fold(v)
+
 
 ## A small open centre-console runabout: a white V-hull with a coloured stripe
 ## and rub rail, a short foredeck with a bow rail, the console with its wrap
@@ -653,6 +676,14 @@ static func _motorboat(k: VehicleModels, seed: int) -> void:
 	VehicleCab.bench(k, m, Vector3(0, sole + 0.38, -0.9), Vector3(0.62, 0.08, 0.44), Vector3.FORWARD, Vector3.ZERO, "canvas_white", vinyl)
 	k._box(m, Vector3(0.88, 0.42, 0.48), Vector3(0, sole + 0.21, 0.72), hm, white)
 	VehicleCab.bench(k, m, Vector3(0, sole + 0.46, 0.72), Vector3(0.92, 0.09, 0.5), Vector3.FORWARD, Vector3(0.035, 0.36, 0.09), "canvas_white", vinyl, 0.0, false, 0.18, 0.045)
+	# a life jacket thrown on the stern bench, on some boats a second on the
+	# cool-box seat; every boat carries them, in whichever colour its owner
+	# bought (a wreck's have burned)
+	if not k.wreck:
+		var vests: Array[Color] = [Color(0.92, 0.4, 0.08), Color(0.78, 0.17, 0.1), Color(0.86, 0.68, 0.1)]
+		_life_jacket(k, m, Vector3(-0.2, sole + 0.505, 0.715), 0.15, vests[seed % 3])
+		if (seed >> 1) % 2 == 0:
+			_life_jacket(k, m, Vector3(0.03, sole + 0.42, -0.9), PI / 2 + 0.1, vests[(seed + 1) % 3])
 	_rod(k, m, Vector3(-0.44, sole + 0.93, 1.03), Vector3(0.44, sole + 0.93, 1.03), 0.014, "steel", STAINLESS)
 	for s in [-1.0, 1.0]:
 		_rod(k, m, Vector3(s * 0.44, sole + 0.93, 1.03), Vector3(s * 0.44, sole + 0.45, 0.98), 0.014, "steel", STAINLESS)
@@ -923,7 +954,8 @@ static func _sdv(k: VehicleModels, team: int) -> void:
 		k._add(m, VehicleModels.extrude_x("boat_sdv_skid", [-2.5, 0.26, -2.2, 0.0, 1.7, 0.0, 1.95, 0.26], -0.045, 0.045), "metal_dark", null, Vector3(s * 0.42, 0, 0))
 	# tail: the cone's end, cruciform fins and the duct round the propeller
 	k._cyl(m, 0.04, 0.17, 0.2, Vector3(0, yc, 3.12), Vector3(PI / 2, 0, 0), bm, bc, 12)
-	var fin := [2.2, 0.3, 3.05, 0.13, 3.28, 0.66, 2.86, 0.7]
+	# (the fins carry the duct: their tips end in its wall, not through it)
+	var fin := [2.2, 0.3, 3.05, 0.13, 3.24, 0.575, 2.8, 0.6]
 	for s in [-1.0, 1.0]:
 		var vf := []
 		for i in range(0, fin.size(), 2):
@@ -933,7 +965,9 @@ static func _sdv(k: VehicleModels, team: int) -> void:
 		for i in range(0, fin.size(), 2):
 			hf.append_array([s * float(fin[i + 1]), fin[i]])
 		k._add(m, VehicleModels.loft("boat_sdv_hfin%d" % int(s), hf, hf, -0.028, 0.028), bm, bc, Vector3(0, yc, 0))
-	k._add(m, Res.torus(0.53, 0.61), bm, bc, Vector3(0, yc, 3.1), Vector3(PI / 2, 0, 0), Vector3(1.0, 4.6, 1.0))
+	# (the duct is a moulded ring of aerofoil section, smooth all round: a
+	# six-sided section stretched along the axis read as a faceted hoop)
+	k._add(m, VehicleMarine._ring(0.57, 0.04, 28, 10), bm, bc, Vector3(0, yc, 3.1), Vector3(PI / 2, 0, 0), Vector3(1.0, 4.6, 1.0))
 	_prop(k, m, Vector3(0, yc, 2.98), 0.48, 5, "metal_dark")
 	k._team_mark(m, team, Vector3(0.62, 1.37, -0.5), Vector3(0.012, 0.08, 0.5))
 

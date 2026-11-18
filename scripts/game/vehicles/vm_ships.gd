@@ -996,6 +996,21 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 ## the trawl winch, a stern gantry with the trawl doors hanging off it, a net
 ## drum, nets and floats; rust streaking from every scupper and hawse. A
 ## ZU-23-2 welded on the foredeck (the turret), a DShK on the wheelhouse roof.
+## A heap's centre moved just far enough that its footprint (an ellipse of
+## half-axes `a` across and `c` along, turned by `yaw`) lies on the deck
+## inside the bulwarks and forward of the transom: netting piled against the
+## bulwark slumps against it, it doesn't pass through the plating.
+static func _heap_fit(p: Dictionary, at: Vector3, a: float, c: float, yaw: float) -> Vector3:
+	var ex := sqrt(pow(a * cos(yaw), 2.0) + pow(c * sin(yaw), 2.0))
+	var ez := sqrt(pow(a * sin(yaw), 2.0) + pow(c * cos(yaw), 2.0))
+	var out := at
+	out.z = minf(out.z, float(p["z0"]) - 0.2 - ez)
+	var st := _at(p, out.z)
+	var inner := VmBoat._hw(st[1], float(st[2]) + 0.4) - 0.15
+	out.x = clampf(out.x, -maxf(0.0, inner - ex), maxf(0.0, inner - ex))
+	return out
+
+
 static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var m := k.root
 	var p := TR
@@ -1263,7 +1278,8 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		_bx(k, m, Vector3(0.12, 0.95, 0.5), Vector3(sx * 1.25, ny - 0.47, nz), "steel", Color(0.4, 0.2, 0.12))
 		k._cyl(m, 0.8, 0.8, 0.05, Vector3(sx * 1.1, ny, nz), Vector3(0, 0, PI / 2), "steel", Color(0.4, 0.2, 0.12), 20)
 	k._cyl(m, 0.3, 0.3, 2.3, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), "steel", Color(0.25, 0.24, 0.23), 12)
-	k._cyl(m, 0.66, 0.66, 2.14, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), "canvas", Color(0.17, 0.25, 0.2), 18)
+	# (the net wound on the drum: the same synthetic netting as the heaps)
+	k._cyl(m, 0.66, 0.66, 2.14, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), "fabric", Color(0.17, 0.25, 0.2), 18)
 	for i in 9:
 		var a := TAU * i / 9.0 + 0.2
 		k._add(m, Res.sphere(0.09, 6), "plain", ORANGE if i % 3 != 0 else Color(0.85, 0.75, 0.2), Vector3(-0.85 + i * 0.21, ny + sin(a) * 0.67, nz + cos(a) * 0.67))
@@ -1298,9 +1314,28 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	for h in heaps:
 		var hz3: float = h[1]
 		var r: float = h[2]
-		k._add(m, Res.sphere(1.0, 9), "canvas", Color(0.18, 0.27, 0.22), Vector3(h[0], _dk(p, hz3) + r * 0.25, hz3), Vector3(0, rng.randf() * PI, 0), Vector3(r * 1.3, r * 0.6, r))
+		var yaw := rng.randf() * PI
+		# Netting dumped on a deck slumps into a heap of folds, not a dome: the
+		# main pile, then two smaller bights slid off its sides, in polyethylene
+		# netting (a synthetic mesh, not cotton duck) gone a shade or two
+		# different where an older net lies in with the new.
+		var heap_at := _heap_fit(p, Vector3(h[0], 0.0, hz3), r * 1.3, r, yaw)
+		heap_at.y = _dk(p, heap_at.z) + r * 0.25
+		k._add(m, Res.sphere(1.0, 9), "fabric", Color(0.18, 0.27, 0.22), heap_at, Vector3(0, yaw, 0), Vector3(r * 1.3, r * 0.6, r))
+		var across := Vector3(cos(yaw), 0, -sin(yaw))
+		var along := Vector3(sin(yaw), 0, cos(yaw))
+		for f: float in [-1.0, 1.0]:
+			var fold := _heap_fit(p, heap_at + across * f * r * 0.85 + along * f * r * 0.3, r * 0.62, r * 0.55, yaw + f * 0.6)
+			fold.y = heap_at.y - r * 0.12
+			var shade := Color(0.16, 0.24, 0.21) if f < 0.0 else Color(0.2, 0.28, 0.21)
+			k._add(m, Res.sphere(1.0, 9), "fabric", shade, fold, Vector3(0, yaw + f * 0.6, 0), Vector3(r * 0.62, r * 0.42, r * 0.55))
+		# the floats strung through the net, half sunk in the heap's surface
 		for i in 4:
-			k._add(m, Res.sphere(0.085, 6), "plain", ORANGE if i % 2 == 0 else Color(0.85, 0.75, 0.2), Vector3(float(h[0]) + rng.randf_range(-r, r) * 0.9, _dk(p, hz3) + r * 0.45 + rng.randf() * 0.12, hz3 + rng.randf_range(-r, r) * 0.6))
+			var fu := rng.randf_range(-1.0, 1.0) * 0.75
+			var sink := rng.randf()
+			var fw := rng.randf_range(-1.0, 1.0) * 0.6
+			var top := heap_at.y + r * 0.6 * sqrt(maxf(0.0, 1.0 - fu * fu - fw * fw)) - 0.03 - sink * 0.02
+			k._add(m, Res.sphere(0.085, 6), "plain", ORANGE if i % 2 == 0 else Color(0.85, 0.75, 0.2), heap_at + across * fu * r * 1.3 + along * fw * r + Vector3(0, top - heap_at.y, 0))
 	for q in [[-1.45, 4.86, 0], [-1.45, 4.86, 1], [-1.45, 4.86, 2], [-0.85, 4.88, 0], [-0.85, 4.88, 1]]:
 		var cz: float = q[1]
 		var lv: int = q[2]

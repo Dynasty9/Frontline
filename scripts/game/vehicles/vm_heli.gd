@@ -777,10 +777,11 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 		_tube(k, m, Vector3(s * 0.98, 0.1, -0.55), Vector3(s * 0.98, 0.14, -0.55), 0.03, "steel", null, 6)
 	if v == 0:
 		# the external personnel benches, two a side, facing out: the padded
-		# seat on its tray with a lip along the outer edge
+		# seat on its tray with a lip along the outer edge (its pad covered in
+		# nylon, like the crew seats, not the cotton duck of a truck's tilt)
 		for s in [-1.0, 1.0]:
 			k._box(m, Vector3(0.46, 0.05, 1.85), Vector3(s * 1.05, 0.78, -0.12), "gunmetal_w")
-			VehicleCab.bench(k, m, Vector3(s * 1.05, 0.82, -0.12), Vector3(0.42, 0.04, 1.75), Vector3(s, 0, 0), Vector3.ZERO, "canvas", Color(0.18, 0.19, 0.16))
+			VehicleCab.bench(k, m, Vector3(s * 1.05, 0.82, -0.12), Vector3(0.42, 0.04, 1.75), Vector3(s, 0, 0), Vector3.ZERO, "fabric", Color(0.18, 0.19, 0.16))
 			k._box(m, Vector3(0.04, 0.08, 1.85), Vector3(s * 1.28, 0.8, -0.12), "gunmetal_w", null, Vector3.ZERO, false)
 			for z in [-0.85, 0.5]:
 				_tube(k, m, Vector3(s * 0.95, 0.38, z), Vector3(s * 1.1, 0.76, z), 0.025, "gunmetal_w", null, 6)

@@ -130,19 +130,24 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 			k._fold(mount)  # (a wreck's blades stay apart, to be broken: Structure._break_up)
 		# Forked grips, vertical hinge pins and pitch links remain with the hub
 		# when the explicit blades switch to the existing blur disc.
+		# (A rotor head is painted or dull titanium and its bearings are black
+		# elastomer: from above, bright steel forks and pin caps glinted as a
+		# white star on every helicopter in the sun.)
 		for side in [-1.0, 1.0]:
-			_rbox(k, rp, bs, Vector3(c * 0.12, 0.08, grip * 0.82), Vector3(side * c * 0.34, 0.10, hub + grip * 0.48), "steel", Color(0.29, 0.30, 0.28))
+			_rbox(k, rp, bs, Vector3(c * 0.12, 0.08, grip * 0.82), Vector3(side * c * 0.34, 0.10, hub + grip * 0.48), "gunmetal_w", Color(0.2, 0.2, 0.19))
 		var pin := bs * Vector3(0, 0.17, hub + grip * 0.65)
-		VehicleBody.cylinder(k, rp, c * 0.14, c * 0.14, 0.07, pin, Vector3.ZERO, "steel", Color(0.4, 0.41, 0.38), 12, false)
+		VehicleBody.cylinder(k, rp, c * 0.14, c * 0.14, 0.07, pin, Vector3.ZERO, "gunmetal_w", Color(0.24, 0.24, 0.23), 12, false)
 		# (the pitch link's foot is in the swashplate)
 		VehicleBody.rod(k, rp, bs * Vector3(c * 0.43, -0.23, hub * 0.65), bs * Vector3(c * 0.43, 0.03, hub + grip * 0.30), c * 0.035, "steel", Color(0.4, 0.41, 0.38), 8, true, -1.0, false)
 	# Stepped swashplate, mast collar and evenly spaced hub fasteners.
-	VehicleBody.cylinder(k, rp, hub * 1.28, hub * 1.28, 0.055, Vector3(0, -0.22, 0), Vector3.ZERO, "steel", Color(0.32, 0.33, 0.30), 24)
+	# (the swashplate is bare machined steel, but oiled and grimy, so it
+	# shines less than a new part)
+	VehicleBody.cylinder(k, rp, hub * 1.28, hub * 1.28, 0.055, Vector3(0, -0.22, 0), Vector3.ZERO, "steel", Color(0.23, 0.235, 0.22), 24)
 	VehicleBody.cylinder(k, rp, hub * 0.86, hub * 0.86, 0.07, Vector3(0, -0.15, 0), Vector3.ZERO, "gunmetal_w", null, 24)
 	# (each bolt's foot is in the hub's top)
 	for i in nb * 2:
 		var angle := TAU * i / float(nb * 2)
-		VehicleBody.cylinder(k, rp, hub * 0.075, hub * 0.075, 0.035, Vector3(sin(angle) * hub * 0.82, 0.115, cos(angle) * hub * 0.82), Vector3.ZERO, "steel", Color(0.39, 0.4, 0.37), 6, false, true, false)
+		VehicleBody.cylinder(k, rp, hub * 0.075, hub * 0.075, 0.035, Vector3(sin(angle) * hub * 0.82, 0.115, cos(angle) * hub * 0.82), Vector3.ZERO, "steel", Color(0.3, 0.3, 0.29), 6, false, true, false)
 	if not k.wreck:
 		var blur := MeshInstance3D.new()
 		var disc := PlaneMesh.new()

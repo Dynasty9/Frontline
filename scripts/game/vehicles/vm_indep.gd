@@ -992,24 +992,41 @@ static func _zamak_bed(k: VehicleModels, cam: String, col, sides: float) -> void
 ## Troop transport: a canvas tilt over hoops, the back flap rolled up.
 static func _zamak_tilt(k: VehicleModels, tarp: Color) -> void:
 	var m := k.root
-	VehicleCloth.canopy(k, m, [Vector2(-1.27, 1.9), Vector2(-1.27, 2.6), Vector2(-1.03, 2.88), Vector2(1.03, 2.88), Vector2(1.27, 2.6), Vector2(1.27, 1.9)], [-0.2, 0.45, 1.25, 2.05, 2.85, 3.62, 3.72], tarp)
-	# the hoops showing through, the lashing along the bottom
-	var rib := tarp.darkened(0.18)
-	for z: float in [0.45, 1.25, 2.05, 2.85, 3.62]:
-		k._box(m, Vector3(2.08, 0.035, 0.07), Vector3(0, 2.895, z), "canvas_white", rib, Vector3.ZERO, false)
-		for s: float in [-1.0, 1.0]:
-			k._box(m, Vector3(0.035, 0.68, 0.07), Vector3(s * 1.285, 2.25, z), "canvas_white", rib, Vector3.ZERO, false)
-			k._box(m, Vector3(0.035, 0.37, 0.07), Vector3(s * 1.165, 2.75, z), "canvas_white", rib, Vector3(0, 0, s * 0.69), false)
+	# (the hoops show as the ridges the cover sags from, and its hem is laced
+	# to the bed's hooks, both the canopy's own)
+	# The back: the flap rolled up under the roof over the dark inside and the
+	# benches, or on some trucks let down and laced shut.
+	var flap := VehicleCargo.kit(k, m, Vector3(0, 2.72, 3.72), 18)
+	var shut := flap != null and not k.wreck and flap.randf() < 0.3
+	VehicleCloth.canopy(k, m, [Vector2(-1.27, 1.9), Vector2(-1.27, 2.6), Vector2(-1.03, 2.88), Vector2(1.03, 2.88), Vector2(1.27, 2.6), Vector2(1.27, 1.9)], [-0.2, 0.45, 1.25, 2.05, 2.85, 3.62, 3.72], tarp, shut)
+	if k.wreck:
+		# (a wreck's tilt keeps its old fitted panels, and so the hoops over
+		# them and the lashing bar along the bottom)
+		var rib := tarp.darkened(0.18)
+		for z: float in [0.45, 1.25, 2.05, 2.85, 3.62]:
+			k._box(m, Vector3(2.08, 0.035, 0.07), Vector3(0, 2.895, z), "canvas_white", rib, Vector3.ZERO, false)
+			for s: float in [-1.0, 1.0]:
+				k._box(m, Vector3(0.035, 0.68, 0.07), Vector3(s * 1.285, 2.25, z), "canvas_white", rib, Vector3.ZERO, false)
+				k._box(m, Vector3(0.035, 0.37, 0.07), Vector3(s * 1.165, 2.75, z), "canvas_white", rib, Vector3(0, 0, s * 0.69), false)
+	# the hooks the cord is laced round, along the bed's top rail
 	for s: float in [-1.0, 1.0]:
-		k._box(m, Vector3(0.03, 0.03, 3.9), Vector3(s * 1.285, 1.93, 1.76), "plain_dark", null, Vector3.ZERO, false)
-		for i in 8:
-			k._box(m, Vector3(0.02, 0.12, 0.02), Vector3(s * 1.285, 1.86, -0.05 + i * 0.52), "plain_dark", null, Vector3.ZERO, false)
-	# the back: the flap rolled up under the roof, the dark inside, benches
-	k._box(m, Vector3(2.36, 0.62, 0.02), Vector3(0, 2.27, 3.725), "plain_dark", null, Vector3.ZERO, false)
-	VehicleCloth.roll(k, m, Vector3(0, 2.72, 3.76), 0.11, 2.3, Z90, tarp.darkened(0.1), "canvas_white")
+		if k.wreck:
+			k._box(m, Vector3(0.03, 0.03, 3.9), Vector3(s * 1.285, 1.93, 1.76), "plain_dark", null, Vector3.ZERO, false)
+			for i in 8:
+				k._box(m, Vector3(0.02, 0.12, 0.02), Vector3(s * 1.285, 1.86, -0.05 + i * 0.52), "plain_dark", null, Vector3.ZERO, false)
+		else:
+			k._box(m, Vector3(0.03, 0.03, 3.9), Vector3(s * 1.285, 1.82, 1.76), "plain_dark", null, Vector3.ZERO, false)
+	var back := 3.725 if not shut else 3.6
+	k._box(m, Vector3(2.36, 0.62, 0.02), Vector3(0, 2.27, back), "plain_dark", null, Vector3.ZERO, false)
+	if not shut:
+		VehicleCloth.roll(k, m, Vector3(0, 2.72, 3.76), 0.11, 2.3, Z90, tarp.darkened(0.1), "canvas_white")
 	for s: float in [-1.0, 1.0]:
-		k._box(m, Vector3(0.4, 0.05, 0.03), Vector3(s * 0.8, 2.05, 3.73), "wood_dark", null, Vector3.ZERO, false)
-		k._box(m, Vector3(0.03, 0.3, 0.03), Vector3(s * 0.55, 2.57, 3.79), "plain_dark", null, Vector3.ZERO, false)
+		k._box(m, Vector3(0.4, 0.05, 0.03), Vector3(s * 0.8, 2.05, back + 0.005), "wood_dark", null, Vector3.ZERO, false)
+		# the roll's ties, or the shut flap's lacing straps
+		if shut:
+			k._box(m, Vector3(0.03, 0.82, 0.02), Vector3(s * 0.55, 2.33, 3.73), "plain_dark", null, Vector3.ZERO, false)
+		else:
+			k._box(m, Vector3(0.03, 0.3, 0.03), Vector3(s * 0.55, 2.57, 3.79), "plain_dark", null, Vector3.ZERO, false)
 
 
 ## The Rebels' supply truck: drums, crates, a tarpaulined pile, sacks and
