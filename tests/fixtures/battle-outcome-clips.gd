@@ -22,6 +22,7 @@ func _ready() -> void:
 	field.input.set_process(false)
 	# A held town supplies a real ground advantage; neither side loses its FOB.
 	var town: Structure = field.spawn("structure", {"skind": "town", "variant": 1, "pos": Vector3(-80, 0, 70), "team": 0, "built": true, "sname": "Training town"})
+	town.zone_c = town.position
 	field.rules.capture_town(town, 0)
 	field.time = 10.0
 	field.rules.victory.on = true
