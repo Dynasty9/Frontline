@@ -450,6 +450,17 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# Utility poles: a pole (with or without its transformer) keeps to its
+	# crossarm's span and under its cap, and an insulator stands at every
+	# point the line's wires are strung to (Decor ties them at 7.66 m).
+	for with_tank in [false, true]:
+		var uk := kit()
+		BuildingUtility.pole(uk, with_tank, uk.rng)
+		var ub := _bounds(uk.sink.root, Transform3D.IDENTITY)
+		check(ub.position.y >= -0.01 and ub.end.y <= 8.5 and ub.position.z >= -1.05 and ub.end.z <= 1.05 and ub.position.x >= -0.4 and ub.end.x <= 0.8, "a utility pole keeps to its crossarm (%s)" % ub)
+		for z: float in [-0.8, 0.0, 0.8]:
+			check(occupied(uk.sink.root, Vector3(0, 7.62, z)), "a pole's wire at z %.1f has its insulator" % z)
+		uk.sink.root.free()
 
 	# Roofs: a hip rises as high as a gable of the same pitch over the same
 	# walls; its underside comes down to the eaves on all four walls where a

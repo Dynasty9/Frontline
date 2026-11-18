@@ -268,6 +268,19 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## Utility poles
+
+The overhead line's poles (Decor `pole`) are `BuildingUtility.pole`. The wires Decor strings at 7.66 m still meet
+the cups of the three pin insulators.
+- **The pole** is tapered and creosoted timber, darker where it stands in the ground, under a weather cap. Its
+  crossarm sits on two galvanised braces.
+- **Fittings**: staggered steps start out of a child's reach, the number plate and the yellow danger plate are at
+  eye height, and the earth wire runs down one side under a guard.
+- **With its transformer** (Decor `ex` 1), the pole carries a finned tank on a platform of channels, with bushings
+  on top, a fuse for each on the crossarm, and the cable down to the ground in a conduit.
+
+Render them with `--building-kinds=poles`.
+
 ## Who uses what
 
 | Component | Users |
@@ -284,6 +297,7 @@ Render them with `--building-kinds=bales`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingUtility.pole` | The overhead line's poles and pole transformers (Decor) |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the
