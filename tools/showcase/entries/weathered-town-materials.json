@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/weathered-town-materials.md",
   "summary": "Town roofs come in weathered clay, concrete tile and slate, brick is old red-brown and stone is coursed rubble in lime mortar.",
-  "medium": "still",
+  "medium": "motion",
   "stage": "tests/fixtures/environment-views.gd --capture-set=town and tools/showcase/building-surfaces.tscn --building-kinds=house_plans; parent-revision comparison",
-  "rationale": "A material and colour change: matched stills from the battle camera, the street and the studio show the roof palette, brick and stone side by side with the parent revision.",
+  "rationale": "A material and colour change: matched stills from the battle camera, the street and the studio show the roof palette, brick and stone side by side with the parent revision. A matched native render sweep now accompanies the preserved earlier stills.",
   "source_ref": "b054bb01 (before) + dines/town-buildings-realism-5d2b5a working tree (after)",
   "before_ref": "git archive of b054bb01 into a scratch copy, rendered with the same fixtures and flags.",
   "capture": {
@@ -24,7 +24,48 @@
     {
       "file": "changelog/unreleased/weathered-town-materials/comparison.jpg",
       "sha256": "8c8e2cbc89bab28e51ad677daafeed7f7dffb2663cd7af9277cea226580a3f42"
+    },
+    {
+      "file": "changelog/unreleased/weathered-town-materials/material-review.webm",
+      "sha256": "22fd3a584a82d93707a4a45d716c9c0d7d30bfbfc143bfd2835dd4aed1632265"
+    },
+    {
+      "file": "changelog/unreleased/weathered-town-materials/material-review.jpg",
+      "sha256": "e039132a66ebc6a289109fb3f5851ae283e4a4941dae168bce6d1ca59ed70a99"
     }
   ],
-  "output": null
+  "output": null,
+  "followup_captures": [
+    {
+      "before_ref": "e3279c3054576827230a32206fc2ccaeddb0bfb1",
+      "after_ref": "6aff63a55faef074c4ad45e840009ce5c1314b50",
+      "renderer": "Godot 4.7.2 Forward+; Mesa llvmpipe LLVM 19.1.7 software renderer",
+      "stage": "0-4 s native generated town close orbit; 4-6 s held command view at 50 m; 6-10 s native stone component fixture with grazing light and orthographic distance sweep",
+      "commands": [
+        "godot --path PROJECT --rendering-method forward_plus --fixed-fps 12 --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --scenario=town --seed=3 --nohud --preset=high --set=perf:0,vsync:false --mood=day --capture-set=stonework --capture-defer-draw --capture-views=stone-close,stone-command --capture-clip=stone-close --capture-frames=48 --capture-prefix=OUTPUT",
+        "godot --path PROJECT --rendering-method forward_plus --fixed-fps 12 --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-single --building-kinds=wall_stone --building-components --building-motion --building-out=OUTPUT",
+        "godot --path PROJECT --rendering-method gl_compatibility --fixed-fps 12 --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --scenario=town --seed=3 --nohud --preset=low --set=perf:0,vsync:false --mood=day --capture-set=stonework --capture-defer-draw --capture-views=stone-close,stone-command --capture-prefix=OUTPUT"
+      ],
+      "town_match": "Same focus, camera transform, seed 3, day mood and simulation time 2 seconds; world physics held while camera orbits. Grass shader time is not locked.",
+      "fixture_match": "Same component geometry, fixed filmic exposure and ambient light; sun elevation 12 degrees, azimuth -38 to 142 and back; orthographic extent 1x to 3.5x and back",
+      "output": "Uncropped 800x450 panels; 1600x530 silent VP9, 120 frames / 12 fps / 10 seconds, 3657266 bytes",
+      "fixture_sha256": {
+        "tests/fixtures/environment-views.gd": "80865ffa666a470368269c6359b12198735f2306417594c7f238821cc5d05b24",
+        "tools/showcase/building-surfaces.gd": "f4701f951bf54bc49412e155046075c5761957f1954516baab1d759a68d0451e"
+      },
+      "validation": [
+        "Baseline material bytes verified against original commit",
+        "Both Forward+ town camera transforms/seed/mood/simulation times match",
+        "Native component before/after renders completed cleanly",
+        "Full encoded WebM decode passed; close/orbit/command/grazing/far/return frames visually inspected at embedded size",
+        "Godot import clean after capture-harness additions",
+        "Low-preset Compatibility town close and command-height views rendered and inspected; no script errors (shutdown ObjectDB warning)"
+      ],
+      "limitations": [
+        "This is held-simulation town capture plus an explicitly labeled component fixture, not combat footage",
+        "No hardware GPU performance measurement",
+        "Window/trim highlights and missing wall grime remain outside the stone-material correction"
+      ]
+    }
+  ]
 }

@@ -6,6 +6,10 @@ kind = "improved"
 [[screenshots]]
 file = "comparison.jpg"
 caption = "Before (left) and after (right): the town from the battle camera, a brick bungalow from the street, and four house plans"
+[[videos]]
+file = "material-review.webm"
+poster = "material-review.jpg"
+caption = "Before (left) and after (right): native town close and command views with simulation held, then a stone-component grazing-light fixture. Forward+ on llvmpipe software; no performance claim."
 +++
 
 - **Roofs:** each tiled roof is one of five weathered clays and concrete tiles or three slates and grey tiles, so a
