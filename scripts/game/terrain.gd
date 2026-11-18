@@ -66,7 +66,7 @@ func _init(w) -> void:
 		var ang := TAU * i / 8.0
 		_dirs.append(Vector2(cos(ang), sin(ang)))
 	dh.resize(DN * DN)
-	if w.has_view:
+	if w.has_view or w.settings.has("bake_battlefield"):
 		# Half floats terrace elevated slopes; keep the same precision as ground contact.
 		deform_img = Image.create(DN, DN, false, Image.FORMAT_RGF)  # surface height and undisturbed geology
 	_make_biome()

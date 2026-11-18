@@ -217,6 +217,7 @@ jobs:
 
       - name: Import and compile every script
         run: |
+          python3 tools/check_battlefields.py
           ~/godot/godot --headless --path . --import 2>&1 | tee import.log
           if grep -E "SCRIPT ERROR|Parse Error" import.log; then exit 1; fi
 

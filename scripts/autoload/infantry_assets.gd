@@ -28,7 +28,14 @@ var gameplay_model := ""
 
 
 func _init() -> void:
+	var started := Time.get_ticks_msec()
+	# The private simulation never draws characters or samples their animations.
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--managed-server="):
+			return
 	if "tests/mocap/pack_infantry.gd" in OS.get_cmdline_args():
+		return
+	if "tools/bake_battlefield.tscn" in OS.get_cmdline_args() or "res://tools/bake_battlefield.tscn" in OS.get_cmdline_args():
 		return
 	if not ProjectSettings.load_resource_pack("res://assets/infantry/infantry.zip", false):
 		push_error("Could not mount Frontline infantry assets")
@@ -37,6 +44,8 @@ func _init() -> void:
 	if OS.has_feature("macos") and RenderingServer.get_current_rendering_driver_name() == "opengl3":
 		return
 	gameplay_model = select_model(OS.get_cmdline_user_args(), ResourceLoader.exists)
+	if OS.has_environment("FL_DEBUG_LOAD"):
+		print("STARTUP infantry assets %d ms, engine elapsed %d ms" % [Time.get_ticks_msec() - started, Time.get_ticks_msec()])
 
 
 static func select_model(args: PackedStringArray, exists: Callable) -> String:

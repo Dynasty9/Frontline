@@ -138,7 +138,7 @@ func _make_noise() -> void:
 
 ## Surveyed ridge groups are composed around the battle with gaps between their massifs.
 static func backdrop_image(seed_value: int) -> Image:
-	var forms: Resource = preload("res://assets/terrain/surveyed_alps.res")
+	var forms: Resource = load("res://assets/terrain/surveyed_alps.res")
 	var names := ["mont_blanc", "matterhorn", "jungfrau"]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value + 1907
@@ -380,7 +380,7 @@ func _apply_sky() -> void:
 		var shader := Shader.new()
 		shader.code = PHOTO_SKY_SHADER
 		_photo_sky.shader = shader
-		_photo_sky.set_shader_parameter("panorama", preload("res://assets/sky/kloofendal_partly_cloudy_2k.hdr"))
+		_photo_sky.set_shader_parameter("panorama", load("res://assets/sky/kloofendal_partly_cloudy_2k.hdr"))
 	# The HDR's brightest pixel is the sun, at (1218, 239) in its 2048 x 1024 panorama.
 	var longitude := (1218.5 / 2048.0) * TAU
 	var latitude := (239.5 / 1024.0) * PI
@@ -565,7 +565,7 @@ func _build_ground() -> void:
 	var materials := terrain_materials()
 	ground_mat.set_shader_parameter("material_colors", materials[0])
 	ground_mat.set_shader_parameter("material_surfaces", materials[1])
-	ground_mat.set_shader_parameter("meadow_grass", preload("res://assets/town/leafy_grass_color.jpg"))
+	ground_mat.set_shader_parameter("meadow_grass", load("res://assets/town/leafy_grass_color.jpg"))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
 	ground_mat.set_shader_parameter("wet", 1.0 if mood == "rain" else 0.0)
@@ -612,12 +612,12 @@ func _build_ground() -> void:
 	road_mat = ShaderMaterial.new()
 	road_mat.shader = CloudShadow.make(Mats.code(MapDims.shader(ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))))
 	road_mat.set_shader_parameter("detail_tex", detail_tex)
-	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
-	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
+	road_mat.set_shader_parameter("paving_noise", load("res://assets/town/aerial_asphalt_01_color.jpg"))
+	road_mat.set_shader_parameter("street_detail", load("res://assets/town/road_damaged_clean_color.jpg"))
 	road_mat.set_shader_parameter("street_noise", Mats.noise_tex())
-	road_mat.set_shader_parameter("gravel_color", preload("res://assets/town/gravelly_sand_color.jpg"))
-	road_mat.set_shader_parameter("gravel_surface", preload("res://assets/town/gravelly_sand_surface.png"))
-	road_mat.set_shader_parameter("paving_surface", preload("res://assets/town/road_damaged_clean_surface.png"))
+	road_mat.set_shader_parameter("gravel_color", load("res://assets/town/gravelly_sand_color.jpg"))
+	road_mat.set_shader_parameter("gravel_surface", load("res://assets/town/gravelly_sand_surface.png"))
+	road_mat.set_shader_parameter("paving_surface", load("res://assets/town/road_damaged_clean_surface.png"))
 	# see-through (its edges fade into the verges), so it draws with the smoke
 	# and fire: before them, or it paints over every blast on a road
 	road_mat.render_priority = -1

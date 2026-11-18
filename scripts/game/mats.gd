@@ -373,7 +373,7 @@ static func leaf_cards(conifer: bool) -> ShaderMaterial:
 		var material := foliage().duplicate() as ShaderMaterial
 		material.set_shader_parameter("leaf_cards", true)
 		material.set_shader_parameter("leaf_tone", 0.65 if conifer else 0.85)
-		material.set_shader_parameter("leaf_texture", preload("res://assets/foliage/fir.png") if conifer else preload("res://assets/foliage/broadleaf.png"))
+		material.set_shader_parameter("leaf_texture", load("res://assets/foliage/fir.png") if conifer else load("res://assets/foliage/broadleaf.png"))
 		_leaf_cards[conifer] = material
 	return _leaf_cards[conifer]
 
@@ -936,33 +936,33 @@ static func _preset(kind: String) -> Dictionary:
 		"gunmetal_w":
 			return {"pattern": PAINT, "col_a": Color(0.14, 0.14, 0.135), "col_b": Color(0.34, 0.33, 0.31), "rough": 0.52, "metal": 0.55, "bump": 0.35, "grime": 0.2}
 		"plaster":
-			return {"photo_color": preload("res://assets/town/plastered_wall_color.jpg"), "photo_surface": preload("res://assets/town/plastered_wall_surface.png"), "pattern": PLASTER, "col_a": Color(0.74, 0.69, 0.6), "col_b": Color(0.6, 0.57, 0.5), "col_c": Color(0.5, 0.33, 0.26), "col_d": Color(0.45, 0.42, 0.37), "rough": 0.92, "bump": 1.2, "grime": 0.7}
+			return {"photo_color": load("res://assets/town/plastered_wall_color.jpg"), "photo_surface": load("res://assets/town/plastered_wall_surface.png"), "pattern": PLASTER, "col_a": Color(0.74, 0.69, 0.6), "col_b": Color(0.6, 0.57, 0.5), "col_c": Color(0.5, 0.33, 0.26), "col_d": Color(0.45, 0.42, 0.37), "rough": 0.92, "bump": 1.2, "grime": 0.7}
 		"brick":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("brick_wall_001"), "col_a": Color(0.56, 0.3, 0.21), "col_b": Color(0.62, 0.58, 0.52), "col_c": Color(0.42, 0.24, 0.17), "rough": 0.9, "bump": 0.0, "grime": 0.6, "scale": 1.0, "weathering": 0.5, "photo_color": preload("res://assets/town/brick_wall_001_color.jpg"), "photo_surface": preload("res://assets/town/brick_wall_001_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("brick_wall_001"), "col_a": Color(0.56, 0.3, 0.21), "col_b": Color(0.62, 0.58, 0.52), "col_c": Color(0.42, 0.24, 0.17), "rough": 0.9, "bump": 0.0, "grime": 0.6, "scale": 1.0, "weathering": 0.5, "photo_color": load("res://assets/town/brick_wall_001_color.jpg"), "photo_surface": load("res://assets/town/brick_wall_001_surface.png")}
 		"concrete":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.0, "grime": 0.8, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.52, 0.51, 0.48), "col_b": Color(0.36, 0.35, 0.32), "rough": 0.9, "bump": 0.0, "grime": 0.8, "scale": 0.5, "weathering": 0.5, "photo_color": load("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": load("res://assets/town/concrete_floor_01_surface.png")}
 		"asphalt":
-			return {"street_detail": preload("res://assets/town/road_damaged_clean_color.jpg"), "pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/road_damaged_clean_surface.png")}
+			return {"street_detail": load("res://assets/town/road_damaged_clean_color.jpg"), "pattern": ASPHALT, "col_a": Color(1, 1, 1), "rough": 0.88, "bump": 0.0, "grime": 0.0, "photo_color": load("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": load("res://assets/town/road_damaged_clean_surface.png")}
 		"turf":
-			return {"pattern": TURF, "col_a": Color(1, 1, 1), "rough": 0.98, "bump": 0.0, "grime": 0.0, "scale": 0.5, "photo_color": preload("res://assets/town/leafy_grass_color.jpg"), "photo_surface": preload("res://assets/town/leafy_grass_surface.png")}
+			return {"pattern": TURF, "col_a": Color(1, 1, 1), "rough": 0.98, "bump": 0.0, "grime": 0.0, "scale": 0.5, "photo_color": load("res://assets/town/leafy_grass_color.jpg"), "photo_surface": load("res://assets/town/leafy_grass_surface.png")}
 		"pavement":
-			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.555556, "photo_color": preload("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": preload("res://assets/town/concrete_pavement_surface.png")}
+			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.555556, "photo_color": load("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": load("res://assets/town/concrete_pavement_surface.png")}
 		"square_paving":
 			# The square: the same concrete in a larger slab, 0.9 by 0.45 m.
-			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.37037, "photo_color": preload("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": preload("res://assets/town/concrete_pavement_surface.png")}
+			return {"pattern": PAVEMENT, "col_a": Color(0.52, 0.51, 0.48), "rough": 0.93, "bump": 0.0, "grime": 0.0, "scale": 0.37037, "photo_color": load("res://assets/town/concrete_pavement_color.jpg"), "photo_surface": load("res://assets/town/concrete_pavement_surface.png")}
 		"road_paint":
 			# Markings on the road: a thin film over the asphalt, worn by traffic.
-			return {"street_detail": preload("res://assets/town/road_damaged_clean_color.jpg"), "pattern": ROAD_PAINT, "col_a": Color(0.9, 0.9, 0.87), "rough": 0.6, "bump": 0.0, "grime": 0.0, "photo_color": preload("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": preload("res://assets/town/road_damaged_clean_surface.png")}
+			return {"street_detail": load("res://assets/town/road_damaged_clean_color.jpg"), "pattern": ROAD_PAINT, "col_a": Color(0.9, 0.9, 0.87), "rough": 0.6, "bump": 0.0, "grime": 0.0, "photo_color": load("res://assets/town/aerial_asphalt_01_color.jpg"), "photo_surface": load("res://assets/town/road_damaged_clean_surface.png")}
 		"curbstone":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.47, 0.465, 0.45), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.0, "grime": 0.0, "pitting": 0.1, "seams": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.47, 0.465, 0.45), "col_b": Color(0.52, 0.51, 0.48), "rough": 0.94, "bump": 0.0, "grime": 0.0, "pitting": 0.1, "seams": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": load("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": load("res://assets/town/concrete_floor_01_surface.png")}
 		"concrete_floor":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.42, 0.41, 0.38), "col_b": Color(0.3, 0.28, 0.25), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.42, 0.41, 0.38), "col_b": Color(0.3, 0.28, 0.25), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "weathering": 0.5, "photo_color": load("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": load("res://assets/town/concrete_floor_01_surface.png")}
 		"sandbag":
 			return {"pattern": SANDBAG, "col_a": Color(0.62, 0.55, 0.39), "col_b": Color(0.45, 0.39, 0.26), "rough": 0.95, "bump": 2.2, "grime": 0.6}
 		"wood":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.5, 0.37, 0.23), "col_b": Color(0.34, 0.24, 0.14), "rough": 0.85, "bump": 0.0, "grime": 0.5, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.5, 0.37, 0.23), "col_b": Color(0.34, 0.24, 0.14), "rough": 0.85, "bump": 0.0, "grime": 0.5, "scale": 0.5, "weathering": 0.5, "photo_color": load("res://assets/town/weathered_planks_color.jpg"), "photo_surface": load("res://assets/town/weathered_planks_surface.png")}
 		"wood_dark":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.33, 0.25, 0.17), "col_b": Color(0.22, 0.16, 0.1), "rough": 0.88, "bump": 0.0, "grime": 0.5, "scale": 0.5, "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.33, 0.25, 0.17), "col_b": Color(0.22, 0.16, 0.1), "rough": 0.88, "bump": 0.0, "grime": 0.5, "scale": 0.5, "weathering": 0.5, "photo_color": load("res://assets/town/weathered_planks_color.jpg"), "photo_surface": load("res://assets/town/weathered_planks_surface.png")}
 		"bank":
 			# earth thrown up and left a season: settled smooth, gone over with
 			# moss and thin grass (berms, the mound over a dugout)
@@ -971,17 +971,17 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": EARTH, "col_a": Color(0.33, 0.26, 0.17), "col_b": Color(0.22, 0.17, 0.11), "rough": 0.97, "bump": 1.6, "grime": 0.0}
 		"alpine_stone":
 			# Broken natural stone has grain, without the mortar joints used by masonry.
-			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": preload("res://assets/terrain/rock_face_03_color_height.png")}
+			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": load("res://assets/terrain/rock_face_03_color_height.png")}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
 		"rubble":
 			return {"pattern": STONE, "col_a": Color(0.55, 0.52, 0.47), "col_b": Color(0.36, 0.34, 0.3), "col_c": Color(0.5, 0.33, 0.25), "rough": 0.95, "bump": 2.4, "grime": 0.5, "scale": 2.0}
 		"roof_tile":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("roof_tiles"), "col_a": Color(0.5, 0.22, 0.14), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 0.7, "photo_color": preload("res://assets/town/roof_tiles_color.jpg"), "photo_surface": preload("res://assets/town/roof_tiles_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("roof_tiles"), "col_a": Color(0.5, 0.22, 0.14), "rough": 0.9, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 0.7, "photo_color": load("res://assets/town/roof_tiles_color.jpg"), "photo_surface": load("res://assets/town/roof_tiles_surface.png")}
 		"roof_concrete":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.52, 0.5, 0.47), "rough": 0.95, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 1.0, "photo_color": preload("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": preload("res://assets/town/concrete_floor_01_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("concrete_floor_01"), "col_a": Color(0.52, 0.5, 0.47), "rough": 0.95, "bump": 0.0, "grime": 0.0, "scale": 0.5, "local_space": true, "weathering": 1.0, "photo_color": load("res://assets/town/concrete_floor_01_color.jpg"), "photo_surface": load("res://assets/town/concrete_floor_01_surface.png")}
 		"fence_wood", "fence_rail":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.5, 0.43, 0.33), "rough": 0.94, "bump": 0.0, "grime": 0.0, "scale": 0.5, "grain_horizontal": kind == "fence_rail", "weathering": 0.5, "photo_color": preload("res://assets/town/weathered_planks_color.jpg"), "photo_surface": preload("res://assets/town/weathered_planks_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("weathered_planks"), "col_a": Color(0.5, 0.43, 0.33), "rough": 0.94, "bump": 0.0, "grime": 0.0, "scale": 0.5, "grain_horizontal": kind == "fence_rail", "weathering": 0.5, "photo_color": load("res://assets/town/weathered_planks_color.jpg"), "photo_surface": load("res://assets/town/weathered_planks_surface.png")}
 		"fence_metal":
 			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.28, 0.25, 0.21), "rough": 0.82, "metal": 0.35, "bump": 0.3, "grime": 0.65, "rust": 0.7, "scale": 1.7}
 		"corrugated":
@@ -991,7 +991,7 @@ static func _preset(kind: String) -> Dictionary:
 		"canvas_white":
 			return {"pattern": CANVAS, "col_a": Color(0.85, 0.84, 0.79), "col_b": Color(0.7, 0.68, 0.62), "rough": 0.95, "bump": 0.8, "grime": 0.5}
 		"bark":
-			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("tree_bark_03"), "col_a": Color(0.32, 0.25, 0.18), "col_b": Color(0.18, 0.14, 0.1), "rough": 0.95, "bump": 0.0, "grime": 0.2, "scale": 0.65, "weathering": 0.5, "photo_color": preload("res://assets/town/tree_bark_03_color.jpg"), "photo_surface": preload("res://assets/town/tree_bark_03_surface.png")}
+			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("tree_bark_03"), "col_a": Color(0.32, 0.25, 0.18), "col_b": Color(0.18, 0.14, 0.1), "rough": 0.95, "bump": 0.0, "grime": 0.2, "scale": 0.65, "weathering": 0.5, "photo_color": load("res://assets/town/tree_bark_03_color.jpg"), "photo_surface": load("res://assets/town/tree_bark_03_surface.png")}
 		"paint":
 			return {"pattern": PAINT, "col_a": Color(0.6, 0.6, 0.6), "col_b": Color(0.38, 0.37, 0.35), "rough": 0.45, "metal": 0.15, "bump": 0.6, "grime": 0.7}
 		"aircraft":

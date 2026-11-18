@@ -27,6 +27,7 @@ const ROW_H := 30.0
 var _mode := "coop"
 var _side := 0
 var _mission := ""
+var _battlefield := String(Battlefields.MAPS[0].key)
 var _access := "public"
 
 var _rows := {}  # key -> its row (shown or hidden with the mode)
@@ -83,6 +84,9 @@ func _ready() -> void:
 	_ms_opt.item_selected.connect(func(i: int): _mission = String(_ms_opt.get_item_metadata(i)); _sync())
 	_row(v, "mission", "Mission", _ms_opt)
 	_ms_note = _note(v, "mission_note")
+	var battlefield := BattlefieldPicker.new()
+	battlefield.picked.connect(func(key: String): _battlefield = key)
+	_row(v, "battlefield", "Battlefield", battlefield)
 	_fill_seg = _switch(v, "fill", "AI fills empty side", true, "The AI takes a side nobody plays.")
 	_ally_seg = _switch(v, "ally", "AI with the players", false, "An AI commander fights alongside the players too.")
 	_drop_seg = _switch(v, "drop", "Join mid-battle", true, "Players can join a battle that's already under way.")
@@ -235,6 +239,7 @@ func _sync() -> void:
 	(_rows.side as Control).visible = _mode == "coop"
 	(_rows.mission as Control).visible = mission
 	(_rows.mission_note as Control).visible = mission
+	(_rows.battlefield as Control).visible = not mission
 	(_rows.fill as Control).visible = _mode == "versus"
 	(_rows.ally as Control).visible = not mission
 	(_rows.mood as Control).visible = not mission
@@ -258,6 +263,7 @@ func _go() -> void:
 		"mode": _mode,
 		"side": _side,
 		"mission": _mission if _mode == "mission" else "",
+		"battlefield": _battlefield if _mode != "mission" else "",
 		"max_players": 2 + maxi(0, _seats.selected),
 		"mood": SettingsPanel.MOODS[maxi(0, _mood.selected)],
 		"access": _access,

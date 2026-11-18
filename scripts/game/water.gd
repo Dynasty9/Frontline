@@ -464,12 +464,13 @@ func paint_kinds() -> void:
 	deck.resize(n * n)
 	deck.fill(0)
 	_mbytes = PackedByteArray()
-	if world.has_view:
+	var make_mask: bool = world.has_view or world.settings.has("bake_battlefield")
+	if make_mask:
 		_mbytes.resize(n * n * 4)
 	var changed := _pass(1, false, _decks(1, 0.0), _decks(1, 0.6, true))
 	# the cells whose kind changed: their cover and routes, from what they are now
 	tm.refresh_cells(changed)
-	if world.has_view:
+	if make_mask:
 		mask = Image.create_from_data(n, n, false, Image.FORMAT_RGBA8, _mbytes)
 	_mbytes = PackedByteArray()
 	version += 1

@@ -62,6 +62,15 @@ func _init(w: World) -> void:
 
 
 func generate() -> void:
+	var map_key := String(world.settings.get("battlefield", ""))
+	if not map_key.is_empty() and not world.settings.get("no_baked_map", false) and not world.settings.has("bake_battlefield") and String(world.settings.get("mission", "")) == "":
+		var baked := BattlefieldMap.read(map_key)
+		if not baked.is_empty() and int(baked.seed) == int(world.settings.get("seed", 1)) and int(baked.size) == MapDims.N:
+			await world._breathe("Opening the battlefield", 0.18)
+			var fobs: Array = await BattlefieldMap.restore(world, baked)
+			await world._breathe("Mustering the forces", 0.53)
+			_deploy(fobs[0], fobs[1])
+			return
 	var r := world.rules
 	var H := MapDims.HALF
 	var k := H / 128.0  # how much bigger than the original 256 m field each way
@@ -153,7 +162,18 @@ func generate() -> void:
 	world.set_decor(tg.decor, tg.rect)
 
 	world.terrain.release_nav()
+	if world.settings.has("bake_battlefield"):
+		world.terrain.tick(1 << 30)
+		world.nav.finalize()
+		var err := BattlefieldMap.save(world, String(world.settings.bake_battlefield))
+		if err != OK:
+			push_error("Could not bake battlefield: %s" % error_string(err))
 	await world._breathe("Mustering the forces", 0.53)
+	_deploy(f0, f1)
+
+
+func _deploy(f0: Structure, f1: Structure) -> void:
+	var r := world.rules
 	# starting forces (a mission brings its own: see MissionDirector)
 	if String(world.settings.get("mission", "")) != "":
 		r.rebuild_network(0)
@@ -300,9 +320,15 @@ func _dump_spot(tg, c: Vector3, d: Vector3) -> Array:
 func _lay_water() -> void:
 	var w: WaterMap = world.water
 	var H := MapDims.HALF
-	if H < 300.0 or world.settings.get("dry", false):
+	var map_entry := Battlefields.find(String(world.settings.get("battlefield", "")))
+	var layout := String(map_entry.get("water", "coast"))
+	if String(world.settings.get("mission", "")) != "":
+		layout = "coast"
+	if H < 300.0 or world.settings.get("dry", false) or layout == "dry":
 		return
 	w.coast = {"x": H - rng.randf_range(150.0, 172.0), "s": rng.randf() * 100.0}
+	if layout == "river":
+		w.coast.clear()
 	var x0 := -H * rng.randf_range(0.44, 0.52)
 	var ph := rng.randf() * TAU
 	var amp := rng.randf_range(24.0, 36.0)
@@ -312,6 +338,8 @@ func _lay_water() -> void:
 		pts.append(Vector3(x0 + amp * sin(z * 0.0125 + ph) + 11.0 * sin(z * 0.033 + ph * 2.0), 0, z))
 		z += 10.0
 	w.rivers = [{"pts": pts, "w": rng.randf_range(18.0, 24.0)}]
+	if layout == "river":
+		w.rivers[0].w = 36.0
 	for s in [-1.0, 1.0]:
 		var fz: float = s * H * rng.randf_range(0.32, 0.55)
 		var best := pts[0]

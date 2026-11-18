@@ -17,12 +17,29 @@ func _ready() -> void:
 	Nav.H = 32.0
 	HNav.C = 16
 	HNav.NC = 4
+	_check_prepared_mutation()
 	var nav := Nav.new()
 	nav.hnav_i.build()
 	nav.hnav_v.build()
+	nav.hnav_t.build()
 	var from := Vector3(-20, 0, -20)
 	var to := Vector3(20, 0, 20)
 	check(not nav.find_path(from, to).is_empty(), "Open clusters must connect")
+	var prepared := []
+	for graph: HNav in [nav.hnav_i, nav.hnav_v, nav.hnav_t]:
+		prepared.append({"nodes": graph.node_cell.duplicate(), "costs": graph.costs.duplicate(true)})
+	for damaged in [false, true]:
+		var cached := Nav.new()
+		cached.prepared_costs = prepared.duplicate(true)
+		if damaged:
+			cached.prepared_costs[0].costs = []
+		cached.finalize()
+		for mode in [[false, false], [true, false], [true, true]]:
+			var expected := nav.find_path(from, to, mode[0], -1, 0.0, mode[1])
+			check(cached.find_path(from, to, mode[0], -1, 0.0, mode[1]) == expected, "Prepared route costs and invalid-cost fallback must preserve every movement class's route")
+	nav._route_cache.clear()
+	nav.path_cache_hits = 0
+	nav.find_path(from, to)
 	var nearby := to + Vector3(1, 0, 0)
 	var reused := nav.find_path(from + Vector3(1, 0, 0), nearby)
 	check(nav.path_cache_hits == 1 and reused[reused.size() - 1] == nearby, "Nearby orders must reuse a corridor while retaining their own destination")
@@ -114,3 +131,24 @@ func _ready() -> void:
 	check(restored.is_point_solid(changed) and restored.get_point_weight_scale(changed) == 2.5, "Eviction must preserve obstacle and movement costs")
 	print("NAVIGATION_BUDGET_TEST failures=%d rebuild_steps=%d" % [failures, steps])
 	get_tree().quit(1 if failures else 0)
+
+
+func _check_prepared_mutation() -> void:
+	var generated := Nav.new()
+	generated.finalize()
+	var prepared := []
+	for graph: HNav in [generated.hnav_i, generated.hnav_v, generated.hnav_t]:
+		prepared.append({"nodes": graph.node_cell, "costs": graph.costs})
+	var restored := Nav.new()
+	restored.prepared_costs = bytes_to_var(var_to_bytes(prepared))
+	restored.finalize()
+	for nav: Nav in [generated, restored]:
+		for graph: HNav in [nav.hnav_i, nav.hnav_v, nav.hnav_t]:
+			graph.grid.set_point_solid(Vector2i(20, 20), true)
+			graph.mark_dirty(Vector2i(20, 20))
+		while nav.hnav_i.has_work() or nav.hnav_v.has_work() or nav.hnav_t.has_work():
+			nav.update_hier(64)
+	for key: String in ["hnav_i", "hnav_v", "hnav_t"]:
+		var a: HNav = generated.get(key)
+		var b: HNav = restored.get(key)
+		check(a.costs == b.costs and a.node_base == b.node_base, "Changing one cluster must not alter another cluster through shared prepared costs")

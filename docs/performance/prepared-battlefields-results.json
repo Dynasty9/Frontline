@@ -1,0 +1,226 @@
+{
+  "source_ref": "1b52c9d8",
+  "hardware": "i9-11900K, RTX 3090, 64 GB RAM",
+  "conditions": "100% CPU busy before each run; unrelated jobs left running. Windows Above Normal priority for both game processes. OS caches not purged. Same release export, Forward+, high, day, 1280x720, Alder Valley, player side 0. Serial prepared/generated/generated/prepared order.",
+  "command": "python tools/benchmark_scaling.py --godot Frontline.exe --exported --above-normal --rendered --local-server --battlefield alder-valley --team 0 --mood day --preset high --focus 0,0 --zoom 130 --pan 40,0 --warmup 1.5 --duration 5 --timeout 900 --output FRESH_DIRECTORY [--no-baked-map]",
+  "runs": [
+    {
+      "run": "cached-1",
+      "exit": 0,
+      "errors": [],
+      "priority_applied": {
+        "client": true,
+        "server": true
+      },
+      "client_loading_ms": {
+        "allocating terrain": 0,
+        "client ready": 44340,
+        "cover": 44350,
+        "curtain gone": 46839,
+        "decor": 15156,
+        "deploy to playable": 51449,
+        "entities": 19874,
+        "environment ready": 5134,
+        "ground": 18171,
+        "map": 12259,
+        "pose preparation work": 1216.85200000004,
+        "private simulation at reveal": 100,
+        "scenery preparation work": 16220.218,
+        "scenery ready": 44329,
+        "soldier poses ready": 23107,
+        "stream": 12403,
+        "terrain ready": 486
+      },
+      "server_loading_ms": {
+        "Charting the water": 2627,
+        "Deploying forces": 8787,
+        "Mustering the forces": 2572,
+        "Opening the battlefield": 1837,
+        "Plotting the routes": 2639,
+        "Settling the ground": 2615,
+        "allocating terrain": 0,
+        "cached ground restored": 1906,
+        "cached navigation cells restored": 2381,
+        "cached structures restored": 2367,
+        "environment ready": 644,
+        "map generated": 2609,
+        "navigation grids ready": 740,
+        "navigation ready": 8776,
+        "terrain ready": 637
+      },
+      "frames_ms": {
+        "count": 151,
+        "max_ms": 771.086,
+        "p50_ms": 26.858,
+        "p95_ms": 53.247,
+        "p99_ms": 513.355
+      },
+      "peak_client_rss_bytes": 2463449088,
+      "peak_server_rss_bytes": 929759232
+    },
+    {
+      "run": "generated-1",
+      "exit": 0,
+      "errors": [],
+      "priority_applied": {
+        "client": true,
+        "server": true
+      },
+      "client_loading_ms": {
+        "allocating terrain": 0,
+        "client ready": 101623,
+        "cover": 101636,
+        "curtain gone": 104306,
+        "decor": 73631,
+        "deploy to playable": 126552,
+        "entities": 77561,
+        "environment ready": 5331,
+        "ground": 75679,
+        "map": 66714,
+        "pose preparation work": 1354.55600000003,
+        "private simulation at reveal": 100,
+        "scenery preparation work": 16002.288,
+        "scenery ready": 101615,
+        "soldier poses ready": 81031,
+        "stream": 69967,
+        "terrain ready": 492
+      },
+      "server_loading_ms": {
+        "Charting the water": 51787,
+        "Deploying forces": 58447,
+        "Farms and fields": 22734,
+        "Hedges, woods and old trenches": 24332,
+        "Laying out the town": 21321,
+        "Mustering the forces": 49899,
+        "Plotting the routes": 51803,
+        "Settling the ground": 49946,
+        "Surveying the rivers": 905,
+        "Weathering the mountain ridges": 1318,
+        "allocating terrain": 0,
+        "environment ready": 712,
+        "map generated": 49935,
+        "navigation grids ready": 831,
+        "navigation ready": 58437,
+        "terrain ready": 698
+      },
+      "frames_ms": {
+        "count": 136,
+        "max_ms": 514.961,
+        "p50_ms": 27.241,
+        "p95_ms": 61.248,
+        "p99_ms": 298.161
+      },
+      "peak_client_rss_bytes": 2392297472,
+      "peak_server_rss_bytes": 933060608
+    },
+    {
+      "run": "generated-2",
+      "exit": 0,
+      "errors": [],
+      "priority_applied": {
+        "client": true,
+        "server": true
+      },
+      "client_loading_ms": {
+        "allocating terrain": 0,
+        "client ready": 117371,
+        "cover": 117384,
+        "curtain gone": 119621,
+        "decor": 80022,
+        "deploy to playable": 127224,
+        "entities": 94317,
+        "environment ready": 5540,
+        "ground": 92671,
+        "map": 77526,
+        "pose preparation work": 1302.78300000004,
+        "private simulation at reveal": 100,
+        "scenery preparation work": 15654.657,
+        "scenery ready": 117363,
+        "soldier poses ready": 97732,
+        "stream": 77564,
+        "terrain ready": 534
+      },
+      "server_loading_ms": {
+        "Charting the water": 64290,
+        "Deploying forces": 70297,
+        "Farms and fields": 23032,
+        "Hedges, woods and old trenches": 25808,
+        "Laying out the town": 19913,
+        "Mustering the forces": 62538,
+        "Plotting the routes": 64301,
+        "Settling the ground": 62575,
+        "Surveying the rivers": 544,
+        "Weathering the mountain ridges": 826,
+        "allocating terrain": 0,
+        "environment ready": 407,
+        "map generated": 62568,
+        "navigation grids ready": 504,
+        "navigation ready": 70290,
+        "terrain ready": 401
+      },
+      "frames_ms": {
+        "count": 142,
+        "max_ms": 779.292,
+        "p50_ms": 27.996,
+        "p95_ms": 47.98,
+        "p99_ms": 519.086
+      },
+      "peak_client_rss_bytes": 2437214208,
+      "peak_server_rss_bytes": 934920192
+    },
+    {
+      "run": "cached-2",
+      "exit": 0,
+      "errors": [],
+      "priority_applied": {
+        "client": true,
+        "server": true
+      },
+      "client_loading_ms": {
+        "allocating terrain": 0,
+        "client ready": 43656,
+        "cover": 43669,
+        "curtain gone": 46056,
+        "decor": 16440,
+        "deploy to playable": 50649,
+        "entities": 20919,
+        "environment ready": 5298,
+        "ground": 19427,
+        "map": 13741,
+        "pose preparation work": 1118.28300000003,
+        "private simulation at reveal": 100,
+        "scenery preparation work": 16106.406,
+        "scenery ready": 43648,
+        "soldier poses ready": 24030,
+        "stream": 13778,
+        "terrain ready": 495
+      },
+      "server_loading_ms": {
+        "Charting the water": 2703,
+        "Deploying forces": 7799,
+        "Mustering the forces": 2640,
+        "Opening the battlefield": 1844,
+        "Plotting the routes": 2715,
+        "Settling the ground": 2689,
+        "allocating terrain": 0,
+        "cached ground restored": 1912,
+        "cached navigation cells restored": 2447,
+        "cached structures restored": 2437,
+        "environment ready": 486,
+        "map generated": 2682,
+        "navigation grids ready": 592,
+        "navigation ready": 7793,
+        "terrain ready": 478
+      },
+      "frames_ms": {
+        "count": 147,
+        "max_ms": 778.136,
+        "p50_ms": 27.288,
+        "p95_ms": 46.178,
+        "p99_ms": 530.157
+      },
+      "peak_client_rss_bytes": 2375696384,
+      "peak_server_rss_bytes": 929034240
+    }
+  ]
+}

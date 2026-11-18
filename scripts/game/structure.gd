@@ -255,7 +255,8 @@ func on_spawned() -> void:
 		if max_hp <= 0.0 or (hp == 100.0 and max_hp == 100.0):
 			max_hp = _default_hp()
 			hp = max_hp if built else max_hp * 0.1
-		world.nav.add_structure(self)
+		if not world.restoring_battlefield:
+			world.nav.add_structure(self)
 		if built or (skind == "trench" and trench_depth() > 0.0):
 			_make_body()
 		if door_shut:

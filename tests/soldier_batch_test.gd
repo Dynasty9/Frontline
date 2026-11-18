@@ -2,6 +2,11 @@ extends Node
 
 var failures := 0
 
+class CountingBatch extends SoldierViewBatch:
+	var made := 0
+	func _make_pose(_key: int, _unit: String, _team: int, _posture: int, _frame: int) -> void:
+		made += 1
+
 func check(ok: bool, message: String) -> void:
 	if not ok:
 		push_error(message)
@@ -10,6 +15,17 @@ func check(ok: bool, message: String) -> void:
 func _ready() -> void:
 	var world := World.new()
 	world.has_view = false
+	var scheduler := CountingBatch.new()
+	scheduler.world = world
+	scheduler.prepare("rifleman", 0)
+	world.loaded = true
+	scheduler._process(0.016)
+	check(scheduler.made == 1, "Reinforcements must keep the one-pose per frame budget")
+	world.loaded = false
+	for i in 15:
+		scheduler._process(0.016)
+	check(scheduler.made == 15 and not scheduler.warming(), "Loading must prepare every queued pose exactly once")
+	scheduler.free()
 	var batch := SoldierViewBatch.new()
 	batch.world = world
 	add_child(batch)
