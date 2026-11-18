@@ -848,7 +848,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 **Wounded, medics and prisoners** (`squad.gd`, `rules.gd`)
 - Badly hit soldiers go down screaming for a medic and start bleeding out. If they're strong enough they crawl to cover and keep firing a pistol, including while being dragged.
 - The squad lays covering fire and throws smoke. A rescuer drags the wounded man back by the shoulders while an escort walks backwards beside them firing. Then he gets patched up (medics are 2x faster). Each time he goes down he comes back weaker.
-- Medic tent: two stretcher bearers recover wounded *and dead* soldiers. If one bearer is hit, the other drags the stretcher alone. After the tent, soldiers limp back to base and rejoin a squad.
+- Medic tent: a field hospital, a frame tent with the red cross on its roof, its windows and its door open,
+  stretchers and medical stores by the door (a Rebel one older canvas, faded and patched). Two stretcher bearers
+  recover wounded *and dead* soldiers. If one bearer is hit, the other drags the stretcher alone. After the tent, soldiers limp back to base and rejoin a squad.
 - Rarely, a cut-off soldier whose squad is all down will throw away his rifle and surrender. The Rebels march prisoners
   into their tunnels and interrogate them. The Coalition questions prisoners on the march back. Either way the
   prisoner gives **live intel** generated from the real game state (FOB supply and defenders, MG nests,

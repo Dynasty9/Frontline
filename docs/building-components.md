@@ -257,6 +257,20 @@ negative inset so the frame stands proud of the face and glaze it fully (`glazin
 would show the block behind. Door leaves that swing are built in their own hinge kit (`BuildingKit.nodes(pivot)`);
 `BuildingOpenings.leaf` runs the leaf out along `toward` from the hinge line.
 
+## The field hospital
+
+A side's medic tent is `BuildingTents.field_hospital`, standing where its part is:
+- **The tent:** a frame tent 1.8 m to the eaves under a pitched roof, its arches showing through as seams every
+  bay. It has clear windows down both long sides with their blinds rolled up, and the door at its -x end open with
+  the flap rolled over it and boards for a step.
+- **Markings:** a red cross on white on both slopes of the roof and over the door, and a flag with the cross on
+  its pole.
+- **Rigging and stores:** guy ropes out to pegs; by the door, stretchers on trestles (`stretcher`) and crates of
+  medical stores (`medical_crate`); oxygen cylinders at the far end.
+
+A regular army's tent is new olive drab; a militia's is old khaki canvas, faded and patched. Render both with
+`--building-kinds=medic_tent:0,medic_tent:1` (`--building-rear` for the door end).
+
 ## Who uses what
 
 | Component | Users |
