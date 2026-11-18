@@ -1330,9 +1330,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   the grass share (`SnowLie`, read from the ground's height ten metres round each point, no texture of its own):
   thin on rises facing the wind (`Fires.WIND`), on ridges and on slopes facing the sun, deep and smooth in hollows,
   gullies and the lee of hills, uneven over a few hundred metres and scoured in long streaks along the wind, and
-  thinner under trees. Where it's thin, tussocks, stones and winter straw poke through in clumps (and the grass's
-  blades stand out of it there and nowhere else); where it's deep the open ground is clean, and the wind-packed
-  snow between is carved into low sastrugi along the wind, as shading. The powder scan is read twice at two sizes
+  thinner under trees. Where it's thin, tussocks and dead grass poke through in small clumps dusted at their edges,
+  bleached to pale straw (under the trees, a floor of dead leaves and needles), with snow still lying in the hollows
+  between them, and further off the cover thins gradually rather than at a line; the grass's blades stand out of it
+  there and nowhere else, bowed and pale, and most meadow shrubs go to a brown-grey tangle. Where it's deep the open
+  ground is clean, and the wind-packed snow between is carved into low sastrugi along the wind, as shading (none
+  under the trees). The powder scan is read twice at two sizes
   and angles and its dimples softened, so it doesn't repeat across a field. It stays dark on the steep; shell holes
   and their thrown earth, and wet spots in a bog, show as dark mud flecked with grey slush, and the tracks' prints
   run dark through it. Dirt roads become a lane of slush between white verges with the ruts open to the mud and
