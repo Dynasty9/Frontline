@@ -268,6 +268,22 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## Pillbox
+
+The Coalition's concrete bunker is dressed by `BuildingPillbox`. The walls stay the structure's parts, since they
+are what stops the bullets.
+- **`embrasure`**, on each slit's outer face: a hood cast over it, a sill sloped out to drain, cheeks splayed at its
+  ends, and steel angle round the opening.
+- **`roof`**: a slab 0.26 m thick stepped out over the walls, carrying:
+  - a turf burst layer (the dugout's soil mound drawn in and thinned, `TURF`), with the slab's lip showing round it;
+  - a parapet of bags two high along the front;
+  - the escape hatch on a kerb standing clear of the turf (`turf_depth`), a periscope looking over the parapet, a
+    mushroom vent cowl, and spouts at the back.
+- **`streaks`**: the rain's stains down the walls. They are dark and long under the spouts and faint under the drip
+  edge elsewhere.
+
+Render it with `--building-kinds=bunker:0` (add `--building-rear` for the door side).
+
 ## Who uses what
 
 | Component | Users |
@@ -284,6 +300,7 @@ Render them with `--building-kinds=bales`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingPillbox.embrasure`, `roof`, `streaks` | The Coalition's concrete bunker |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the

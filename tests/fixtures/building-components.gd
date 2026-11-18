@@ -450,6 +450,22 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# The pillbox: its embrasure stands out of the wall no further than a hood
+	# and keeps round the slit; its roof keeps to the slab (the periscope's head
+	# alone looking over the parapet), and the turf never buries the hatch.
+	var ek := kit()
+	BuildingPillbox.embrasure(ek, 2.6, Color(0.5, 0.5, 0.48))
+	var eb := _bounds(ek.sink.root, Transform3D.IDENTITY)
+	check(eb.position.z >= -0.1 and eb.end.z <= 0.45 and eb.position.y >= 0.9 and eb.end.y <= 1.95 and eb.size.x <= 3.3, "a pillbox's embrasure keeps round its slit (%s)" % eb)
+	ek.sink.root.free()
+	for sv in 4:
+		var pk := kit()
+		var roof_bags: Array = []
+		BuildingPillbox.roof(pk, Color(0.5, 0.5, 0.48), sv, pk.rng, roof_bags)
+		var pb := _bounds(pk.sink.root, Transform3D.IDENTITY)
+		check(pb.position.x >= -3.15 and pb.end.x <= 3.15 and pb.position.z >= -3.15 and pb.end.z <= 3.4 and pb.end.y <= BuildingPillbox.SLAB_TOP + 0.9, "a pillbox's roof keeps to its slab (%s)" % pb)
+		check(BuildingPillbox.turf_depth(Vector2(1.35, 1.3), sv) < 0.35 and roof_bags.size() == 5, "the pillbox's turf leaves its hatch clear (variant %d)" % sv)
+		pk.sink.root.free()
 
 	# Roofs: a hip rises as high as a gable of the same pitch over the same
 	# walls; its underside comes down to the eaves on all four walls where a

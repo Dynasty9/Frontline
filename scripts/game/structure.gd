@@ -3504,20 +3504,31 @@ func _build_model() -> void:
 					var y := 2.6 + WorksModels.roof_soil_height(Vector2(x, -2.2), soil_variant) + 0.08
 					bags.append({"p": Vector3(x, y, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": rng.randf_range(-0.09, 0.09)})
 			else:
-				# reinforced concrete: a thick roof slab with an overhang under a
-				# layer of bags, earth banked up to the slits, steel angle round
-				# the embrasure, a steel door, a vent and a whip aerial
-				_box(Vector3(0, 2.62, 0), Vector3(6.3, 0.16, 6.3), C_CONCRETE.darkened(0.28))
-				for row in 2:
-					bags.append({"p": Vector3(0, 2.82, -2.6 + row * 0.5), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				bags.append({"p": Vector3(0, 2.82, 2.6), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
-				for y in [1.1, 1.66]:
-					_mk(Res.box(Vector3(2.7, 0.07, 0.1)), "metal_dark", Vector3(0, y, -2.82), Vector3.ZERO, Color(0.2, 0.2, 0.19))
+				# reinforced concrete, cast in place (BuildingPillbox): the roof
+				# slab stepped out over the walls with its parapet of bags, hatch,
+				# periscope and vent; a hood, sloped sill and splayed cheeks at
+				# every slit; earth banked up to the slits, a steel door, a whip
+				# aerial, and the rain's streaks under the spouts at the back
 				var bk := _kit(rng)
+				var wc: Color = parts[0].color
+				var soil_variant := posmod(eid, 4)
+				BuildingPillbox.roof(bk, C_CONCRETE.darkened(0.28), soil_variant, rng, bags)
+				var turf := _mk(WorksModels.roof_soil(soil_variant), "bank", Vector3(0, BuildingPillbox.SLAB_TOP, 0), Vector3.ZERO, Color(0.29, 0.27, 0.17))
+				turf.scale = BuildingPillbox.TURF
+				turf.material_override = TrenchNet.bank_material()
+				BuildingPillbox.embrasure(bk.on_face(Vector3(0, 0, -2.8), Vector3.FORWARD), 2.6, wc)
+				for sx: float in [-1.0, 1.0]:
+					BuildingPillbox.embrasure(bk.on_face(Vector3(sx * 2.8, 0, 0), Vector3(sx, 0, 0)), 1.8, wc)
+				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
 				BuildingOpenings.leaf(bk.at_point(Vector3(-0.5, 0, 2.6)), Vector2(1.0, 1.92), "steel", Color(0.3, 0.32, 0.25), 1.0)
-				BuildingFittings.flue(bk, Vector3(1.8, 2.8, 1.6), 0.08, 0.6, Color(0.3, 0.3, 0.29), "steel")
-				BuildingFittings.whip(bk, Vector3(-2.3, 2.8, 2.3), 2.4)
+				BuildingFittings.whip(bk, Vector3(-2.3, BuildingPillbox.SLAB_TOP, 2.3), 2.4)
+				var drawn := Res.mat(wc).albedo_color
+				var tint := Mats.tint_for("precast", drawn)
+				var tone := func(_p: Vector2) -> Color: return tint
+				BuildingPillbox.streaks(bk.on_face(Vector3(0, 0, 2.8), Vector3.BACK), [-2.05, 2.05], Vector2(1.1, 1.6), Vector2(0.65, 0.9), tone, rng)
+				BuildingPillbox.streaks(bk.on_face(Vector3(0, 0, -2.8), Vector3.FORWARD), [-2.15, 2.15], Vector2(0.5, 1.0), Vector2(0.3, 0.55), tone, rng)
+				for sx: float in [-1.0, 1.0]:
+					BuildingPillbox.streaks(bk.on_face(Vector3(sx * 2.8, 0, 0), Vector3(sx, 0, 0)), [-1.95, 1.95], Vector2(0.5, 1.0), Vector2(0.3, 0.55), tone, rng)
 			_box(Vector3(0, 0.02, 0), Vector3(4.4, 0.04, 4.4), Color(0.3, 0.29, 0.27), 0.0, false)
 		"watchtower":
 			for p in parts:
