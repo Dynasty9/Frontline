@@ -136,24 +136,82 @@ func _check_snow() -> void:
 	assert(Vehicle.engine_spread(Vehicle.ENGINE_WARM * 9.0) == 4.0, "as far as it goes")
 	_check_snow_melt()
 	_check_snow_drift()
+	_check_snow_lie()
+	_check_snow_roof()
+
+
+## How deep the snow lies on the land (SnowLie): one rule the ground and the
+## grass both follow (the grass's blades stand out where the ground shows),
+## without a texture of its own (the ground keeps to its sampler budget).
+## Under trees each trunk stands in a well (Woodland, kind 7).
+func _check_snow_lie() -> void:
+	assert(not SnowLie.GLSL.contains("sampler"))
+	assert(Atmosphere.GROUND_SHADER.contains("snow_lie(") and Grass.GRASS_SHADER.contains("snow_lie("), "the ground and the grass share the rule")
+	assert(Atmosphere.GROUND_SHADER.contains("wood_floor"), "thinner under the trees")
+	assert(Woodland.SHADER.contains("kind == 7"), "a well round each trunk")
+	# the streets are ploughed to the kerbs
+	assert(Atmosphere.ROAD_SHADER.contains("bank_relief("))
+
+
+## The snow on a roof (SnowRoof, Structure._snow_roof): a lip along a pitched
+## roof's eaves (and icicles under a warm house's), drifts against a flat
+## roof's parapets on the lee of the one the wind comes over; the surface
+## shader reads a roof's warmth and chimney from its snow_k.
+func _check_snow_roof() -> void:
+	var rng := RandomNumberGenerator.new()
+	var gable := {"L": 8.0, "W": 6.0, "h": 3.0, "pitch": 30.0, "fx": 4.2, "fz": 3.2, "hipped": false, "barn": false, "ang": 0.0, "th": 0.09}
+	rng.seed = 7
+	var cold := SnowRoof.cap(gable, 0.0, 1.0, 0.0, rng)
+	rng.seed = 7
+	var warm := SnowRoof.cap(gable, 1.0, 1.0, 0.0, rng)
+	assert(cold != null and warm != null)
+	var verts := func(m: ArrayMesh) -> int: return (m.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	assert(verts.call(warm) > verts.call(cold), "icicles under a warm house's eaves")
+	# the lip lies along the eaves (±z beyond the walls), over the edge and below its top
+	var aabb := cold.get_aabb()
+	assert(aabb.position.z < -3.4 and aabb.end.z > 3.4, "a lip along both eaves")
+	rng.seed = 7
+	var hip := gable.duplicate()
+	hip.hipped = true
+	assert(SnowRoof.cap(hip, 0.0, 1.0, 0.0, rng) != null)
+	# a flat roof: the deep bank is inside the parapet the wind comes over (upwind)
+	rng.seed = 7
+	var flat := {"flat": true, "L": 8.0, "W": 8.0, "h": 3.0, "ang": 0.0}
+	var m := SnowRoof.cap(flat, 0.0, 1.0, 0.0, rng)
+	var v: PackedVector3Array = m.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var up := 0.0
+	var down := 0.0
+	for p in v:
+		var w := Vector2(p.x, p.z).dot(Vector2(SnowRoof.WIND.x, SnowRoof.WIND.z))
+		if w < -2.5:
+			up = maxf(up, p.y)
+		elif w > 2.5:
+			down = maxf(down, p.y)
+	assert(up > down, "deepest in the lee of the parapet the wind comes over (%s, %s)" % [up, down])
+	assert(Mats.SURFACE_SHADER.contains("snow_k.y < 0.0"), "a roof's warmth and chimney ride in its snow_k")
+	assert(SnowRoof.CAP_SHADER.contains("surface_thaw("), "a roof's lip melts round a fire")
 
 
 ## The wind heaps the snow against walls, buildings and hedges (SnowDrift):
-## deepest in the lee against the wall, thinning out to its reach, a smaller
-## bank on the windward face, none off its ends; a thin wall's foot is filled,
-## a building's inside isn't, and nothing drifts under a roof. The grass in a
-## drift is buried, and a thaw or a scorch clears the drift.
+## banked in the lee against the wall, rising to a crest a little way out and
+## thinning out to its reach, a smaller bank on the windward face, none off
+## its ends; a thin wall's foot is filled, a building's inside isn't, and
+## nothing drifts under a roof. The grass in a drift is buried, and a thaw or
+## a scorch clears the drift.
 func _check_snow_drift() -> void:
 	# a wall 4 m long across the wind (its length along local x, the wind along local z)
 	var near := SnowDrift.drift_at(0.0, 1.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true)
 	var far := SnowDrift.drift_at(0.0, 4.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true)
-	assert(near > far and far > 0.0, "deepest against the wall, thinning downwind")
+	assert(near > far and far > 0.0, "deep near the wall, thinning downwind")
+	var crest := SnowDrift.drift_at(0.0, 1.3, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true)
+	var foot := SnowDrift.drift_at(0.0, 0.35, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true)
+	assert(crest > foot and crest > far, "a rounded crest a little way out from the wall")
 	assert(SnowDrift.drift_at(0.0, 5.5, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) == 0.0, "none beyond its reach")
 	var face := SnowDrift.drift_at(0.0, -0.8, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true)
 	assert(face > 0.0 and face < near, "a smaller bank on the windward face")
 	assert(SnowDrift.drift_at(0.0, -2.5, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) == 0.0)
 	assert(SnowDrift.drift_at(3.0, 1.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) == 0.0, "nothing off its ends")
-	assert(SnowDrift.drift_at(0.0, 0.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) == 1.0, "a wall's foot is filled")
+	assert(SnowDrift.drift_at(0.0, 0.0, 0.0, 1.0, 2.0, 0.3, 5.0, 1.5, true) > 0.0, "a wall's foot is filled")
 	assert(SnowDrift.drift_at(0.0, 0.0, 0.0, 1.0, 4.0, 4.0, 5.0, 1.5, false) == 0.0, "a building's inside isn't")
 	# stamped into the map, nothing under a roof
 	var d := SnowDrift.new()

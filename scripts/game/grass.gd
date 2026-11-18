@@ -585,13 +585,13 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 global uniform float snow_cover;  // how deep the snow weather lies (Atmosphere._snow_tick)
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
-
+""" + SnowLie.GLSL + """
 varying float h;
 varying float g;
 varying float rnd;
 varying float wet;
 varying float burnt;
-varying float drifted;  // (snow) deep in a drift 1, scoured thin by the wind 0
+varying float drifted;  // (snow) lying deep 1, thin where the wind or the sun has thinned it 0 (SnowLie)
 varying float thawed;  // (snow) melted off by a fire or an engine (SnowMelt)
 #ifdef CLOUD_PATTERN
 varying float cloud_v;  // the sunlight the clouds let through at the blade
@@ -616,17 +616,25 @@ void vertex() {
 	}
 	VERTEX.y *= 1.0 - burnt * 0.85;
 	VERTEX.xz *= 1.0 + burnt * 0.4;
-	// snow buries the blades and weighs the rest down: deep in the drifts,
-	// which run with the wind (Fires.WIND), hardly where it has blown thin
-	float along = dot(o.xz, vec2(0.924, 0.382));
-	float across = dot(o.xz, vec2(-0.382, 0.924));
-	drifted = clamp(0.5 + 0.32 * sin(across * 0.29 + sin(along * 0.043) * 2.6) + 0.22 * sin(o.x * 0.093 + sin(o.z * 0.117) * 1.9), 0.0, 1.0);
+	vec2 at = (o.xz + __MAP_HALF__) / __MAP_SIZE__;
+	float here = terrain_height(deform_tex, at);
+	// snow buries the blades and weighs the rest down: all but buried where
+	// it lies deep, standing out of it in clumps where it's thin (by the
+	// ground's own rule, SnowLie, so they stand where the ground shows)
+	drifted = 0.5;
+	if (snow_cover > 0.0) {
+		float sp = 10.0 / __MAP_SIZE__;
+		vec4 around = vec4(terrain_height(deform_tex, at + vec2(sp, 0.0)), terrain_height(deform_tex, at - vec2(sp, 0.0)),
+			terrain_height(deform_tex, at + vec2(0.0, sp)), terrain_height(deform_tex, at - vec2(0.0, sp)));
+		drifted = smoothstep(0.2, 1.0, snow_lie(o.xz, here, around, 10.0, snow_sun()));
+	}
 	// (and where a fire or an engine has thawed it, the grass stands up again;
 	// heaped against a wall or a hedge, SnowDrift, it's buried altogether)
-	float banked = smoothstep(0.08, 0.4, texture(drift_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r) * (1.0 - burnt);
-	VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(mix(0.2, 0.75, drifted), 1.0, banked);
+	float banked = smoothstep(0.08, 0.4, texture(drift_tex, at).r) * (1.0 - burnt);
+	float bury = clamp(drifted + (rnd - 0.5) * 0.25, 0.05, 0.97);
+	VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(bury, 1.0, banked);
 	// stand on the ground as it is now (shell holes, rims)
-	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
+	VERTEX.y += here / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
 	float gust = 0.6 + 0.4 * sin(TIME * 0.35 + o.x * 0.02 + o.z * 0.015);
 	float sway = (sin(t) + 0.45 * sin(t * 2.7 + 1.3)) * wind * gust * h * h;

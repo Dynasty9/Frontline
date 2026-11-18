@@ -8,9 +8,11 @@ var materials: Array[ShaderMaterial] = []
 func setup() -> void:
 	meshes = [preload("res://assets/foliage/woodland/fern_02-0.res"), preload("res://assets/foliage/woodland/dead_tree_trunk_02-0.res"), _litter(), _fungi(), _butterfly(), preload("res://assets/foliage/woodland/fern_02-1.res"), preload("res://assets/foliage/woodland/tree_stump_01-0.res"), preload("res://assets/foliage/woodland/nettle_plant-0.res"), preload("res://assets/foliage/woodland/nettle_plant-4.res"), preload("res://assets/foliage/woodland/rock_moss_set_01-0.res"), preload("res://assets/foliage/woodland/rock_moss_set_01-2.res"), preload("res://assets/foliage/woodland/grass_medium_01-3.res"), preload("res://assets/foliage/woodland/grass_medium_01-4.res"), preload("res://assets/foliage/woodland/pine_sapling_small-0-leaves.res"), preload("res://assets/foliage/woodland/pine_sapling_small-0-trunk.res"), preload("res://assets/foliage/woodland/pine_sapling_small-1-leaves.res"), preload("res://assets/foliage/woodland/pine_sapling_small-1-trunk.res")]
 	meshes.append(preload("res://assets/foliage/woodland/shrub_02-1.res"))
-	var types := [0, 1, 2, 3, 4, 0, 1, 5, 5, 6, 6, 5, 5, 5, 1, 5, 1, 5]
+	meshes.append(_well())
+	var types := [0, 1, 2, 3, 4, 0, 1, 5, 5, 6, 6, 5, 5, 5, 1, 5, 1, 5, 7]
 	var scans := ["fern_02", "dead_tree_trunk_02", "", "", "", "fern_02", "tree_stump_01", "nettle_plant", "nettle_plant", "rock_moss_set_01", "rock_moss_set_01", "grass_medium_01", "grass_medium_01", "pine_sapling_small-twig", "pine_sapling_small-bark", "pine_sapling_small-twig", "pine_sapling_small-bark"]
 	scans.append("shrub_02")
+	scans.append("")
 	var shader := CloudShadow.make(MapDims.shader(SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
 	for i in meshes.size():
 		var material := ShaderMaterial.new()
@@ -133,12 +135,18 @@ func build(grass: Grass, cell: Vector2i, nodes: Array) -> void:
 		var scale := rng.randf_range(0.55, 0.8)
 		transforms[6].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(scale, 0.24, scale)), Vector3(tree.x, -0.04, tree.z)))
 		colors[6].append(Color(rng.randf(), 0, 0.5, 1))
+		# (in snow, the well round the trunk the crown kept the snow off)
+		var well := rng.randf_range(1.0, 1.7)
+		transforms[18].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(well, 1.0, well)), Vector3(tree.x, 0, tree.z)))
+		colors[18].append(Color(rng.randf(), rng.randf(), 0.5, 0))
 	for i in meshes.size():
 		if transforms[i].is_empty():
 			continue
 		# Reserve fauna placements even when hidden, so weather and Wildlife settings
 		# do not change the random sequence and rearrange plants, rocks or deadwood.
 		if i == 4 and (grass.atmo.mood not in ["day", "golden"] or int(Settings.get_v("wildlife")) == 0):
+			continue
+		if i == 18 and grass.atmo.mood != "snow":
 			continue
 		materials[i].set_shader_parameter("deform_tex", grass.mat.get_shader_parameter("deform_tex"))
 		materials[i].set_shader_parameter("trench_mask", grass.mat.get_shader_parameter("trench_mask"))
@@ -148,6 +156,25 @@ func build(grass: Grass, cell: Vector2i, nodes: Array) -> void:
 		# Wind and butterfly flight move beyond the imported mesh bounds.
 		node.extra_cull_margin = 1.5
 		nodes.append(node)
+
+## A tree's well in the snow: a disc a metre across before its scale, its
+## vertex colour red how far out from the trunk (0 at it, 1 at the rim).
+static func _well() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rings := [0.0, 0.35, 0.7, 1.0]
+	for r in rings.size() - 1:
+		for i in 20:
+			var a0 := TAU * i / 20.0
+			var a1 := TAU * (i + 1) / 20.0
+			var quad := [Vector3(cos(a0), 0, sin(a0)) * rings[r], Vector3(cos(a1), 0, sin(a1)) * rings[r], Vector3(cos(a1), 0, sin(a1)) * rings[r + 1], Vector3(cos(a0), 0, sin(a0)) * rings[r + 1]]
+			for index in [0, 2, 1, 0, 3, 2]:
+				var p: Vector3 = quad[index]
+				st.set_normal(Vector3.UP)
+				st.set_color(Color(p.length(), 0, 0))
+				st.set_uv(Vector2(p.x, p.z) * 0.5 + Vector2(0.5, 0.5))
+				st.add_vertex(p + Vector3(0, 0.012, 0))
+	return st.commit()
 
 static func _quad(st: SurfaceTool, points: Array, uv: Array, color := Color.WHITE) -> void:
 	for index in [0, 2, 1, 0, 3, 2]:
@@ -297,9 +324,12 @@ void vertex() {
 	burnt = marks.r;
 	thawed = marks.g;
 	rise = VERTEX.y * scale;
-	// In snow the leaf litter, the toadstools and the root flares on the
-	// woodland floor are buried (until a fire or an engine thaws them out again).
-	if ((kind == 2 || kind == 3 || (kind == 6 && INSTANCE_CUSTOM.a > 0.5)) && snow_cover * (1.0 - thawed) > 0.3) VERTEX *= 0.0;
+	// In snow the leaf litter and the toadstools on the woodland floor are
+	// buried (until a fire or an engine thaws them out again); round each
+	// trunk is a well the crown kept the snow off, where the root flare and
+	// the needles show (kind 7: only in snow).
+	if ((kind == 2 || kind == 3) && snow_cover * (1.0 - thawed) > 0.3) VERTEX *= 0.0;
+	if (kind == 7 && snow_cover * (1.0 - thawed) < 0.25) VERTEX *= 0.0;
 	if (textureLod(trench_mask, uv, 0.0).r > 0.3 || height - terrain_geology(deform_tex, uv) < -0.12 || (kind == 4 && burnt > 0.1)) VERTEX *= 0.0;
 	VERTEX.y += height / scale;
 	wpos.y += height;
@@ -326,6 +356,12 @@ void fragment() {
 		cap *= 0.85 + grain * 0.15;
 		col = mix(stem, mix(vec3(0.18, 0.13, 0.075) * (0.65 + gills * 0.35), cap, top), COLOR.r);
 	}
+	if (kind == 7) {
+		// (needles and dead leaves, darker in the damp; the rim ragged)
+		float litter = wood_noise(wpos.xz * 4.1) * 0.6 + wood_noise(wpos.xz * 13.0) * 0.4;
+		col = mix(vec3(0.035, 0.026, 0.017), vec3(0.085, 0.06, 0.035), litter) * mix(1.1, 0.75, damp);
+		ALPHA = 1.0 - smoothstep(0.55, 0.85, COLOR.r + (wood_noise(wpos.xz * 2.3 + variation * 9.0) - 0.5) * 0.45);
+	}
 	if (kind == 4) {
 		vec3 wing = photograph.rgb * 0.8;
 		if (!FRONT_FACING) wing = mix(vec3(dot(wing, vec3(0.3, 0.5, 0.2))), wing, 0.25) * vec3(0.45, 0.4, 0.32);
@@ -338,7 +374,7 @@ void fragment() {
 	// and the plants hold it in clumps on their upper leaves, one more than the
 	// next. Not where it has burnt or thawed.
 	float snowed = 0.0;
-	if (snow_cover > 0.0 && kind != 4) {
+	if (snow_cover > 0.0 && kind != 4 && kind != 7) {
 		float lies = snow_cover * (1.0 - thawed) * (1.0 - burnt);
 		if ((kind == 0 || kind == 5) && !evergreen) {
 			col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.15, 0.95, 0.68), snow_cover * 0.65);

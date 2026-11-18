@@ -2,10 +2,11 @@ class_name SnowDrift
 extends Node3D
 ## Snow drifted against walls, buildings and hedges, in the snow weather. The
 ## wind (Fires.WIND) scours the snow off the open and drops it where the air
-## behind an obstacle goes slack: a drift heaped against the lee face, deepest
-## at the wall and thinning out a few metres downwind (farther behind a tall
-## wall than a low one, and farther still behind a hedge or a fence, which the
-## wind half passes through), with a smaller bank against the windward face.
+## behind an obstacle goes slack: a drift banked against the lee face, rising
+## to a rounded crest a little way out and tailing off over a few metres
+## downwind (farther behind a tall wall than a low one, and farther still
+## behind a hedge or a fence, which the wind half passes through), with a
+## smaller bank against the windward face.
 ## Looks only: nothing here reaches the simulation.
 ##
 ## Every view works the drifts out for itself from the structures standing,
@@ -21,7 +22,7 @@ extends Node3D
 ## from its deformation map, so they ride shell holes and slopes), and the
 ## grass in a drift is buried (Grass.GRASS_SHADER reads the same map).
 
-const CELL := 2.0  # m a texel
+const CELL := 1.0  # m a texel
 const TILE := 32.0  # m: a drift mesh tile
 const REGION := 256.0  # m: tiles are drawn in batches this size, each culled on its own
 const CHECK := 1.0  # s between looks at what's standing
@@ -147,8 +148,8 @@ func _kind(st) -> float:
 func _spec(st, k: float) -> Array:
 	var h := minf(4.0, float(st._vis_height()))
 	var porous: bool = st.skind == "fence" or (st.skind == "low_wall" and int(st.variant) % 3 == 1)
-	var reach := clampf(1.5 + 1.6 * h, 2.0, 8.0) * (1.35 if porous else 1.0)
-	var back := minf(1.5, reach * 0.35)
+	var reach := clampf(2.0 + 2.2 * h, 3.0, 10.0) * (1.35 if porous else 1.0)
+	var back := minf(2.0, reach * 0.3)
 	var c := cos(float(st.yaw))
 	var s := sin(float(st.yaw))
 	var hx: float = maxf(0.15, st.foot.x)
@@ -295,14 +296,17 @@ func stamp(sp: Array, r: Rect2i) -> void:
 ## foot of a thin wall, 0 inside a building.
 static func drift_at(lx: float, lz: float, wx: float, wz: float, hx: float, hz: float, reach: float, back: float, thin: bool) -> float:
 	if absf(lx) <= hx and absf(lz) <= hz:
-		return 1.0 if thin else 0.0
+		return 0.6 if thin else 0.0
 	var lee := _hit(lx, lz, -wx, -wz, hx, hz, reach)
 	var v := 0.0
 	if lee >= 0.0:
-		v = pow(1.0 - lee / reach, 1.4)
+		# (banked against the wall, a rounded crest a fifth of the way out where
+		# the eddy behind it drops the most, then a long tail feathering out)
+		var u := lee / reach
+		v = (0.55 + 0.45 * smoothstep(0.0, 0.22, u)) * (1.0 - smoothstep(0.22, 1.0, u))
 	var face := _hit(lx, lz, wx, wz, hx, hz, back)
 	if face >= 0.0:
-		v = maxf(v, 0.55 * (1.0 - face / back))
+		v = maxf(v, 0.5 * (1.0 - smoothstep(0.0, 1.0, face / back)))
 	return v
 
 
@@ -423,55 +427,75 @@ uniform sampler2DArray material_colors : source_color, filter_linear_mipmap_anis
 global uniform float snow_cover;  // how deep the snow weather lies (Atmosphere._snow_tick)
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
+""" + SnowLie.GLSL + """
 varying vec3 wpos;
 varying float deep;
+varying float hollow;  // (the foot of the drift, where it meets the wall, in the shade of the crest)
 
-// How deep the drift is at p: the drift map, gone where a thaw (SnowMelt) or a
+// How deep the drift is at p: the drift map, deeper along some stretches of
+// it than others as the gusts laid it, and gone where a thaw (SnowMelt) or a
 // scorch has cleared the ground (the grass's scar map), as the snow lies now.
 float drift_deep(vec2 p) {
 	vec2 uv = (p + __MAP_HALF__) / __MAP_SIZE__;
 	vec2 marks = textureLod(scar, uv, 0.0).rg;
+	float gusts = mix(0.6, 1.15, textureLod(detail_tex, p / 11.0 + 0.47, 0.0).r);
 	// (gone by the slush at a thaw's rim, as the ground's snow is)
-	return textureLod(drift_tex, uv, 0.0).r * snow_cover * (1.0 - smoothstep(0.1, 0.45, marks.g)) * (1.0 - marks.r);
+	return min(1.0, textureLod(drift_tex, uv, 0.0).r * gusts) * snow_cover * (1.0 - smoothstep(0.1, 0.45, marks.g)) * (1.0 - marks.r);
 }
 
 float drift_top(vec2 p) {
 	float d = drift_deep(p);
-	return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__) + 0.03 + d * d * (3.0 - 2.0 * d) * 0.45;
+	return terrain_height(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__) + 0.02 + d * d * (3.0 - 2.0 * d) * 0.6;
 }
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	deep = drift_deep(wpos.xz);
 	float y = drift_top(wpos.xz);
-	float dx = drift_top(wpos.xz + vec2(1.0, 0.0)) - drift_top(wpos.xz - vec2(1.0, 0.0));
-	float dz = drift_top(wpos.xz + vec2(0.0, 1.0)) - drift_top(wpos.xz - vec2(0.0, 1.0));
+	float xp = drift_top(wpos.xz + vec2(1.0, 0.0));
+	float xn = drift_top(wpos.xz - vec2(1.0, 0.0));
+	float zp = drift_top(wpos.xz + vec2(0.0, 1.0));
+	float zn = drift_top(wpos.xz - vec2(0.0, 1.0));
 	VERTEX.y = y - MODEL_MATRIX[3].y;
 	wpos.y = y;
-	NORMAL = normalize(vec3(-dx, 2.0, -dz));
+	// (its slopes a little steeper to the light than they are, so the crest
+	// and the hollow behind it read under a flat winter sky)
+	NORMAL = normalize(vec3(-(xp - xn) * 1.4, 2.0, -(zp - zn) * 1.4));
+	hollow = clamp((xp + xn + zp + zn - 4.0 * y) * 4.0, 0.0, 1.0);
 }
 
 void fragment() {
-	float n1 = texture(detail_tex, wpos.xz / 3.1 + 0.27).r;
-	float n2 = texture(detail_tex, wpos.xz / 1.6 + 0.61).r;
-	// (its edge broken where the wind has worked at it: crisp, not a fade)
-	float edge = deep + (n1 - 0.5) * 0.2 + (n2 - 0.5) * 0.06;
-	ALPHA = smoothstep(0.1, 0.16, edge);
+	// (its edge ragged only a little where the wind has worked at it, and so
+	// shallow there it meets the snow on the ground with no step)
+	float n1 = texture(detail_tex, wpos.xz / 5.3 + 0.27).r;
+	float edge = deep + (n1 - 0.5) * 0.08;
+	ALPHA = smoothstep(0.035, 0.06, edge);
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
-	// the ground's own snow (its powder scan, linear), a little blue where the
-	// drift is shallow and wind-packed
+	// the ground's own snow (Atmosphere's ground shader: its powder scan read
+	// twice and its grain softened, linear), so the two meet without a seam
 	vec3 powder = texture(material_colors, vec3(wpos.xz / 2.0, 3.0)).rgb;
+	vec3 other = texture(material_colors, vec3(mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * wpos.xz / 3.1 + 0.37, 3.0)).rgb;
+	powder = mix(powder, other, smoothstep(0.35, 0.65, texture(detail_tex, wpos.xz / 13.0 + 0.61).r));
 	if (OUTPUT_IS_SRGB) {
 		powder = mix(powder / 12.92, pow((powder + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), powder));
 	}
-	vec3 col = min(powder * 1.8, vec3(0.9)) * mix(vec3(0.82, 0.9, 1.0), vec3(1.0), smoothstep(0.15, 0.7, deep * 0.8 + (n1 - 0.5) * 0.4));
+	float grain = min(dot(powder, vec3(0.2126, 0.7152, 0.0722)) * 2.0, 1.0);
+	float macro = texture(detail_tex, wpos.xz / 190.0 + 0.19).r;
+	vec3 col = vec3(0.9) * mix(1.0, grain, 0.45) * mix(vec3(0.82, 0.90, 1.0), vec3(1.0), smoothstep(-0.3, 0.6, macro));
+	// (its relief shaded as the sun would light it, more than the flat winter
+	// light does: the face toward the sun brighter, the slope behind the crest
+	// a cool shade darker; a shade greyer in the hollow at its foot)
+	vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec3 to_sun = normalize(snow_sun());
+	col *= clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.9, 0.75, 1.15) * (1.0 - hollow * 0.12);
+	col *= mix(vec3(1.0), vec3(0.9, 0.95, 1.04), smoothstep(0.0, -0.25, dot(wn, to_sun) - to_sun.y));
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
 	}
 	ALBEDO = col;
 	ROUGHNESS = 0.88;
-	AO = mix(0.85, 1.0, smoothstep(0.1, 0.6, deep));
-	AO_LIGHT_AFFECT = 0.2;
+	AO = 1.0 - hollow * 0.35;
+	AO_LIGHT_AFFECT = 0.3;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """

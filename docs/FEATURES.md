@@ -1303,17 +1303,33 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   winter light, the sun weak behind cloud and its shadows barely there, a pale blue-grey sky and the haze closing in.
   Flakes drift down with the wind (`Fires.WIND`) in a box of air the shader wraps round the view, so they keep their
   places in the world while the camera pans through them; each flutters on a spiral of its own, never drawn smaller
-  than a pixel and a half, and fades at the box's edges. The ground lies white wherever it's gentle and stays dark on
-  the steep; shell holes and their thrown earth, and wet spots in a bog, show as dark mud flecked with grey slush, and
-  the tracks' prints run dark through it. Dirt roads become a lane of slush between white verges with the ruts open
-  to the mud; town streets keep black wheel paths, grey slush between them and white gutters. Everything standing
-  in it gathers snow on the faces turned to the sky (roofs, ledges, sandbags, camouflage nets, trench spoil, the
-  tops of trees and bushes, and the grass, which goes to winter straw with only its tips showing), while walls stay
-  bare. It never lies as an even coat: the wind scours long streaks and the open rises thin, so the grass shows
-  through, and heaps drifts in the hollows; on a roof or a wall top a thin fall lies in the grooves first, one roof
-  holds more than the next, and trees hold it in lumps on their boughs, one tree more than its neighbour. Under
-  the trees (`Woodland`) the leaf litter, toadstools and root flares are buried, ferns and nettles go to winter brown
-  with snow in clumps on their upper fronds (the pine saplings keep their green), and deadwood and mossy stones
+  than a pixel and a half, and fades at the box's edges. How deep it lies on the land is one rule the ground and
+  the grass share (`SnowLie`, read from the ground's height ten metres round each point, no texture of its own):
+  thin on rises facing the wind (`Fires.WIND`), on ridges and on slopes facing the sun, deep and smooth in hollows,
+  gullies and the lee of hills, uneven over a few hundred metres and scoured in long streaks along the wind, and
+  thinner under trees. Where it's thin, tussocks, stones and winter straw poke through in clumps (and the grass's
+  blades stand out of it there and nowhere else); where it's deep the open ground is clean, and the wind-packed
+  snow between is carved into low sastrugi along the wind, as shading. The powder scan is read twice at two sizes
+  and angles and its dimples softened, so it doesn't repeat across a field. It stays dark on the steep; shell holes
+  and their thrown earth, and wet spots in a bog, show as dark mud flecked with grey slush, and the tracks' prints
+  run dark through it. Dirt roads become a lane of slush between white verges with the ruts open to the mud and
+  the plough's low banks along the sides; town streets are ploughed, a rough bank along each kerb (shaded as a
+  ridge), black wet slush in the wheel paths and a grey film scraped between them; pavements, paths and the square
+  are trodden to a grey crust, and paths are worn through the gardens. Everything standing in it gathers snow on the
+  faces turned to the sky (by the face's own direction, not its bumps: roofs, ledges, fence tops, sandbags,
+  camouflage nets, trench spoil, the tops of trees and bushes, and the grass, which goes to winter straw), while
+  walls stay bare but for a patchy crust on the face toward the wind. It never lies as an even coat: on a roof or a
+  wall top a thin fall lies in the grooves first, a slope facing the wind is scoured and the one in its lee loaded,
+  the sunny one thins, steep sheet (past twenty degrees or so) and steep tiles shed most of it in streaks down the
+  fall line, and trees hold it in lumps on their boughs, one tree more than its neighbour. Each house's roof is
+  dressed for it the first time it snows (`Structure._snow_roof`): how much it holds, and whether the house is lived
+  in and warm (more than half are; barns are cold and keep a thick coat), ride in its `snow_k` with its chimney, so a
+  warm roof thaws in wet, dark patches and bare round the chimney; and `SnowRoof` gives it a body of snow its faces
+  can't: a rounded lip curling over the eaves (thicker on steep sheet, broken where some fell, thinner up the
+  gables), icicles in runs under a warm house's eaves, and on a flat roof drifts against the parapets, deep in the
+  lee of the one the wind comes over. Under the trees (`Woodland`) the leaf litter and toadstools are buried, every
+  trunk stands in a well of bare needles its crown kept the snow off, ferns and nettles go to winter brown with snow
+  in clumps on their upper fronds (the pine saplings keep their green), and deadwood, root flares and mossy stones
   carry it on their tops. A vehicle
   (`Vehicle._snow_view`, the `snow_k` instance value) keeps it only on its flat tops (deck, turret roof, fenders,
   stowage), in patches of its own, while the glacis and sides shed it and the warm engine deck stays bare and wet;
@@ -1326,11 +1342,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   ground and roads take the 24 thaws nearest the camera as a list (no extra texture), everything standing round
   a fire (paving, yards, the neighbours' roofs) the nearest eight as global shader values (`snow_thaw_0..7`), and
   the grass has them painted into its scar map. The wind heaps it against whatever stands in its way (`SnowDrift`): every wall, house,
-  hedge, fence, wreck and car drifts a bank deepest against its lee face and thinning out a few metres downwind
-  (farther behind a tall wall, farther still behind a hedge or fence the wind half passes through), with a smaller
-  bank on the windward face, and none inside a roofed house. Each view stamps the drifts from the structures
-  standing into a 2 m map (so every peer gets the same ones) and lays raised snow over the ground where there are
-  any; the grass in a drift is buried, a wall knocked down takes its drift with it, and a thaw or a scorch clears it. Thawed ground stays thawed once the fire is out and whitens again only slowly, while the snow keeps
+  hedge, fence, wreck and car drifts a bank against its lee face that rises to a rounded crest a little way out and
+  tails off a few metres downwind (farther behind a tall wall, farther still behind a hedge or fence the wind half
+  passes through), deeper along some stretches than others, with a smaller bank on the windward face, and none
+  inside a roofed house. Each view stamps the drifts from the structures standing into a 1 m map (so every peer
+  gets the same ones) and lays raised snow over the ground where there are any, its relief shaded toward the sun
+  and its colour the ground's own so the two meet without a seam; the grass in a drift is buried, a wall knocked down takes its drift with it, and a thaw or a scorch clears it. Thawed ground stays thawed once the fire is out and whitens again only slowly, while the snow keeps
   falling. Running gear, glass, charred hulls and floors indoors take none, and men only a dusting. A
   battle that opens in snow starts covered; snow that sets in mid-battle settles over four minutes, in the hollows
   first, and thaws over a quarter of an hour. The deep snow hushes the wind and the distant battle. A random

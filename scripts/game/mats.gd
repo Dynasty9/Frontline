@@ -1518,6 +1518,32 @@ void fragment() {
 """
 
 
+## The eight thaws nearest the camera (Mats.set_melt), as everything drawn
+## with the surface shader and the roofs' snow (SnowRoof) read them:
+## surface_thaw(p, rag) is how far the snow at `p` has melted, as snow_melted.
+const THAW_GLSL := """
+global uniform vec4 snow_thaw_0;  // (Mats.set_melt: the thaws nearest the camera)
+global uniform vec4 snow_thaw_1;
+global uniform vec4 snow_thaw_2;
+global uniform vec4 snow_thaw_3;
+global uniform vec4 snow_thaw_4;
+global uniform vec4 snow_thaw_5;
+global uniform vec4 snow_thaw_6;
+global uniform vec4 snow_thaw_7;
+float thaw_at(vec4 s, vec2 p, float rag) {
+	vec2 d = p - s.xy;
+	float dd = dot(d, d);
+	if (dd >= s.z * s.z) { return 0.0; }
+	float core = floor(s.w);
+	float u = max(0.0, sqrt(dd) - core) / max(s.z - core, 0.5);
+	return fract(s.w) / 0.99 * (1.0 - smoothstep(0.45, 1.0, u + rag));
+}
+float surface_thaw(vec2 p, float rag) {
+	float m = max(max(thaw_at(snow_thaw_0, p, rag), thaw_at(snow_thaw_1, p, rag)), max(thaw_at(snow_thaw_2, p, rag), thaw_at(snow_thaw_3, p, rag)));
+	return max(m, max(max(thaw_at(snow_thaw_4, p, rag), thaw_at(snow_thaw_5, p, rag)), max(thaw_at(snow_thaw_6, p, rag), thaw_at(snow_thaw_7, p, rag))));
+}
+"""
+
 ## The thaws of snow round fires and idling engines (SnowMelt), as the ground,
 ## the roads and the paving read them: snow_melted(p, rag) is how far the snow
 ## at `p` has melted, 0 (lying) to 1 (bare), its edge broken up by `rag`. A thaw
@@ -1565,27 +1591,7 @@ uniform float grime = 0.5;
 uniform float wet = 0.0;  // streets in the rain (Mats.set_street_wet)
 global uniform float rain_wet;  // how soaked everything out in the rain is, 0..1 (Atmosphere._rain_tick)
 global uniform float snow_cover;  // how deep the snow weather lies, 0..1 (Atmosphere._snow_tick)
-global uniform vec4 snow_thaw_0;  // (Mats.set_melt: the thaws nearest the camera)
-global uniform vec4 snow_thaw_1;
-global uniform vec4 snow_thaw_2;
-global uniform vec4 snow_thaw_3;
-global uniform vec4 snow_thaw_4;
-global uniform vec4 snow_thaw_5;
-global uniform vec4 snow_thaw_6;
-global uniform vec4 snow_thaw_7;
-float thaw_at(vec4 s, vec2 p, float rag) {
-	vec2 d = p - s.xy;
-	float dd = dot(d, d);
-	if (dd >= s.z * s.z) { return 0.0; }
-	float core = floor(s.w);
-	float u = max(0.0, sqrt(dd) - core) / max(s.z - core, 0.5);
-	return fract(s.w) / 0.99 * (1.0 - smoothstep(0.45, 1.0, u + rag));
-}
-float surface_thaw(vec2 p, float rag) {
-	float m = max(max(thaw_at(snow_thaw_0, p, rag), thaw_at(snow_thaw_1, p, rag)), max(thaw_at(snow_thaw_2, p, rag), thaw_at(snow_thaw_3, p, rag)));
-	return max(m, max(max(thaw_at(snow_thaw_4, p, rag), thaw_at(snow_thaw_5, p, rag)), max(thaw_at(snow_thaw_6, p, rag), thaw_at(snow_thaw_7, p, rag))));
-}
-uniform float snow_hold = 1.0;  // how much of it this surface holds (none on a floor indoors, little on a man)
+""" + THAW_GLSL + """uniform float snow_hold = 1.0;  // how much of it this surface holds (none on a floor indoors, little on a man)
 uniform float weathering = 0.0;
 uniform bool grain_horizontal = false;
 uniform bool worn_armour = false;
@@ -2345,12 +2351,39 @@ void fragment() {
 		if (snow_k.y == 0.0 && snow_hold > 0.5) {
 			carry *= mix(0.6, 1.12, smoothstep(0.3, 0.7, tnoise(wpos.xz * 0.021 + 3.7)));
 		}
-		float depth = clamp(snow_cover * carry * snow_hold, 0.0, 1.0);
+		// (snow_k.y below zero: a house's roof, Structure._snow_roof: how warm
+		// the house under it is in the fraction, its chimney at zw; how much
+		// this roof holds, house by house, is its carry)
+		float heat = snow_k.y < 0.0 ? clamp(-snow_k.y - 1.0, 0.0, 1.0) : 0.0;
+		// Which way the face itself looks (not its bumps: a rough stone wall's
+		// face is still a wall).
+		vec3 gn = vehicle_surface ? wn : normalize(local_space ? mat3(MODEL_MATRIX) * tn : tn);
 		// (Fires.WIND: drifts run with it)
 		vec2 along = vec2(0.924, 0.382);
+		float pitch_cos = gn.y;
+		if (!vehicle_surface) {
+			// A slope that faces the wind is scoured and the one in its lee is
+			// loaded; the one facing the sun thins first.
+			float windward = -dot(gn.xz, along);
+			carry *= (1.0 - clamp(windward * 1.0, 0.0, 0.3)) * (1.0 + clamp(-windward * 0.8, 0.0, 0.25));
+			vec3 to_sun = vec3(0.415, 0.559, 0.718);  // (the "snow" mood's sun, as SnowLie's)
+			carry *= 1.0 - clamp(dot(gn.xz, normalize(to_sun.xz)) * 0.5, 0.0, 0.18);
+			// Steep metal sheds it (sheet past twenty-five degrees or so, tiles
+			// and slates past forty), leaving a film in streaks down the fall
+			// line; it piles at the eaves (SnowRoof). A flat roof keeps a full coat.
+			float shed = pattern == 9 ? smoothstep(0.9, 0.78, pitch_cos) : (pattern == 15 ? smoothstep(0.77, 0.68, pitch_cos) : 0.0);
+			if (shed > 0.0) {
+				vec2 fall_dir = gn.xz / max(length(gn.xz), 0.001);
+				float streak = tnoise(vec2(dot(tp.xz, vec2(-fall_dir.y, fall_dir.x)) * 3.1, dot(tp.xz, fall_dir) * 0.35) + seed.xz * 0.37);
+				carry *= mix(1.0, 0.45 + 0.45 * smoothstep(0.4, 0.75, streak), shed);
+			}
+			// a warm house thaws its own roof from below
+			carry *= 1.0 - heat * 0.15;
+		}
+		float depth = clamp(snow_cover * carry * snow_hold, 0.0, 1.0);
 		vec2 wq = vec2(dot(tp.xz, along) * 0.55, dot(tp.xz, vec2(-along.y, along.x)) * 1.9) + so;
 		float drift = tnoise(wq * 0.45 + tp.y * 0.4) * 0.5 + tnoise(wq * 1.3 + tp.y * 0.9 + 2.1) * 0.38 + tnoise(tp.xz * 6.0 + tp.y * 3.0 + so.yx) * 0.12;
-		float face = vehicle_surface ? smoothstep(0.8, 0.96, wn.y) : smoothstep(0.4, 0.78, wn.y);
+		float face = vehicle_surface ? smoothstep(0.8, 0.96, wn.y) : smoothstep(0.4, 0.78, mix(gn.y, wn.y, 0.25));
 		// (a hull's drifts are big patches, shaken loose; on a roof or a wall top
 		// a thin fall lies in the grooves between the tiles and the stones first)
 		float lying = vehicle_surface
@@ -2362,36 +2395,59 @@ void fragment() {
 		if (vehicle_surface) {
 			// (a hull that has shaken most of it off keeps a grey film between the patches)
 			settled = max(settled, smoothstep(-0.5, 0.0, lying) * face * depth * 0.22);
+		} else {
+			// A wall stays bare but for a crust the storm has plastered on the
+			// face toward the wind, in patches.
+			float plaster = smoothstep(0.3, 0.85, -dot(gn.xz, along)) * (1.0 - smoothstep(0.3, 0.6, abs(gn.y)));
+			settled = max(settled, plaster * smoothstep(0.66, 0.8, drift + (0.5 - h) * 0.5) * snow_cover * snow_hold * 0.75);
 		}
 		float warm = 0.0;
 		if (vehicle_surface) {
 			warm = 1.0 - smoothstep(mix(0.8, 1.7, engine_run), mix(1.5, 3.0, engine_run), distance(tp.xz, snow_k.zw));
 			settled *= 1.0 - warm;
 		}
-		if (pattern == 18 || pattern == 19 || pattern == 22) {
-			// streets and pavements are driven and trodden to a patchy slush
+		// trodden: the pavements, paths and the square to a grey, packed crust
+		// (a lane of it down the middle of a garden path), streets driven to
+		// slush; and the snow in a garden worn into paths
+		float trodden = 0.0;
+		if (pattern == 18 || pattern == 22) {
 			settled *= mix(0.3, 0.85, smoothstep(0.35, 0.7, tfbm(wpos.xz * 0.4 + 7.0)));
+		} else if (pattern == 19) {
+			trodden = mix(0.55, 0.95, smoothstep(0.3, 0.7, tfbm(wpos.xz * 0.5 + 3.0)));
+		} else if (pattern == 20) {
+			float worn = abs(tfbm(wpos.xz * 0.11 + seed.xz * 0.1) - 0.5);
+			trodden = (1.0 - smoothstep(0.03, 0.07, worn)) * 0.85;
 		}
 		// Round a fire it thaws off everything standing there, the paving, the
 		// yards and the neighbours' roofs, as off the ground (SnowMelt), and
-		// leaves it wet.
+		// leaves it wet. A warm house thaws its roof in wet patches and bare
+		// round the chimney.
 		float thaw_wet = 0.0;
 		if (!vehicle_surface && snow_thaw_0.z > 0.0) {
 			float melted = surface_thaw(wpos.xz, (drift - 0.5) * 0.3);
 			settled *= 1.0 - smoothstep(0.1, 0.6, melted);
 			thaw_wet = smoothstep(0.45, 0.8, melted) * face * min(1.0, snow_cover * 4.0);
 		}
+		if (heat > 0.0) {
+			float stack = 1.0 - smoothstep(0.55, 1.5, distance(wpos.xz, snow_k.zw) + (drift - 0.5) * 0.6);
+			float patches = smoothstep(0.68, 0.8, tnoise(tp.xz * 0.45 + seed.xz) * 0.6 + drift * 0.4) * heat;
+			float bare = max(stack, patches * 0.85);
+			settled *= 1.0 - bare;
+			thaw_wet = max(thaw_wet, bare * face * min(1.0, snow_cover * 4.0));
+		}
 		if (pattern == 20) {
 			// (a lawn in winter, where it shows: flattened and gone a dull brown)
 			ALBEDO = mix(ALBEDO, vec3(dot(ALBEDO, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.92, 0.72), snow_cover * 0.65);
 		}
 		vec3 snow = vec3(0.8, 0.83, 0.88) * (0.93 + 0.07 * drift);
+		// (packed down and trodden grey, the prints in it)
+		snow = mix(snow, vec3(0.36, 0.37, 0.39) * (0.85 + 0.3 * tnoise(wpos.xz * 2.7)), trodden);
 		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
 		ALBEDO = mix(ALBEDO, snow, settled);
 		// (meltwater on the thawed paving and roofs, on the warm deck, and round the snow's edge)
 		ALBEDO *= 1.0 - thaw_wet * 0.25;
 		ROUGHNESS = mix(ROUGHNESS, 0.3, thaw_wet);
-		ROUGHNESS = mix(mix(ROUGHNESS, 0.3, warm * snow_cover * 0.7), 0.85, settled);
+		ROUGHNESS = mix(mix(ROUGHNESS, 0.3, warm * snow_cover * 0.7), mix(0.85, 0.6, trodden), settled);
 		METALLIC *= 1.0 - settled;
 		SPECULAR = mix(SPECULAR, 0.3, settled);
 		CLEARCOAT *= 1.0 - settled;
