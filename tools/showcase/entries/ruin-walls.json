@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/ruin-walls.md",
+  "summary": "A ruined house's walls broken off along their tops.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (house_ruin); tests/fixtures/environment-views.gd (town)",
+  "rationale": "Appearance change: the studio ruin from the same camera, and a ruin in the town overview.",
+  "source_ref": "88d4d17863be238f55f6f0265fe262f607df7fcb",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/ruin-walls/comparison.jpg",
+      "sha256": "daa0e46d8c263da86afef91ada99be65ef62058b487039b1067c22ba2d9afebe"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/capture.json",
+      "sha256": "a247d36f0337b986d1db5751d8b05c2be8cc8d897ff547f749e6f7c0644261e4"
+    }
+  ],
+  "output": null
+}
