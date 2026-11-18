@@ -419,7 +419,7 @@ static func _razor_coil(lk: float, height: float) -> ArrayMesh:
 	var r := RandomNumberGenerator.new()
 	r.seed = 9911 + int(lk * 100.0)
 	var loops := int(lk / 0.2)
-	var steps := loops * 14
+	var steps := loops * 22
 	var pts := PackedVector3Array()
 	for i in steps + 1:
 		var t := float(i) / steps
@@ -428,8 +428,7 @@ static func _razor_coil(lk: float, height: float) -> ArrayMesh:
 		# loops clipped to their neighbours lean alternately and cross (see WorksModels._concertina)
 		var lean := 0.07 * sin(a) * (1.0 if int(floor(a / TAU)) % 2 == 0 else -1.0)
 		pts.append(Vector3(-lk * 0.5 + t * lk + lean, height + 0.25 + rr * sin(a) * 0.9, 0.04 + rr * cos(a)))
-	BuildingWire.strand(v, n, pts, 0.0068)
-	BuildingWire.barbs(v, n, pts, 0.045, 0.024, r)
+	BuildingWire.razor(v, n, pts, Vector3.RIGHT, r)
 	return BuildingKit._commit(v, n)
 
 

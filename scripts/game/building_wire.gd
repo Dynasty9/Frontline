@@ -180,22 +180,42 @@ static func point(v: PackedVector3Array, n: PackedVector3Array, root: Vector3, t
 ## strained between them.
 static func topping(k: BuildingKit, length: float, y: float, lean := 1.0, strands := 3, finish := "clean") -> void:
 	var n := maxi(2, int(ceil(length / 2.4)) + 1)
-	var arm := Vector3(0, 0.42, lean * 0.3)
+	# angle-iron brackets, 40 mm, bolted down through the coping: a short
+	# upright, then cranked out over the wall's outer face at 45 degrees, the
+	# strands threaded through holes along the arm. Galvanised over new wire,
+	# rusted with old, painted drab on military wire.
+	var col: Color = {"clean": Color(0.55, 0.56, 0.54), "rust": Color(0.3, 0.17, 0.1), "military": Color(0.29, 0.3, 0.24)}.get(finish, Color(0.55, 0.56, 0.54))
+	var kind := "galvanised" if finish == "clean" else "steel"
+	var up := 0.1
+	var arm := Vector3(0, 0.34, lean * 0.34)
 	var xs: Array[float] = []
 	for i in n:
 		xs.append(-length * 0.5 + 0.15 + (length - 0.3) * float(i) / (n - 1))
 	for x in xs:
-		var foot := Vector3(x, y - 0.25, lean * 0.06)
-		k.beam(foot, Vector3(x, y, lean * 0.06), 0.035, 0.035, "steel", Color(0.3, 0.29, 0.27), false)
-		k.beam(Vector3(x, y, lean * 0.06), Vector3(x, y, lean * 0.06) + arm, 0.032, 0.032, "steel", Color(0.3, 0.29, 0.27), false)
+		var bend := Vector3(x, y + up, 0)
+		_angle(k, Vector3(x, y, 0), bend, lean, kind, col)
+		_angle(k, bend, bend + arm, lean, kind, col)
+		# the base plate and its two bolt heads
+		k.plate(Vector3(0.09, 0.006, 0.07), Vector3(x, y + 0.003, 0), kind, col)
+		for bx: float in [-0.03, 0.03]:
+			k.cyl(0.008, 0.008, 0.012, Vector3(x + bx, y + 0.01, 0.02), "steel", Color(0.3, 0.29, 0.27), Vector3.ZERO, 6, false)
 	for s in strands:
-		var f := float(s + 1) / strands
-		var off := Vector3(0, y, lean * 0.06) + arm * f + Vector3(0, 0.02, 0)
+		var f := (float(s) + 0.6) / strands
+		var off := Vector3(0, y + up, 0) + arm * f + Vector3(0, 0.012, 0)
 		barbed(k, Vector3(xs[0], off.y, off.z), Vector3(xs[xs.size() - 1], off.y, off.z), 0.025, 0.11, finish)
 
 
+## A length of 40 mm angle iron from `a` to `b`: two flanges at right angles,
+## one facing out over the wall (`lean`'s side), one along it.
+static func _angle(k: BuildingKit, a: Vector3, b: Vector3, lean: float, kind: String, col: Color) -> void:
+	var ax := Vector3(0.017, 0, 0)
+	var az := Vector3(0, 0, -0.017 * lean)
+	k.bar(a, b, 0.04, 0.005, kind, col, false)
+	k.bar(a + ax + az, b + ax + az, 0.005, 0.04, kind, col, false)
+
+
 ## A wire along `pts`: a thin three-sided tube, its frame carried along so it
-## doesn't twist. (The concertina in WorksModels is wound from the same.)
+## doesn't twist.
 static func strand(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, r: float) -> void:
 	var up := Vector3.UP
 	var last: Array = []
@@ -223,32 +243,58 @@ static func strand(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVect
 		last = ring
 
 
-## Barbs every `every` metres along the wire: little four-pointed stars of
-## sharpened wire (razor tape's blades read the same from any distance).
-static func barbs(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, every: float, size: float, rng: RandomNumberGenerator) -> void:
+## Razor tape along `pts`: a flat steel strip crimped round a core wire, its
+## edges punched out into blades in clusters every few centimetres, two
+## pointing forward and two back. The strip's broad side faces across `axis`
+## (the coil's axis, so the blades stand out sideways from each loop) and
+## turns a little as it goes, as tape does when it's wound, so the light
+## catches some blades and not others.
+static func razor(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, axis: Vector3, rng: RandomNumberGenerator, every := 0.04) -> void:
+	var hw := 0.0075
+	var ht := 0.0022
 	var run := 0.0
-	for i in range(1, pts.size()):
-		var seg := pts[i] - pts[i - 1]
-		run += seg.length()
+	var dist := 0.0
+	var twist := rng.randf() * TAU
+	var last: Array = []
+	for i in pts.size():
+		var t := (pts[mini(i + 1, pts.size() - 1)] - pts[maxi(i - 1, 0)]).normalized()
+		var w := axis - t * t.dot(axis)
+		if w.length_squared() < 1e-6:
+			w = t.cross(Vector3.UP)
+		w = w.normalized()
+		if i > 0:
+			dist += pts[i].distance_to(pts[i - 1])
+		w = w.rotated(t, 0.55 * sin(dist * 7.0 + twist))
+		var f := t.cross(w).normalized()
+		var ring: Array = [[pts[i] + w * hw, w], [pts[i] + f * ht, f], [pts[i] - w * hw, -w], [pts[i] - f * ht, -f]]
+		if not last.is_empty():
+			for k in 4:
+				var k2 := (k + 1) % 4
+				var a0: Array = last[k]
+				var a1: Array = last[k2]
+				var b0: Array = ring[k]
+				var b1: Array = ring[k2]
+				_tri(v, n, a0[0], b0[0], b1[0], a0[1], b0[1], b1[1])
+				_tri(v, n, a0[0], b1[0], a1[0], a0[1], b1[1], a1[1])
+		last = ring
+		if i == 0:
+			continue
+		run += pts[i].distance_to(pts[i - 1])
 		if run < every:
 			continue
 		run = 0.0
-		var t := seg.normalized()
-		var s := t.cross(Vector3.UP if absf(t.y) < 0.9 else Vector3.RIGHT).normalized()
-		var u := s.cross(t)
-		var a := rng.randf() * TAU
-		var d1 := (s * cos(a) + u * sin(a)) * size
-		var d2 := (s * -sin(a) + u * cos(a)) * size
+		# a cluster: each edge of the strip cut into a forward and a back blade,
+		# the tips bent a hair out of the strip's plane
 		var p := pts[i]
-		for d in [d1, d2]:
-			var tip0: Vector3 = p + d
-			var tip1: Vector3 = p - d
-			var w: Vector3 = t * size * 0.35
-			var nn: Vector3 = (d as Vector3).cross(t).normalized()
-			_tri(v, n, tip0, p + w, tip1, nn, nn, nn)
-			_tri(v, n, tip0, tip1, p + w, -nn, -nn, -nn)
-			_tri(v, n, tip0, p - w, tip1, -nn, -nn, -nn)
-			_tri(v, n, tip0, tip1, p - w, nn, nn, nn)
+		for side: float in [-1.0, 1.0]:
+			for dir: float in [-1.0, 1.0]:
+				var root := p + w * side * hw * 0.8
+				var tip := p + w * side * (hw + rng.randf_range(0.012, 0.016)) + t * dir * rng.randf_range(0.014, 0.019) + f * rng.randf_range(-0.003, 0.003)
+				var a := root + t * dir * 0.0015
+				var b := root - t * dir * 0.011
+				var nf := (tip - a).cross(b - a).normalized()
+				_tri(v, n, a, b, tip, nf, nf, nf)
+				_tri(v, n, a, b, tip, -nf, -nf, -nf)
 
 
 ## A triangle (a, b, c) with per-corner normals, wound the way Godot draws

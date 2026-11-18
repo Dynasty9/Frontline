@@ -108,6 +108,23 @@ static func build(holder: Node3D, kind: String) -> void:
 			for i in 3:
 				var y := 0.1 + i * 0.06
 				BuildingWire.barbed(big, Vector3(-0.25, y, 0), Vector3(0.25, y, 0), 0.002, 0.11, ["clean", "rust", "military"][i])
+		"wire_razor":
+			# a metre of the security fence's razor coil (military, behind) and the
+			# rebels' rusted coil (in front), twice life size
+			var big := k.moved(Transform3D(Basis.from_scale(Vector3.ONE * 2.0), Vector3(0, 0.1, 0)))
+			big.part(BuildingFences._razor_coil(1.0, 0.0), "wire_military", Transform3D(Basis.IDENTITY, Vector3(0, 0, -0.3)), null, false)
+			big.part(BuildingFences._razor_coil(1.0, 0.0), "wire_rust", Transform3D(Basis.IDENTITY, Vector3(0.1, -0.02, 0.3)), null, false)
+		"wire_concertina":
+			# three metres of the trench line's triple concertina, rebel rust
+			k.part(WorksModels._concertina(3.0, 0), "wire_rust", Transform3D.IDENTITY, null, true)
+		"wire_topping_close":
+			# the top of a wall with each finish of topping (clean, rust,
+			# military), twice life size
+			var big := k.moved(Transform3D(Basis.from_scale(Vector3.ONE * 2.0), Vector3.ZERO))
+			for i in 3:
+				var seg := big.moved(Transform3D(Basis.IDENTITY, Vector3((i - 1) * 1.05, 0, 0)))
+				seg.box(Vector3(1.0, 0.3, 0.3), Vector3(0, 0.15, 0), "concrete", Color(0.5, 0.49, 0.46))
+				BuildingWire.topping(seg, 1.0, 0.3, 1.0, 3, ["clean", "rust", "military"][i])
 		"wire_topping":
 			k.box(Vector3(4.0, 2.6, 0.5), Vector3(0, 1.3, 0), "concrete", Color(0.5, 0.49, 0.46))
 			var top := BuildingWalls.coping(k, 4.0, 0.5, 2.6, "concrete", Color(0.5, 0.49, 0.46))

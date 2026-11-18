@@ -129,16 +129,6 @@ static func _commit(v: PackedVector3Array, n: PackedVector3Array, uv := PackedVe
 static var _meshes := {}
 
 
-## A wire along `pts` (see BuildingWire.strand: the same wire as on walls).
-static func _wire_tube(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, r: float) -> void:
-	BuildingWire.strand(v, n, pts, r)
-
-
-## Barbs every `every` metres along the wire (see BuildingWire.barbs).
-static func _barbs(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, every: float, size: float, rng: RandomNumberGenerator) -> void:
-	BuildingWire.barbs(v, n, pts, every, size, rng)
-
-
 # --- the ground round a work -----------------------------------------------------------
 
 ## The earth trodden bare and spilled round the foot of a work, `hx` by `hz`
@@ -371,7 +361,7 @@ static func _concertina(L: float, v: int) -> ArrayMesh:
 	for ci in coils.size():
 		var c: Vector3 = coils[ci]
 		var loops := int(L / 0.24) + (ci % 2)
-		var steps := loops * 18
+		var steps := loops * 24
 		var ph := rng.randf() * TAU
 		var pts := PackedVector3Array()
 		var kink := rng.randf() * TAU
@@ -390,8 +380,7 @@ static func _concertina(L: float, v: int) -> ArrayMesh:
 			pts.append(Vector3(x + lean, c.y + rr * sin(a) * 0.92 - sag, c.z + rr * cos(a)))
 		# razor tape: a 2.5 mm core wire with steel tape crimped round it, the
 		# tape punched into blades in clusters every few centimetres
-		_wire_tube(vv, nn, pts, 0.0068)
-		_barbs(vv, nn, pts, 0.045, 0.022, rng)
+		BuildingWire.razor(vv, nn, pts, Vector3.RIGHT, rng)
 	# the strained strands along the picket rows
 	for sz in [-0.62, 0.62]:
 		var pts2 := PackedVector3Array()

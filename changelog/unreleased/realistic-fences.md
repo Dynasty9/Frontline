@@ -20,6 +20,10 @@ file = "barbed-wire.jpg"
 caption = "Barbed wire up close (four times life size): the armies' issue wire, rusted wire, new galvanised"
 
 [[screenshots]]
+file = "razor-wire.jpg"
+caption = "Razor wire as flat bladed tape (twice life size); a triple concertina; wall-top brackets of angle iron in each finish (twice life size)"
+
+[[screenshots]]
 file = "wire-and-military.jpg"
 caption = "The three wire finishes, strung on posts and along a farm's rails; the Rebels' improvised HQ fence; concertina obstacles, the Coalition's and the Rebels'"
 
@@ -45,6 +49,9 @@ caption = "Six of the garden and field fences, each with its gate"
   wires coiled round them, their four cut ends standing out as sharp points at odd angles.
   It comes bright and new along compound walls, rusted brown and slack on farms and the Rebels' wire, and in the
   Coalition's dull issue finish. Concertina obstacles are pulled out so their loops cross, as clipped coils do.
+- **Razor wire** on security fences and concertina is flat steel tape, edged with clusters of sharp blades that
+  catch the light as the tape turns. Walls are topped with angle-iron brackets bolted through the coping and
+  cranked out over the street, galvanised, rusted or painted drab to match their wire.
 - Fences have grass growing up through their feet, paint gone chalky, a picket missing here, a board kicked out
   there, and they follow the ground where it slopes.
 - Chain-link and mesh are see-through and fade to a grey veil at a distance, as the real thing does.
