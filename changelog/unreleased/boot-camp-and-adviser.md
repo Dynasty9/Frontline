@@ -3,6 +3,15 @@ title = "Boot Camp, and an adviser for Play vs AI"
 summary = "New to Frontline? Boot Camp teaches command a step at a time, and in Play vs AI an adviser points you at the nearest town and says a quiet word when supply piles up or squads stand idle."
 kind = "new"
 
+[[videos]]
+file = "tutorial-transitions.webm"
+poster = "tutorial-transitions.jpg"
+caption = "The same Boot Camp sequence before, then after: new instructions replace stale banners as training advances. Autopilot demonstration at normal simulation speed."
+
+[[screenshots]]
+file = "tutorial-before-after.jpg"
+caption = "Matched training views: the old camera message above, the current selection instruction below."
+
 [[screenshots]]
 file = "boot-camp-first-step.jpg"
 caption = "Boot Camp's first step: the objective names your keys, and Sergeant Hale says how"
