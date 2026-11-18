@@ -1409,6 +1409,10 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 			_cross(k, m, Vector3(0.75, 2.6, 4.45), Vector3(0, 0, 1))
 			for sy in [0.95, 1.25]:
 				VehicleFrames.step(k, m, Vector3(-0.2, sy, 4.62), Vector2(0.9, 0.3), Vector3.ZERO, "gunmetal_w", null)
+			# (the treads carried by a stringer at each end, hung from the body's
+			# bottom rail and leaning out: alone they floated behind the bumper)
+			for x: float in ([] if k.wreck else [-0.66, 0.26]):
+				VehicleFrames.beam(k, m, Vector3(x, 0.9, 4.73), Vector3(x, 1.52, 4.44), 0.014, 0.05, "gunmetal_w")
 			k._box(m, Vector3(1.0, 0.3, 0.9), Vector3(0, 3.38, -1.2), "gunmetal_w")
 			k._box(m, Vector3(0.6, 0.2, 0.6), Vector3(0.4, 3.32, 2.6), c)
 			_cross(k, m, Vector3(0, 3.235, 1.0), Vector3.UP)
@@ -1431,8 +1435,25 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 			var tilt := VehicleCargo.tilt_colour(k, m, CANVAS_TAN)
 			VehicleCloth.canopy(k, m, [Vector2(-1.25, 2.1), Vector2(-1.12, 3.2), Vector2(-0.95, 3.3), Vector2(0.95, 3.3), Vector2(1.12, 3.2), Vector2(1.25, 2.1)], [-2.0, -1.6, -0.42, 0.76, 1.94, 3.12, 4.30, 4.38], tilt)
 			var strap := tilt.darkened(0.25)
+			# Over each bow the roof is cinched down by a webbing strap from
+			# eave to eave, lying on the cloth as it rounds the roof's edges and
+			# buckled to the eave rails, so a side curtain rolls up under it (a
+			# wreck's keep the old canvas battens).
+			var over: Array = []
+			var section: Array[Vector2] = [Vector2(-1.25, 2.1), Vector2(-1.12, 3.2), Vector2(-0.95, 3.3), Vector2(0.95, 3.3), Vector2(1.12, 3.2), Vector2(1.25, 2.1)]
+			for j in range(1, section.size() - 1):
+				var d0 := section[j - 1]
+				var d1 := section[j + 1]
+				var d := (d1 - d0).normalized()
+				over.append(section[j] + Vector2(-d.y, d.x) * 0.004)
 			for i in 6:
 				var z := -1.6 + i * 1.18
+				if not k.wreck:
+					var path: Array = []
+					for q: Vector2 in over:
+						path.append(Vector3(q.x, q.y, z))
+					VehicleCloth.strap(k, m, path, 0.06, strap, Vector3.BACK)
+					continue
 				k._box(m, Vector3(1.92, 0.03, 0.08), Vector3(0, 3.31, z), "canvas_white", strap, Vector3.ZERO, false)
 				for s in [-1.0, 1.0]:
 					_plate(k, m, Vector3(s * 1.262, 2.1, z), Vector3(s * 1.132, 3.2, z), 0.08, 0.03, "canvas_white", strap, Vector3.BACK, false)

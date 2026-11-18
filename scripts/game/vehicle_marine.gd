@@ -100,10 +100,17 @@ static func bow_eye(k: VehicleModels, parent: Node3D, center: Vector3, inner: fl
 ## `cap` colours the end bosses (null: the body's colour, a shade darker).
 ## `line`, when finite, hangs it from that point (a cleat or rail) by a line
 ## from its upper end; `line_col` colours the line.
-static func fender(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, rotation := Vector3.ZERO, col := Color(0.86, 0.86, 0.83), cap = null, line := Vector3.INF, style := "cylinder", mat := "plain", line_col := Color(0.5, 0.45, 0.35)) -> void:
+## An inflatable fender is moulded PVC ("coated": smooth, a soft sheen, its
+## colour right through, so it scuffs but never chips like the hull's paint);
+## its lines are laid rope. (A wreck's keep the plain finish and the cloth
+## that burns away, as they always had.)
+static func fender(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, rotation := Vector3.ZERO, col := Color(0.86, 0.86, 0.83), cap = null, line := Vector3.INF, style := "cylinder", mat := "coated", line_col := Color(0.5, 0.45, 0.35)) -> void:
 	assert(style in ["cylinder", "tyre"])
 	var basis := Basis.from_euler(rotation)
 	var up := basis.y if basis.y.dot(Vector3.UP) >= 0.0 else -basis.y
+	if k.wreck and mat == "coated":
+		mat = "plain"
+	var cord := "canvas" if k.wreck else "rope"
 	if style == "tyre":
 		var section := radius * 0.444
 		var width := maxf(length, 0.01)
@@ -115,9 +122,9 @@ static func fender(k: VehicleModels, parent: Node3D, center: Vector3, radius: fl
 			crown = basis.x
 		var rope := maxf(0.008, radius * 0.04)
 		var over := center + crown * (radius + rope * 0.6)
-		VehicleFrames.tube(k, parent, over - basis.y * width * 0.55, over + basis.y * width * 0.55, rope, "canvas", line_col, 4, false)
+		VehicleFrames.tube(k, parent, over - basis.y * width * 0.55, over + basis.y * width * 0.55, rope, cord, line_col, 4, false)
 		if line.is_finite():
-			VehicleFrames.tube(k, parent, over, line, rope, "canvas", line_col, 4, false)
+			VehicleFrames.tube(k, parent, over, line, rope, cord, line_col, 4, false)
 		return
 	var half := length * 0.5
 	k._add(parent, Res.capsule(radius, length, 12), mat, col, center, rotation)
@@ -130,4 +137,4 @@ static func fender(k: VehicleModels, parent: Node3D, center: Vector3, radius: fl
 		k._add(parent, eye, mat, boss, at + basis.y * e * radius * 0.4, (basis * Basis(Vector3.BACK, PI / 2)).get_euler(), Vector3.ONE, false)
 	if line.is_finite():
 		var top := center + up * (half - radius * 0.13 + radius * 0.62)
-		VehicleFrames.tube(k, parent, top, line, maxf(0.006, radius * 0.08), "canvas", line_col, 4, false)
+		VehicleFrames.tube(k, parent, top, line, maxf(0.006, radius * 0.08), cord, line_col, 4, false)

@@ -1221,9 +1221,13 @@ static func _hilux(k: VehicleModels, team: int, seed: int, aa: bool) -> void:
 	# the cab roof glinted like a toy's from the battle camera). A wreck
 	# keeps the finish it was built in.
 	var fin := "car_paint" if k.wreck else "paint"
+	# (pressed panels: the bends of the bonnet and the nose shaded round, the
+	# bonnet crowned, as the civilian pickups' are; cut as flat blocks they
+	# read as a painted box beside them. A wreck keeps the cut look.)
+	var roll := 0.0 if k.wreck else VmCiv.ROLL_BOXY
 	VmCiv._xbody(k, m, "core_hlx_body", [-2.42, 0.5, 0.96, 0.5, 0.96, 1.13, -0.85, 1.12, -2.3, 1.02, -2.45, 0.86],
-		-hw, hw, 0.04, [[zf, wr, ar]], fin, col, 8, [0.22, 0.08, 0.0, 0.0])
-	VmCiv._xbody(k, m, "core_hlx_bed", [1.0, 0.52, 2.44, 0.52, 2.44, 0.86, 1.0, 0.86], -hw, hw, 0.03, [[zr, wr, ar]], fin, col)
+		-hw, hw, 0.04, [[zf, wr, ar]], fin, col, 8, [0.22, 0.08, 0.0, 0.0], roll)
+	VmCiv._xbody(k, m, "core_hlx_bed", [1.0, 0.52, 2.44, 0.52, 2.44, 0.86, 1.0, 0.86], -hw, hw, 0.03, [[zr, wr, ar]], fin, col, 8, [], roll)
 	_bx(k, m, Vector3(1.6, 0.6, 0.06), Vector3(0, 0.84, 0.98), "plain_dark")
 	# the bed: its walls, the top rails rolled over their edges, the wheel
 	# tubs, a ribbed floor in the body's paint, scuffed matt by years of
@@ -1432,8 +1436,10 @@ static func _humvee(k: VehicleModels, team: int, seed := 0) -> void:
 			VehicleRunningGear.wishbone(k, m, Vector3(s * 0.3, 0.45, z), Vector3(s * 0.66, wr - 0.06, z), Vector3(s * 0.3, 0.72, z - 0.05), Vector3(s * 0.66, wr + 0.12, z - 0.05), Vector2(0.08, 0.06), Vector2(0.07, 0.05), Vector3.ZERO, Vector3.ZERO, 0.06, false)
 	# the body: bonnet over the wings, the cab's lower half and the rear deck
 	# in one panel, the arches cut round the wheels
+	# (the bonnet's bend down into the grille shaded round and its top
+	# crowned, its chamfers crisp; a wreck keeps the cut look)
 	VmCiv._xbody(k, m, "core_hmv_body", [-2.42, 0.62, 2.46, 0.62, 2.47, 1.3, 0.92, 1.33, -0.8, 1.33, -2.32, 1.14, -2.46, 1.02],
-		-hw, hw, 0.04, [[zf, wr, ar], [zr, wr, ar]], cam, null, 8)
+		-hw, hw, 0.04, [[zf, wr, ar], [zr, wr, ar]], cam, null, 8, [], 0.0 if k.wreck else VmCiv.ROLL_BOXY)
 	_bx(k, m, Vector3(1.9, 0.5, 4.0), Vector3(0, 0.92, 0.0), "plain_dark")
 	# the wheels, their mud flaps
 	for s: float in [-1.0, 1.0]:
@@ -1451,6 +1457,8 @@ static func _humvee(k: VehicleModels, team: int, seed := 0) -> void:
 	# (laid on the bonnet's slope, its face 3 cm proud so the recessed core
 	# clears the panel, as the deck grilles stand; its slats across the car)
 	VehicleFittings.grille(k, m, Vector3(0.84, 1.316, -1.153), Vector2(0.36, 0.42), Vector3(-PI / 2 - 0.115, 0, 0), "gunmetal_w", null, 5)
+	# an air-recognition panel, folded, tied across the bonnet's raised middle
+	VehicleEquipment.recognition_panel(k, m, Vector3(0, 1.2512, -1.7506), Vector3(-0.115, 0, 0), true)
 	# the face: the slotted grille, headlights in the wing corners, the
 	# indicators, the bumper with its winch and lifting shackles
 	var nz := -2.46
@@ -1929,6 +1937,8 @@ static func _bradley(k: VehicleModels, team: int, seed := 0) -> void:
 	# the roof: the troop compartment's long cargo hatch hinged at its back
 	# edge, vision blocks
 	VehicleFittings.panel_hatch(k, m, Vector3(0, roof + 0.03, 2.05), Vector3(1.3, 0.06, 1.2), cam)
+	# an air-recognition panel, folded, tied down on the cargo hatch
+	VehicleEquipment.recognition_panel(k, m, Vector3(0, roof + 0.06, 2.1), Vector3.ZERO, true)
 	for s: float in [-1.0, 1.0]:
 		for z: float in [0.9, 1.5]:
 			_periscope(k, m, Vector3(s * 1.22, roof + 0.05, z), s * -PI / 2)

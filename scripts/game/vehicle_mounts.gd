@@ -72,6 +72,13 @@ static func gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float
 		cloth = BOOT.lerp(Color(0.31, 0.3, 0.22), rng.randf_range(0.0, 0.7)) if rng.randf() < 0.7 else BOOT.darkened(0.15)
 	# (a wreck's boot stays the three plain folds it has always been)
 	var n := 3 if k.wreck else maxi(1, folds)
+	# A boot is proofed canvas, rubberised against the rain and the dust the
+	# gun pumps in and out as it recoils: smooth and faintly glossy where
+	# cotton duck is dead matte. Its ties are webbing straps buckled round the
+	# casting and the barrel, a tighter weave with a sheen of its own. (A
+	# wreck's stays the duck that burns away.)
+	var cloth_kind := "canvas" if k.wreck else "coated"
+	var tie_kind := "canvas" if k.wreck else "webbing"
 	var step := length / n
 	for i in n:
 		var r0 := lerpf(radius, tied, float(i) / n) * (1.0 if i == 0 else (1.06 if k.wreck else 1.12))
@@ -81,13 +88,13 @@ static func gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float
 		var drop := 0.0 if k.wreck else (r1 - tied) * 0.35
 		# (the first fold's back end a centimetre into the casting's face)
 		# (sixteen sides: the folds' outline is what the camera reads)
-		k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, -drop, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), "canvas", cloth, 12 if k.wreck else 16)
+		k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, -drop, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), cloth_kind, cloth, 12 if k.wreck else 16)
 	var band := minf(0.035, length * 0.2)
-	k._cyl(mount, tied + 0.008, tied + 0.008, band, Vector3(0, 0, face - length + band * 0.5), Vector3(PI / 2, 0, 0), "canvas", cloth.darkened(0.25), 12, false)
+	k._cyl(mount, tied + 0.008, tied + 0.008, band, Vector3(0, 0, face - length + band * 0.5), Vector3(PI / 2, 0, 0), tie_kind, cloth.darkened(0.25), 12, false)
 	if k.wreck:
 		return
 	# the strap round the casting's end, over the first fold's back edge
-	k._cyl(mount, radius + 0.006, radius + 0.006, band, Vector3(0, 0, face - band * 0.5 - 0.004), Vector3(PI / 2, 0, 0), "canvas", cloth.darkened(0.25), 16, false)
+	k._cyl(mount, radius + 0.006, radius + 0.006, band, Vector3(0, 0, face - band * 0.5 - 0.004), Vector3(PI / 2, 0, 0), tie_kind, cloth.darkened(0.25), 16, false)
 
 
 ## Width is X. End caps stay within the authored envelope; front and back receive

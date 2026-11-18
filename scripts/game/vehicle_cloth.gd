@@ -62,10 +62,28 @@ static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Co
 	var last := rings[0].size() - 1
 	for side in [0, last]:
 		VehicleEquipment._rod(k, k.root, base + rings[0][side], base + rings[24][side], 0.009, "canvas_white", col.darkened(0.16), 6, false, 3)
+	if k.wreck:
+		# (a wreck's lashings stay the round cords they always were)
+		for index in lashings:
+			var cross_section: PackedVector3Array = rings[index]
+			for j in last:
+				VehicleEquipment._rod(k, k.root, base + cross_section[j] + Vector3(0, 0.012, 0), base + cross_section[j + 1] + Vector3(0, 0.012, 0), 0.012, "webbing", Color(0.18, 0.19, 0.13), 6, false, 3)
+		return
+	# Each lashing is a flat webbing strap from hem to hem, lying on the tarp
+	# where it pulls it into its waist and folding over its shoulders; a
+	# crew's come from whatever lot of straps it has (as restraints' do).
+	# (The tarp rises out of its waist either side of the strap's middle, a
+	# few millimetres within the strap's width, so the band lies 8 mm off
+	# the waist's own line to keep the cloth from showing through its edges.)
 	for index in lashings:
 		var cross_section: PackedVector3Array = rings[index]
-		for j in last:
-			VehicleEquipment._rod(k, k.root, base + cross_section[j] + Vector3(0, 0.012, 0), base + cross_section[j + 1] + Vector3(0, 0.012, 0), 0.012, "webbing", Color(0.18, 0.19, 0.13), 6, false, 3)
+		var webbing := VehicleCargo.kit_colour(rng, Color(0.18, 0.19, 0.13), VehicleCargo.KIT_STRAP, 0.6) if rng != null else Color(0.18, 0.19, 0.13)
+		var path: Array = []
+		for j in cross_section.size():
+			var d := cross_section[mini(j + 1, last)] - cross_section[maxi(j - 1, 0)]
+			var out := Vector3(-d.y, d.x, 0).normalized()
+			path.append(base + cross_section[j] + out * 0.008)
+		strap(k, k.root, path, 0.05, webbing, Vector3.BACK, 0.005)
 
 
 ## A sewn cloth panel in local XY. Edges stay on the frame while the centre
@@ -229,8 +247,12 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 			var r := 0.085
 			var at := Vector3(eave.x + out * r * 0.7, eave.y - r * 0.5, (z0 + z1) * 0.5)
 			roll(k, parent, at, r, z1 - z0 - 0.04, Vector3(PI / 2, 0, 0), side.darkened(0.04), "canvas_white")
+			# Two more webbing straps nearer its middle (the roll's own are
+			# near its ends), cinched onto the roll's flattened section: its
+			# top settled to ROLL_TOP of its radius, its underside where it
+			# rests, so a band's middle sits a little below the roll's axis.
 			for f: float in [-0.12, 0.12]:
-				VehicleEquipment._cyl(k, parent, r * 1.05, r * 1.05, 0.04, at + Vector3(0, 0, f * (z1 - z0)), Vector3(PI / 2, 0, 0), "canvas_white", col.darkened(0.35), 10, false, 0)
+				k._add(parent, VehicleEquipment._cylinder(1.0, 1.0, 0.04, 10, false, false), "webbing", col.darkened(0.35), at + Vector3(0, -r * (1.0 - ROLL_TOP) * 0.5, f * (z1 - z0)), Vector3(PI / 2, 0, 0), Vector3(r * 1.02, 1.0, r * (1.0 + ROLL_TOP) * 0.5 * 1.02), false)
 	# the hems sewn round the cover's front and back edges, over the end bows
 	for z: float in [float(bows[0]), float(bows[bows.size() - 1])]:
 		for i in profile.size() - 1:

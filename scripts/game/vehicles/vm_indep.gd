@@ -606,6 +606,9 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.lifting_eye(k, t, Vector3(s * 1.38, 0.86, -1.4), 0.0, 0.05)
 		VehicleFittings.lifting_eye(k, t, Vector3(s * 1.36, 0.86, 1.5), 0.0, 0.05)
 	k._box(t, Vector3(0.1, 0.06, 0.1), Vector3(0.0, 1.32, 1.55), "gunmetal_w", null, Vector3.ZERO, false)
+	# an air-recognition panel, folded, on the turret roof behind the
+	# commander's cupola, clear of the wind sensor's mast
+	VehicleEquipment.recognition_panel(k, t, Vector3(0.55, 0.862, 1.0), Vector3.ZERO, true)
 	# the bustle's stowage basket, the slat cage round it on its struts
 	VehicleMounts.basket(k, t, Vector3(0, 0.24, 2.3), Vector3(2.6, 0.44, 0.5))
 	VehicleCloth.roll(k, t, Vector3(-0.4, 0.44, 2.3), 0.17, 1.6, Z90, Color(0.33, 0.35, 0.24))
@@ -819,7 +822,11 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleDoors.lever(k, m, Vector3(0.5, 1.45, 3.78), Vector3.BACK, Vector3.DOWN, 0.12, 0.12, 0.025)
 	for hy: float in [1.1, 1.9]:
 		VehicleDoors.hinge(k, m, Vector3(-0.45, hy, 3.78), Vector3.BACK, Vector3.UP, 0.028, cam, col)
+	# (the tread held level by a stay at each end, back under it to the
+	# sloping lower plate: 15 cm behind the plate, it hung in the air)
 	VehicleFrames.step(k, m, Vector3(0.1, 0.82, 3.8), Vector2(0.9, 0.25), Vector3.ZERO, "gunmetal_w")
+	for x: float in ([] if k.wreck else [-0.3, 0.5]):
+		VehicleFrames.beam(k, m, Vector3(x, 0.805, 3.89), Vector3(x, 0.58, 3.41), 0.04, 0.012, "gunmetal_w")
 	k._team_mark(m, team, Vector3(1.345, 1.45, 0.3), Vector3(0.03, 0.26, 0.7))
 	k._team_mark(m, team, Vector3(-1.345, 1.45, 0.3), Vector3(0.03, 0.26, 0.7))
 	# the tactical number on each flank, between the forward bin and the panel
@@ -962,6 +969,9 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	var camo := VehicleCloth.camouflage(k)
 	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
 		VehicleCloth.net(k, m, net_at, Vector3(0.78, rng.randf_range(0.1, 0.17), 0.72), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
+	else:
+		# or, in its place, an air-recognition panel folded on the roof
+		VehicleEquipment.recognition_panel(k, m, Vector3(-0.42, 2.765, -1.3), Vector3.ZERO, true)
 	# behind the cab: the spare wheel upright in its frame, the air intake,
 	# the fuel tank on the left and the battery box on the right
 	VehicleWheels.spare(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, cam, col)
@@ -1020,13 +1030,24 @@ static func _zamak_tilt(k: VehicleModels, tarp: Color) -> void:
 	k._box(m, Vector3(2.36, 0.62, 0.02), Vector3(0, 2.27, back), "plain_dark", null, Vector3.ZERO, false)
 	if not shut:
 		VehicleCloth.roll(k, m, Vector3(0, 2.72, 3.76), 0.11, 2.3, Z90, tarp.darkened(0.1), "canvas_white")
+	# The roll's ties and the shut flap's lacing straps are webbing, the dark
+	# olive of the roll's own straps (a wreck's keep their old dark bars).
+	var tie := tarp.darkened(0.1).darkened(0.35)
 	for s: float in [-1.0, 1.0]:
 		k._box(m, Vector3(0.4, 0.05, 0.03), Vector3(s * 0.8, 2.05, back + 0.005), "wood_dark", null, Vector3.ZERO, false)
 		# the roll's ties, or the shut flap's lacing straps
-		if shut:
-			k._box(m, Vector3(0.03, 0.82, 0.02), Vector3(s * 0.55, 2.33, 3.73), "plain_dark", null, Vector3.ZERO, false)
+		if k.wreck:
+			if shut:
+				k._box(m, Vector3(0.03, 0.82, 0.02), Vector3(s * 0.55, 2.33, 3.73), "plain_dark", null, Vector3.ZERO, false)
+			else:
+				k._box(m, Vector3(0.03, 0.3, 0.03), Vector3(s * 0.55, 2.57, 3.79), "plain_dark", null, Vector3.ZERO, false)
+		elif shut:
+			# down the flap's face from the roof bow to the tailboard
+			VehicleCloth.strap(k, m, [Vector3(s * 0.55, 2.74, 3.724), Vector3(s * 0.55, 1.92, 3.724)], 0.03, tie, Vector3.RIGHT)
 		else:
-			k._box(m, Vector3(0.03, 0.3, 0.03), Vector3(s * 0.55, 2.57, 3.79), "plain_dark", null, Vector3.ZERO, false)
+			# the tails left hanging from the roll's buckled straps
+			var x := s * 0.69
+			VehicleCloth.strap(k, m, [Vector3(x, 2.66, 3.865), Vector3(x, 2.6, 3.868), Vector3(x, 2.43, 3.85)], 0.03, tie, Vector3.RIGHT)
 
 
 ## The Rebels' supply truck: drums, crates, a tarpaulined pile, sacks and
@@ -1101,6 +1122,10 @@ static func _zamak_repair(k: VehicleModels, cam: String, col) -> void:
 	# step; a shuttered locker on the left
 	VehicleCargo.body_door(k, m, Vector3(1.24, 2.15, 2.36), Vector2(0.72, 1.32), Vector3.RIGHT, 1, cam, col)
 	VehicleFrames.step(k, m, Vector3(1.38, 1.3, 2.36), Vector2(0.36, 0.6), Vector3.ZERO, "gunmetal_w", null)
+	# (braced from under its outer edge up to the body's bottom rail: alone it
+	# stuck out from under the floor like a shelf)
+	for z: float in ([] if k.wreck else [2.1, 2.62]):
+		VehicleFrames.beam(k, m, Vector3(1.5, 1.285, z), Vector3(1.245, 1.45, z), 0.012, 0.04, "gunmetal_w")
 	VehicleCargo.roller_shutter(k, m, Vector3(-1.24, 1.85, 2.35), Vector2(0.9, 0.7), Vector3.LEFT, cam, col)
 	# a ladder from the open deck up the back of the body, over the roof edge
 	VehicleCargo.rung_ladder(k, m, Vector3(-0.9, 1.44, 2.85), 3.23, Vector3.BACK, 0.3)
@@ -1140,8 +1165,13 @@ static func _zamak_medical(k: VehicleModels, cam: String, col) -> void:
 	VehicleMarkings.cross(k, m, Vector3(0, 2.25, 3.735), Vector2(0.8, 0.8), Vector3.ZERO, white, red, 0.75, 0.225, 0.02, "paint", false, false)
 	VehicleFrames.step(k, m, Vector3(0, 1.28, 3.9), Vector2(0.9, 0.22), Vector3.ZERO, "gunmetal_w")
 	VehicleFrames.step(k, m, Vector3(0, 1.02, 3.96), Vector2(0.9, 0.22), Vector3.ZERO, "gunmetal_w")
+	# (their stringers lean in to the body's bottom rail and hang from it:
+	# stopped short under the upper tread, the pair floated behind the box)
 	for s: float in [-1.0, 1.0]:
-		k._box(m, Vector3(0.04, 0.36, 0.04), Vector3(s * 0.45, 1.15, 3.93), "gunmetal_w", null, Vector3.ZERO, false)
+		if k.wreck:
+			k._box(m, Vector3(0.04, 0.36, 0.04), Vector3(s * 0.45, 1.15, 3.93), "gunmetal_w", null, Vector3.ZERO, false)
+		else:
+			VehicleFrames.beam(k, m, Vector3(s * 0.465, 0.97, 3.99), Vector3(s * 0.465, 1.46, 3.74), 0.03, 0.04, "gunmetal_w", null, false)
 
 
 ## Fuel tanker: the elliptical tank on its saddles with dished ends, manholes

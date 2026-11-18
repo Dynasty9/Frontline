@@ -32,18 +32,39 @@ static func mesh_glass(k: VehicleModels, parent: Node3D, mesh: Mesh, pos := Vect
 	distant.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 
 ## A cab's dash, two seats and the wheel, scaled into the cab. `seat_col` and
-## `seat_mat` trim the seats: olive canvas in a military cab, and a car's in
-## its own dark cloth.
-static func interior(k: VehicleModels, origin := Vector3.ZERO, scale := Vector3.ONE, seat_col := Color(0.18, 0.20, 0.13), seat_mat := "canvas") -> void:
+## `seat_mat` trim the seats: olive vinyl in a military cab (the wipe-clean
+## leathercloth trucks are trimmed in), and a car's in its own cloth. `rear`
+## seats a car's rear bench behind the front pair, in the same cloth.
+static func interior(k: VehicleModels, origin := Vector3.ZERO, scale := Vector3.ONE, seat_col := Color(0.24, 0.26, 0.17), seat_mat := "coated", rear := false) -> void:
 	var m := k._pivot(k.root, origin)
 	m.scale = scale
-	k._box(m, Vector3(2.10, 0.17, 0.34), Vector3(0, 2.03, -4.17), "plain_dark", Color(0.10, 0.12, 0.10))
+	# (wrecks are built as they always were: their seats burn away as the
+	# canvas ones did, round a plain dash and a bare rim)
+	var trim := "canvas" if k.wreck and seat_mat == "coated" else seat_mat
+	if k.wreck:
+		k._box(m, Vector3(2.10, 0.17, 0.34), Vector3(0, 2.03, -4.17), "plain_dark", Color(0.10, 0.12, 0.10))
+	else:
+		# The dash is a moulding whose padded top rolls over toward the
+		# sitters, not a sawn plank: its edges catch the light through the
+		# windscreen.
+		k._add(m, BevelMesh.make(Vector3(2.10, 0.17, 0.34), 0.05), "plain_dark", Color(0.10, 0.12, 0.10), Vector3(0, 2.03, -4.17))
 	for side: float in [-1.0, 1.0]:
-		seat(k, m, Vector3(side * 0.60, 1.99, -3.49), Vector3(0.57, 0.58, 0.54), Vector3.ZERO, seat_col, seat_mat, true)
-	# Steering wheel, spokes, column and an instrument binnacle. The rim is the
-	# shared steering wheel's torus: a 2 cm grip seen through a cab window needs
-	# no more than its 24 sections of six sides.
-	k._add(m, Res.torus(0.16, 0.18), "rubber", null, Vector3(-0.60, 2.26, -3.97), Vector3(0.65, 0, 0))
+		seat(k, m, Vector3(side * 0.60, 1.99, -3.49), Vector3(0.57, 0.58, 0.54), Vector3.ZERO, seat_col, trim, true)
+	if rear:
+		# The rear bench: its cushion and its back leaning away, in the same
+		# cloth (seen only through the rear doors' glass, it needs no frame).
+		k._add(m, BevelMesh.make(Vector3(1.9, 0.12, 0.55), 0.035), trim, seat_col, Vector3(0, 1.97, -2.67), Vector3.ZERO, Vector3.ONE, false)
+		k._add(m, BevelMesh.make(Vector3(1.86, 0.4, 0.12), 0.03), trim, seat_col.darkened(0.06), Vector3(0, 2.23, -2.4), Vector3(0.16, 0, 0), Vector3.ONE, false)
+	if k.wreck:
+		k._add(m, Res.torus(0.16, 0.18), "rubber", null, Vector3(-0.60, 2.26, -3.97), Vector3(0.65, 0, 0))
+	else:
+		# The gear lever between the seats and its knob.
+		VehicleBody.rod(k, m, Vector3(0, 1.9, -3.86), Vector3(0, 2.17, -3.8), 0.014, "metal_dark", null, 6, false, -1.0, false, false)
+		k._add(m, Res.sphere(0.035, 6), "plain_dark", Color(0.08, 0.08, 0.08), Vector3(0, 2.18, -3.8), Vector3.ZERO, Vector3.ONE, false)
+		# The steering wheel: the shared one, its rim a 2.9 cm grip on three
+		# spokes to the boss (a bare rim read as a hoop floating in the cab).
+		steering_wheel(k, m, Vector3(-0.60, 2.26, -3.97), 0.18, Vector3(0.65, 0, 0), "rubber")
+	# Column and instrument binnacle.
 	VehicleBody.rod(k, m, Vector3(-0.60, 1.97, -4.14), Vector3(-0.60, 2.26, -3.97), 0.035, "gunmetal_w", null, 8, true, -1.0, false, true)
 	k._box(m, Vector3(0.45, 0.13, 0.10), Vector3(-0.60, 2.17, -4.15), "rubber")
 	for x in [-0.73, -0.59, -0.47]:

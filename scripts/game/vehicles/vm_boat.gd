@@ -359,9 +359,12 @@ static func _tube_kit(k: VehicleModels, parent: Node3D, ax: Array, r: float, cz:
 	var hi := _offset(rs, (r + 0.012) * cos(0.88), (r + 0.012) * sin(0.88), cz)
 	var lo := _offset(rs, (r + 0.012) * cos(0.72), (r + 0.012) * sin(0.72), cz)
 	var prev: Vector3 = hi[0]
+	# The grab line is laid polyester rope rove through the tube's D-rings
+	# (a wreck's stays the cloth that burns away).
+	var line := "canvas" if k.wreck else "rope"
 	for i in range(1, rs.size()):
 		var q: Vector3 = hi[i] if i % 2 == 0 else lo[i]
-		_rod(k, parent, prev, q, 0.011, "canvas", Color(0.17, 0.17, 0.16), 5)
+		_rod(k, parent, prev, q, 0.011, line, Color(0.17, 0.17, 0.16), 5)
 		if i % 2 == 0:
 			k._box(parent, Vector3(0.07, 0.03, 0.07), q, mat, col.lightened(0.08), Vector3.ZERO, false)
 		prev = q

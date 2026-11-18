@@ -600,6 +600,8 @@ static func _hunter(k: VehicleModels, team: int, arm: String, seed := 0) -> void
 	for s in [-1.0, 1.0]:
 		_antenna(k, m, Vector3(s * 0.86, roof, 1.36), 1.3)
 		VehicleFittings.lamp_unit(k, m, Vector3(s * 0.35, roof + 0.05, -0.62), Vector3(0.16, 0.1, 0.1), -1.0, [Rect2(Vector2.ZERO, Vector2(0.13, 0.07))])
+	# an air-recognition panel, folded, on the roof behind the weapon station
+	VehicleEquipment.recognition_panel(k, m, Vector3(0, roof, 1.19), Vector3.ZERO, true)
 	# --- the cargo bed behind the capsule, fenders over the rear wheels
 	k._add(m, VehicleModels.loft("nato_matv_bed", [-1.2, 1.5, 1.2, 1.5, 1.2, 2.75, -1.2, 2.75], [-1.2, 1.5, 1.2, 1.5, 1.2, 2.78, -1.2, 2.78], 1.22, 1.46), cam, null, Vector3.ZERO)
 	for s in [-1.0, 1.0]:
@@ -834,6 +836,8 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.panel_hatch(k, m, Vector3(s * 0.48, roof + 0.03, 2.55), Vector3(0.72, 0.06, 0.95), cam)
 		for z in [1.75, 3.4]:
 			VehicleFittings.periscope(k, m, Vector3(s * 0.95, roof + 0.05, z), Vector3(0.14, 0.1, 0.12), Vector3(0, -s * PI / 2, 0))
+	# an air-recognition panel, folded, on the rear walkway
+	VehicleEquipment.recognition_panel(k, m, Vector3(0, roof + 0.006, 3.38), Vector3.ZERO, true)
 	# the rear: ramp with its door and the door's lever handle, hinges, lights
 	VehicleDoors.leaf(k, m, Vector3(1.75, 1.15, 0.08), Vector3(0, 1.4, 3.86), cam)
 	VehicleDoors.leaf(k, m, Vector3(0.6, 0.95, 0.04), Vector3(0.42, 1.48, 3.91), cam)
@@ -1154,7 +1158,11 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 	VehicleGlazing.rectangle(k, m, Vector2(0.24, 0.14), Vector3(0.2, 1.62, 3.85), Vector3.ZERO, false, null, 0.04)
 	for y in [0.88, 1.7]:
 		VehicleDoors.hinge(k, m, Vector3(-0.32, y, 3.82), Vector3.BACK, Vector3.UP, 0.04, "gunmetal_w")
+	# (the fold-down tread held level by a stay at each end, back under it to
+	# the sloping tail plate: on its own it stuck out like a shelf)
 	VehicleFrames.step(k, m, Vector3(0.2, 0.68, 3.9), Vector2(0.9, 0.3), Vector3.ZERO, "gunmetal_w", null)
+	for x: float in ([] if k.wreck else [-0.2, 0.6]):
+		_beam(k, m, Vector3(x, 0.665, 3.99), Vector3(x, 0.47, 3.51), 0.04, 0.012, "gunmetal_w")
 	for s in [-1.0, 1.0]:
 		VehicleMounts.basket(k, m, Vector3(s * 1.2, 1.32, 3.98), Vector3(0.62, .36, 0.36), "paint", STOW)
 		k._bag(m, Vector3(0.5, 0.42, 0.3), Vector3(s * 1.2, 1.56, 3.98), "canvas", BAG)
@@ -1767,6 +1775,9 @@ static func _hemtt_cab_detail(k: VehicleModels, paint: Color) -> void:
 	var rng := VehicleCargo.kit(k, m, net, 17)
 	if rng != null and VehicleCloth.camouflage(k) > 0.0 and rng.randf() < 0.5:
 		VehicleCloth.net(k, m, net, Vector3(1.0, 0.2, 0.7), Vector3.ZERO, rng)
+	else:
+		# or, in its place, an air-recognition panel folded beside the hatch
+		VehicleEquipment.recognition_panel(k, m, Vector3(-0.5, 2.905, -3.62), Vector3.ZERO, true)
 	k._box(m, Vector3(1.88, 0.035, 0.30), Vector3(0, 1.98, -4.67), "paint", paint.darkened(0.15), Vector3(0.12, 0, 0))
 	for s in [-1.0, 1.0]:
 		# Door recess, raised inner pressing, hinges and a grab handle.

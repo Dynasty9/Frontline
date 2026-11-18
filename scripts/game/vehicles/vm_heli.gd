@@ -229,6 +229,39 @@ static func _door_rail(k: VehicleModels, p: Node3D, h: Hull, z0: float, z1: floa
 		VehicleDoors.slide_rail(k, p, _skin(h, z0, z1, t0, t1, s), z1 - z0, grow, depth)
 
 
+## An open cabin doorway on the hull between z0..z1 and t0..t1, on the right
+## (sx 1), the left (-1) or both (0): the cabin dark beyond it, the floor's
+## worn edge at the sill (t0..floor_t) catching the light, and `seats` troop
+## seats facing out of it, as a Black Hawk's or a Chinook's are: each an
+## aluminium tube frame standing from the floor to the cabin roof with a
+## webbing pan (pan.x..pan.y) and back (pan.y..pan.z) slung between its rails.
+## The fuselage is a solid, so the cabin is laid on its skin a few millimetres
+## apart, back to front, which from the battle camera reads as a room behind
+## the door. The seats' webbing is kit-seeded: a crew re-slings a torn seat in
+## whatever webbing the depot has. Wrecks keep their doors shut.
+static func _cabin(k: VehicleModels, p: Node3D, h: Hull, key: String, z0: float, z1: float, t0: float, t1: float, floor_t: float, pan: Vector3, seats: int, web: Color, sx := 0.0) -> void:
+	_patch(k, p, h, key + "_dark", z0, z1, t0, t1, "plain_dark", Color(0.05, 0.05, 0.055), 0.006, 0.02, sx)
+	if floor_t > t0:
+		_patch(k, p, h, key + "_floor", z0, z1, t0, floor_t, "nonslip", Color(0.2, 0.205, 0.2), 0.009, 0.02, sx)
+	var pitch := (z1 - z0) / float(seats)
+	var half := minf(0.22, pitch * 0.5 - 0.03)
+	var alloy := Color(0.5, 0.52, 0.53)
+	for s: float in ([1.0, -1.0] if sx == 0.0 else [sx]):
+		for i in seats:
+			var zc := z0 + pitch * (float(i) + 0.5)
+			var tag := "%s_s%d%s" % [key, i, "r" if s > 0.0 else "l"]
+			var c := web
+			var rng := VehicleCargo.kit(k, p, h.pt(zc, pan.y), 61 + i)
+			if rng != null:
+				c = VehicleCargo.kit_colour(rng, web, VehicleCargo.KIT_STRAP, 0.7)
+			_patch(k, p, h, tag + "b", zc - half, zc + half, pan.y, pan.z, "webbing", c, 0.012, 0.02, s)
+			_patch(k, p, h, tag + "p", zc - half, zc + half, pan.x, pan.y - 0.03, "webbing", c.lightened(0.12), 0.013, 0.02, s)
+			for e: float in [-1.0, 1.0]:
+				var ze := zc + e * (half + 0.012)
+				_patch(k, p, h, tag + ("u" if e > 0.0 else "v"), ze - 0.016, ze + 0.016, floor_t, t1 - 0.02, "steel", alloy, 0.016, 0.02, s)
+			_patch(k, p, h, tag + "t", zc - half - 0.03, zc + half + 0.03, pan.z, pan.z + 0.05, "steel", alloy, 0.016, 0.02, s)
+
+
 ## The windscreen wipers on a nose windscreen (the patch over the hull's
 ## z0..z1 and t0..t1, one pane across the nose, its foot at z0): at each
 ## fraction `at` across it a dark arm parked up the glass from its pivot cap
@@ -716,15 +749,20 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 		var stripe: Color = Color(0.82, 0.8, 0.74) if (col as Color).v < 0.6 else Color(0.18, 0.24, 0.36)
 		_patch(k, m, h, "heli_lb_stripe", -1.9, 1.3, -1.25, -0.95, "car_paint", stripe, 0.01)
 	else:
-		_patch(k, m, h, "heli_lb_door", -0.92, -0.2, -2.55, 2.7, "plain", dark, 0.006)
+		# (the doorways are the cabin's dark, as the open cabins' are, not a
+		# grey panel: "plain" lifts so dark a tint to a mid grey; the seat
+		# backs seen through them are nylon-covered. Wrecks are as they were.)
+		var hole := "plain" if k.wreck or k.burnt else "plain_dark"
+		var hole_col := dark if k.wreck or k.burnt else Color(0.05, 0.05, 0.055)
+		_patch(k, m, h, "heli_lb_door", -0.92, -0.2, -2.55, 2.7, hole, hole_col, 0.006)
 		if v == 0:
-			_patch(k, m, h, "heli_lb_cabin", -0.12, 0.56, -2.4, 2.55, "plain", dark, 0.006)
+			_patch(k, m, h, "heli_lb_cabin", -0.12, 0.56, -2.4, 2.55, hole, hole_col, 0.006)
 		else:
 			_patch(k, m, h, "heli_lb_rwin", -0.06, 0.48, 0.2, 2.3, "glass", null, 0.012)
 			_patch(k, m, h, "heli_lb_seam", 0.54, 0.57, -2.4, 2.6, "gunmetal_w", null, 0.008)
 		# seat backs, seen through the openings
 		for s in [-1.0, 1.0]:
-			k._box(m, Vector3(0.4, 0.62, 0.08), Vector3(s * 0.33, 1.22, -0.3), "plain", Color(0.2, 0.2, 0.18))
+			k._box(m, Vector3(0.4, 0.62, 0.08), Vector3(s * 0.33, 1.22, -0.3), "plain" if k.wreck or k.burnt else "fabric", Color(0.2, 0.2, 0.18) if k.wreck or k.burnt else Color(0.24, 0.25, 0.21))
 	# roof fairing over the mast and the engine intake behind it (a pressed
 	# cowling's top edge is rolled, so it catches the light from above)
 	k._add(m, VehicleModels.loft("heli_lb_fair", [-0.3, -0.85, 0.3, -0.85, 0.36, 0.2, 0.2, 0.78, -0.2, 0.78, -0.36, 0.2],
@@ -849,9 +887,31 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 	for z in [-5.2, -3.7, -2.8, -0.8]:
 		_patch(k, m, h, "heli_gh_seam%d" % int(z * 10), z - 0.014, z + 0.014, -1.7, 0.96, "gunmetal_w", null, 0.008)
 	_patch(k, m, h, "heli_gh_seamb", -2.8, -0.8, -1.72, -1.66, "gunmetal_w", null, 0.008)
-	_patch(k, m, h, "heli_gh_gunwin", -3.5, -2.92, -0.3, 0.8, "plain", dark, 0.006)
-	_patch(k, m, h, "heli_gh_dwin", -2.45, -1.2, -0.05, 0.76, "glass", null, 0.012)
-	_door_rail(k, m, h, -2.85, 0.3, 0.9, 0.98, 0.02)
+	# (the gunners' open windows dark like the cabin behind the doors; a
+	# wreck's as it was)
+	_patch(k, m, h, "heli_gh_gunwin", -3.5, -2.92, -0.3, 0.8, "plain" if k.wreck or k.burnt else "plain_dark", dark if k.wreck or k.burnt else Color(0.05, 0.05, 0.055), 0.006)
+	# the Ghost Hawk flies with its cabin doors slid back, the troops sat in
+	# the doorways on outward-facing seats: the dark cabin, its floor and two
+	# seats a side show where the door was; the door rides outboard on its
+	# rail over the cabin's rear, its window with it, the rail run on to it.
+	# A crew shuts a door for the transit leg, about one side in four (from
+	# the kit seed), so a flight of them isn't one mould. Wrecks stay shut.
+	var slid: Array[float] = [0.0, 0.0]
+	for si in 2:
+		var s := 1.0 if si == 0 else -1.0
+		if k.wreck or k.burnt:
+			continue
+		var rng := VehicleCargo.kit(k, m, Vector3(s, 1.5, -2.0), 71)
+		slid[si] = 0.0 if rng != null and rng.randf() < 0.25 else 1.35
+		if slid[si] > 0.0:
+			_cabin(k, m, h, "heli_gh_cab", -2.78, -1.47, -1.64, 0.92, -1.3, Vector3(-0.8, -0.62, 0.02), 2, Color(0.36, 0.34, 0.26), s)
+			_patch(k, m, h, "heli_gh_door", -2.8 + slid[si], -0.8 + slid[si], -1.66, 0.93, mat, col, 0.03, 0.01, s)
+			_patch(k, m, h, "heli_gh_dwino", -2.45 + slid[si], -1.2 + slid[si], -0.05, 0.76, "glass", null, 0.042, 0.03, s)
+			_door_rail(k, m, h, -2.85, 0.6, 0.9, 0.98, 0.02, 0.03, s)
+	for si in 2:
+		if slid[si] == 0.0:
+			_patch(k, m, h, "heli_gh_dwin", -2.45, -1.2, -0.05, 0.76, "glass", null, 0.012, 0.03, 1.0 if si == 0 else -1.0)
+			_door_rail(k, m, h, -2.85, 0.3, 0.9, 0.98, 0.02, 0.03, 1.0 if si == 0 else -1.0)
 	# the top fairing over the gearbox, the engines either side of it; their
 	# top edges are broken, as the cowlings' formed panels are, not knife-sharp
 	k._add(m, VehicleModels.loft("heli_gh_top", [-0.75, -3.7, 0.75, -3.7, 0.98, -2.9, 0.98, 0.9, 0.6, 1.8, -0.6, 1.8, -0.98, 0.9, -0.98, -2.9],
@@ -879,7 +939,8 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 		# steps, the cabin door's grab handle, the navigation lights
 		VehicleFrames.step(k, m, Vector3(s * 1.2, 0.7, -4.6), Vector2(0.12, 0.3))
 		VmPlane.nav_light(k, m, Vector3(s * 1.12, 2.3, -4.2), Vector3(0.05, 0.05, 0.06), s)
-		VehicleDoors.pull(k, m, Vector3(s * 1.1, 1.4, -2.65), Vector3(s, 0, 0), Vector3.BACK, 0.3)
+		var ds: float = slid[0 if s > 0.0 else 1]
+		VehicleDoors.pull(k, m, Vector3(s * (1.1 + ds * 0.022), 1.4, -2.65 + ds), Vector3(s, 0, 0), Vector3.BACK, 0.3)
 	# the tail pylon, the canted tail rotor high on its right, the stabilator
 	k._add(m, VehicleModels.extrude_x("heli_gh_pylon", [6.3, 2.25, 7.85, 2.2, 8.32, 4.3, 7.62, 4.42], -0.14, 0.14, 0.04), mat, col, Vector3.ZERO)
 	# the Army serial on the pylon, low-visibility grey on the black; the
@@ -966,7 +1027,14 @@ static func _huron(k: VehicleModels, team: int) -> void:
 	_patch(k, m, h, "heli_hu_sidep", -6.4, -6.33, -0.55, 0.86, mat, col, 0.022, 0.02)
 	for z in [-5.58, -4.72]:
 		_patch(k, m, h, "heli_hu_dseam%d" % int(-z * 10), z - 0.014, z + 0.014, -1.85, 0.92, "gunmetal_w", null, 0.008, 0.03, 1.0)
-	_patch(k, m, h, "heli_hu_dwin", -5.42, -4.88, -0.15, 0.6, "glass", null, 0.012, 0.05, 1.0)
+	var hrng := VehicleCargo.kit(k, m, Vector3(1.3, 2.0, -5.15), 73)
+	if k.wreck or k.burnt or (hrng != null and hrng.randf() < 0.25):
+		_patch(k, m, h, "heli_hu_dwin", -5.42, -4.88, -0.15, 0.6, "glass", null, 0.012, 0.05, 1.0)
+	else:
+		# the crew door's upper half slid away, as a Chinook's flies open (a
+		# crew shuts it about one sortie in four): the dark cabin and the red
+		# webbing troop bench along its far wall
+		_cabin(k, m, h, "heli_hu_cab", -5.54, -4.76, -0.7, 0.86, -0.7, Vector3(-0.68, -0.48, 0.32), 2, Color(0.44, 0.19, 0.15), 1.0)
 	_patch(k, m, h, "heli_hu_hatch", -5.42, -4.88, -0.15, 0.6, "glass", null, 0.012, 0.05, -1.0)
 	# the row of small cabin windows
 	for i in 6:
@@ -1181,10 +1249,22 @@ static func _mohawk(k: VehicleModels, team: int) -> void:
 	# the cabin door (right, forward), windows down both sides
 	for z in [-6.85, -5.25]:
 		_patch(k, m, h, "heli_mo_dseam%d" % int(-z * 10), z - 0.015, z + 0.015, -2.0, 1.7, "gunmetal_w", null, 0.01, 0.03, 1.0)
-	_door_rail(k, m, h, -6.9, -3.8, -2.05, -1.95, 0.014, 0.03, 1.0)
+	var slid := 0.0 if k.wreck or k.burnt else 1.6
+	var mrng := VehicleCargo.kit(k, m, Vector3(1.3, 1.6, -6.0), 72)
+	if mrng != null and mrng.randf() < 0.25:
+		slid = 0.0
+	if slid > 0.0:
+		# the cabin door slid back along its sill rail, as the Merlin flies
+		# with it open: the dark cabin, its floor and three troop seats facing
+		# out of it, the door outboard over the cabin's next window
+		_cabin(k, m, h, "heli_mo_cab", -6.82, -5.28, -1.98, 1.68, -1.35, Vector3(-0.75, -0.45, 0.7), 3, Color(0.43, 0.41, 0.32), 1.0)
+		_patch(k, m, h, "heli_mo_door", -6.85 + slid, -5.25 + slid, -2.0, 0.55, lo[0], lo[1], 0.03, 0.01, 1.0)
+		_patch(k, m, h, "heli_mo_doorhi", -6.85 + slid, -5.25 + slid, 0.55, 1.7, hi[0], hi[1], 0.03, 0.01, 1.0)
+		_patch(k, m, h, "heli_mo_dwin", -6.35 + slid, -5.75 + slid, 0.15, 0.9, "glass", null, 0.042, 0.05, 1.0)
+	_door_rail(k, m, h, -6.9, -3.8 + slid * 0.14, -2.05, -1.95, 0.014, 0.03, 1.0)
 	for i in 6:
 		var zc := -6.05 + i * 1.32
-		_patch(k, m, h, "heli_mo_cw%d" % i, zc - 0.3, zc + 0.3, 0.15, 0.9, "glass", null, 0.012)
+		_patch(k, m, h, "heli_mo_cw%d" % i, zc - 0.3, zc + 0.3, 0.15, 0.9, "glass", null, 0.012, 0.03, -1.0 if slid > 0.0 and i == 0 else 0.0)
 	# the ramp: hinge line, its edges
 	_patch(k, m, h, "heli_mo_hinge", 1.55, 1.65, 7.6, 10.4, "gunmetal_w", null, 0.012, 0.03, 1.0)
 	for t in [7.7, 10.3]:
@@ -1547,9 +1627,20 @@ static func _orca(k: VehicleModels, team: int, armed: bool) -> void:
 	# the sliding doors and a window behind them
 	for z in [-3.8, -2.6, -0.65]:
 		_patch(k, m, h, "heli_or_seam%d" % int(-z * 100), z - 0.014, z + 0.014, -2.6, 2.4, "gunmetal_w", null, 0.008)
-	_patch(k, m, h, "heli_or_dwin", -2.3, -1.0, 0.3, 1.85, "glass", null, 0.012)
-	_patch(k, m, h, "heli_or_rwin", -0.42, 0.15, 0.45, 1.7, "glass", null, 0.012)
-	_door_rail(k, m, h, -2.65, 0.6, 2.35, 2.45, 0.014)
+	# the transport flies with its doors slid back over the rear windows (a
+	# crew shuts one about one side in four), the dark cabin and two troop
+	# seats in each doorway; the armed one keeps them shut, its pylons
+	# standing where an open door would ride
+	for s: float in [1.0, -1.0]:
+		var rng := VehicleCargo.kit(k, m, Vector3(s, 1.4, -2.0), 74)
+		if not armed and not k.wreck and not k.burnt and not (rng != null and rng.randf() < 0.25):
+			_cabin(k, m, h, "heli_or_cab", -2.58, -1.47, -2.55, 2.32, -1.7, Vector3(-0.6, -0.25, 1.4), 2, Color(0.36, 0.34, 0.26), s)
+			_patch(k, m, h, "heli_or_door", -1.45, 0.5, -2.6, 2.33, mat, col, 0.03, 0.01, s)
+			_patch(k, m, h, "heli_or_dwino", -1.15, 0.15, 0.3, 1.85, "glass", null, 0.042, 0.03, s)
+		else:
+			_patch(k, m, h, "heli_or_dwin", -2.3, -1.0, 0.3, 1.85, "glass", null, 0.012, 0.03, s)
+			_patch(k, m, h, "heli_or_rwin", -0.42, 0.15, 0.45, 1.7, "glass", null, 0.012, 0.03, s)
+		_door_rail(k, m, h, -2.65, 0.6, 2.35, 2.45, 0.014, 0.03, s)
 	# the roof fairing with the engine intakes and exhausts
 	k._add(m, VehicleModels.loft("heli_or_roof", [-0.62, -3.6, 0.62, -3.6, 0.85, -2.6, 0.85, 1.0, 0.5, 2.1, -0.5, 2.1, -0.85, 1.0, -0.85, -2.6],
 		[-0.3, -3.0, 0.3, -3.0, 0.56, -2.2, 0.56, 0.7, 0.28, 1.6, -0.28, 1.6, -0.56, 0.7, -0.56, -2.2], 2.08, 2.86, 0.08), mat, col, Vector3.ZERO)

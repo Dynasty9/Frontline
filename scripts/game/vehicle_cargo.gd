@@ -642,10 +642,45 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 					k._box(m, Vector3(bw + 0.004, 0.008, bd + 0.004), at + Vector3(0, ph * 0.5 - minf(0.05, ph * 0.22), 0), "plain_dark", null, Vector3.ZERO, false)
 					for e: float in [-1.0, 1.0]:
 						var out := Vector3(0, 0, e * (bd + reach) * 0.5) if ends_z else Vector3(e * (bw + reach) * 0.5, 0, 0)
-						k._box(m, handle, at + out + Vector3(0, ph * 0.2, 0), "gunmetal_w", null, Vector3.ZERO, false)
+						var slide := 0.0
+						# (a wreck's stay where they always were)
+						if not ends_z and not straps.is_empty() and not k.wreck and ((i == 0 and e < 0.0) or (i == nx - 1 and e > 0.0)):
+							slide = _handle_clear(at.z, handle.z, bd, straps)
+							if is_nan(slide):
+								continue
+						k._box(m, handle, at + out + Vector3(0, ph * 0.2, slide), "gunmetal_w", null, Vector3.ZERO, false)
 	if not straps.is_empty():
 		# (folded over the top boxes' own bevelled edges, see Res.box; down a
 		# crate's sides it bridges from batten to batten, which stand 8 mm
 		# proud of its boards, rather than running through them)
 		restraints(k, m, Vector3(0, lift, 0), Vector3(size.x - gx + (0.016 if wood else 0.0), ph * layers, size.z), straps, 0.045, strap, clampf(minf(bw, minf(ph, bd)) * 0.16, 0.0025, 0.035))
 	k._fold(m)
+
+
+## A box's carrying handle on the stack's strapped side (its middle at `z`,
+## `length` long, on a face `depth` deep): a strap cinched down that side
+## runs flat over the face, so the handle stands to one side of it, where
+## the crew can still get a hand to it. How far it moves along the face (0
+## where no strap crosses it), or NAN where the face is too short for it to
+## clear any strap (a strap the 45 mm width the stack's restraints use).
+static func _handle_clear(z: float, length: float, depth: float, straps: Array) -> float:
+	var clear := length * 0.5 + 0.0225 + 0.008
+	var room := depth * 0.5 - length * 0.5 - 0.01
+	var crossed := false
+	for s: float in straps:
+		if absf(z - s) < clear:
+			crossed = true
+	if not crossed:
+		return 0.0
+	for s: float in straps:
+		for side: float in [1.0, -1.0]:
+			var to := s + side * clear - z
+			if absf(to) > room:
+				continue
+			var free := true
+			for o: float in straps:
+				if absf(z + to - o) < clear - 0.0001:
+					free = false
+			if free:
+				return to
+	return NAN

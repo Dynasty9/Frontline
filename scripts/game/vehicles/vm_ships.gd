@@ -480,18 +480,22 @@ static func _bitts(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float, sc: fl
 	VehicleMarine.mooring(k, m, pos, Vector3(0.62, 0.35, 0.24) * sc, yaw, "bitts", kind, col)
 
 
-## A coil of rope lying on the deck.
+## A coil of rope lying on the deck: laid mooring line, its hairy twisted
+## strands matte and coarser than any cloth (a wreck's burns away as before).
 static func _coil(k: VehicleModels, m: Node3D, pos: Vector3, r: float, col: Color) -> void:
+	var kind := "fabric" if k.wreck or k.burnt else "rope"
 	for i in 3:
 		var rr := r * (1.0 - i * 0.12)
-		k._add(m, _torus(rr - 0.045, rr), "fabric", col, pos + Vector3(0.02 * i, 0.022 + i * 0.04, -0.015 * i), Vector3.ZERO, Vector3(1, 1.3, 1))
+		k._add(m, _torus(rr - 0.045, rr), kind, col, pos + Vector3(0.02 * i, 0.022 + i * 0.04, -0.015 * i), Vector3.ZERO, Vector3(1, 1.3, 1))
 
 
 ## A life ring on a bracket, its face out along `nrm` (horizontal).
 static func _lifering(k: VehicleModels, m: Node3D, pos: Vector3, nrm: Vector3) -> void:
 	var yaw := atan2(nrm.x, nrm.z)
 	var b := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, PI / 2)
-	k._add(m, _torus(0.2, 0.33), "plain", ORANGE, pos, b.get_euler())
+	# (closed-cell foam in a PVC skin: smooth and a little glossy, it doesn't
+	# chip and wear like the paint round it; a wreck's is as it was)
+	k._add(m, _torus(0.2, 0.33), "plain" if k.wreck or k.burnt else "coated", ORANGE, pos, b.get_euler())
 	for i in 4:
 		var a := PI / 4 + i * PI / 2
 		var q := pos + Basis(Vector3.UP, yaw) * Vector3(cos(a) * 0.265, sin(a) * 0.265, 0.0)
@@ -798,6 +802,13 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	# the roof, its visor over the windscreen, a coaming round its edge
 	var rc := VmBoat._scale_xz(roof, 1.04, -2.2)
 	k._add(m, VehicleModels.solid([VmBoat._ry(rc, y2 - 0.02), VmBoat._ry(rc, y2 + 0.1)], "ship_pb_roof", false, 0.035, 0.02), "plain", sup, Vector3.ZERO)
+	# the roof is a working deck (the mast, the radar and the lights are
+	# tended from it): deck-grey non-skid inside a margin of the house's
+	# haze grey, as the Navy coats every surface a sailor walks on, so from
+	# above it reads as deck, not as a pale slab in the sun
+	if not k.wreck and not k.burnt:
+		var rm := VmBoat._scale_xz(roof, 0.9, -2.2)
+		k._add(m, VehicleModels.solid([VmBoat._ry(rm, y2 + 0.1), VmBoat._ry(rm, y2 + 0.112)], "ship_pb_roofmat"), "nonslip", dkc, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 	for f in [[5, 0], [0, 1], [1, 2]]:
 		var a := VmBoat._pt(rc, f[0], y2 + 0.06)
 		var b := VmBoat._pt(rc, f[1], y2 + 0.06)
@@ -841,7 +852,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		_rod(k, m, Vector3(sx, _dk(p, 4.6), 4.56), Vector3(sx, ya + 0.9, 4.38), 0.022, "gunmetal_w", null, 6, true)
 	# --- the after house's roof: rails round it, four liferafts tipped
 	# outboard, the satcom dome, HVAC boxes, whips at the corners
-	_bx(k, m, Vector3(3.8, 0.012, 4.7), Vector3(0, ya + 0.006, 1.85), "plain", dkc, Vector3.ZERO, false)
+	_bx(k, m, Vector3(3.8, 0.012, 4.7), Vector3(0, ya + 0.006, 1.85), "plain" if k.wreck or k.burnt else "nonslip", dkc, Vector3.ZERO, false)
 	for s in [-1.0, 1.0]:
 		var rp := [Vector3(s * 1.9, ya, -0.3), Vector3(s * 1.9, ya, 3.85), Vector3(s * 1.66, ya, 4.3)]
 		for q in rp:
@@ -898,7 +909,10 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		_bitts(k, m, Vector3(s * 0.95, _dk(p, -10.1), -10.1), 0.0, 1.0, "plain", grey.darkened(0.15))
 		_bitts(k, m, Vector3(s * 2.45, _dk(p, -3.2), -3.2), 0.0, 1.0, "plain", grey.darkened(0.15))
 		_bitts(k, m, Vector3(s * 2.35, _dk(p, 10.9), 10.9), 0.0, 1.0, "plain", grey.darkened(0.15))
-		_coil(k, m, Vector3(s * 1.75, _dk(p, 10.3), 10.3), 0.3, Color(0.75, 0.73, 0.66))
+		# (flaked down clear of the bitts' posts, not round one; a wreck's lies
+		# where it always has)
+		var cz := 10.3 if k.wreck or k.burnt else 10.15
+		_coil(k, m, Vector3(s * (1.75 if k.wreck or k.burnt else 1.55), _dk(p, cz), cz), 0.3, Color(0.75, 0.73, 0.66))
 		# fairleads through the bulwark by the bow bitts
 		var fz := -10.5
 		var fst := _at(p, fz)
@@ -1278,8 +1292,12 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		_bx(k, m, Vector3(0.12, 0.95, 0.5), Vector3(sx * 1.25, ny - 0.47, nz), "steel", Color(0.4, 0.2, 0.12))
 		k._cyl(m, 0.8, 0.8, 0.05, Vector3(sx * 1.1, ny, nz), Vector3(0, 0, PI / 2), "steel", Color(0.4, 0.2, 0.12), 20)
 	k._cyl(m, 0.3, 0.3, 2.3, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), "steel", Color(0.25, 0.24, 0.23), 12)
-	# (the net wound on the drum: the same synthetic netting as the heaps)
-	k._cyl(m, 0.66, 0.66, 2.14, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), "fabric", Color(0.17, 0.25, 0.2), 18)
+	# (the net wound on the drum: the same synthetic netting as the heaps.
+	# Netting is knotted twine, a mesh of it: from the deck it reads as the
+	# coarse, hairy fibre of rope, not a woven cloth's smooth face, and the
+	# fenders' lines share the finish. A wreck's burns away as it always has.)
+	var netting := "fabric" if k.wreck else "rope"
+	k._cyl(m, 0.66, 0.66, 2.14, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), netting, Color(0.17, 0.25, 0.2), 18)
 	for i in 9:
 		var a := TAU * i / 9.0 + 0.2
 		k._add(m, Res.sphere(0.09, 6), "plain", ORANGE if i % 3 != 0 else Color(0.85, 0.75, 0.2), Vector3(-0.85 + i * 0.21, ny + sin(a) * 0.67, nz + cos(a) * 0.67))
@@ -1321,14 +1339,14 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		# different where an older net lies in with the new.
 		var heap_at := _heap_fit(p, Vector3(h[0], 0.0, hz3), r * 1.3, r, yaw)
 		heap_at.y = _dk(p, heap_at.z) + r * 0.25
-		k._add(m, Res.sphere(1.0, 9), "fabric", Color(0.18, 0.27, 0.22), heap_at, Vector3(0, yaw, 0), Vector3(r * 1.3, r * 0.6, r))
+		k._add(m, Res.sphere(1.0, 9), netting, Color(0.18, 0.27, 0.22), heap_at, Vector3(0, yaw, 0), Vector3(r * 1.3, r * 0.6, r))
 		var across := Vector3(cos(yaw), 0, -sin(yaw))
 		var along := Vector3(sin(yaw), 0, cos(yaw))
 		for f: float in [-1.0, 1.0]:
 			var fold := _heap_fit(p, heap_at + across * f * r * 0.85 + along * f * r * 0.3, r * 0.62, r * 0.55, yaw + f * 0.6)
 			fold.y = heap_at.y - r * 0.12
 			var shade := Color(0.16, 0.24, 0.21) if f < 0.0 else Color(0.2, 0.28, 0.21)
-			k._add(m, Res.sphere(1.0, 9), "fabric", shade, fold, Vector3(0, yaw + f * 0.6, 0), Vector3(r * 0.62, r * 0.42, r * 0.55))
+			k._add(m, Res.sphere(1.0, 9), netting, shade, fold, Vector3(0, yaw + f * 0.6, 0), Vector3(r * 0.62, r * 0.42, r * 0.55))
 		# the floats strung through the net, half sunk in the heap's surface
 		for i in 4:
 			var fu := rng.randf_range(-1.0, 1.0) * 0.75
