@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-cockpits-bellows-and-cabs.md",
+  "summary": "Pilots under clear canopies, position lights and red beacons, strapped canvas bellows on the guns, pierced steel wheels and track hardware, bolts and hatches that stop glinting, soot that fades into the paint, and truck cabs with interiors, frames and stacks.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Geometry, glass and colour changes across many families: one matched studio sheet shows a representative of each area, framed close where the change is small.",
+  "source_ref": "3caed49cb3128cd80e0802ac6cf655e148dca09f",
+  "before_ref": "3caed49cb3128cd80e0802ac6cf655e148dca09f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-cockpits-bellows-and-cabs/comparison.jpg",
+      "sha256": "820de608c8ff5643a51cddde347cb06dccf68c405491158b8a7a3bad71f7de1c"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-cockpits-bellows-and-cabs/capture.json",
+      "sha256": "036a8b8973d77af98ccb1bea4547c231e80930cad4943367a2abe5f607302ca1"
+    }
+  ],
+  "output": null
+}

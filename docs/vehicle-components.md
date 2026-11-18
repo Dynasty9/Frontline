@@ -805,6 +805,51 @@ Angara).
   `_funnel_soot` four. `VmBoat._moulded` lofts the water scooter's hood, pedestal and saddles (old cache keys
   kept); `_outboard` lofts cowling, leg and apron. The SURCs carry kit-seeded numbers on the cabin.
 
+### Twelfth pass: cockpits, bellows, steel wheels and cab interiors
+
+Five agents (aircraft; materials, markings and fittings; guns, mounts and running gear; armour; trucks,
+soft-skins and civilians) each closed seven to ten gaps, starting with the eleventh pass's leftovers.
+Vertices rise 1.4% across the roster at seed 3, at most 12.5% (the M35's cab interior and frame; the
+Neophron's two cockpits +11.6%). Nodes and meshes change only where a cab gained clear panes, each a near
+and a distant glass instance: the M35 (27 to 39 nodes, 19 to 31 meshes) and the FIA trucks (18 to 24, 13 to 19).
+
+- **Cockpits**: `VmPlane.clear_glass` (a smoked see-through glass per tint, made in code like
+  `fighter_canopy`, so it draws in the Compatibility renderer) and `VmPlane.cockpit` (a dark tub, a raked
+  seat with headrest and firing handle, the pilot's shoulders, helmet and visor, a black coaming, a HUD
+  combiner on a front seat). A clear canopy casts no shadow, so the model keeps its shadow proxy (one
+  surface on another shader that casts would cost the model its proxy). `VmHeli._canopy` returns its glass.
+  Wrecks keep the old opaque glass.
+- **Aircraft lights and kit**: `VmPlane.nav_light` (a red or green teardrop lens on a dark base, standing
+  out of the tip) and `beacon`; `VmHeli._beacon` and the gunships' beacons are aviation red. `VmPlane.number`
+  (from the kit seed, a fixed one for scenery), `VehicleAircraft.rocket_pod` (a warhead in each mouth),
+  `VmPlane.nozzle` (heat-tinted steel), `VmHeli._wipers`.
+- **Fittings and materials**: `VehicleBody.fastener` defaults to dark oiled steel (`FASTENER`) and takes
+  `mat` / `col`; `VehicleFittings.hatch` paints its hinge bolts and latch. `VehicleBody.soot` takes
+  `paint` / `paint_col` (or finds the hull's paint, `_paint_under`) and lays two faint fringes in that paint
+  before grading to a black core; `VmNato._soot` and `VmCore._soot` hand off to it. `VehicleFittings._fluted`
+  (one cached ribbed-lens slab) replaces the rib boxes of rectangular headlamps, signal lenses and the
+  ambulance's light bar, and `_headlamp_ribs` a round lamp's tubes. `VehicleCloth.load_cover` waists the tarp
+  at each lashing; `VehicleEquipment.drum` draws its paint from `VehicleCargo.KIT_DRUM`.
+  `VehicleMarkings._emboss` builds only the tops of raised plate characters.
+- **Guns and running gear**: `VehicleMounts.gun_boot(k, mount, face, radius, barrel, length, folds)` is
+  public (`_gun_boot` calls it): five puffed folds, a sag, a strap at the casting end and a kit-seeded canvas.
+  `VehicleWheels.pneumatic` cuts hand holes in offroad rims from 0.35 m; `_swapped` repaints about one
+  running wheel in eleven as a replacement. `VehicleTracks._hardware` puts wedge-bolt heads on double-pin
+  connectors (belts 0.2 m and wider) and pin stubs on single-pin links; `shoes` tints a run of 3-7 new links
+  on about half of crews' belts. Sprocket rings and steel idler rims are bare `steel`.
+  `VehicleWeapons.autocannon` draws a painted tube's last fifth in the gun's steel; `VehicleMounts.sight`
+  glass is `OPTIC` and vision blocks `BLOCK`. All of it leaves wrecks and hulks as they were.
+- **Armour**: `VmNato.NONSKID` is a drab; `VmIndep._slats` and `VmCsat._slats` take `mat` / `col` (the
+  Kuma's cages painted at 13 cm, the Angara's painted); `VmNato._module_paint` and `VmIndep._module_paint`
+  draw about one bolt-on module in eight as a depot replacement from the kit seed. Graded soot on the
+  Marshall, Angara and T-55; the Varsuk's launchers move forward off its number.
+- **Trucks and cars**: the HEMTT's cab cap is gone, so `VehicleCab.upper`'s roof shows. The technicals'
+  (`VmCore._hilux`) and `_car`'s roofs crown at 0.6, so the sun makes a glint, not a blob. The M35 (`VmCore._truck`) and FIA truck (`VmCiv._truck`) cabs are
+  `VehicleCab.upper` / `framed_face` with clear panes and `interior`, on `VehicleRunningGear.frame` ladder
+  frames; the M35 has an `exhaust_run` stack (no new exhaust point). `VmCiv._mirror` gives `car_paint` a
+  moulded shell, `_odd_bonnet` repaints one bonnet in four (`build_car`) or five (hatchbacks), and the
+  Zamak's sacks are soft (`VehicleCloth._shell`).
+
 ### Gun mounts: laying, recoil and the guns themselves
 
 The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of

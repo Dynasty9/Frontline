@@ -1731,6 +1731,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   gutters, helicopter fairings sit on the hull, the Merkava has its arrowhead turret, dark steel and
   ID panels are matte, and boats have moulded motors. See "Eleventh pass" in
   [the component guide](vehicle-components.md).
+- **Cockpits, bellows and cab interiors** (twelfth pass): jets and the Kajman show their pilots under clear
+  canopies, aircraft carry position lights and red beacons, gun boots are strapped bellows, military wheels
+  are pierced steel, tracks show their pins, bolts and hatches stop glinting, soot fades into the paint, and
+  the M35 and FIA truck have cabs you can see into. See "Twelfth pass" in
+  [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
