@@ -39,6 +39,23 @@ func capture() -> void:
 		"town":
 			views = [["Photographed surfaces and door paths", Vector3(-30,0,-12), 35.0, -50.0, 0.7],
 				["Town plots and connected streets", Vector3.ZERO, 190.0, -40.0, 0.7]]
+		"garden":
+			var flowering: Array[Vector3] = []
+			for piece: Array in world.decor:
+				if piece[0] == "shrub" and piece[3] is Vector3 and int(piece[3].y) in [1, 2] and piece[3].z >= 0.0:
+					flowering.append(piece[1])
+			for piece: Array in world.decor:
+				if piece[0] != "hedge_trim":
+					continue
+				var hedge: Vector3 = piece[1]
+				var near := flowering.filter(func(p: Vector3) -> bool: return p.distance_to(hedge) < 4.0)
+				var lived: bool = world.structures_near(hedge, 7.0).all(func(st) -> bool: return st.skind != "house_wall" or not st.dark)
+				if near.size() >= 2 and lived:
+					var focus: Vector3 = (hedge + near[0]) * 0.5
+					var yaw: float = float(piece[2]) + PI + 0.5
+					views = [["Garden from the street", focus, 18.0, -40.0, yaw],
+						["Garden at command height", focus, 42.0, -55.0, yaw]]
+					break
 		"environment":
 			world.cam.cam.fov = 55.0
 			views = [["Alpine ranges, ocean and forest coverage", Vector3.ZERO, 900.0, -22.0, 0.7],

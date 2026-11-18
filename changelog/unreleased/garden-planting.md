@@ -22,3 +22,5 @@ caption = "Every plant: box balls, hydrangeas, roses, lavender, laurels and gold
 - **Ivy** on old walls is a thick mat of leaves with ragged edges, where before it was striped clumps.
 - **Shrubs grow from the ground** as broad domes, no two alike, with lighter new growth on top. Box balls are the exception, clipped round.
 - The plants are built from the trees' photographed leaves. Apart from the hedges between gardens they're scenery: a shell or a passing truck flattens them, and they give no cover.
+
+- Front garden hedges are kept low so the flowering shrubs and beds read from the street and the normal command camera. Rear garden cover hedges retain their height.

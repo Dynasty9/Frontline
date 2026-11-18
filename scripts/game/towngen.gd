@@ -757,7 +757,8 @@ func _planting(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vector3, w:
 			gaps.append(Vector2(drive_x - 1.5, drive_x + 1.5))
 		if mailbox:
 			gaps.append(Vector2(W * 0.5 - 1.6, W * 0.5 - 0.8))
-		var h := pl.randf_range(0.75, 1.05)
+		# A low front boundary frames the flowers instead of screening them.
+		var h := pl.randf_range(0.45, 0.65)
 		var green := pl.randi() % BuildingPlanting.HEDGES.size()
 		for span: Vector2 in _clear_spans(-W * 0.5 + 0.25, W * 0.5 - 0.25, gaps):
 			var len := span.y - span.x
