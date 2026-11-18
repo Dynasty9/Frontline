@@ -8,6 +8,11 @@ file = "deployment.webm"
 poster = "deployment.jpg"
 caption = "Select Stonebridge, then Highland Junction, deploy, and arrive at the FOB. Real Compatibility-renderer capture using generated fallback terrain; loading is shown at 45x, selection and arrival at normal speed. This is not a loading-time comparison."
 
+[[videos]]
+file = "prepared-entry.webm"
+poster = "prepared-entry.jpg"
+caption = "Highland Junction entry using a locally validated prepared package. Real software-rendered selection and arrival at 1x; loading at 30x. The host restoration path was checked separately in the capture log. This footage makes no loading-speed or gameplay-performance claim."
+
 [[screenshots]]
 file = "battlefields.jpg"
 caption = "Alder Valley, Stonebridge and Highland Junction: coastal, river-crossing and dry foothill layouts."

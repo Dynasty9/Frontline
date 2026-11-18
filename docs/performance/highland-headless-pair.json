@@ -1,0 +1,72 @@
+{
+  "failures": 0,
+  "runs": [
+    {
+      "attach_and_build_us": 45180621,
+      "index": 0,
+      "no_baked_map": true,
+      "observed_cached_structures_restored": false,
+      "requested": "generated",
+      "seed": 41,
+      "structures": 4324,
+      "warmup": true
+    },
+    {
+      "attach_and_build_us": 5986158,
+      "index": 1,
+      "no_baked_map": false,
+      "observed_cached_structures_restored": true,
+      "requested": "prepared",
+      "seed": 41,
+      "structures": 4324,
+      "warmup": true
+    },
+    {
+      "attach_and_build_us": 6158707,
+      "index": 2,
+      "no_baked_map": false,
+      "observed_cached_structures_restored": true,
+      "requested": "prepared",
+      "seed": 41,
+      "structures": 4324,
+      "warmup": false
+    },
+    {
+      "attach_and_build_us": 44471976,
+      "index": 3,
+      "no_baked_map": true,
+      "observed_cached_structures_restored": false,
+      "requested": "generated",
+      "seed": 41,
+      "structures": 4324,
+      "warmup": false
+    },
+    {
+      "attach_and_build_us": 45593487,
+      "index": 4,
+      "no_baked_map": true,
+      "observed_cached_structures_restored": false,
+      "requested": "generated",
+      "seed": 41,
+      "structures": 4324,
+      "warmup": false
+    },
+    {
+      "attach_and_build_us": 6252456,
+      "index": 5,
+      "no_baked_map": false,
+      "observed_cached_structures_restored": true,
+      "requested": "prepared",
+      "seed": 41,
+      "structures": 4324,
+      "warmup": false
+    }
+  ],
+  "scope": "headless world attach and build; no rendered loading or FPS measurement",
+  "source_head": "1a1970834d102769c5abe2553255024acd6efe5f",
+  "engine": "4.7.2.stable.official.ed1daf0bf",
+  "map": "highland-junction",
+  "package_sha256": "b1900d23e897048be722c4edc9f43f945cb4d1efc8abeeee1091f493e2f723df",
+  "controls": "Single engine process; generated/prepared warmups then prepared/generated/generated/prepared; seed 41, map size 1024, same player and AI, recording disabled, fixed-fps 30, no renderer or screenshots. No cache purge. No concurrent compilation/capture. Fingerprints outside timed interval.",
+  "limits": "Two measured samples per arm; world attach/build only. Excludes process startup, package validation before the loop, client construction, loading curtain/reveal, shaders, first pan and gameplay. Does not measure player waiting time or runtime FPS."
+}

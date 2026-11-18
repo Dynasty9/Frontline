@@ -3,7 +3,7 @@
   "summary": "Choose three repeatable battlefields and reuse prepared terrain and routes.",
   "medium": "motion",
   "stage": "Game overview and small-window menu captures",
-  "rationale": "Uncropped real renders show the three distinct layouts; the selector shows the player control. Measured performance and its limits are recorded in docs/performance/loading-study.md. A genuine menu-to-battle capture shows both map selections, deployment progress and arrival; its generated fallback and 45x loading edit are explicit, with no timing claim.",
+  "rationale": "Uncropped real renders show the three distinct layouts; the selector shows the player control. Measured performance and its limits are recorded in docs/performance/loading-study.md. A genuine menu-to-battle capture shows both map selections, deployment progress and arrival; its generated fallback and 45x loading edit are explicit, with no timing claim. Additional prepared-entry footage uses a locally validated package and explicitly separates visual evidence from host path verification and headless measurements.",
   "source_ref": "1b52c9d8",
   "capture": {
     "overview": "godot --path . --position -12000,-12000 --resolution 1280x720 --rendering-method forward_plus --fixed-fps 30 -- --aivai --battlefield=KEY --offscreen --nohud --mood=day --preset=high --set=perf:0,fps_cap:0 --focus=0,0 --zoom=800 --pitch=-75 --no-stun --screenshot=OUTPUT --shot-at=2 --quit-after=4",
@@ -17,6 +17,15 @@
       "environment": "Godot 4.7.2 ed1daf0bf, workspace-only Debian Xvfb, Mesa llvmpipe Compatibility. Prepared packages omitted in sparse checkout: generated fallback, Highland Junction seed 41. Private loopback host; no production services.",
       "edit": "Raw seconds 18-29 normal, 29-315 at 45x, 325-333 normal. Explicit on-video labels. Silent VP9, CRF32, 960x600.",
       "validation": "Actual changing-frame probe: 59 drawn frames. Selected Stonebridge at drawn frame 65, Highland Junction at 106, deployed at 130. Inspected popup, loading and revealed FOB frames and decoded final video. Capture manually stopped after visible arrival; no automated arrival-test or performance pass claimed."
+    },
+    "prepared_entry": {
+      "source_ref": "1a1970834d102769c5abe2553255024acd6efe5f; unchanged loading capture fixture; local Highland Junction bake",
+      "package_sha256": "b1900d23e897048be722c4edc9f43f945cb4d1efc8abeeee1091f493e2f723df",
+      "command": "DISPLAY=:99 FL_DEBUG_LOAD=1 godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x600 tests/fixtures/battlefield_loading_capture.tscn -- --curtain --matchmaker=http://127.0.0.1:9 --set=window_mode:0,perf:0",
+      "environment": "Exact official Godot 4.7.2 ed1daf0bf; workspace-only Xvfb and llvmpipe; private loopback host; locally baked Highland Junction seed 41, 4324 structures; authored packages were not replaced in Git.",
+      "path_evidence": "Capture log: LOAD host cached ground restored, cached structures restored, cached navigation cells restored. No script errors. Existing Compatibility feature/asset UID warnings remain.",
+      "edit": "Raw seconds 18-32 at 1x, 32-212 at 30x, 212-224 at 1x. On-video labels, 960x600 silent VP9. Separate run from headless comparison; no loading-speed or gameplay-performance claim.",
+      "validation": "Real picker choices at drawn frames 66 and 103, deploy at 124; inspected loading progress and revealed FOB with advancing simulation time. Manually ended after observed arrival. Clip proves visible entry; restoration is independently supported by the host log."
     }
   },
   "sources": [
@@ -35,6 +44,14 @@
     {
       "file": "changelog/unreleased/prepared-battlefields/deployment.jpg",
       "sha256": "c999db59a25746532c1bdb949206e3ea414d2871abd70b13686b5e3d15d5620b"
+    },
+    {
+      "file": "changelog/unreleased/prepared-battlefields/prepared-entry.webm",
+      "sha256": "f02663bff69f4dfe40c6007007ad29d6b1f0cecac07667941b40d41c229ec1ae"
+    },
+    {
+      "file": "changelog/unreleased/prepared-battlefields/prepared-entry.jpg",
+      "sha256": "342a416e0f87dec5ce99cf1b6df15808117bf430d6434bf6b43da59fa4a956c5"
     }
   ],
   "output": null

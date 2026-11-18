@@ -258,3 +258,31 @@ navigation and first-camera stalls even when a map component becomes faster.
 - Download only the selected prepared map in the browser, with versioned cache
   and checksum checks. This trades generation time for network transfer without
   putting every map into the initial website payload. It is not implemented.
+
+### Cloud Highland Junction construction check
+
+A separate Linux Godot 4.7.2 check at source `1a197083` rebuilt Highland Junction
+locally and verified its package and source hashes. Seed 41 and 4,324 structures
+matched exactly in six builds. After generated/prepared warmups, the measured
+order was prepared/generated/generated/prepared: **6.159 / 44.472 / 45.593 /
+6.252 seconds** for world attachment plus `build()`. Every restored arm emitted
+`observed_cached_structures_restored=true`; generated arms explicitly set
+`no_baked_map=true` and emitted false. Initial-state fingerprints matched in all
+arms. [Raw scoped results](highland-headless-pair.json) record controls and limits.
+
+This headless check excludes client drawing, reveal, shader work and first pan.
+It is not a Deploy-to-playable comparison or evidence of runtime smoothness.
+Two measured samples per arm do not establish performance on player hardware.
+The earlier attempt had fixture recording errors and is excluded entirely.
+
+Reproduce in a disposable Linux checkout using the exact engine; the bake changes
+only the local package, which must not replace the authored shipped packages:
+
+```sh
+FL_BAKE_BATTLEFIELD=highland-junction "$GODOT" --headless --path . tools/bake_battlefield.tscn
+python tools/compare_prepared_build.py --godot "$GODOT" --output /tmp/highland-pair-new
+```
+
+Use writable XDG data/config/cache directories. The output directory must not
+already exist. The runner rejects engine errors, absent reports and path/state
+failures. It takes no screenshots. Capture progress/arrival in a separate run.
