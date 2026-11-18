@@ -450,6 +450,18 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# The vehicle works: its walls' dressing keeps close to the shed (the
+	# bollards and drums an arm's length out), under the eaves, and the brick
+	# dado stops either side of the shutter, so a vehicle drives out clear.
+	var fk2 := kit()
+	var shed := Vector3(11.0, 5.0, 10.0)
+	BuildingFactory.walls(fk2, shed, Color(0.45, 0.46, 0.44), fk2.rng)
+	var wb := _bounds(fk2.sink.root, Transform3D.IDENTITY)
+	check(wb.position.x >= -6.4 and wb.end.x <= 6.4 and wb.position.z >= -5.8 and wb.end.z <= 5.8 and wb.end.y <= 5.2 and wb.position.y >= -0.01, "a factory's walls keep to the shed (%s)" % wb)
+	for x: float in [-2.0, 0.0, 2.0]:
+		check(not occupied(fk2.sink.root, Vector3(x, 0.6, -5.07)), "the factory's dado leaves the shutter clear at x %.1f" % x)
+	check(occupied(fk2.sink.root, Vector3(4.0, 0.6, -5.07)), "the factory's dado runs along its front")
+	fk2.sink.root.free()
 
 	# Roofs: a hip rises as high as a gable of the same pitch over the same
 	# walls; its underside comes down to the eaves on all four walls where a

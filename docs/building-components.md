@@ -268,6 +268,17 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## The vehicle works
+
+The factory's walls are `BuildingFactory.walls`, over the shed the structure's part makes:
+- a brick dado to knee height under a concrete coping, stopping either side of the shutter;
+- sheeting above it with corner flashings, and a band of glazing high along the sides and back (`BuildingOpenings.ribbon`);
+- gutters along the side eaves and a downpipe at each corner;
+- at the front, the roller shutter between hazard-painted bollards, and a personnel door with a sheeted canopy;
+- gas bottles chained to the back wall and drums down one side.
+
+Render it with `--building-kinds=factory:0` (add `--building-rear` for the back).
+
 ## Who uses what
 
 | Component | Users |
@@ -284,6 +295,7 @@ Render them with `--building-kinds=bales`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingFactory.walls` | The factory (vehicle works) |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the
