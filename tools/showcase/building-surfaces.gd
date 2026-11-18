@@ -282,6 +282,16 @@ func _subject(kind: String) -> Node3D:
 				street.call("belongings", k.at_point(Vector3(-4.6, 0, -1.4)), rng)
 				street.call("belongings", k.at_point(Vector3(-1.2, 0, -1.6)), rng)
 			return kit_root
+		"bales":
+			# round bales as a farm stacks them: straw, and silage in film
+			var row := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_farm.gd"):
+				var farm: GDScript = load("res://scripts/game/building_farm.gd")
+				for i in 4:
+					var br := RandomNumberGenerator.new()
+					br.seed = 3 + i
+					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
+			return row
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:
