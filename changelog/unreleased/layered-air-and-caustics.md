@@ -143,3 +143,10 @@ The weather texture now shifts in the same frame as its sampling offset when the
 air crosses a grid cell. Previously the old texture could stay in place until the
 next row sweep finished, briefly moving the fog or smoke back by a whole cell.
 The change keeps the existing densities, cloud lighting and caustic strengths.
+
+### Clearer coastal sightlines
+
+Open water no longer receives the same extra pooling weight as an enclosed
+terrain hollow. The weather grid already makes the shore humid; stacking both
+weights had turned dawn mist into an opaque band over nearby boats. Valley
+pooling, cloud lighting, caustic strength and exposure stay unchanged.

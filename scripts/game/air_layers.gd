@@ -437,7 +437,11 @@ void fog() {
 		float around = (terrain_height(deform_tex, uv + vec2(o, 0.0)) + terrain_height(deform_tex, uv - vec2(o, 0.0))
 			+ terrain_height(deform_tex, uv + vec2(0.0, o)) + terrain_height(deform_tex, uv - vec2(0.0, o))) * 0.25;
 		float hollow = clamp((around - g) / 5.0, 0.0, 1.0);
-		float lie = 0.12 + 1.4 * max(hollow, texture(water_near, uv).a);
+		// WeatherGrid already raises humidity over water. Open water is not
+		// an enclosed hollow: applying the full pooling boost twice made a
+		// flat shoreline opaque and hid nearby boats in the dawn band.
+		float water_lie = texture(water_near, uv).a * 0.2;
+		float lie = 0.12 + 1.4 * max(hollow, water_lie);
 		// (it lies level, as a real valley's does: filling the low ground up
 		// to a soft top a little over its depth above the valley floor, so a
 		// hill rises out of it rather than wearing it up its flanks; densest
