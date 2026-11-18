@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/town-square.md",
+  "summary": "The town square's war memorial and market stalls.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd (town: square); tools/showcase/building-surfaces.tscn (memorial, memorial_obelisk)",
+  "rationale": "Appearance change: the square in the map at the game's own camera, and the memorial and stalls up close in the studio.",
+  "source_ref": "9a0e4f4abe57cf78cc5aa4ea60f775522cdfc9db",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/town-square/comparison.jpg",
+      "sha256": "89ebbfa590fbf1d3d6a1ddea8397f423bc55b9e4d5bc5e772b6f3765ac2b2312"
+    },
+    {
+      "file": "changelog/unreleased/town-square/memorial.jpg",
+      "sha256": "08274c8b836b1095149d0c5f3af701e8b373c89777031f55546e05f1b70b741a"
+    },
+    {
+      "file": "changelog/unreleased/town-square/capture.json",
+      "sha256": "61414fc25e99fdc64a9fa891ac2c3e34ae3dece8bf281476e243484349673196"
+    }
+  ],
+  "output": null
+}
