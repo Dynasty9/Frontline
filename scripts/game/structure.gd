@@ -931,10 +931,14 @@ func take_damage(amount: float, _source = null) -> void:
 
 
 func smash(_by) -> void:
-	if not smashable or gone:
+	if indestructible or not smashable or gone:
 		return
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 0.8, 0), _main_color(), 8])
 	world.fx_event([Fx.SOUND, "thud", position])
+	if skind == "house_wall":
+		house_dark()
+		_bring_down_floors(true)
+		world.call_deferred("spawn", "structure", {"skind": "rubble", "pos": position, "yaw": yaw, "size": Vector3(size.x * 0.8, 0.0, 1.2)})
 	if skind == "tree":
 		world.fx_event([Fx.TREE_FALL, position, Defs.yaw_of(Defs.flat(position - _by.position)), eid, variant])
 	world.despawn(self)
@@ -2003,22 +2007,25 @@ func _destroyed(quiet := false) -> void:
 
 ## A house wall knocked out brings down the storey drawn over it, and the
 ## roof that carries it, rather than leave them standing on air.
-func _bring_down_floors() -> void:
+func _bring_down_floors(rammed := false) -> void:
 	for st: Structure in world.structures_near(position, 16.0):
-		if st.gone or st.skind != "roof" or st.size.y <= BuildingStoreys.GROUND + 0.5:
+		if st.gone or st.skind != "roof" or (not rammed and st.size.y <= BuildingStoreys.GROUND + 0.5):
 			continue
 		var half := Vector2(st.size.x * 0.5 + 0.3, st.size.z * 0.5 + 0.3)
 		if Defs.point_in_obb(Vector2(position.x, position.z), Vector2(st.position.x, st.position.z), half, st.yaw):
-			st.call_deferred("_fall_in")
+			st.call_deferred("_fall_in", rammed)
 
 
 ## A roof (and the storey under it) falling in: the debris, and it's gone.
-func _fall_in() -> void:
+func _fall_in(rammed := false) -> void:
 	if gone:
 		return
 	world.stat("storey_fell")
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, size.y * 0.5, 0), _main_color(), 18])
-	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 0.8])
+	if rammed:
+		world.fx_event([Fx.SOUND, "thud", position])
+	else:
+		world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 0.8])
 	world.despawn(self)
 
 

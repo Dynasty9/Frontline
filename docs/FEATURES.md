@@ -1153,7 +1153,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   rotor is usually gone, and broken blade and torn panels lie strewn round her. Over deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
-- Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
+- Tanks smash through walls, trees and cars. The tracks and hull corners break house walls on contact, bringing down the roof and leaving a path across the slab. Solid bridge parapets and headquarters buildings stop the hull. Small arms ricochet off them. Frontal rockets can bounce,
   and a blown track leaves the tank stranded until engineers repair it. Destroyed vehicles become wrecks you can use as cover.
   A destroyed vehicle burns out: over the best part of a minute the fire spreads across the hull from where it took
   hold (the engine deck, a helicopter's engines), leaving charred black steel, the paint burnt to a pale grey film
