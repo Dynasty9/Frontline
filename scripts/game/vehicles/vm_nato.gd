@@ -767,10 +767,11 @@ static func _prowler(k: VehicleModels, team: int, arm: String) -> void:
 	_team_mark(k, m, team, Vector3(-0.67, 0.98, -1.4), Vector3(0.02, 0.06, 0.6))
 	if arm == "":
 		return
-	# the passenger's pintle MG (an M240-class .338) on a swing arm
+	# the passenger's pintle MG (an M240-class .338) on a swing arm, its can
+	# on the left, the side the M240 family feeds from
 	var pz := -0.78
 	VehicleMounts.pintle(k, m, Vector3(0.6, 1.08, pz), Vector3(0.6, 1.45, pz - 0.1), "gunmetal_w", null, Vector2(0.025, 0.03), Vector2(0.08, 0.13))
-	var ptip := VehicleWeapons.mmg(k, m, Vector3(0.6, 1.45, pz - 0.1), Vector3(0.6, 1.46, pz - 1.12), 1.0, 1.0, true, "gunmetal_w", STOW)
+	var ptip := VehicleWeapons.mmg(k, m, Vector3(0.6, 1.45, pz - 0.1), Vector3(0.6, 1.46, pz - 1.12), 1.0, -1.0, true, "gunmetal_w", STOW)
 	# the ring mount on the cage roof, turning whole with the gun: the ring,
 	# the carriage bar across its front under the post, the post clamped to
 	# the bar; the gunner stands in the ring behind the gun, on the rear seats'
@@ -1019,6 +1020,13 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	VehicleFittings.hatch(k, t, Vector3(0.52, 1.03, 0.6), 0.3, cam, null, 1.0, 0.06)
 	VehicleMounts.sight(k, t, Vector3(0.62, 1.2, -0.4), Vector3(0.32, 0.28, 0.32), [Rect2(Vector2(0, 0.02), Vector2(0.22, 0.14))], cam, null, Vector3(0.07, 0.08, 0.4))
 	VehicleFittings.hatch(k, t, Vector3(-0.5, 0.83, 0.75), 0.28, cam, null, 1.0, 0.06)
+	if not up:
+		# the loader's MG on its pintle ahead of his hatch, at his chest when he
+		# stands in it, its box on the left and the belt into the feed (the
+		# urban package's remote .50 behind the hatch takes its place)
+		k.roof_gun = Vector3(-0.5, 1.28, 0.38)
+		VehicleMounts.pintle(k, t, Vector3(-0.5, 0.8, 0.38), k.roof_gun, "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
+		VehicleWeapons.mmg(k, t, k.roof_gun, k.roof_gun + Vector3(0, 0.01, -0.8), 1.0, -1.0, true, "gunmetal_w", STOW)
 	for s in [-1.0, 1.0]:
 		_smoke(k, t, Vector3(s * 1.06, 0.6, -0.72), s, 4, s * -0.5)
 		# bins on the bustle sides
