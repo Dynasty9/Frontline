@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/vehicle-works.md",
+  "summary": "The factory has a brick dado under its sheeting, glazing high along its sides and back, gutters and downpipes, bollards either side of the shutter, a personnel door with a canopy, and gas bottles and drums against its walls.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (factory:0, --building-rear, --building-match)",
+  "rationale": "Appearance change of the factory's walls: matched studio stills from the front and the back show the dado, glazing, rainwater goods and clutter.",
+  "source_ref": "2e6ed598f7efac78b540d436ff55afb41a2d4bb7",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-works/comparison.jpg",
+      "sha256": "3db8ec5ca68d42d0912d1d435191473b730aa0c8f4a9427df1589670a33ff376"
+    }
+  ],
+  "output": null
+}
