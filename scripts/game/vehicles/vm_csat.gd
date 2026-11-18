@@ -304,6 +304,32 @@ static func _kord(k: VehicleModels, g: Node3D, length: float, s := 1.0, feed := 
 	VehicleWeapons._bore(k, g, -length, 0.012 * s)
 
 
+## An automatic grenade launcher of the AGS-17 pattern on its own pivot `g`
+## at the receiver's centre, along -Z to its muzzle `length` ahead: the boxy
+## receiver under its long top cover, and the barrel's signature - a stack
+## of cooling fins round its rear two thirds, the tube bare ahead of them to
+## a plain muzzle - where a Mk 19 has a smooth jacket. It feeds from the
+## side `feed`. The caller gives the pivot to k.gun_assembly.
+static func _ags(k: VehicleModels, g: Node3D, length: float, feed := 1.0) -> void:
+	var st := VehicleWeapons.STEEL
+	VehicleMounts.receiver(k, g, Vector3(0.15, 0.17, 0.5), Vector3(0, 0, 0.03), st)
+	k._add(g, BevelMesh.make(Vector3(0.152, 0.04, 0.3), 0.008), st, null, Vector3(0, 0.1, -0.05))
+	k._add(g, BevelMesh.make(Vector3(0.13, 0.13, 0.03), 0.006), st, null, Vector3(0, -0.005, 0.295))
+	k._box(g, Vector3(0.006, 0.05, 0.12), Vector3(feed * 0.0765, 0.03, -0.07), "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+	# the barrel's locking collar in the receiver's face, the tube to the muzzle
+	k._cyl(g, 0.056, 0.056, 0.05, Vector3(0, 0, -0.245), X90, st, null, 12)
+	var b0 := -0.27
+	k._cyl(g, 0.03, 0.03, length + b0 - 0.02, Vector3(0, 0, (b0 - length + 0.02) * 0.5), X90, st, null, 10)
+	# the fins, a finger apart, over the barrel's rear two thirds
+	var fin_end := lerpf(b0, -length, 0.66)
+	var fins := 9
+	for i in fins:
+		var z := lerpf(b0 - 0.03, fin_end, float(i) / (fins - 1))
+		k._cyl(g, 0.054, 0.054, 0.012, Vector3(0, 0, z), X90, st, null, 12, false)
+	k._cyl(g, 0.037, 0.034, 0.03, Vector3(0, 0, -length + 0.015), X90, st, null, 10)
+	VehicleWeapons._bore(k, g, -length, 0.016)
+
+
 ## A flexible feed chute from the mouth of a gun's box at `a`, arched over
 ## `b`, into the feedway at `c` (all in the gun's space, across x): two
 ## runs of hinged steel links `w` wide along the gun, the hinge at the arch.
@@ -338,8 +364,8 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, mat :=
 		var g := k._pivot(t, Vector3(0, y, gz))
 		var port := 0.0525
 		if gun == "gmg":
-			VehicleWeapons.gmg(k, g, Vector3.ZERO, Vector3(0, 0, -length), 1.0, 0.0)
-			port = 0.12
+			_ags(k, g, length, fs)
+			port = 0.075
 		else:
 			_kord(k, g, length)
 		# the cross shaft from the receiver out through each arm's boss
@@ -786,12 +812,22 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleMounts.sight(k, t, Vector3(0, y + 0.02, -0.08), Vector3(0.26, 0.3, 0.36), [Rect2(Vector2(-0.06, 0.03), Vector2(0.09, 0.09)), Rect2(Vector2(0.07, 0.03), Vector2(0.07, 0.07))], c)
 	for s in [-1.0, 1.0]:
 		k._box(t, Vector3(0.05, 0.24, 0.3), Vector3(s * 0.15, y - 0.06, 0.0), c)
-	# 12.7 mm, left, and 40 mm, right, each with its ammunition on the outboard side
-	var g := k._pivot(t, Vector3(-0.3, y, 0.0))
-	_kord(k, g, 1.66)
-	VehicleFittings.ammo_can(k, g, Vector3(-0.2, -0.05, 0.03), OLIVE, Vector3.ZERO, Vector3(0.14, 0.22, 0.36))
-	k.gun_assembly(g, Vector3(0, 0, -1.66))
-	VehicleWeapons.gmg(k, t, Vector3(0.3, y, 0.02), Vector3(0.3, y, -0.75), 1.0, 1.0, false, "gunmetal_w", OLIVE, 0.22)
+	# the Kord on the left and the grenade launcher on the right, each on a
+	# cradle of its own on a stub shaft out of the arm beside it, its box hung
+	# on the cradle's outboard side and chuted over into its feedway
+	for side: float in [-1.0, 1.0]:
+		var gz := 0.02 if side > 0.0 else 0.0
+		var g := k._pivot(t, Vector3(side * 0.3, y, gz))
+		var port := 0.075 if side > 0.0 else 0.0525
+		if side > 0.0:
+			_ags(k, g, 0.77, side)
+		else:
+			_kord(k, g, 1.66, 1.0, side)
+		k._cyl(g, 0.026, 0.026, 0.15 - port, Vector3(-side * (0.15 + port) * 0.5, 0, 0), Z90, "gunmetal_w", null, 10, false)
+		k._add(g, BevelMesh.make(Vector3(0.12, 0.04, 0.22), 0.006), "gunmetal_w", null, Vector3(side * 0.12, -0.08, 0.03))
+		VehicleFittings.ammo_can(k, g, Vector3(side * 0.21, -0.04, 0.04), OLIVE, Vector3.ZERO, Vector3(0.15, 0.24, 0.38))
+		_chute(k, g, Vector3(side * 0.155, 0.095, -0.1), Vector3(side * (port + 0.05), 0.135, -0.08), Vector3(side * (port + 0.01), 0.05, -0.06), 0.08)
+		k.gun_assembly(g, Vector3(0, 0, -0.77 if side > 0.0 else -1.66))
 	k.mg_tip = k._tip(t, Vector3(0.3, y, -0.75))
 	k.gun_tip = k._tip(t, Vector3(-0.3, y, -1.66))
 
