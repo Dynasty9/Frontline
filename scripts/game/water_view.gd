@@ -127,6 +127,13 @@ const BOIL := 1  # water boiling up white (a boat going down, a big splash's hea
 const OIL := 2  # fuel and oil from a wreck, spreading in a dark, rainbowed film
 const PATCHES := 64
 
+## The rivers' current as the surface draws it (flow_image): FLOW_N texels
+## across the map, and the ripples carried at up to FLOW_SHOWN m/s in
+## mid-stream (a touch quicker than WaterMap.RIVER_FLOW, so it reads from
+## the air).
+const FLOW_N := 512  # (2 m a texel on the usual map)
+const FLOW_SHOWN := 0.75
+
 var world
 var water: WaterMap
 var t := 0.0  # water_time: what the shaders run the waves by
@@ -148,6 +155,8 @@ var _q := 0.0  # how far a wave's crest bunches for its height (see STEEP)
 var _wf := PackedFloat32Array()  # (height_at) per moving wave: kx, kz, heading x, z, omega, phase, height, bunching, for this sea
 var _detail: Texture2D
 var caustic_tex: NoiseTexture2D
+var flow_tex: ImageTexture
+var _flow_of: Array = []  # the rivers flow_tex was drawn for
 var _wakes := {}  # eid -> Wake
 var _patches: Array = []  # [mi, ends at]
 var _patch_i := 0
@@ -224,6 +233,10 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 		# (only now: an object given a material whose shader has no code yet
 		# draws with the engine's plain white one, and still does once it has)
 		_make_patches()
+	if flow_tex == null or w.rivers != _flow_of:
+		_flow_of = w.rivers.duplicate()
+		flow_tex = ImageTexture.create_from_image(flow_image(w.rivers))
+		mat.set_shader_parameter("flow_tex", flow_tex)
 	for m in [mat, wake_mat, patch_mat]:
 		Mats.set_shared(m, "water_mask", mask_tex)
 		Mats.set_shared(m, "sea_x", _sea_x)
@@ -239,8 +252,9 @@ func build(w: WaterMap, detail: Texture2D) -> void:
 
 
 ## The Water quality setting: the surface's shader and its grid are built for
-## it (Low draws no see-through water and fewer waves; High and Ultra add the
-## light dancing on the bed and the wind's streaks; Ultra a finer grid).
+## it (Low draws no see-through water and fewer waves; High and Ultra add
+## what stands on the screen mirrored in the water, the light dancing on the
+## bed and the wind's streaks; Ultra a finer grid and longer reflections).
 func _settings_changed() -> void:
 	if mat == null or _mask == null:
 		return
@@ -442,6 +456,64 @@ static func scenery_river_tips(rivers: Array, half: float) -> PackedVector4Array
 	return tips
 
 
+## The rivers' current for the surface, FLOW_N texels across the map: the
+## way the water runs there (R, G: down the river, toward -z overall as
+## WaterMap.current_at has it), where across the stream it
+## lies (B: 1 under one bank, 2 mid-stream, 3 under the other; 0 off any
+## river) and how far down the river (A, metres). From these the shader
+## carries the ripples round the bends, slack under the banks, and draws the
+## current's lanes running down the stream.
+static func flow_image(rivers: Array) -> Image:
+	var n := FLOW_N
+	var res := MapDims.SIZE / n
+	var data := PackedFloat32Array()
+	data.resize(n * n * 4)
+	var best := PackedFloat32Array()
+	best.resize(n * n)
+	best.fill(1e9)
+	var half := Vector2(MapDims.HALF, MapDims.HALF)
+	for r: Dictionary in rivers:
+		var pts: PackedVector3Array = r.pts
+		if pts.size() < 2:
+			continue
+		var hw := maxf(float(r.w) * 0.5, 1.0)
+		var reach := hw * 1.3 + res
+		var pv := PackedVector2Array()
+		for q in pts:
+			pv.append(Vector2(q.x, q.z))
+		if pv[pv.size() - 1].y > pv[0].y:
+			pv.reverse()  # (laid out from its source: downstream is toward -z)
+		var arc := 0.0
+		for k in pv.size() - 1:
+			var a := pv[k]
+			var ab := pv[k + 1] - a
+			var seg := ab.length()
+			if seg < 0.001:
+				continue
+			var dir := ab / seg
+			var lo := (a.min(pv[k + 1]) - Vector2(reach, reach) + half) / res
+			var hi := (a.max(pv[k + 1]) + Vector2(reach, reach) + half) / res
+			for ty in range(maxi(0, floori(lo.y)), mini(n, ceili(hi.y) + 1)):
+				var cy := (ty + 0.5) * res - MapDims.HALF
+				for tx in range(maxi(0, floori(lo.x)), mini(n, ceili(hi.x) + 1)):
+					var off := Vector2((tx + 0.5) * res - MapDims.HALF, cy) - a
+					var t := clampf(off.dot(dir), 0.0, seg)
+					off -= dir * t
+					var d := off.length()
+					var i := ty * n + tx
+					if d > reach or d >= best[i]:
+						continue
+					best[i] = d
+					data[i * 4] = dir.x
+					data[i * 4 + 1] = dir.y
+					data[i * 4 + 2] = 2.0 + (d if dir.cross(off) >= 0.0 else -d) / hw
+					data[i * 4 + 3] = arc + t
+			arc += seg
+	var img := Image.create_from_data(n, n, false, Image.FORMAT_RGBAF, data.to_byte_array())
+	img.convert(Image.FORMAT_RGBAH)  # (half the memory; still fine to a metre down a long river)
+	return img
+
+
 ## Lighting follows the time of day (Atmosphere's moods).
 func apply_mood(d: Dictionary, mood: String) -> void:
 	apply_light(d, {mood: 1.0})
@@ -528,7 +600,7 @@ func waves_glsl(moving: int) -> String:
 	h += " float into = p.x - (coast.x + 22.0 * sin(p.y * 0.0105 + s) + 9.0 * sin(p.y * 0.031 + s * 2.3) + 4.0 * sin(p.y * 0.077 + s * 0.7));"
 	h += " return smoothstep(OFFSHORE.x, OFFSHORE.y, into); }"
 	var wind := Vector2(Fires.WIND.x, Fires.WIND.z).normalized()
-	var c := "const float SURF_L = %.2f; const float SURF_C = %.2f; const float SURF_H = %.3f; const float SURGE = %.3f; const vec2 WIND = vec2(%.4f, %.4f); const vec2 OFFSHORE = vec2(%.1f, %.1f);" % [SURF_L, SURF_C, SURF_H, SURGE, wind.x, wind.y, OFFSHORE.x, OFFSHORE.y]
+	var c := "const float SURF_L = %.2f; const float SURF_C = %.2f; const float SURF_H = %.3f; const float SURGE = %.3f; const vec2 WIND = vec2(%.4f, %.4f); const vec2 OFFSHORE = vec2(%.1f, %.1f); const float FLOW_SHOWN = %.2f;" % [SURF_L, SURF_C, SURF_H, SURGE, wind.x, wind.y, OFFSHORE.x, OFFSHORE.y, FLOW_SHOWN]
 	return c + " " + g + " return d; } " + f + " return r; } " + h
 
 
@@ -736,7 +808,8 @@ func foam(p: Vector3, r: float, secs: float, kind: int) -> void:
 ## more the flatter you look across it. The sun's glitter is in light() (in
 ## fragment() where the lighting is per vertex: the browser build). WQ is the
 ## Water quality: Low (0) draws no see-through water, which saves copying the
-## screen every frame; High (2) and Ultra (3) add the light the ripples focus
+## screen every frame; High (2) and Ultra (3) add the banks, trees, bridges and
+## boats on the screen mirrored in it (mirror()), the light the ripples focus
 ## on the bed and the wind's streaks of foam in a blow.
 const WATER_SHADER := """
 shader_type spatial;
@@ -758,6 +831,8 @@ uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
 #if WQ >= 2
 uniform sampler2D caustic_tex : filter_linear_mipmap, repeat_enable;
 #endif
+// the rivers' current (WaterView.flow_image)
+uniform sampler2D flow_tex : hint_default_black, filter_linear, repeat_disable;
 // a depth read back to clip space: OpenGL's (the browser build's) runs -1..1, Vulkan's 0..1
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 #define NDC_Z(d) ((d) * 2.0 - 1.0)
@@ -792,6 +867,7 @@ varying vec3 wpos;
 varying vec2 gp;  // where this water lies at rest (the waves are worked out from there)
 varying float swell_k;
 varying float glint;
+varying float crest_k;  // how high a crest stands here, thin enough for the sun to shine through
 
 __WAVES__
 
@@ -854,6 +930,84 @@ void vertex() {
 	wpos += d;
 }
 
+// the chop's slopes at p, `size` metres to a tile, carried along at `vel`
+// m/s. On a river (`bends`) two layers are carried, each only a few seconds
+// before it fades out and starts afresh as the other fades in (a flow map), so
+// the ripples follow the stream round its bends without smearing. `lag` puts
+// each stretch of the river at its own point in that cycle, so the whole
+// river doesn't pulse together.
+vec2 chop_at(vec2 p, float size, vec2 off, vec2 vel, bool bends, float lag) {
+	vec2 uv = p / size + off;
+	vec2 dx = dFdx(uv);
+	vec2 dy = dFdy(uv);
+	if (!bends) {
+		return textureGrad(chop_tex, uv - vel * water_time / size, dx, dy).xy * 2.0 - 1.0;
+	}
+	float ph = fract(water_time * 0.25 + lag);
+	float ph2 = fract(water_time * 0.25 + lag + 0.5);
+	vec2 a = textureGrad(chop_tex, uv - vel * ph * 4.0 / size, dx, dy).xy * 2.0 - 1.0;
+	vec2 b = textureGrad(chop_tex, uv + vec2(0.37, 0.61) - vel * ph2 * 4.0 / size, dx, dy).xy * 2.0 - 1.0;
+	// (two layers blended lose some of their relief, most when evenly mixed: given back)
+	float w = abs(ph - 0.5) * 2.0;
+	return mix(a, b, w) * inversesqrt(w * w + (1.0 - w) * (1.0 - w));
+}
+
+#if WQ >= 2
+#if WQ >= 3
+#define MIRROR_STEPS 16
+#else
+#define MIRROR_STEPS 11
+#endif
+// how far in front of the eye the opaque world lies at uv (metres, along -z)
+float scene_z(vec2 uv, mat4 ip) {
+	vec2 zw = (ip * vec4(0.0, 0.0, NDC_Z(textureLod(depth_tex, uv, 0.0).r), 1.0)).zw;
+	return -zw.x / zw.y;
+}
+
+vec2 to_uv(vec3 v, mat4 pr) {
+	vec4 c = pr * vec4(v, 1.0);
+	return c.xy / c.w * 0.5 + 0.5;
+}
+
+// what stands above the water mirrored in it - a bank, the trees, a bridge, a
+// ship: a ray marched out along the reflection over the screen in growing
+// strides, then narrowed down to where it meets something. .a how sure it is
+// (0: nothing there, or off the screen, so the sky shows instead).
+vec4 mirror(vec3 o, vec3 dir, float dist, mat4 pr, mat4 ip) {
+	float stride = max(0.35, dist * 0.012);
+	vec3 a = o;
+	for (int i = 0; i < MIRROR_STEPS; i++) {
+		vec3 b = a + dir * stride;
+		if (b.z > -0.2) {
+			break;  // (back past the eye)
+		}
+		vec2 uv = to_uv(b, pr);
+		if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+			break;
+		}
+		float behind = -b.z - scene_z(uv, ip);
+		if (behind > 0.0 && behind < stride * 1.5 + 0.6) {
+			for (int j = 0; j < 4; j++) {
+				vec3 m = (a + b) * 0.5;
+				if (-m.z > scene_z(to_uv(m, pr), ip)) {
+					b = m;
+				} else {
+					a = m;
+				}
+			}
+			uv = to_uv(b, pr);
+			// (fading out toward the screen's edges and the far end of the ray)
+			vec2 e = smoothstep(vec2(0.0), vec2(0.07), uv) * smoothstep(vec2(1.0), vec2(0.93), uv);
+			return vec4(textureLod(screen_tex, uv, 0.0).rgb, e.x * e.y * (1.0 - smoothstep(0.5, 1.0, float(i) / float(MIRROR_STEPS))));
+		}
+		// (passing behind something nearer: it may come out beyond it)
+		a = b;
+		stride *= 1.4;
+	}
+	return vec4(0.0);
+}
+#endif
+
 float lace(vec2 p) {
 	float a = texture(foam_tex, p / 3.3 + vec2(water_time * 0.011, water_time * 0.006)).r;
 	float b = texture(foam_tex, p / 1.35 - vec2(water_time * 0.017, -water_time * 0.01)).r;
@@ -901,22 +1055,46 @@ void fragment() {
 	gn *= swell_k;
 	float bunch = gn.y;  // how far the crests have bunched the water: where it breaks
 	// (the slopes drawn steeper than they are, so the waves read from above)
-	vec2 g = gn.xz * 2.6 + ripples(gp, water_time) * swell_k * 1.5;
+	vec2 g = gn.xz * mix(2.6, 1.5, far) + ripples(gp, water_time) * swell_k * 1.5;
 	if (coast.z > 0.5 && salt > 0.5) {
 		// the faces of the breakers coming in
 		g.x += (surf_hump(p + vec2(0.4, 0.0), into + 0.4) - surf_hump(p - vec2(0.4, 0.0), into - 0.4)) * 1.25 * SURF_H * sea.x * 1.5;
 	}
-	vec2 flow = mix(vec2(0.0, 0.55), WIND * 0.3, salt);  // the rivers run south; the chop runs with the wind
+	// the current: a river runs down its bed (fastest in mid-stream, slack
+	// under the banks), the sea's chop runs before the wind, a pond's barely drifts
+	vec4 fl = textureLod(flow_tex, (p + __MAP_HALF__) / __MAP_SIZE__, 0.0);
+	float river = (1.0 - salt) * step(0.5, fl.b);
+	float across = fl.b - 2.0;
+	float spd = clamp(1.0 - across * across, 0.2, 1.0);
+	vec2 vel = mix(mix(WIND * 0.05, fl.rg * FLOW_SHOWN * spd, river), WIND * 0.2, salt);
+	bool bends = river > 0.5;
 	float gust = texture(detail_tex, p / 260.0 + vec2(water_time * 0.0035, water_time * 0.001)).r;
-	vec2 c1 = texture(chop_tex, p / 12.0 + flow * water_time * 0.045).xy * 2.0 - 1.0;
+	float lag = textureLod(detail_tex, p / 37.0, 0.0).r * 3.0;
+	vec2 c1 = chop_at(p, 12.0, vec2(0.0), vel, bends, lag);
 #if WQ >= 1
-	vec2 c2 = texture(chop_tex, p / 4.7 + vec2(0.31, 0.17) - flow.yx * water_time * 0.08).xy * 2.0 - 1.0;
+	vec2 c2 = chop_at(p, 4.7, vec2(0.31, 0.17), vel * 1.2 + vec2(-vel.y, vel.x) * 0.25, bends, lag + 0.25);
 #else
 	vec2 c2 = vec2(0.0);
+#endif
+	// the current's lanes: smooth slicks and lines of bubbles drawn out down
+	// the stream and carried along it (off the map's edge the flow map has no
+	// more river to follow)
+	float lane = 0.5;
+	float lane_k = 0.0;
+#if WQ >= 1
+	vec2 lq = vec2(across * 0.45, (fl.a - water_time * FLOW_SHOWN * 0.85) * 0.0042);
+	vec2 lqx = dFdx(lq);
+	vec2 lqy = dFdy(lq);
+	if (bends) {
+		lane = textureGrad(foam_tex, lq, lqx, lqy).r;
+		lane_k = (1.0 - smoothstep(-25.0, 5.0, max(abs(p.x), abs(p.y)) - __MAP_HALF__)) * (1.0 - smoothstep(0.75, 1.1, abs(across)));
+	}
 #endif
 	// (the chop is the wind sea's own: it gets up with it in a blow; the fine
 	// ripples fade out with distance, before they shimmer)
 	float chop = mix(0.2, 0.34, salt) * mix(0.55, 1.45, smoothstep(0.3, 0.75, gust)) * mix(1.0, 0.45 + 0.75 * sea.y, salt);
+	// (the slicks lie glassy among the rippled lanes; the current roughens mid-stream)
+	chop *= mix(1.0, mix(0.3, 1.25, smoothstep(0.1, 0.4, lane)) * mix(0.8, 1.15, spd), lane_k);
 	vec2 gs = g;
 	g += (c1 * 0.6 * (1.0 - far * 0.7) + c2 * 0.4 * (1.0 - smoothstep(25.0, 150.0, dist))) * chop * 1.5;
 #if WQ >= 1
@@ -958,6 +1136,9 @@ void fragment() {
 	// darker the farther out)
 	float depth = rthick + salt * clamp(into - 20.0, 0.0, 90.0) * 0.2;
 	vec3 tr = exp(-mix(fresh_absorb, sea_absorb, salt) * depth);
+	// (and the sunlight lighting the bed came down through the water first: a
+	// river's channel goes dark while its shallows stay bright)
+	vec3 tdown = exp(-mix(fresh_absorb, sea_absorb, salt) * rthick * max(eye.y, 0.25) * 0.8);
 #if WQ >= 2
 	// the light the ripples focus onto the bed, dancing in the shallows
 	float ca = texture(caustic_tex, p / 6.5 + vec2(water_time * 0.023, water_time * 0.011)).r;
@@ -995,6 +1176,8 @@ void fragment() {
 	// (whitecaps: flecks the wind tears off the tops of the waves, more in the gusts)
 	float fleck = smoothstep(0.5, 0.75, texture(foam_tex, p / 9.0 + WIND * water_time * 0.08).r);
 	float caps = smoothstep(0.3, 0.58, bunch) * mix(0.45, 1.0, smoothstep(0.4, 0.8, gust)) * fleck;
+	// (bubbles strung out along the lanes of the current)
+	caps += smoothstep(0.66, 0.9, lane) * 0.16 * spd * lane_k;
 #if WQ >= 2
 	// in a blow, streaks of foam laid out down the wind
 	vec2 wf = vec2(dot(p, WIND), dot(p, vec2(-WIND.y, WIND.x)));
@@ -1016,12 +1199,28 @@ void fragment() {
 	float cl = smoothstep(1.0 - clouds - 0.15, 1.0 - clouds + 0.35, texture(detail_tex, cuv).r) * smoothstep(0.0, 0.2, r.y);
 	sky = mix(sky, mix(horizon * 0.95, cloud_color, 0.55), cl * 0.8);
 	if (terrain_reflections) { sky = vec3(0.0); }
+#if WQ >= 2
+	// (by the broad slopes: every ripple would shatter it)
+	vec3 nm = normalize(mix(vec3(0.0, 1.0, 0.0), normalize(mix(n, ns, 0.7)), 0.45));
+	// (looked down on steeply, calm water mirrors too little to show - a
+	// couple of percent - so no ray is marched there: most of the screen from
+	// the usual camera)
+	float mirror_k = smoothstep(0.021, 0.035, 0.02 + 0.98 * pow(1.0 - clamp(eye.y, 0.0, 1.0), 5.0));
+	vec4 mirrored = vec4(0.0);
+	if (mirror_k > 0.0) {
+		mirrored = mirror(VERTEX, reflect(normalize(VERTEX), (VIEW_MATRIX * vec4(nm, 0.0)).xyz), dist, PROJECTION_MATRIX, INV_PROJECTION_MATRIX);
+		mirrored.a *= mirror_k;
+	}
+	sky = mix(sky, mirrored.rgb, mirrored.a);
+	SPECULAR = terrain_reflections ? 0.25 * (1.0 - mirrored.a) : 0.0;
+#else
 	SPECULAR = terrain_reflections ? 0.25 : 0.0;
+#endif
 	vec3 amb = terrain_reflections ? vec3(0.0) : mix(horizon, zenith, 0.5) * ambient;
 #if WQ >= 1
 	vec3 scatter = tint * (1.0 - tr);
 	ALBEDO = mix(scatter * (1.0 - fres), foam_col, foam);
-	EMISSION = ((bed * tr + scatter * amb) * (1.0 - fres) + sky * fres) * (1.0 - foam) + foam_col * amb * foam * 0.6;
+	EMISSION = ((bed * tr * tdown + scatter * amb) * (1.0 - fres) + sky * fres) * (1.0 - foam) + foam_col * amb * foam * 0.6;
 	// (soft where it laps the bank)
 	ALPHA = clamp(smoothstep(0.0, mix(0.05, 0.22, salt), thick) + foam, 0.0, 1.0);
 #else
@@ -1033,6 +1232,7 @@ void fragment() {
 	ROUGHNESS = mix(0.05, 0.6, foam);
 	NORMAL = normalize(mix((VIEW_MATRIX * vec4(n, 0.0)).xyz, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, foam * 0.7));
 	glint = (1.0 - foam) * mix(0.3, 1.0, fres) * sun_k;
+	crest_k = clamp((wpos.y - __LEVEL__) / 0.45, 0.0, 1.0) * swell_k * (1.0 - foam) * sun_k;
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	// (lit per vertex there, which would lose every glint: the sun's glitter
 	// is worked out here instead, for each pixel)
@@ -1048,6 +1248,9 @@ void light() {
 	float nh = clamp(dot(NORMAL, normalize(LIGHT + VIEW)), 0.0, 1.0);
 	float sp = pow(nh, 1600.0) * 9.0 + pow(nh, 220.0) * 0.25 + pow(nh, 30.0) * 0.025;
 	SPECULAR_LIGHT += sp * glint * ATTENUATION * LIGHT_COLOR;
+	// the sun through a wave's thin crest, glowing green, the more as it's behind it
+	float back = pow(clamp(dot(VIEW, -LIGHT) * 0.5 + 0.5, 0.0, 1.0), 3.0);
+	SPECULAR_LIGHT += shoal_tint * crest_k * (back * 0.5 + 0.06) * ATTENUATION * LIGHT_COLOR;
 #endif
 }
 """
