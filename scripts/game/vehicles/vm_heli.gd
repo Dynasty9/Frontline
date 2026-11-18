@@ -586,7 +586,8 @@ static func _gear(k: VehicleModels, p: Node3D, top: Vector3, axle: Vector3, r: f
 ## the gun comes, +1 the right (the feeder turned round, the motor with it),
 ## so a door gun on either side of the cabin feeds from inboard. `chute`
 ## replaces the door gun's chute with a path of the caller's (in the gun's
-## space, from the feeder's foot), where its ammunition box stands elsewhere.
+## space, from the feeder), where its ammunition box stands elsewhere; a
+## fixed gun given one feeds through it from its box in the airframe.
 static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door := false, feed := -1.0, chute: Array[Vector3] = []) -> Vector3:
 	# (on a pivot of its own at the housing: whoever lays it swings it whole)
 	var g := k._pivot(p, pos)
@@ -623,18 +624,24 @@ static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door
 			k._box(g, Vector3(0.012, 0.075, 0.12), Vector3(side * 0.077, -0.045, 0.0), VehicleWeapons.STEEL, null, Vector3.ZERO, false)
 			k._cyl(g, 0.016, 0.016, 0.008, Vector3(side * 0.085, -0.03, 0.0), Vector3(0, 0, PI / 2), "metal_dark", null, 8, false)
 		k._cyl(g, 0.018, 0.018, 0.09, Vector3(0, -0.135, 0.0), Vector3.ZERO, VehicleWeapons.STEEL, null, 8, false)
-		# the chute out of the feeder's foot, ribbed where its links hinge,
-		# dropping away to the ammunition box on the cabin floor
+		# the chute out of the feeder's foot dropping away to the ammunition
+		# box on the cabin floor
 		if chute.is_empty():
 			for c: Vector3 in [Vector3(-0.1, -0.07, 0.1), Vector3(-0.13, -0.18, 0.14), Vector3(-0.12, -0.36, 0.22), Vector3(-0.06, -0.52, 0.3)]:
 				chute.append(Vector3(c.x * fs, c.y, c.z))
+		hands = [Vector3(0.1, 0.0, 0.35), Vector3(-0.1, 0.0, 0.35)]
+	else:
+		# a fixed gun throws its cases and links down and back out of the
+		# chute under the housing, clear of the airframe
+		k._box(g, Vector3(0.05, 0.11, 0.045), Vector3(0, -0.12, 0.05), VehicleWeapons.STEEL, null, Vector3(-0.35, 0, 0), false)
+	if not chute.is_empty():
+		# the feed chute (ribbed where its links hinge)
 		_path(k, g, chute, 0.034, "metal_dark", null, 8)
 		for i in chute.size() - 1:
 			var a := chute[i]
 			var b := chute[i + 1]
 			for f: float in [0.3, 0.75]:
 				k._add(g, Res.torus(0.03, 0.041), "metal_dark", null, a.lerp(b, f), VehicleFrames.aim(b - a).get_euler(), Vector3.ONE, false)
-		hands = [Vector3(0.1, 0.0, 0.35), Vector3(-0.1, 0.0, 0.35)]
 	k.gun_assembly(g, Vector3(0, 0, -0.12 - ln), hands)
 	return pos + Vector3(0, 0, -0.12 - ln)
 
@@ -782,16 +789,20 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 		_tube(k, m, Vector3(-1.62, 0.92, 0.0), Vector3(1.62, 0.92, 0.0), 0.05, "gunmetal_w", null, 10)
 		k._box(m, Vector3(3.0, 0.09, 0.16), Vector3(0, 0.88, 0.0), "gunmetal_w")
 		for s in [-1.0, 1.0]:
-			k._box(m, Vector3(0.08, 0.16, 0.42), Vector3(s * 1.0, 0.8, -0.05), "gunmetal_w")
-			k._box(m, Vector3(0.08, 0.14, 0.6), Vector3(s * 1.52, 0.82, -0.05), "gunmetal_w")
+			# the pylons hung under the bar, sway braces down onto the gun's
+			# housing and the pod
+			VehicleAircraft.hardpoint(k, m, Vector3(s * 1.0, 0.835, -0.1), 0.42, 0.09, null, 0.075, 0.08, "gunmetal_w", 0.0)
+			VehicleAircraft.hardpoint(k, m, Vector3(s * 1.52, 0.835, -0.05), 0.6, 0.105, null, 0.13, 0.08, "gunmetal_w", 0.0)
 			_rocket_pod(k, m, Vector3(s * 1.52, 0.6, -0.12), 0.13, 1.6, "paint", Color(0.3, 0.32, 0.27), 7)
-			# the ammunition chute from the box in the cabin
-			_path(k, m, [Vector3(s * 0.62, 0.9, 0.25), Vector3(s * 0.82, 0.82, 0.3), Vector3(s * 0.98, 0.72, 0.2)], 0.04, "rubber", null, 6)
+			# each gun feeds from inboard, its chute up out of the feeder,
+			# under the cross-bar and in through the cabin floor to the
+			# ammunition box behind the pilots' seats
+			var feed: Array[Vector3] = [Vector3(-s * 0.1, 0.05, 0.1), Vector3(-s * 0.2, 0.1, 0.25), Vector3(-s * 0.32, 0.2, 0.42), Vector3(-s * 0.42, 0.28, 0.5)]
 			if s > 0.0:
 				k.turret = k._pivot(m, Vector3(1.0, 0.66, -0.25))
-				k.mg_tip = k._tip(k.turret, _minigun(k, k.turret, Vector3.ZERO, 0.72))
+				k.mg_tip = k._tip(k.turret, _minigun(k, k.turret, Vector3.ZERO, 0.72, false, -s, feed))
 			else:
-				_minigun(k, m, Vector3(-1.0, 0.66, -0.25), 0.72)
+				_minigun(k, m, Vector3(-1.0, 0.66, -0.25), 0.72, false, -s, feed)
 	if v != 2:
 		# the FLIR ball hanging on its neck under the nose
 		VehicleEquipment.sensor(k, m, Vector3(0, 0.5, -1.8), Vector3.ONE * 0.13 * 2.0, "paint", Color(0.3, 0.31, 0.3), "ball", Vector3(0.05, 0.05, 0.18))
@@ -1329,11 +1340,14 @@ static func _hellcat(k: VehicleModels, team: int) -> void:
 		# under the skin rather than standing on a fairing.
 		VehicleAircraft.hardpoint(k, m, Vector3(s * 1.78, 1.05, -1.25), 0.7, 0.16, null, 0.17, 0.08, "gunmetal_w", 0.0)
 		_rocket_pod(k, m, Vector3(s * 1.78, 0.72, -1.3), 0.17, 1.6, "paint", Color(0.3, 0.32, 0.27), 7)
+		# the minigun feeds from inboard, its chute rising from the feeder
+		# into the stub wing, where its ammunition rides
+		var feed: Array[Vector3] = [Vector3(-s * 0.1, 0.05, 0.1), Vector3(-s * 0.15, 0.13, 0.2), Vector3(-s * 0.2, 0.26, 0.3)]
 		if s > 0.0:
 			k.turret = k._pivot(m, Vector3(1.3, 0.8, -1.4))
-			k.mg_tip = k._tip(k.turret, _minigun(k, k.turret, Vector3.ZERO, 0.72))
+			k.mg_tip = k._tip(k.turret, _minigun(k, k.turret, Vector3.ZERO, 0.72, false, -s, feed))
 		else:
-			_minigun(k, m, Vector3(-1.3, 0.8, -1.4), 0.72)
+			_minigun(k, m, Vector3(-1.3, 0.8, -1.4), 0.72, false, -s, feed)
 	# the rotor: four BERP blades on the compact hub, under its domed cap
 	_rotor(k, m, Vector3(0, 3.4, -0.7), 4, 6.4, 0.39, true, PI / 4, 0.018, 0.32, 2)
 	VehicleRotors.hub_cap(k, k.rotor, Vector3(0, 0.18, 0), 0.22, 0.32, 0.14, 10)
@@ -1575,8 +1589,17 @@ static func _orca(k: VehicleModels, team: int, armed: bool) -> void:
 			VehicleAircraft.hardpoint(k, m, Vector3(s * 1.5, 1.08, -0.05), 0.62, 0.16, null, 0.2 if s > 0.0 else 0.16, 0.08, "gunmetal_w", 0.04)
 		_rocket_pod(k, m, Vector3(1.5, 0.74, -0.15), 0.2, 1.6, "paint", Color(0.3, 0.32, 0.27), 19)
 		k.turret = k._pivot(m, Vector3(-1.5, 0.82, -0.1))
-		k._cyl(k.turret, 0.16, 0.16, 0.9, Vector3(0, 0, 0.25), Vector3(PI / 2, 0, 0), "paint", Color(0.3, 0.32, 0.27), 12)
-		k._add(k.turret, Res.sphere(0.16, 12), "paint", Color(0.3, 0.32, 0.27), Vector3(0, 0, 0.7), Vector3.ZERO, Vector3(1, 1, 0.8))
+		# the minigun pod: its body (the gun's drive and 1,500 rounds inside),
+		# the nose fairing tapering round the barrels, which stand out of it;
+		# the band where the nose comes off for loading, the ejection port
+		# underneath that throws the cases and links clear, the tail cone
+		var pod := Color(0.3, 0.32, 0.27)
+		k._cyl(k.turret, 0.16, 0.16, 0.9, Vector3(0, 0, 0.25), Vector3(PI / 2, 0, 0), "paint", pod, 12)
+		_tube(k, k.turret, Vector3(0, 0, -0.2), Vector3(0, 0, -0.42), 0.16, "paint", pod, 12, 0.075)
+		k._cyl(k.turret, 0.072, 0.072, 0.012, Vector3(0, 0, -0.426), Vector3(PI / 2, 0, 0), "metal_dark", null, 12, false)
+		k._cyl(k.turret, 0.163, 0.163, 0.02, Vector3(0, 0, -0.16), Vector3(PI / 2, 0, 0), "metal_dark", null, 12, false)
+		k._box(k.turret, Vector3(0.06, 0.012, 0.2), Vector3(0, -0.156, 0.08), "plain_dark", Color(0.04, 0.04, 0.04), Vector3.ZERO, false)
+		k._add(k.turret, Res.sphere(0.16, 12), "paint", pod, Vector3(0, 0, 0.7), Vector3.ZERO, Vector3(1, 1, 0.8))
 		k.mg_tip = k._tip(k.turret, _minigun(k, k.turret, Vector3(0, 0, -0.2), 0.6))
 	# the rotor: four blades with swept tips under a domed hub cap
 	_rotor(k, m, Vector3(0, 3.36, -1.0), 4, 6.75, 0.4, true, PI / 4, 0.018, 0.32, 1)

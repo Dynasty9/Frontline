@@ -564,8 +564,7 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 	_boot(k, m, g40 + dn * 0.02, dn, 0.25, 0.16, 0.3)
 	VmPlane.rod(k, m, g40, g40 + dn * 0.8, 0.12, "gunmetal_w", null, 12)
 	VmPlane.rod(k, m, g40, g40 + dn * 1.9, 0.065, "gunmetal_w", null, 10)
-	VmPlane.rod(k, m, g40 + dn * 1.75, g40 + dn * 2.45, 0.08, "gunmetal_w", null, 12, 0.15)
-	k._add(m, Res.cyl(0.13, 0.13, 0.02, 12), "plain_dark", null, g40 + dn * 2.455, Vector3(0, 0, PI / 2 + dep), Vector3.ONE, false)
+	_bofors_hider(k, m, g40, dn, 2.465, 0.065, 0.15, 0.7)
 	k.weapon_tips["ac40"] = k._tip(m, g40 + dn * 2.465)
 	# the 105 mm M102 howitzer
 	_patch(k, m, "gs_ac_p105", st, 2.4, 3.6, 0.95, 2.85, true, "plain_dark", null, 0.008)
@@ -595,6 +594,16 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 		var tc: Vector3 = tp[0]
 		var tr: float = tp[1]
 		VehicleEquipment.sensor(k, m, tc, Vector3.ONE * tr * 2.0, "paint", Color(0.42, 0.43, 0.44), "ball", Vector3(tr * 0.85, tr * 0.8, tr * 0.55 + 0.08), 2, Vector3(-0.57, PI / 2, 0))
+
+
+## The 40 mm Bofors' long conical flash hider on the barrel from `at` along
+## `dn`, its open mouth `tip` metres out (where the shell leaves it): the
+## cone flaring from the barrel's `radius` to `mouth` over `length`, the lip,
+## the dark bore inside.
+static func _bofors_hider(k: VehicleModels, m: Node3D, at: Vector3, dn: Vector3, tip: float, radius: float, mouth: float, length: float) -> void:
+	var g := VehicleWeapons._aimed(k, m, at, at + dn)
+	VehicleWeapons.cone_hider(k, g, Vector3(0, 0, -(tip - length * 0.12)), radius, mouth, length)
+	k._fold(g)
 
 
 ## A gun's rubber blast boot where it leaves the airframe: a bellows of
@@ -867,7 +876,7 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	_boot(k, m, g40 + Vector3(0.24, 0, 0), dn, 0.23, 0.15, 0.32)
 	VmPlane.rod(k, m, g40, g40 + dn * 0.95, 0.11, "gunmetal_w", null, 12)
 	VmPlane.rod(k, m, g40, g40 + dn * 2.35, 0.065, "gunmetal_w", null, 10)
-	VmPlane.rod(k, m, g40 + dn * 2.2, g40 + dn * 2.65, 0.09, "gunmetal_w", null, 12, 0.1)
+	_bofors_hider(k, m, g40, dn, 2.66, 0.065, 0.14, 0.6)
 	k.weapon_tips["ac40"] = k._tip(m, g40 + dn * 2.66)
 	# the 105 mm and the 20 mm in the aft mount
 	var zg := 3.75

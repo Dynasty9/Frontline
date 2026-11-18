@@ -574,17 +574,24 @@ static func _mk38(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	# the barrel: a support sleeve out of the housing's nose, the long tube, a
 	# muzzle device on its end
 	VehicleWeapons.autocannon(k, tv, Vector3(0, 0.58, -0.63), Vector3(0, 0.58, -2.64), Vector2(0.08, 0.3), Vector2(0.03, 0.042), Vector2(0.045, 0.16))
-	# the electro-optical sight on the left, its windows forward
-	_bx(k, tv, Vector3(0.08, 0.1, 0.3), Vector3(-0.34, 0.6, -0.1), cm, col)
-	k._add(tv, VehicleModels.loft("ship_mk38_eos", VmBoat._rr(0.28, 0.46, 0.0, 0.06, 0.04), VmBoat._rr(0.24, 0.4, 0.02, 0.05, 0.03), 0.0, 0.4, 0.02), cm, col, Vector3(-0.53, 0.44, -0.12))
-	_bx(k, tv, Vector3(0.16, 0.1, 0.012), Vector3(-0.53, 0.72, -0.35), "glass", null, Vector3.ZERO, false)
-	_bx(k, tv, Vector3(0.1, 0.08, 0.012), Vector3(-0.53, 0.58, -0.35), "glass", null, Vector3.ZERO, false)
-	_bx(k, tv, Vector3(0.3, 0.02, 0.2), Vector3(-0.53, 0.855, -0.3), cm, col, Vector3(-0.12, 0, 0), false)
-	# the ammunition box on the right and its feed chute into the receiver
+	# the electro-optical sight on the left, on its arm off the housing: the
+	# head's three windows forward (the TV camera's over the thermal
+	# imager's, the laser rangefinder's small one beside), bezelled, under
+	# their visors
+	_bx(k, tv, Vector3(0.12, 0.1, 0.3), Vector3(-0.33, 0.6, -0.1), cm, col)
+	VehicleMounts.sight(k, tv, Vector3(-0.53, 0.64, -0.12), Vector3(0.28, 0.4, 0.46), [Rect2(Vector2(-0.045, 0.09), Vector2(0.15, 0.1)), Rect2(Vector2(-0.045, -0.06), Vector2(0.15, 0.1)), Rect2(Vector2(0.09, -0.06), Vector2(0.05, 0.05))], cm, col)
+	# the ammunition box on the right, its lid's seam and the two latches
+	# that clamp it, and the ribbed chute the linked rounds ride up out of
+	# it and into the receiver's feed
 	_bx(k, tv, Vector3(0.26, 0.38, 0.66), Vector3(0.52, 0.42, 0.18), cm, col.darkened(0.06))
-	_bx(k, tv, Vector3(0.2, 0.06, 0.2), Vector3(0.38, 0.66, 0.0), "gunmetal_w", null, Vector3(0, 0, -0.5))
+	_bx(k, tv, Vector3(0.268, 0.008, 0.668), Vector3(0.52, 0.55, 0.18), "plain_dark", Color(0.12, 0.13, 0.13), Vector3.ZERO, false)
 	for z in [-0.05, 0.4]:
-		_bx(k, tv, Vector3(0.28, 0.03, 0.04), Vector3(0.52, 0.62, z), "gunmetal_w", null, Vector3.ZERO, false)
+		_bx(k, tv, Vector3(0.012, 0.07, 0.04), Vector3(0.656, 0.55, z), "gunmetal_w", null, Vector3.ZERO, false)
+		_bx(k, tv, Vector3(0.28, 0.02, 0.04), Vector3(0.52, 0.62, z), "gunmetal_w", null, Vector3.ZERO, false)
+	var feed: Array[Vector3] = [Vector3(0.5, 0.6, -0.04), Vector3(0.45, 0.71, -0.06), Vector3(0.35, 0.73, -0.08), Vector3(0.26, 0.66, -0.1)]
+	VehicleFrames.path(k, tv, feed, 0.045, "metal_dark", null, 8)
+	for i in feed.size() - 1:
+		k._add(tv, Res.torus(0.04, 0.054), "metal_dark", null, feed[i].lerp(feed[i + 1], 0.5), VehicleFrames.aim(feed[i + 1] - feed[i]).get_euler(), Vector3.ONE, false)
 	# the spent case chute under the housing, a cable loom at the back
 	_bx(k, tv, Vector3(0.12, 0.2, 0.14), Vector3(0, 0.3, -0.2), "gunmetal_w")
 	_rod(k, tv, Vector3(-0.2, 0.42, 0.68), Vector3(-0.32, 0.12, 0.5), 0.03, "rubber", null, 6)
