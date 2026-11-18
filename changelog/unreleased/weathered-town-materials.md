@@ -4,28 +4,8 @@ summary = "Town roofs come in weathered clay, concrete tile and slate instead of
 kind = "improved"
 
 [[screenshots]]
-file = "town-after.jpg"
-caption = "The town from the battle camera: roofs in several clays, slates and concrete tiles"
-
-[[screenshots]]
-file = "town-before.jpg"
-caption = "Before: every tiled roof the same bright terracotta"
-
-[[screenshots]]
-file = "street-after.jpg"
-caption = "A brick bungalow from the street: old red-brown brick under a weathered clay roof"
-
-[[screenshots]]
-file = "street-before.jpg"
-caption = "Before: orange brick under a bright orange roof"
-
-[[screenshots]]
-file = "houses-after.jpg"
-caption = "Coursed stone, old brick, a slate roof and dulled clay tiles"
-
-[[screenshots]]
-file = "houses-before.jpg"
-caption = "Before: stone like grey concrete block, orange brick"
+file = "comparison.jpg"
+caption = "Before (left) and after (right): the town from the battle camera, a brick bungalow from the street, and four house plans"
 +++
 
 - **Roofs:** each tiled roof is one of five weathered clays and concrete tiles or three slates and grey tiles, so a

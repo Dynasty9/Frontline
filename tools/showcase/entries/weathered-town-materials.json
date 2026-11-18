@@ -1,0 +1,30 @@
+{
+  "entry": "changelog/unreleased/weathered-town-materials.md",
+  "summary": "Town roofs come in weathered clay, concrete tile and slate, brick is old red-brown and stone is coursed rubble in lime mortar.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=town and tools/showcase/building-surfaces.tscn --building-kinds=house_plans; parent-revision comparison",
+  "rationale": "A material and colour change: matched stills from the battle camera, the street and the studio show the roof palette, brick and stone side by side with the parent revision.",
+  "source_ref": "b054bb01 (before) + dines/town-buildings-realism-5d2b5a working tree (after)",
+  "before_ref": "git archive of b054bb01 into a scratch copy, rendered with the same fixtures and flags.",
+  "capture": {
+    "renderer": "Godot 4.7.2 Forward+, High preset, 1600x900, day; Compatibility renderer checked on the studio stage",
+    "command": "godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=town; godot --path . tools/showcase/building-surfaces.tscn -- --building-single --building-kinds=house_plans --offscreen",
+    "comparison": "Uncropped captures reduced to 800x450 panels, before left and after right: town overview, driveway, house plans."
+  },
+  "validation": [
+    "godot --import clean",
+    "building-components, structure-batches and determinism tests pass",
+    "town scenario expectation passes",
+    "changelog check passes"
+  ],
+  "limitations": [
+    "Moss-patch shapes and the unchanged parts of each image vary only where the change reaches; no performance change (colours and one shader branch)."
+  ],
+  "sources": [
+    {
+      "file": "changelog/unreleased/weathered-town-materials/comparison.jpg",
+      "sha256": "8c8e2cbc89bab28e51ad677daafeed7f7dffb2663cd7af9277cea226580a3f42"
+    }
+  ],
+  "output": null
+}
