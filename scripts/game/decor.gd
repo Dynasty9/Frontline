@@ -31,6 +31,9 @@ const BREAKABLE := {
 	"swing": [Vector3(3.5, 2.5, 1.6), 150.0], "slide": [Vector3(3.2, 1.9, 0.8), 120.0],
 	"climber": [Vector3(2.0, 1.9, 2.0), 120.0], "seesaw": [Vector3(3.4, 0.7, 0.4), 60.0],
 	"roundabout": [Vector3(2.2, 1.0, 2.2), 150.0], "statue": [Vector3(1.8, 4.5, 1.8), 2000.0],
+	"traffic_light": [Vector3(0.5, 3.4, 0.5), 120.0], "phone_box": [Vector3(1.0, 2.6, 1.0), 300.0],
+	"post_box": [Vector3(0.55, 1.4, 0.55), 200.0], "ad_column": [Vector3(1.4, 2.9, 1.4), 600.0],
+	"hoarding": [Vector3(5.0, 3.8, 0.6), 150.0], "street_name": [Vector3(0.9, 2.6, 0.9), 20.0],
 }
 
 var world
@@ -370,6 +373,22 @@ func _beam(a: Vector3, b: Vector3, t: float, kind: String, col = null, shadow :=
 
 func _make(h: Node3D, kind: String, ex) -> void:
 	match kind:
+		"road_gravel":
+			var coarse := _bake
+			_bake = _fine_bake
+			for i in 28:
+				var p := Vector3(rng.randf_range(-2.4, 2.4), 0, rng.randf_range(-0.28, 0.28))
+				var r := rng.randf_range(0.025, 0.065)
+				var shape := Vector3(1.3, 0.45, 0.9) * r
+				p.y = world.ground_y(_at * p) - _at.origin.y + shape.y * 0.2
+				_m(Res.alpine_stone(i), "alpine_stone", Vector3.ZERO, Res.vary(Color(0.36, 0.35, 0.32), 0.18, rng), Vector3.ZERO, false, false,
+					Mats.place(p, Vector3(0.1, rng.randf() * TAU, -0.15), shape))
+			_bake = coarse
+		"road_marker":
+			_m(Res.box(Vector3(0.12, 0.95, 0.16)), "paint", Vector3(0, 0.475, 0), Color(0.73, 0.72, 0.65))
+			_m(Res.box(Vector3(0.125, 0.22, 0.165)), "metal_dark", Vector3(0, 0.73, 0), Color(0.06, 0.065, 0.06))
+			for side in [-1.0, 1.0]:
+				_m(Res.box(Vector3(0.01, 0.1, 0.07)), "paint", Vector3(side * 0.067, 0.73, 0), Color(0.82, 0.25, 0.06) if side > 0 else Color(0.85, 0.86, 0.78), Vector3.ZERO, false)
 		"alpine_stones":
 			var scale := float(ex)
 			var coarse := _bake
@@ -579,6 +598,24 @@ func _make(h: Node3D, kind: String, ex) -> void:
 					BuildingYards.shed(yk, BuildingYards.SHEDS[int(ex) % BuildingYards.SHEDS.size()], rng)
 				"trampoline":
 					BuildingYards.trampoline(yk, BuildingYards.PADS[int(ex) % BuildingYards.PADS.size()])
+		"traffic_light", "phone_box", "post_box", "ad_column", "hoarding", "street_name", "belongings":
+			# the street's furniture beyond its lamps and poles (BuildingStreet)
+			var sk := BuildingKit.baked(_bake, rng, _at)
+			match kind:
+				"traffic_light":
+					BuildingStreet.traffic_light(sk, float(ex), rng)
+				"phone_box":
+					BuildingStreet.phone_box(sk, [Color(0.7, 0.1, 0.08), Color(0.22, 0.3, 0.24), Color(0.42, 0.44, 0.46)][int(ex) % 3], rng)
+				"post_box":
+					BuildingStreet.post_box(sk)
+				"ad_column":
+					BuildingStreet.ad_column(sk, rng)
+				"hoarding":
+					BuildingStreet.hoarding(sk, float(ex), rng)
+				"street_name":
+					BuildingStreet.street_name(sk, rng)
+				"belongings":
+					BuildingStreet.belongings(sk, rng)
 		"mailbox":
 			_m(Res.box(Vector3(0.07, 1.0, 0.07)), "wood_dark", Vector3(0, 0.5, 0), null, Vector3.ZERO, false)
 			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)
@@ -661,6 +698,10 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"drive":
 			var d2: Vector3 = ex
 			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)
+			# Saw-cut joints let the concrete shrink in slabs instead of cracking at random.
+			var slabs := maxi(1, ceili(d2.z / 3.0))
+			for joint in range(1, slabs):
+				_m(Res.box(Vector3(d2.x, 0.004, 0.018)), "concrete_floor", Vector3(0, 0.032, -d2.z * 0.5 + joint * d2.z / slabs), Color(0.18, 0.17, 0.15), Vector3.ZERO, false, true)
 		"path":
 			var p2: Vector3 = ex
 			_m(Res.box(Vector3(p2.x, 0.03, p2.z)), "pavement", Vector3(0, 0.02, 0), Color(0.56, 0.53, 0.47), Vector3.ZERO, false, true)
@@ -807,5 +848,6 @@ func _apply_mood_chunk(key: Vector2i) -> void:
 		l.shadow_enabled = false
 		l.position = p
 		l.add_to_group(&"fx_light")
+		l.add_to_group(&"probe_light")  # (its glow lights the probes round it: LightProbes)
 		add_child(l)
 		_light_nodes[key].append(l)

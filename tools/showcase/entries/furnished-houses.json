@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/furnished-houses.md",
+  "summary": "Houses are furnished inside: wardrobes, bookcases, kitchens, settees, desks, tables and chairs.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change seen when a roof lifts: matched studio rows of three open houses, then each room cropped from a double-resolution render; at the town camera the roofs hide it.",
+  "source_ref": "3a6601dcadd8e765df99d2db98dec3468ab7e2d5",
+  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/furnished-houses/comparison.jpg",
+      "sha256": "e9b124d1ed591116be704d1571af13644aafec8d155e1a5c35b0ca3e0ac50b96"
+    },
+    {
+      "file": "changelog/unreleased/furnished-houses/capture.json",
+      "sha256": "ae1c17c331ab4af8b6d1397687950eb71f5ce9b6ad4238b005993db91ba6cb08"
+    }
+  ],
+  "output": null
+}

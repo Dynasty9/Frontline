@@ -439,6 +439,7 @@ func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:
 		# Empty prototypes omit these properties; destroyed vehicles emit them.
 		prop_types.structure.merge({"wreck_turret_yaw": 0.0, "bent_skirts": 0,
 			"wreck_finish": {}, "turret_off": false})
+		prop_types.structure["look"] = 0  # (a wing's roof: the roof whose looks it shares)
 	var schema: Dictionary = prop_types.get(kind, {})
 	for key in values:
 		if key == "toss":

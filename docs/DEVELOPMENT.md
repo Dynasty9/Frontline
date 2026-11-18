@@ -368,6 +368,8 @@ FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
+--scenario=storeys                                    a house on two floors with a wing; a charge blows in a front wall
+                                                      and the floor above comes down with its roof (storey_fell)
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
 --scenario=town                                       a rifle squad takes a village's supply dump, its lorry runs the stock to
                                                       FOB Alpha, then a Rebel cell comes to take it back (town_captured,
@@ -881,9 +883,12 @@ The rendered `tests/fixtures/terrain-materials.tscn` also compares tinted roofs 
 batching in both renderers; packed tints retain the renderer's colour space and their full bright range.
 The scaling runner includes this scene alongside the navigation and AI regressions.
 Benchmark JSON includes loading-stage timings, route-cache hits and path queue
-waiting time. `--require-target` makes the benchmark fail when any measured rendered
-frame exceeds 16.67 ms or any simulation tick exceeds 33.33 ms; ordinary runs retain
-these budget results without treating an unfinished optimization as a harness error.
+waiting time. `--require-target` requires `--rendered` and nonempty frame and simulation
+tick measurements. It fails when either measurement is absent, any rendered frame exceeds
+16.67 ms, or any simulation tick exceeds 33.33 ms. Headless runs leave render budgets
+unmeasured (`null`) and cannot pass this acceptance gate. Ordinary runs without
+`--require-target` retain diagnostic reports and budget results without treating an
+unfinished optimization as a harness error.
 
 ## Generated elevation
 
