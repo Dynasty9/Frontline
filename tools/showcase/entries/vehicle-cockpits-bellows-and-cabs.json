@@ -9,11 +9,11 @@
   "sources": [
     {
       "file": "changelog/unreleased/vehicle-cockpits-bellows-and-cabs/comparison.jpg",
-      "sha256": "820de608c8ff5643a51cddde347cb06dccf68c405491158b8a7a3bad71f7de1c"
+      "sha256": "8ed96d04d0541cf6906fdf29f40830e7eef967824f84253fa58c6075c6fe42d1"
     },
     {
       "file": "changelog/unreleased/vehicle-cockpits-bellows-and-cabs/capture.json",
-      "sha256": "036a8b8973d77af98ccb1bea4547c231e80930cad4943367a2abe5f607302ca1"
+      "sha256": "9cc85414cc56e0ddb7b51ce8ed3b070b28960879343f85a3b1c4c3fa461845cf"
     }
   ],
   "output": null

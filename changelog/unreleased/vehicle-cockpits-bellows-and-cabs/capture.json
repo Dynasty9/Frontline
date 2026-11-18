@@ -10,9 +10,9 @@
   ],
   "sheet_size": [
     1600,
-    4950
+    5850
   ],
-  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82. Both columns rendered from checkouts of before_ref (round 5's code), the after column with this change's files copied in.",
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82. Both columns rendered from checkouts of before_ref (round 5's code), the after column with this change's files copied in (rounds 6 and 7).",
   "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> [--surface-flight] [--surface-rear] --surface-seed=3 [--surface-focus=<focus> --surface-size=<size>] --surface-out=<outside-repo-directory>",
   "shots": [
     {
@@ -46,6 +46,12 @@
       "label": "T-55: the gun boot is a strapped canvas bellows"
     },
     {
+      "model": "kuma",
+      "focus": "0,2.2,-4.2",
+      "size": 3.0,
+      "label": "Leopard 2: a bare-steel muzzle, sleeve joints and staggered seams"
+    },
+    {
       "model": "marshall",
       "focus": "1.4,0.6,-1.0",
       "size": 2.2,
@@ -57,6 +63,10 @@
       "focus": "0,1.9,2.6",
       "size": 5.5,
       "label": "Leopard 2: painted, denser slat cages"
+    },
+    {
+      "model": "rhino_up",
+      "label": "Centauro UP: the slat cage painted whole, in bolted panels"
     },
     {
       "model": "btr",

@@ -849,6 +849,16 @@ and a distant glass instance: the M35 (27 to 39 nodes, 19 to 31 meshes) and the 
   frames; the M35 has an `exhaust_run` stack (no new exhaust point). `VmCiv._mirror` gives `car_paint` a
   moulded shell, `_odd_bonnet` repaints one bonnet in four (`build_car`) or five (hatchbacks), and the
   Zamak's sacks are soft (`VehicleCloth._shell`).
+- **A short seventh round** (two agents, +0.09% vertices, no structure change): `VehicleFittings.barrel`
+  splits the tube at 0.9 of its length and draws the front in `VehicleWeapons.STEEL` (unless the gun is
+  already steel), puts a dark joint ring in each gap of the thermal sleeve and turns each section's closure
+  strip +-25 degrees; `evacuator` has a weld bead round its middle. `VehicleMounts.slats` takes appended
+  `frame_mat` / `frame_col` for the posts and rails and gives cages of horizontal bars an upright at least
+  every 1.6 m (the Kuma, Angara and Rhino UP pass their paint). `VehicleTracks.on_rollers(k, outline, circles,
+  lift)` lets each return roller's top into a track outline when it lies within 8 cm of a long upper run, so
+  `shoes` sags the run between rollers (CSAT and independent static belts); `TrackBelt` records the top run's
+  `free_spans` and hangs them the same way (the Abrams and Bradley). VmCore's guns call
+  `VehicleMounts.gun_boot`. All of it leaves wrecks as they were.
 
 ### Gun mounts: laying, recoil and the guns themselves
 
