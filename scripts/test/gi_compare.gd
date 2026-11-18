@@ -59,6 +59,9 @@ const MODES := {
 	"view_sun": {"ssil": false, "gi": false, "ssgi": 2, "view": 13},
 	# with the light probes off (every other mode leaves them as the preset has them)
 	"ssgi2_greyfar": {"ssil": false, "gi": false, "ssgi": 2, "env": "FL_DEBUG_SSGI_GREYFAR"},
+	# the far view's strength, as it was and weaker (FL_DEBUG_SSGI_FAR: from, full, reach, strength)
+	"ssgi2_far25": {"ssil": false, "gi": false, "ssgi": 2, "env": "FL_DEBUG_SSGI_FAR=15,50,2,2.5"},
+	"ssgi2_far10": {"ssil": false, "gi": false, "ssgi": 2, "env": "FL_DEBUG_SSGI_FAR=15,50,2,1.0"},
 	"np_none": {"ssil": false, "gi": false, "ssgi": 0, "light_probes": 0},
 	"np_ssgi2": {"ssil": false, "gi": false, "ssgi": 2, "light_probes": 0},
 	# the same with one of the bounce light's parts left out (see
@@ -73,7 +76,7 @@ const MODES := {
 	"view_light1": {"ssil": false, "gi": false, "ssgi": 1, "view": 1},
 	"view_added1": {"ssil": false, "gi": false, "ssgi": 1, "view": 3},
 }
-const ENV := ["FL_DEBUG_SSGI_BOUNCES", "FL_DEBUG_SSGI_NOFIX", "FL_DEBUG_SSGI_NOSNAP", "FL_DEBUG_SSGI_GREYFAR"]
+const ENV := ["FL_DEBUG_SSGI_BOUNCES", "FL_DEBUG_SSGI_NOFIX", "FL_DEBUG_SSGI_NOSNAP", "FL_DEBUG_SSGI_GREYFAR", "FL_DEBUG_SSGI_FAR"]
 ## frames each mode is held (SDFGI takes a while to converge); FL_DEBUG_GI_HOLD sets it
 var HOLD := int(OS.get_environment("FL_DEBUG_GI_HOLD")) if OS.has_environment("FL_DEBUG_GI_HOLD") else 90
 const SETTLE := 60  # and frames a new pose is given first, for the camera to glide there
@@ -110,6 +113,7 @@ var _probes := -1  # the light probes as the preset has them
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	process_priority = 1000  # (after the camera's own: what is set here is what is drawn)
 	Settings.no_save = true
 
 
@@ -319,9 +323,11 @@ func _apply(mode: String) -> void:
 		_probes = int(Settings.v.get("light_probes", 0))
 	Settings.v["light_probes"] = int(want.get("light_probes", _probes))
 	OS.set_environment("FL_DEBUG_SSGI_VIEW", str(want.get("view", 0)))
+	# ("NAME" sets it to 1, "NAME=value" to the value)
+	var env := String(want.get("env", ""))
 	for e: String in ENV:
-		if e == String(want.get("env", "")):
-			OS.set_environment(e, "1")
+		if e == env.get_slice("=", 0):
+			OS.set_environment(e, env.get_slice("=", 1) if env.contains("=") else "1")
 		else:
 			OS.unset_environment(e)
 	for k in want:
@@ -361,16 +367,31 @@ func _ab_tick() -> void:
 	_ab_switch()
 
 
+var _pan_at := Vector3.INF  # where the pan has got to (kept here: the camera's own may be nudged)
+
+
 func _pan_tick(dt: float) -> void:
 	var cam: Node = world.get("cam")
-	var fp: Vector3 = cam.get("focus_pos")
+	if _pan_at == Vector3.INF:
+		_pan_at = cam.get("focus_pos")
+	var fp := _pan_at
 	# (a fourth number zooms, metres a second; with --fixed-fps every frame
 	# is the same step of the battle's time)
 	if _pan.size() >= 4:
 		var d: float = cam.get("dist") + float(_pan[3]) * dt
 		cam.set("target_dist", d)
 		cam.set("dist", d)
-	cam.call("focus", fp + Vector3(float(_pan[0]), 0.0, float(_pan[1])) * dt)
+	elif _poses[0].split(":").size() >= 5:
+		cam.set("target_dist", float(_poses[0].split(":")[2]))
+		cam.set("dist", float(_poses[0].split(":")[2]))
+	_pan_at = fp + Vector3(float(_pan[0]), 0.0, float(_pan[1])) * dt
+	# (the heading and tilt are held as the pose has them: something in a
+	# running battle turned the camera through a still shot)
+	var f := _poses[0].split(":")
+	if f.size() >= 5:
+		cam.set("pitch_deg", NAN if f[3] == "auto" else float(f[3]))
+		cam.set("yaw", float(f[4]) + (0.0 if f[1].contains(",") else float(_find(f[1])[1])))
+	cam.call("focus", _pan_at)
 	# FL_DEBUG_GI_BLAST=frame: a shell bursts where the camera looks on that
 	# frame, to see how soon its flash is thrown about (and how soon it goes)
 	if OS.has_environment("FL_DEBUG_GI_BLAST") and _frames == int(OS.get_environment("FL_DEBUG_GI_BLAST")):

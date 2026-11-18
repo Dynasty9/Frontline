@@ -2,9 +2,9 @@
   "entry": "changelog/unreleased/bounce-light-shade.md",
   "summary": "Bounce light kept to the shade (screen-space sun test), hidden behind smoke and dust, multi-bounce, on vehicles.",
   "medium": "still",
-  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud, FL_DEBUG_GI_CYCLE holding one frozen frame for off and High: tank: --scenario=tank --static --seed=3 --mood=day, FL_DEBUG_GI_AT=3, FL_DEBUG_GI_POSES=t5:tank:10:auto:2.4 (its shaded side to the camera); dust: the same at t2:tank:12:auto:3.14 with modes none, ssgi2_nosnap (no picture before the smoke) and ssgi2; golden hour: --host --team=0 --seed=3 --preset=high --mood=golden, ruin30:ruin:30:auto:0.4; night: --mood=night car16:car:16:auto:0.5 with FL_DEBUG_GI_IGNITE=0.9 FL_DEBUG_STEADY_FIRE=1 FL_DEBUG_GI_AT=14; each cropped (640x360 at 2x, or 960x540) on the window with the most added light, off over on with labels, an arrow and a caption, plus on-minus-off x4; pan: --fixed-fps 30, FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day, gamma-brightened; red 55 m: --host --mood=day FL_DEBUG_GI_POSES=h1:house:55:auto:1.57 (rendered with the sun test's half-resolution answer trusted from 0.5, before it was raised to 0.9 and brought to full resolution by brightness; the town is laid out anew each run, and later runs had no red-brick house in view); room: FL_DEBUG_GI_LIFT=14 FL_DEBUG_GI_POSES=i1:house:16:-60:2.0 (the roofs within 14 m taken off, as when men are inside); golden pans: --fixed-fps 60 --resolution 1280x720 --mood=golden, FL_DEBUG_GI_POSES=p:town:35:auto:0.6 FL_DEBUG_GI_PAN=4,-3,240,6 (4 m/s by 3, zooming out 6 m/s), modes ssgi2 and view_added",
-  "rationale": "The change is about where bounce light lands, so the tank is shot with its shaded side to the camera and the bounce-only panel shows the light on the hull side and skirts while the sunlit deck and lawn stay dark. The dust fix is about what must not show, so one three-way crop from a single run (off, laid over the dust, now) shows it at a glance. Golden hour and a night fire show it where it is strongest in a town; the pan clip answers whether it smears in motion. Midday and the 55 m command height were rendered too but are now faint, since sunlit ground no longer lifts, so they are not claimed. The command-height red shot answers whether a wall's colour reads from where a player usually looks; the room shot shows a doorway-lit interior with the roof lifted; the 60 fps golden-hour pans (full look and bounce alone) answer whether the light shimmers or crawls at the command height under motion.",
-  "source_ref": "dines/ssgi-a648db: prep reads the world before smoke and flames; level ground brightened by dust is masked",
+  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud, FL_DEBUG_GI_CYCLE holding one frozen frame for off and High: tank: --scenario=tank --static --seed=3 --mood=day, FL_DEBUG_GI_AT=3, FL_DEBUG_GI_POSES=t5:tank:10:auto:2.4 (its shaded side to the camera); dust: the same at t2:tank:12:auto:3.14 with modes none, ssgi2_nosnap (no picture before the smoke) and ssgi2; golden hour: --host --team=0 --seed=3 --preset=high --mood=golden, ruin30:ruin:30:auto:0.4; night: --mood=night car16:car:16:auto:0.5 with FL_DEBUG_GI_IGNITE=0.9 FL_DEBUG_STEADY_FIRE=1 FL_DEBUG_GI_AT=14; each cropped (640x360 at 2x, or 960x540) on the window with the most added light, off over on with labels, an arrow and a caption, plus on-minus-off x4; pan: --fixed-fps 30, FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day, gamma-brightened; red 55 m: --host --mood=day FL_DEBUG_GI_POSES=h2:house:55:auto:3.14 (far strength 1.5); room: FL_DEBUG_GI_LIFT=14 FL_DEBUG_GI_POSES=i2:house:16:-60:3.6 (the roofs within 14 m taken off, as when men are inside); squad: --scenario=breach --seed=3 --mood=golden --fixed-fps 60 --resolution 1280x720, FL_DEBUG_GI_AT=6 FL_DEBUG_GI_POSES=b:0,-10:24:auto:0.6 FL_DEBUG_GI_PAN=0,0,240 (camera held), modes ssgi2 and view_added, the first second (history filling) cut; golden pans: --fixed-fps 60 --resolution 1280x720 --mood=golden, FL_DEBUG_GI_POSES=p:town:35:auto:0.6 FL_DEBUG_GI_PAN=4,-3,240,6, rendered before the far strength went from 2.5 to 1.5 and the sun test's edges went to full resolution",
+  "rationale": "The change is about where bounce light lands, so the tank is shot with its shaded side to the camera and the bounce-only panel shows the light on the hull side and skirts while the sunlit deck and lawn stay dark. The dust fix is about what must not show, so one three-way crop from a single run (off, laid over the dust, now) shows it at a glance. Golden hour and a night fire show it where it is strongest in a town; the pan clip answers whether it smears in motion. Midday and the 55 m command height were rendered too but are now faint, since sunlit ground no longer lifts, so they are not claimed. The command-height red shot answers whether a wall's colour reads from where a player usually looks; the room shot shows a doorway-lit interior with the roof lifted; the 60 fps golden-hour pans (full look and bounce alone) answer whether the light shimmers or crawls at the command height under motion. The squad clip answers whether the light boils or pumps as men walk through it, with the camera still.",
+  "source_ref": "dines/ssgi-a648db: far strength 1.5, smooth and full-resolution-edged sun test, harness camera held in pan mode",
   "sources": [
     {
       "file": "changelog/unreleased/bounce-light-shade/tank.jpg",
@@ -44,19 +44,19 @@
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/red55.jpg",
-      "sha256": "9f572f4c476efaa3232659d20c2b0e9ee56b5586854f438336fda1bd2400181c"
+      "sha256": "a675b409b619d0da018c4157c336b92ce70f7d43b945349a3e50ed0fae51bba0"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/red55-light.jpg",
-      "sha256": "de350fcbfabae136628b8ed8e9510f7e1a7cb73150c8fd4c5dff38921d1998a9"
+      "sha256": "e2bb99f0f1b26623053e147730e56ba6561d50f1007d782a94a4da6606a327f7"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/room.jpg",
-      "sha256": "908cbe32d50727e3bde8445a2f0d8b1b130ab7ccf399cb24947a180cbe9a38c9"
+      "sha256": "f95783f9ba6f9f4ee51ff0b68d660e4c686627bf12aa5193bb7eed8f555da929"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/room-light.jpg",
-      "sha256": "44b10f8e6c231ed0bcca55179f03d364dd79d7c4db41d254fa0fc79ab928bc3b"
+      "sha256": "462e716319079c8dcb1bc7ecff39202e321522e11e190f6feb3d35dc96c2857e"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/golden-pan.webm",
@@ -73,6 +73,22 @@
     {
       "file": "changelog/unreleased/bounce-light-shade/golden-pan-light.jpg",
       "sha256": "6c7ceb0f6b90d8e649a811ed26bfa18b0c2948fc3729c2ee8c8e538ae3ee54b9"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/squad.webm",
+      "sha256": "0e8dd48446991f1af8d24e7f479e1624aea5ddfb9a3bd2d6d006146cdb9039a3"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/squad.jpg",
+      "sha256": "6396b45eebe9d50ff64fad8d5821e1762806954e9b62bdb81ead53e93ff4e6f8"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/squad-light.webm",
+      "sha256": "e1a4ed8259cd6a80dde68bbd8bc34daf9580f6cc5d97947a9a86c574cd21d24a"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/squad-light.jpg",
+      "sha256": "2e98adc3c2c1547e2017dec32463e641d6e4eb108919e63c875adacf46bca582"
     }
   ],
   "output": null

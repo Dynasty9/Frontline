@@ -1416,8 +1416,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   read against sky and sun together, so sunlit surfaces aren't veiled. The bounce is laid on at twice physical
   strength, to make up for what the rays can't see off screen and past 8 m, and its colour is brought back towards
   the wall it came from (mixed over many rays it greys). Further off (past 15 m, fully by 50 m, so
-  the usual 55 m command height gets all of it) the rays reach twice as far and the light is laid on two and a half
-  times as strong again: there a wall is a few pixels tall, and a lift of a few levels in its shade went unseen (the
+  the usual 55 m command height gets all of it) the rays reach twice as far and the light is laid on one and a half
+  times as strong again (two and a half at first: capped at what its rays hit, that filled the shade at a wall's foot to
+  nearly the sunlit grass's light, a hard brown band from the command height): there a wall is a few pixels tall, and a lift of a few levels in its shade went unseen (the
   first ramp ran out to 90 m and gave the command height less than half). From 55 m at midday, yards, wall feet and
   roofless floors lift plainly while open grass, lit by the sky alone, is untouched (it has nothing near to gather
   from); sunlit surfaces in the frame's brightest fifth gain about 5-7% (linear) on average. However strong it is laid on,
@@ -1447,8 +1448,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   towards it through the depth buffer, up to 10 m, as far as a house's or a tank's shadow falls on screen (a grass
   blade's own shadow is too fine to see, so a lawn reads as in the sun). That answer is brought up to full resolution
   weighted by how near each half-resolution sample's brightness is to the pixel's, and trusted only when it is sure
-  (over 0.9): near a shadow's edge the brightness, exact on anything pale enough to show it, decides, so the lift
-  follows the shadow rather than the half-resolution pixels' steps. Its sunlight is taken as at least what
+  and runs smoothly rather than as a switch; where it is mixed (only near a shadow's edge) the same steps are taken
+  again from the full-resolution pixel, so the lift follows the shadow rather than the half-resolution pixels'
+  steps (they showed as a sawtooth along a room's sunlit floor). Its sunlight is taken as at least what
   level ground of its facing gets, and the shade's light counts Atmosphere's fill light from the side away from the
   sun, which lights shaded faces turned to it as strongly as the sky does.
   Smoke, dust and flames are drawn over the lit world, and the pass needs them drawn (a flame is a light it
@@ -1471,7 +1473,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   alone +31%, both +2%; an alley -50%, +147%, +54%), and bounce light gives about a quarter less on top of the probes,
   since its colour estimate still reads a surface against the open sky's light. In a 60 fps golden-hour pan and zoom
   over the town, the bounce light changes about 1 level a frame (on a mean of 4) once the camera's shift is taken
-  out, against 2.8 for the whole picture, with no shimmer or crawl. Godot's
+  out, against 2.8 for the whole picture, with no shimmer or crawl; and with the camera still while a squad crosses a field at golden hour, the
+  bounce light's mean on the still ground and walls holds within 6% over three seconds and each pixel varies about half
+  a level round its own average. Godot's
   own SSIL (the Indirect light setting) and SDFGI (Global illumination) stay as options, but on the RTS camera
   neither shows colour bleed: SSIL mostly darkens corners (over the town it lowered the frame's mean by half a
   level and added nothing visible), and SDFGI lifts the whole frame evenly (its cells are too coarse for a street

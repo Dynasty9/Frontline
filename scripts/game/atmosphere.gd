@@ -1738,10 +1738,13 @@ const SSGI_STRENGTH := 2.0
 ## times as strong: from the command height a wall is a few pixels tall and a
 ## lift of a few levels in its shade goes unseen. (Full by 50 m, so the usual
 ## command height, about 55 m off, gets all of it: ramped out to 90 m, it got
-## less than half, and the light there was too faint to see.)
+## less than half, and the light there was too faint to see. It was 2.5
+## times: with the rays capped at what they hit, the shade at a wall's foot
+## was then filled to nearly the sunlit grass's light, a hard brown band from
+## 55 m; 1.5 leaves a faint lift that still reads there.)
 const SSGI_FAR := Vector2(15.0, 50.0)
 const SSGI_FAR_REACH := 2.0
-const SSGI_FAR_STRENGTH := 2.5
+const SSGI_FAR_STRENGTH := 1.5
 ## How much more saturated the gathered light is laid on (1 as gathered),
 ## near and from afar (FL_DEBUG_SSGI_GREYFAR: the old 0.75 from afar, to compare).
 const SSGI_BLEED := 1.6

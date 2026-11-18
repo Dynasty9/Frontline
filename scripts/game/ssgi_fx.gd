@@ -445,17 +445,19 @@ vec3 receiver_albedo(vec3 c, vec3 wn, float sunvis, out float sunny) {
 	// near-white, which tinted the light laid on it orange
 	vec3 raw = c / max(shade, vec3(1e-4));
 	float lit = max(max(dot(wn, P.sun.xyz), 0.0), max(P.sun.y, 0.0) * clamp(wn.y, 0.0, 1.0));
-	// (the sun test is at half resolution, so near a shadow's edge it is
-	// smeared: there only a sure answer counts, and the brightness, which is
-	// exact on any surface pale enough to show it, decides the rest)
-	if ((sunvis > 0.9 || max(raw.r, max(raw.g, raw.b)) > P.amb.a) && lit > 0.0) {
+	// How surely it is in the sun runs smoothly, not as a switch: across a
+	// shadow's soft edge the brightness climbs, and the half-resolution sun
+	// test is smeared, so either taken as yes-or-no turned the shadow map's
+	// own fine steps into a sawtooth in the light laid on
+	float in_sun = max(smoothstep(P.amb.a, P.amb.a * 1.6, max(raw.r, max(raw.g, raw.b))), smoothstep(0.6, 0.95, sunvis));
+	if (in_sun > 0.0 && lit > 0.0) {
 		vec3 b = c / max(shade + P.sun_col.rgb * lit, vec3(1e-4));
 		float mb = max(b.r, max(b.g, b.b));
-		a = mb > P.amb.a ? b * (P.amb.a / mb) : b;
+		a = mix(a, mb > P.amb.a ? b * (P.amb.a / mb) : b, in_sun);
 		// and the share of its light that is the sun's
 		vec3 lum = vec3(0.2126, 0.7152, 0.0722);
 		float ls = dot(P.sun_col.rgb, lum) * lit;
-		sunny = ls / max(ls + dot(shade, lum), 1e-5);
+		sunny = in_sun * ls / max(ls + dot(shade, lum), 1e-5);
 	}
 	float l = dot(a, vec3(0.2126, 0.7152, 0.0722));
 	if (l >= 0.25) {
@@ -929,6 +931,43 @@ void main() {
 		wsum += w;
 	}
 	float sunvis = vsum > 1e-6 ? vis / vsum : 0.0;
+	// where the half-resolution answer is mixed (only near a shadow's edge),
+	// the same steps towards the sun again from this very pixel: the edge of
+	// the light laid on then follows the shadow, not the half-resolution
+	// pixels' steps (they showed as a sawtooth along a room's sunlit floor)
+	if (sunvis > 0.02 && sunvis < 0.98) {
+		vec3 v = view_at(uv, d);
+		vec3 lv = normalize(transpose(mat3(C.cam)) * P.sun.xyz);
+		float reach = 0.0;
+		if (dot(vn, lv) > 0.0 && P.sun.y > 0.0) {
+			reach = 1.0;
+			vec3 from = v + vn * (0.05 - v.z * 0.002);
+			ivec2 fm = ivec2(P.size.xy) - 1;
+			for (int s = 1; s <= 16; s++) {
+				float f = (float(s) - 0.5) / 16.0;
+				float dist = 10.0 * f * sqrt(f);
+				vec3 q = from + lv * dist;
+				if (q.z > -0.05) {
+					break;
+				}
+				vec4 cq = C.proj * vec4(q, 1.0);
+				vec2 quv = cq.xy / cq.w * 0.5 + 0.5;
+				if (quv.x < 0.0 || quv.y < 0.0 || quv.x > 1.0 || quv.y > 1.0) {
+					break;
+				}
+				float dq = texelFetch(depth_tex, clamp(ivec2(quv * P.size.xy), ivec2(0), fm), 0).r;
+				if (dq <= 1e-7) {
+					continue;
+				}
+				float behind = -q.z + view_at(quv, dq).z;
+				if (behind > 0.05 && behind < max(1.5, dist * 0.7)) {
+					reach = 0.0;
+					break;
+				}
+			}
+		}
+		sunvis = reach;
+	}
 	// none of the four is this surface: a pixel at the edge of something thin
 	// (a man, a post, a barrel's rim) whose half-resolution pixels all went to
 	// whatever stands in front. Weighed as they are, it would take that
