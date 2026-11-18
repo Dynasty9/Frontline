@@ -946,10 +946,14 @@ static func _kamysh(k: VehicleModels, team: int, seed := 0) -> void:
 	# the bustle box at the back
 	k._box(t, Vector3(1.5, 0.42, 0.42), Vector3(0, 0.33, 1.15), c)
 	# mantlet, the 30 mm with its barrel jacket and muzzle brake, the coax
-	VehicleMounts.mantlet(k, t, Vector3(0.42, 0.36, 0.3), Vector3(0.08, 0.36, -1.18), c)
+	# one gun mask carries the cannon and, on its left, the PKT, whose barrel
+	# leaves the mask's face through an armoured port
+	VehicleMounts.mantlet(k, t, Vector3(0.62, 0.38, 0.3), Vector3(-0.02, 0.35, -1.18), c)
 	VehicleWeapons.autocannon(k, t, Vector3(0.08, 0.36, -1.3), Vector3(0.08, 0.36, -3.78), Vector2(0.075, 0.5), Vector2(0.048, 0.042), Vector2(0.065, 0.2))
 	k.mg_tip = k._tip(t, Vector3(0.08, 0.36, -3.8))
 	VehicleWeapons.coax(k, t, Vector3(-0.2, 0.3, -1.4), 0.35, 0.022)
+	k._cyl(t, 0.057, 0.053, 0.04, Vector3(-0.2, 0.3, -1.35), X90, "gunmetal_w", null, 12)
+	k._cyl(t, 0.033, 0.033, 0.012, Vector3(-0.2, 0.3, -1.374), X90, "metal_dark", null, 10, false)
 	# the gunner's sight head (front left) and the commander's panoramic sight
 	VehicleMounts.sight(k, t, Vector3(-0.42, 0.77, -0.45), Vector3(0.34, 0.3, 0.42), [Rect2(Vector2(-0.06, 0.02), Vector2(0.12, 0.12)), Rect2(Vector2(0.09, 0.02), Vector2(0.08, 0.08))], c)
 	VehicleMounts.sight(k, t, Vector3(0.45, 1.02, 0.3), Vector3(0.3, 0.24, 0.3), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.1))], c, null, Vector3(0.1, 0.12, 0.4))

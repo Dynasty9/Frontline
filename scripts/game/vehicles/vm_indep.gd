@@ -365,6 +365,13 @@ static func _strip(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, size: Ve
 	k._add(p, Res.box(Vector3(size.x, a.distance_to(b), size.y)), mat, col, (a + b) * 0.5, Basis(x, y, z).get_euler(), Vector3.ONE, false)
 
 
+## The armoured port a coaxial machine gun's barrel leaves its gun mask by:
+## a collar round the barrel standing proud of the mask's face at `at`.
+static func _coax_port(k: VehicleModels, p: Node3D, at: Vector3, radius: float) -> void:
+	k._cyl(p, radius * 2.6, radius * 2.4, 0.04, at + Vector3(0, 0, -0.02), X90, "gunmetal_w", null, 12)
+	k._cyl(p, radius * 1.5, radius * 1.5, 0.012, at + Vector3(0, 0, -0.044), X90, "metal_dark", null, 10, false)
+
+
 ## A slat cage panel: top and bottom rails, end posts and the vertical slats,
 ## centred at c; along X (a rear cage) or along Z (a side cage).
 static func _slats(k: VehicleModels, p: Node3D, c: Vector3, l: float, h: float, along_x: bool, gap := 0.17) -> void:
@@ -472,10 +479,13 @@ static func _mora(k: VehicleModels, team: int, seed := 0) -> void:
 	var tt := [-0.42, -0.88, 0.42, -0.88, 0.86, -0.5, 0.93, 0.85, 0.72, 1.04, -0.72, 1.04, -0.93, 0.85, -0.86, -0.5]
 	k._add(t, _armour([_ring(tb, 0.06), _ring(tt, 0.74)], "indep_mora_tur", 0.06), cam, col, Vector3.ZERO)
 	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.22, Vector3(1.1, 0.06, 0.95), Vector3(1.05, 0.06, -0.72), Vector3(0.86, 0.74, -0.5), Vector3(0.93, 0.74, 0.85), Vector2(0.39, 0.43), VehicleMarkings.STENCIL_AAF)
-	VehicleMounts.mantlet(k, t, Vector3(0.36, 0.4, 0.4), Vector3(0, 0.4, -1.18), cam, col)
+	# one gun mask carries the RARDEN and, on its left, the coaxial chain
+	# gun, whose barrel leaves the mask's face through an armoured port
+	VehicleMounts.mantlet(k, t, Vector3(0.66, 0.42, 0.4), Vector3(-0.15, 0.37, -1.18), cam, col)
 	VehicleWeapons.autocannon(k, t, Vector3(0, 0.4, -1.3), Vector3(0, 0.4, -4.11), Vector2(0.075, 0.5), Vector2(0.045, 0.045), Vector2(0.065, 0.22))
 	k.mg_tip = k._tip(t, Vector3(0, 0.4, -4.14))
 	VehicleWeapons.coax(k, t, Vector3(-0.3, 0.3, -1.45), 0.5, 0.02)
+	_coax_port(k, t, Vector3(-0.3, 0.3, -1.38), 0.02)
 	# gunner's sight left, the commander's sight right, two hatches
 	VehicleMounts.sight(k, t, Vector3(-0.45, 0.8, -0.42), Vector3(0.32, 0.2, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.24, 0.11))], cam, col)
 	VehicleMounts.sight(k, t, Vector3(0.48, 0.92, -0.22), Vector3(0.26, 0.15, 0.28), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.09))], cam, col, Vector3(0.14, 0.16, 0.19))
@@ -837,10 +847,13 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 	var tb := [-0.5, -1.12, 0.5, -1.12, 0.96, -0.7, 1.0, 0.78, 0.8, 1.08, -0.8, 1.08, -1.0, 0.78, -0.96, -0.7]
 	var tt := [-0.4, -0.86, 0.4, -0.86, 0.8, -0.55, 0.85, 0.7, 0.66, 0.94, -0.66, 0.94, -0.85, 0.7, -0.8, -0.55]
 	k._add(t, _armour([_ring(tb, 0.05), _ring(tt, 0.58)], "indep_gorg_tur", 0.05), cam, col, Vector3.ZERO)
-	VehicleMounts.mantlet(k, t, Vector3(0.42, 0.34, 0.32), Vector3(0, 0.32, -1.12), cam, col)
+	# one gun mask carries the cannon and, on its right, the coax, whose
+	# barrel leaves the mask's face through an armoured port
+	VehicleMounts.mantlet(k, t, Vector3(0.66, 0.36, 0.32), Vector3(0.12, 0.31, -1.12), cam, col)
 	VehicleWeapons.autocannon(k, t, Vector3(0, 0.32, -1.25), Vector3(0, 0.32, -4.4), Vector2(0.085, 0.5), Vector2(0.05, 0.05), Vector2(0.075, 0.2))
 	k.mg_tip = k._tip(t, Vector3(0, 0.32, -4.42))
 	VehicleWeapons.coax(k, t, Vector3(0.26, 0.24, -1.3), 0.4, 0.02)
+	_coax_port(k, t, Vector3(0.26, 0.24, -1.28), 0.02)
 	for s: float in [-1.0, 1.0]:
 		# the Titan tube on its bracket
 		k._box(t, Vector3(0.22, 0.12, 0.3), Vector3(s * 0.98, 0.36, -0.15), "gunmetal_w")
