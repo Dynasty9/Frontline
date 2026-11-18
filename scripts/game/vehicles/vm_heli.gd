@@ -582,20 +582,26 @@ static func _gear(k: VehicleModels, p: Node3D, top: Vector3, axle: Vector3, r: f
 # --- weapons ---------------------------------------------------------------------
 
 ## An M134 minigun pointing -Z with its breech at pos; returns the muzzle.
-static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door := false) -> Vector3:
+## `feed` is the side its feeder (and so its chute) is on: -1 the left, as
+## the gun comes, +1 the right (the feeder turned round, the motor with it),
+## so a door gun on either side of the cabin feeds from inboard. `chute`
+## replaces the door gun's chute with a path of the caller's (in the gun's
+## space, from the feeder's foot), where its ammunition box stands elsewhere.
+static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door := false, feed := -1.0, chute: Array[Vector3] = []) -> Vector3:
 	# (on a pivot of its own at the housing: whoever lays it swings it whole)
 	var g := k._pivot(p, pos)
+	var fs := -feed
 	# the housing, a drum round the rotor with the bearing collar at its
-	# face; the feeder-delinker on its left, which strips the rounds from the
-	# belt; the drive motor along its right; the control box under it
+	# face; the feeder-delinker on its feed side, which strips the rounds
+	# from the belt; the drive motor along the other; the control box under it
 	var x90 := Vector3(PI / 2, 0, 0)
 	k._cyl(g, 0.07, 0.07, 0.32, Vector3(0, 0, 0.1), x90, VehicleWeapons.STEEL, null, 14)
 	k._cyl(g, 0.078, 0.078, 0.035, Vector3(0, 0, -0.065), x90, "metal_dark", null, 14)
 	k._cyl(g, 0.074, 0.074, 0.02, Vector3(0, 0, 0.26), x90, "metal_dark", null, 14, false)
-	k._add(g, BevelMesh.make(Vector3(0.085, 0.12, 0.18), 0.008), VehicleWeapons.STEEL, null, Vector3(-0.1, -0.01, 0.1))
-	k._box(g, Vector3(0.012, 0.07, 0.11), Vector3(-0.146, -0.01, 0.1), "metal_dark", null, Vector3.ZERO, false)
-	k._cyl(g, 0.036, 0.036, 0.19, Vector3(0.09, 0.05, 0.12), x90, "metal_dark", null, 10)
-	k._cyl(g, 0.03, 0.03, 0.02, Vector3(0.09, 0.05, 0.225), x90, VehicleWeapons.STEEL, null, 10, false)
+	k._add(g, BevelMesh.make(Vector3(0.085, 0.12, 0.18), 0.008), VehicleWeapons.STEEL, null, Vector3(-0.1 * fs, -0.01, 0.1))
+	k._box(g, Vector3(0.012, 0.07, 0.11), Vector3(-0.146 * fs, -0.01, 0.1), "metal_dark", null, Vector3.ZERO, false)
+	k._cyl(g, 0.036, 0.036, 0.19, Vector3(0.09 * fs, 0.05, 0.12), x90, "metal_dark", null, 10)
+	k._cyl(g, 0.03, 0.03, 0.02, Vector3(0.09 * fs, 0.05, 0.225), x90, VehicleWeapons.STEEL, null, 10, false)
 	k._add(g, BevelMesh.make(Vector3(0.1, 0.05, 0.12), 0.006), VehicleWeapons.STEEL, null, Vector3(0.0, -0.085, 0.16))
 	# the six barrels from the rotor at the housing's face, clamped past
 	# mid-length and just behind the muzzles
@@ -609,11 +615,21 @@ static func _minigun(k: VehicleModels, p: Node3D, pos: Vector3, ln := 0.75, door
 			_tube(k, g, Vector3(side * 0.05, 0.0, 0.27), Vector3(side * 0.1, 0.0, 0.34), 0.012, VehicleWeapons.STEEL, null, 6)
 			k._cyl(g, 0.02, 0.02, 0.15, Vector3(side * 0.1, 0.0, 0.35), Vector3.ZERO, "rubber", null, 6, false)
 		k._box(g, Vector3(0.08, 0.03, 0.025), Vector3(0, 0.02, 0.33), "metal_dark", null, Vector3.ZERO, false)
+		# the cradle the gun is clamped in, a cheek either side of the drum,
+		# and its pintle stub standing down under the gun's axis into the
+		# mount's socket (the gun traverses about it)
+		k._box(g, Vector3(0.13, 0.022, 0.15), Vector3(0, -0.081, 0.0), VehicleWeapons.STEEL)
+		for side: float in [-1.0, 1.0]:
+			k._box(g, Vector3(0.012, 0.075, 0.12), Vector3(side * 0.077, -0.045, 0.0), VehicleWeapons.STEEL, null, Vector3.ZERO, false)
+			k._cyl(g, 0.016, 0.016, 0.008, Vector3(side * 0.085, -0.03, 0.0), Vector3(0, 0, PI / 2), "metal_dark", null, 8, false)
+		k._cyl(g, 0.018, 0.018, 0.09, Vector3(0, -0.135, 0.0), Vector3.ZERO, VehicleWeapons.STEEL, null, 8, false)
 		# the chute out of the feeder's foot, ribbed where its links hinge,
 		# dropping away to the ammunition box on the cabin floor
-		var chute: Array[Vector3] = [Vector3(-0.1, -0.07, 0.1), Vector3(-0.13, -0.18, 0.14), Vector3(-0.12, -0.36, 0.22), Vector3(-0.06, -0.52, 0.3)]
+		if chute.is_empty():
+			for c: Vector3 in [Vector3(-0.1, -0.07, 0.1), Vector3(-0.13, -0.18, 0.14), Vector3(-0.12, -0.36, 0.22), Vector3(-0.06, -0.52, 0.3)]:
+				chute.append(Vector3(c.x * fs, c.y, c.z))
 		_path(k, g, chute, 0.034, "metal_dark", null, 8)
-		for i in 3:
+		for i in chute.size() - 1:
 			var a := chute[i]
 			var b := chute[i + 1]
 			for f: float in [0.3, 0.75]:
@@ -878,10 +894,23 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 	for s in [-1.0, 1.0]:
 		var wp := k._wheel(m, Vector3(s * 1.48, 0.38, -3.95), 0.38, 0.26)
 		VehicleAircraft.trailing_gear(k, m, Vector3(s * 0.78, 0.68, -4.35), Vector3(s * 1.08, 1.3, -3.8), Vector3(s * 1.48, 0.38, -3.95), Vector2(0.38, 0.26), 0.07, 0.08, "gunmetal_w", null, Vector3(0.22, 0.62, 0.3), mat, col, wp, 0.3, 8, Vector2(0.61, 0.977))
-	# door guns: miniguns on pintles in the gunners' windows
+	# door guns: miniguns on swing-out mounts in the gunners' windows. The
+	# mount's arm is hinged on the window's forward frame and swung out, its
+	# pintle socket at the end under the gun, a strut down to the skin taking
+	# the recoil; each gun feeds from inboard (the feeder turned to the
+	# cabin's side), its chute running back in through the window to the
+	# ammunition box on the floor
 	for s in [-1.0, 1.0]:
-		_tube(k, m, Vector3(s * 1.0, 1.45, -3.2), Vector3(s * 1.3, 1.55, -3.15), 0.035, "gunmetal_w", null, 6)
-		var tip := _minigun(k, m, Vector3(s * 1.34, 1.62, -3.05), 0.7, true)
+		var gp := Vector3(s * 1.34, 1.62, -3.05)
+		var hinge := Vector3(s * 1.1, 1.36, -3.42)
+		var socket := gp + Vector3(0, -0.215, 0)
+		k._cyl(m, 0.026, 0.026, 0.16, hinge, Vector3.ZERO, "gunmetal_w", null, 8)
+		_tube(k, m, hinge, socket + Vector3(0, -0.05, 0), 0.024, "gunmetal_w", null, 8)
+		_tube(k, m, socket + Vector3(0, -0.07, 0), Vector3(s * 1.17, 1.08, -3.0), 0.016, "gunmetal_w", null, 6)
+		k._cyl(m, 0.03, 0.028, 0.12, socket + Vector3(0, -0.04, 0), Vector3.ZERO, "gunmetal_w", null, 10)
+		k._cyl(m, 0.034, 0.034, 0.016, socket + Vector3(0, 0.028, 0), Vector3.ZERO, "metal_dark", null, 10, false)
+		var chute: Array[Vector3] = [Vector3(-s * 0.1, -0.07, 0.1), Vector3(-s * 0.17, -0.14, 0.06), Vector3(-s * 0.27, -0.2, 0.0)]
+		var tip := _minigun(k, m, gp, 0.7, true, -s, chute)
 		if s > 0.0:
 			k.mg_tip = k._tip(m, tip)
 	if stub:
