@@ -386,6 +386,17 @@ func _part(p: Vector3, s: Vector3, nav: int, veh: int, cover := true, col := tru
 	return {"p": p, "s": s, "nav": nav, "veh": veh, "cover": cover, "col": col, "color": color, "r": r}
 
 
+## A shop's display window (house wall variant 3): its sill (the top of the
+## stall riser) and head (under the fascia: see BuildingShops.front), and how
+## wide it is in a bay `L` long.
+const SHOP_SILL := 0.7
+const SHOP_HEAD := 2.35
+
+
+static func shop_window_w(L: float) -> float:
+	return maxf(1.3, L - 0.6)
+
+
 func _define_parts() -> void:
 	parts = []
 	var L := size.x
@@ -423,6 +434,17 @@ func _define_parts() -> void:
 						var dp := _part(Vector3(0, 1.05, DOOR_Z), Vector3(w, 2.1, 0.08), Nav.FREE, Nav.FREE, false, true, c)
 						dp["door"] = true
 						parts.append(dp)
+				3:
+					# a shop's display window: nearly the whole bay glazed over a low
+					# stall riser (cover for a man kneeling), the fascia over it
+					var w := shop_window_w(L)
+					var pier := (L - w) * 0.5
+					parts = [
+						_part(Vector3(-L * 0.5 + pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(L * 0.5 - pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(0, SHOP_SILL * 0.5, 0), Vector3(w, SHOP_SILL, th), Nav.LOW, Nav.LOW, true, true, c),
+						_part(Vector3(0, (3.0 + SHOP_HEAD) * 0.5, 0), Vector3(w, 3.0 - SHOP_HEAD, th), Nav.FREE, Nav.FREE, false, true, c),
+					]
 				_:
 					parts = [_part(Vector3(0, 1.5, 0), Vector3(L, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c)]
 		"floor":
@@ -968,6 +990,9 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		gaps = [Rect2(-0.65, 1.0, 1.3, 1.0)]
 	elif variant == 2:
 		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
+	elif variant == 3:
+		var sw := shop_window_w(L)
+		gaps = [Rect2(-sw * 0.5, SHOP_SILL, sw, SHOP_HEAD - SHOP_SILL)]
 	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
 	# the foundation, below the ground where it's level, showing where the
 	# ground falls away under a house on a slope
@@ -1003,7 +1028,19 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	if variant == 1 and war.randf() < 0.55:
 		BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, surf, tone, war)
 	if variant != 0 and war.randf() < 0.07:
-		BuildingWeathering.soot(k, 0.0, 2.0 if variant == 1 else 2.2, 1.3 if variant == 1 else 1.9, 2.85, surf, tone, war, L * 0.5 - 0.05)
+		var gap: Rect2 = gaps[0]
+		BuildingWeathering.soot(k, 0.0, gap.end.y, gap.size.x, 2.85, surf, tone, war, L * 0.5 - 0.05)
+	# the years' dirt: grime under the eaves, rain splashed up its foot
+	# (none on boards or sheet, whose laps stand proud of the face; a stream
+	# of its own)
+	var finish: String = BuildingMaterials.value(material, "finish", "render")
+	if finish in ["render", "brick", "stone", "panels", "cast"]:
+		var grime := RandomNumberGenerator.new()
+		grime.seed = rng.seed ^ 0x6d1e7a
+		var rects: Array = []
+		for b: Array in _body:
+			rects.append(b[0])
+		BuildingWeathering.grime(k, L, 2.9, rects, surf, tone, 1.0 if rendered else 0.55, grime)
 	if war.randf() < 0.22:
 		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), chips, war, gaps, L * 0.5)
 	if variant == 0 and war.randf() < 0.07:
@@ -1033,6 +1070,22 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			1:
 				BuildingFurnishings.radiator(room, 0.0, 1.0)
 	match variant:
+		3:
+			# a shop's window, in the shop's own paint (the fascia's colours),
+			# its stock set out behind the glass; a lamp on in some by night
+			var paint := BuildingShops.paint(ci)
+			var sw := shop_window_w(L)
+			var sopts := {"frame": paint, "glazing": 0.45}
+			if life.randf() < 0.4 and not dark:
+				sopts["lit"] = true
+				sopts["glazing"] = 0.8
+				_lit_glass = true
+			elif life.randf() < 0.5:
+				sopts["glazing"] = 0.8
+			if at_window < 0.3:
+				sopts["tape"] = true
+			BuildingOpenings.shopfront(k, Vector3(0, (SHOP_SILL + SHOP_HEAD) * 0.5, 0), Vector2(sw, SHOP_HEAD - SHOP_SILL), sopts)
+			BuildingShops.display(k, sw - 0.1, SHOP_SILL, paint, life)
 		1:
 			var opts := {"material": material, "wall": wall, "frame": trim}
 			# who lives here: curtains or a blind or nets (or none, in an empty
@@ -1080,7 +1133,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				_lit_glass = _lit_glass or not dark
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
-			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
+			var dc: Color = [Color(0.26, 0.2, 0.16), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.34, 0.15, 0.12)][(ci + 2) % 4]
 			_door_leaves = []
 			for sx in [-1.0, 1.0]:
 				var lost := rng.randf() < 0.25
@@ -1156,7 +1209,8 @@ func _tone(p: Vector2) -> Color:
 
 ## The house's painted woodwork (window frames, door frames, fascias and barge
 ## boards), by its colour index.
-const HOUSE_TRIMS := [Color(0.86, 0.85, 0.8), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.84, 0.83, 0.78), Color(0.36, 0.38, 0.43)]
+## (the whites are an old gloss gone dull and a little yellow: never a new paint's glare)
+const HOUSE_TRIMS := [Color(0.77, 0.76, 0.7), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.74, 0.73, 0.67), Color(0.36, 0.38, 0.43)]
 
 
 ## A concrete road bridge on piers - deck, kerbed footways, parapet walls,
@@ -1437,12 +1491,18 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 	var k := _kit(rng).at_point(Vector3.ZERO, Vector3(0, 0.0 if long_x else PI * 0.5, 0))
 	k.sink.cast_all = true
 	if variant % 2 == 0:
-		var tint := Res.vary(Color(0.5, 0.22, 0.14), 0.12, rng) if rng.randf() < 0.75 else Color(0.36, 0.34, 0.32)
+		# (the same draws as ever: clay or not, and how far its shade is off;
+		# which clay or slate it is comes from a stream of its own)
+		var clay := rng.randf() < 0.75
+		var shade := rng.randf_range(-0.12, 0.12) if clay else 0.0
+		var kind_rng := RandomNumberGenerator.new()
+		kind_rng.seed = rng.seed ^ 0x2007c0
+		var tint := BuildingMaterials.roof_color(clay, shade, kind_rng)
 		var barn := material == "timber"
 		var covering := "roof_sheet" if barn else "roof_tile"
 		if barn:
-			# rusted, galvanised or painted red sheet
-			tint = [Color(0.45, 0.3, 0.22), Color(0.52, 0.53, 0.52), Color(0.44, 0.17, 0.13)][posmod(ci / BuildingMaterials.HOUSE.size() + 1, 3)]
+			# rusted, galvanised or painted red sheet, dulled by the weather
+			tint = BuildingMaterials.BARN_SHEET[posmod(ci / BuildingMaterials.HOUSE.size() + 1, 3)]
 		var end := L * 0.5 - 0.3
 		# its form: a third of them hipped, pitched anywhere from 24 to 36
 		# degrees (a stream of its own, so tints and chimneys stay as they were)
@@ -1541,9 +1601,10 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			for m in 15 * 15:
 				mottle.append(growth.randf())
 			var face := k.moved(Transform3D(Basis(Vector3.RIGHT, side * deg_to_rad(pitch)), Vector3(lx, BuildingRoofs.underside(fx, fz, h, pitch, lx, lz, hipped) + lift, lz))).at_point(Vector3.ZERO, Vector3(-PI * 0.5, 0, 0))
-			BuildingWeathering.stain(face, Rect2(-r, -r * 0.8, r * 2.0, r * 1.6), "roof_tile", on_tile, Color(1.3, 1.6, 1.2) if pale else Color(0.45, 0.68, 0.3), func(u: float, v: float) -> float:
+			BuildingWeathering.stain(face, Rect2(-r, -r * 0.8, r * 2.0, r * 1.6), "roof_tile", on_tile, Color(1.2, 1.4, 1.12) if pale else Color(0.6, 0.72, 0.42), func(u: float, v: float) -> float:
 				var q := Vector2(u * 2.0 - 1.0, v * 2.0 - 1.0)
-				var d := q.length() * (1.0 + 0.22 * sin(q.angle() * 4.0 + ph) + 0.1 * sin(q.angle() * 9.0 - ph))
+				# (its edge wanders in a few uneven lobes: no two alike, never a star)
+				var d := q.length() * (1.0 + 0.17 * sin(q.angle() * 2.0 + ph) + 0.11 * sin(q.angle() * 3.0 - ph * 1.7) + 0.06 * sin(q.angle() * 7.0 + ph * 0.6))
 				# (in clumps, thickest in the middle)
 				var spots := 0.35 + 0.65 * mottle[roundi(v * 14.0) * 15 + roundi(u * 14.0)]
 				return clampf((1.0 - d) * 1.6, 0.0, 1.0) * spots, 14, 14)
@@ -1552,7 +1613,12 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		var flat_wear := RandomNumberGenerator.new()
 		flat_wear.seed = rng.seed ^ 0x6a7e5d
 		roof_pitch = 0.0
-		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear})
+		# (what it's covered in, from a stream of its own too: the wing's
+		# roof the house's)
+		var covering := RandomNumberGenerator.new()
+		covering.seed = rng.seed ^ 0xdec4
+		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear,
+			"deck": BuildingMaterials.deck_color(covering)})
 		var top := h + 0.2
 		# what's up there: a water tank, an air conditioner, a dish
 		if rng.randf() < 0.65:

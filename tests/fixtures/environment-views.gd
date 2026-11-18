@@ -1,16 +1,26 @@
 extends SceneTree
 ## Native generated-world review: matched views, one map build, simulation held at two seconds.
+## --capture-defer-draw avoids drawing the default camera during map generation.
+## --capture-frames sets the clip length.
+## Use --fixed-fps to define playback timing. Capture is separate from benchmarking.
 
 func _initialize() -> void:
 	call_deferred("capture")
 
 func capture() -> void:
 	var source_hashes := _source_hashes()
+	var defer_draw := "--capture-defer-draw" in OS.get_cmdline_user_args()
+	if defer_draw:
+		RenderingServer.set_render_loop_enabled(false)
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
 	current_scene = game
+	var loading_frames := 0
 	while game.world == null or game.world.time < 2.0:
 		await process_frame
+		loading_frames += 1
+		if loading_frames % 24 == 0:
+			print("CAPTURE loading frames=", loading_frames, " time=", game.world.time if game.world != null else -1)
 	var world = game.world
 	world.set_physics_process(false)
 	world.cam.set_process(false)
@@ -19,10 +29,13 @@ func capture() -> void:
 		world.director.active = false
 	var prefix := "build/terrain/environment-views"
 	var clip := ""
+	var clip_frames := 180
 	var capture_views := PackedStringArray()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-views="):
 			capture_views = arg.get_slice("=", 1).split(",")
+		if arg.begins_with("--capture-frames="):
+			clip_frames = maxi(2, int(arg.get_slice("=", 1)))
 		if arg.begins_with("--capture-clip="):
 			clip = arg.get_slice("=", 1)
 		if arg.begins_with("--capture-prefix="):
@@ -37,20 +50,32 @@ func capture() -> void:
 		quit()
 		return
 	var heights: PackedFloat32Array = world.terrain.landform.heights
-	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=woodland" in OS.get_cmdline_user_args() or "--capture-set=trench-fittings" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
+	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=woodland" in OS.get_cmdline_user_args() or "--capture-set=stonework" in OS.get_cmdline_user_args() or "--capture-set=trench-fittings" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
 	var peak_index := 0
 	for i in heights.size():
 		if heights[i] > heights[peak_index]:
 			peak_index = i
 	var n: int = world.terrain.landform.n
 	var half: float = world.terrain.landform.half
-	var peak := Vector3((peak_index % n) * 4.0 - half, 0, floori(float(peak_index) / float(n)) * 4.0 - half)
+	var peak := Vector3.ZERO
+	if n > 0:
+		peak = Vector3((peak_index % n) * 4.0 - half, 0, floori(float(peak_index) / float(n)) * 4.0 - half)
 	var views := [
 		["snow-close", peak, 45.0, -42.0, -0.2],
 		["snow-ridge", peak, 120.0, -30.0, -0.7],
 		["forest", Vector3(-400,0,-450), 350.0, -30.0, -0.2],
 		["panorama", Vector3.ZERO, 900.0, -22.0, 0.7],
 	]
+	if "--capture-set=stonework" in OS.get_cmdline_user_args():
+		var wall = null
+		for candidate in world.structures:
+			if candidate.skind == "house_wall" and int(candidate.size.y) == 4:
+				wall = candidate
+				break
+		assert(wall != null, "This seed must contain a stone house")
+		var focus: Vector3 = wall.position + Vector3.UP * 1.4
+		views = [["stone-close", focus, 12.0, -25.0, wall.rotation.y + 0.35],
+			["stone-command", focus, 50.0, -50.0, wall.rotation.y + 0.35]]
 	if "--capture-set=town" in OS.get_cmdline_user_args():
 		var town: Rect2 = world.town_rect
 		var center := Vector3(town.get_center().x, 0, town.get_center().y)
@@ -71,7 +96,20 @@ func capture() -> void:
 		for piece: Array in world.decor:
 			if piece[0] == "awning" and town.has_point(Vector2(piece[1].x, piece[1].z)):
 				views.append(["shopfront", piece[1], 16.0, -32.0, float(piece[2]) + PI + 0.5])
+				# and from the kerb, a man's eye a little raised: the windows, the
+				# stock in them, the grime on the walls
+				views.append(["shopfront-kerb", piece[1], 16.0, -32.0, float(piece[2])])
 				break
+		# a rendered house's front at a man's eye, across its garden: what
+		# the years leave on a plain wall
+		# (and a brick house's, and a stone house's)
+		var to_sun: Vector3 = world.atmo.sun.global_basis.z
+		for kerb: Array in [["house-kerb", "plaster"], ["brick-kerb", "brick"], ["stone-kerb", "stone"]]:
+			for st in world.structures_near(center, 90.0):
+				var out: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, 1)
+				if st.skind == "house_wall" and st.variant == 1 and BuildingMaterials.house(int(st.size.y)) == kerb[1] and not st.dark and out.dot(to_sun) > 0.45:
+					views.append([kerb[0], st.position, 16.0, -32.0, st.yaw])
+					break
 		# the central crossroads close up, the square, a car park from the street
 		views.append(["crossroads", center, 24.0, -48.0, 0.7])
 		for piece: Array in world.decor:
@@ -160,7 +198,7 @@ func capture() -> void:
 		views = [["earthwork", target, 18.0, -38.0, 0.5], ["cut", target + Vector3(0,-0.6,0), 6.0, -23.0, 0.5],
 			["bunker", bunker_pos, 16.0, -32.0, -0.65], ["position", target, 45.0, -50.0, 0.35]]
 		print("SLOPE_REVIEW ", target, " bunker=", bunker_pos)
-	var settle_frames := 90
+	var settle_frames := 12 if "--capture-set=stonework" in OS.get_cmdline_user_args() else 90
 	if "--capture-set=road-types" in OS.get_cmdline_user_args():
 		world.rules.rebuild_network(0)
 		views = [["gravel", Vector3(3, 0, 257), 12.0, -55.0, -0.8],
@@ -342,6 +380,26 @@ func capture() -> void:
 					world.cam.cam.global_position = eye
 					world.cam.cam.look_at(target)
 					break
+		if view[0] in ["house-kerb", "brick-kerb", "stone-kerb"]:
+			# square on to the wall from 7 m out (its outside is its +z)
+			var wall: Vector3 = view[1]
+			var b := Basis(Vector3.UP, float(view[4]))
+			var target := wall
+			target.y = world.ground_y(target) + 1.5
+			var eye := wall + b * Vector3(1.5, 0, 7.0)
+			eye.y = world.ground_y(eye) + 1.75
+			world.cam.cam.global_position = eye
+			world.cam.cam.look_at(target)
+		if view[0] == "shopfront-kerb":
+			# from the far kerb, at a man's eye, a little along the street
+			var wall: Vector3 = view[1]
+			var b := Basis(Vector3.UP, float(view[4]))
+			var target := wall
+			target.y = world.ground_y(target) + 1.55
+			var eye := wall + b * Vector3(2.2, 0, -7.5)
+			eye.y = world.ground_y(eye) + 1.75
+			world.cam.cam.global_position = eye
+			world.cam.cam.look_at(target)
 		if String(view[0]).begins_with("detail-"):
 			var subject: Vector3 = view[1]
 			subject.y = world.ground_y(subject) + (0.8 if view[0] == "detail-4" else 0.18)
@@ -359,6 +417,8 @@ func capture() -> void:
 		if world.atmo.mood == "rain":
 			world.atmo._bolt_t = 100.0
 			world.atmo._flash = 0.0
+		if defer_draw:
+			RenderingServer.set_render_loop_enabled(true)
 		for frame in (60 if String(view[0]).begins_with("detail-") else settle_frames):
 			await process_frame
 		while world.structure_view != null and world.structure_view.warming():
@@ -395,12 +455,12 @@ func capture() -> void:
 		var filename: String = prefix + "-" + view[0] + ".png"
 		assert(root.get_texture().get_image().save_png(filename) == OK)
 		if clip == view[0]:
-			# Launch with --fixed-fps 30; Godot consumes that switch before exposing arguments.
-			var frames := prefix + "-" + clip + "-frames"
+			# Launch with an explicit --fixed-fps; Godot consumes it before exposing arguments.
+			var frames := prefix + "-" + String(view[0]) + "-frames"
 			assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
-			for frame in 180:
-				if "--capture-set=fortifications" in OS.get_cmdline_user_args():
-					world.cam.yaw = float(view[4]) + 0.18 * sin(float(frame) * TAU / 180.0)
+			for frame in clip_frames:
+				if "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=stonework" in OS.get_cmdline_user_args():
+					world.cam.yaw = float(view[4]) + 0.18 * sin(float(frame) * TAU / float(clip_frames))
 					world.cam._apply()
 				await process_frame
 				await RenderingServer.frame_post_draw
