@@ -15,6 +15,8 @@ caption = "Resolve on the status line: yours, theirs, and what you're losing a s
   and from the twentieth minute both sides tire of it, so even a level fight ends before half an hour.
 - **On the status line:** your resolve, the enemy's, and how fast you're losing it (or how fast they are). You're
   warned when yours falls below 150.
+- **Battle result:** the victory or defeat banner and after-action report explain whether a side ran out of
+  resolve or lost its last operational FOB. The explanation stays with a saved report.
 - **Wrecked bases:** a FOB shelled to a wreck still counts as a base for two minutes. If its engineers haven't
   patched it up by then, it no longer does, so a side whose bases all lie in ruins has lost.
 - **Last stand:** a side's last FOB now takes twice as long to capture instead of four times.

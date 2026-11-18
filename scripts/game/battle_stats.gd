@@ -497,6 +497,8 @@ func report(view: int) -> Dictionary:
 				ev.append(e)
 	var res := {"t": world.time, "over": world.winner >= 0, "winner": world.winner, "full": full, "view": view, "every": every,
 		"players": pl, "sides": sd, "units": un, "heroes": he, "tl": tl, "ev": ev}
+	if world.winner >= 0 and world.rules and world.rules.victory.end_reason != "":
+		res["outcome"] = world.rules.victory.end_reason
 	if not world.mission_info.is_empty():
 		res["mission"] = true
 	return res
@@ -572,7 +574,7 @@ static func service_record(w: World) -> Dictionary:
 ## 80 samples and the last 60 events, numbers rounded.
 static func trim_report(r: Dictionary) -> Dictionary:
 	var out := {}
-	for k in ["t", "over", "winner", "full", "view", "every", "mission"]:
+	for k in ["t", "over", "winner", "full", "view", "every", "mission", "outcome"]:
 		if r.has(k):
 			out[k] = r[k]
 	out["players"] = compact(r.get("players", []))

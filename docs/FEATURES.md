@@ -1233,6 +1233,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Soldiers in good cover are much harder to pin down than soldiers in the open, and only their head and shoulders are
   exposed when they pop up to fire. A fortified line beats a frontal assault by similar numbers.
 - Everything can be shot up and repaired. Any FOB can be captured by whoever walks in and holds it. Lose your last FOB and you lose, but a side's last FOB is a last stand and takes twice as long to capture, and HQ sends a free reserve squad every 75 s to a side that is down to its last few soldiers. A wrecked FOB still counts as a base for two minutes; left in ruins longer than that, it doesn't, so a side whose every base lies wrecked has lost.
+- The result banner, after-action report and saved report explain whether the losing side ran out of resolve or lost its last operational FOB.
 - **Resolve** (`victory.gd`): each side starts with 600, shown on the status line beside the enemy's and the drain a
   second. From the third minute the side holding less ground bleeds it every second - the town counts 3, a village
   1, a working FOB 1, and the drain is 0.13 a second for each point of difference - and every loss costs it too: a

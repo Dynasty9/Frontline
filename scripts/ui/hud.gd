@@ -1189,7 +1189,7 @@ func show_game_over(w: int) -> void:
 			t.text = "DEFEAT"
 			t.add_theme_color_override("font_color", UiKit.BAD)
 		hv.add_child(t)
-		hv.add_child(UiKit.label("%s have taken the battlefield." % Defs.TEAM_NAMES[w], 14, UiKit.DIM))
+		hv.add_child(UiKit.label(String(world.report.get("outcome", "%s have taken the battlefield." % Defs.TEAM_NAMES[w])), 14, UiKit.DIM))
 		facts = "T+%s" % UiKit.fmt_time(world.time)
 		Music.sting("defeat" if world.local_team >= 0 and w != world.local_team else "victory")
 	if world.local_team >= 0 and Online.signed_in():
@@ -1269,6 +1269,8 @@ func _end_sequence(w: int) -> void:
 	else:
 		ban.headline = "VICTORY" if won else "DEFEAT"
 		ban.sub = "%s have taken the battlefield" % Defs.TEAM_NAMES[w]
+	if world.mission_info.is_empty() and world.report.get("outcome", "") != "":
+		ban.sub = String(world.report.outcome)
 	ban.won = won
 	ban.accent = (Defs.TEAM_COLORS[w] as Color).lightened(0.25) if world.local_team < 0 and world.mission_info.is_empty() else (UiKit.GOOD if won else UiKit.BAD)
 	# the player's own rating, if they fought

@@ -42,6 +42,9 @@ test("holding more ground drains the enemy's resolve, and running out of it lose
   assert.equal(end.winner, 0, "the Coalition wins when the Rebels' resolve runs out");
   const { counters } = await game.stats();
   assert.equal(counters.victory_resolve, 1, "on resolve");
+  const report = await game.query("report");
+  assert.equal(report.report.outcome, "Rebels ran out of resolve.");
+  assert.equal(report.saved.outcome, report.report.outcome, "the service record retains the explanation");
 });
 
 test("under the old rule nothing bleeds, and a FOB left in ruins stops counting as a base", async () => {
@@ -64,4 +67,7 @@ test("under the old rule nothing bleeds, and a FOB left in ruins stops counting 
   assert.equal(r.winner, 0, "after it, the Rebels have no base and lose");
   const { counters } = await game.stats();
   assert.equal(counters.victory_no_base, 1, "for want of a base");
+  const report = await game.query("report");
+  assert.equal(report.report.outcome, "Rebels lost their last operational FOB.");
+  assert.equal(report.saved.outcome, report.report.outcome);
 });

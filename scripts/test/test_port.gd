@@ -315,6 +315,9 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 		ids[int(id)] = true
 	var out := []
 	match what:
+		"report":
+			var report := w.battle.report(-1)
+			return {"report": _plain(report), "saved": _plain(BattleStats.trim_report(report))}
 		"world":
 			return {"t": w.time, "winner": w.winner, "seed": int(w.settings.get("seed", 0)), "scenario": String(w.settings.get("scenario", "")),
 				"resolve": w.rules.victory.points.duplicate(), "ground": w.rules.victory.held.duplicate(), "bleed": w.rules.victory.bleed.duplicate(),

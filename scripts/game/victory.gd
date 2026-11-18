@@ -32,6 +32,7 @@ const TOWN_PTS := 3
 const VILLAGE_PTS := 1
 const FOB_PTS := 1
 
+var end_reason := ""  # carried in the after-action report, including for clients
 var world: World
 var points: Array = [START, START]
 var held: Array = [0, 0]  # what each side's ground is worth now
@@ -70,6 +71,7 @@ func check_bases() -> bool:
 	for t in 2:
 		if bases[t] == 0:
 			world.stat("victory_no_base")
+			end_reason = "%s lost their last operational FOB." % Defs.TEAM_NAMES[t]
 			world.declare_winner(1 - t)
 			return true
 	return false
@@ -98,7 +100,9 @@ func tick() -> void:
 			world.send_msg(1 - t, "info", "The enemy is close to breaking. Keep up the pressure.")
 	if points[0] <= 0.0 or points[1] <= 0.0:
 		world.stat("victory_resolve")
-		world.declare_winner(0 if points[0] > points[1] else 1)
+		var victor := 0 if points[0] > points[1] else 1
+		end_reason = "%s ran out of resolve." % Defs.TEAM_NAMES[1 - victor]
+		world.declare_winner(victor)
 
 
 ## What the ground a side holds is worth.
