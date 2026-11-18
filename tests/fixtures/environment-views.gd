@@ -92,6 +92,17 @@ func capture() -> void:
 		for piece: Array in world.decor:
 			if piece[0] == "awning" and town.has_point(Vector2(piece[1].x, piece[1].z)):
 				views.append(["shopfront", piece[1], 16.0, -32.0, float(piece[2]) + PI + 0.5])
+				# and from the kerb, a man's eye a little raised: the windows, the
+				# stock in them, the grime on the walls
+				views.append(["shopfront-kerb", piece[1], 16.0, -32.0, float(piece[2])])
+				break
+		# a rendered house's front at a man's eye, across its garden: what
+		# the years leave on a plain wall
+		var to_sun: Vector3 = world.atmo.sun.global_basis.z
+		for st in world.structures_near(center, 60.0):
+			var out: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, 1)
+			if st.skind == "house_wall" and st.variant == 1 and BuildingMaterials.house(int(st.size.y)) == "plaster" and not st.dark and out.dot(to_sun) > 0.45:
+				views.append(["house-kerb", st.position, 16.0, -32.0, st.yaw])
 				break
 		# the central crossroads close up, the square, a car park from the street
 		views.append(["crossroads", center, 24.0, -48.0, 0.7])
@@ -291,6 +302,26 @@ func capture() -> void:
 					world.cam.cam.global_position = eye
 					world.cam.cam.look_at(target)
 					break
+		if view[0] == "house-kerb":
+			# square on to the wall from 7 m out (its outside is its +z)
+			var wall: Vector3 = view[1]
+			var b := Basis(Vector3.UP, float(view[4]))
+			var target := wall
+			target.y = world.ground_y(target) + 1.5
+			var eye := wall + b * Vector3(1.5, 0, 7.0)
+			eye.y = world.ground_y(eye) + 1.75
+			world.cam.cam.global_position = eye
+			world.cam.cam.look_at(target)
+		if view[0] == "shopfront-kerb":
+			# from the far kerb, at a man's eye, a little along the street
+			var wall: Vector3 = view[1]
+			var b := Basis(Vector3.UP, float(view[4]))
+			var target := wall
+			target.y = world.ground_y(target) + 1.55
+			var eye := wall + b * Vector3(2.2, 0, -7.5)
+			eye.y = world.ground_y(eye) + 1.75
+			world.cam.cam.global_position = eye
+			world.cam.cam.look_at(target)
 		if String(view[0]).begins_with("detail-"):
 			var subject: Vector3 = view[1]
 			subject.y = world.ground_y(subject) + (0.8 if view[0] == "detail-4" else 0.18)

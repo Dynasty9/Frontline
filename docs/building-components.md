@@ -125,10 +125,18 @@ round dark holes, missing the openings); about one plain wall in fourteen has a 
 to the brick behind it, scorched round, spattered with strikes. At the windows, the glass of some lived-in houses
 is taped in crosses against the blast, some windows are boarded across (with gaps: a window a man can still see
 and shoot through) and some have sandbags laid along the sill. Soot, streaks and scorch are
-`BuildingWeathering.stain`: a patch of the wall's own surface 3 mm proud, its vertex colours running from the
+`BuildingWeathering.stain`: a patch of the wall's own surface 6 mm proud, its vertex colours running from the
 stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so it fades into the wall with no
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
+
+Under the war's marks lie the years' (`BuildingWeathering.grime`, on every rendered, brick, stone and panelled
+wall and on the storeys over them): grime gathered under the eaves, where the overhang keeps the rain off,
+fading down the wall; rain splashed up its foot above the plinth; and now and then a dark run down from a gutter
+that overflows. It covers each solid part of a wall's body from plinth to band in one patch (2 mm proud, under
+the war's stains at 6 mm), so the joins between the parts a wall is built of no longer show as lines down the
+face; its amount wanders along a wall but is the same at both ends, so the walls of a house meet with no step.
+Boards and sheet, whose laps stand proud, carry none.
 
 ## Street furniture
 
@@ -204,7 +212,16 @@ Under the fascia a striped canvas awning on its arms, its scalloped edge no lowe
 clear of the door, one or two lots of what the shop puts out: crates of fruit and vegetables on a stand, a table
 and chairs, a sandwich board and tubs of flowers, sacks on a pallet with gas bottles and buckets, a paper rack.
 The wares are breakable set dressing, placed from a stream of their own after every other piece of decor, so the
-town is otherwise the same. Render a parade of three with `--building-kinds=shops` in the studio stage; the town
+town is otherwise the same.
+
+A shop's street wall is its windows and its door (MapGen marks the bays of a shop's front house wall variant 3):
+each bay but the door's is a display window nearly its whole width (`Structure.shop_window_w`) over a 0.7 m stall
+riser, up to the fascia (`BuildingOpenings.shopfront`): pilasters up the piers with a console at each head, a
+panelled riser and sill, a slim frame with a mullion or two and a transom light, big panes as likely to be shot
+out as any. Behind the glass `BuildingShops.display` sets out the stock on a display bed, boxes, tins and jars and
+the odd card, with a low screen behind it. Joinery and fascia are painted alike (`BuildingShops.paint`, by the
+house's colour index, which every wall and the awning decor know) in the deep colours shopfronts are, on painted
+wood. The riser is cover for a man kneeling, and men fight from the window as from any other. Render a parade of three with `--building-kinds=shops` in the studio stage; the town
 views include a shop front.
 
 ## Roofscapes

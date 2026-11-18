@@ -220,13 +220,14 @@ func _subject(kind: String) -> Node3D:
 			return _house(9.0, 7.6, 1, false, true, false, 0, {0: 13, 1: 2, 2: 12, 30: 41, 31: 7, 32: 2})
 		"shops":
 			# a parade of shops as the town builds them, their fronts to the
-			# street at -z: a greengrocer, a cafe and a newsagent
+			# street at -z: a greengrocer, a cafe and a newsagent, display
+			# windows either side of each door
 			var parade := Node3D.new()
 			for i in 3:
-				var shop := _house(7.4, 9.0, [1, 2, 3][i], true)
+				var shop := _house(7.4, 9.0, [1, 2, 3][i], true, true, false, 0, {}, {0: 3, 2: 3})
 				shop.position.x = (i - 1) * 7.8
 				parade.add_child(shop)
-				_shop_front(shop, 7.4, 9.0, [0, 1, 4][i], i)
+				_shop_front(shop, 7.4, 9.0, [0, 1, 4][i], i, [1, 2, 3][i])
 			return parade
 		"house_fixtures":
 			# what's fixed to a house's walls, the walls picked (by id) to show
@@ -472,13 +473,16 @@ func _plan_house(w: float, d: float, color: int, flat: bool, storeys: int, wing:
 ## the front): BuildingShops' fascia, awning and wares where that exists, else
 ## what the town drew before it (a plain awning and a dark board), for a
 ## matched comparison.
-func _shop_front(root: Node3D, w: float, d: float, kind: int, i: int) -> void:
+func _shop_front(root: Node3D, w: float, d: float, kind: int, i: int, color := -1) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 40 + i
 	var k := BuildingKit.nodes(root, rng).at_point(Vector3(0, 0, -d * 0.5))
 	if ResourceLoader.exists("res://scripts/game/building_shops.gd"):
 		var shops: GDScript = load("res://scripts/game/building_shops.gd")
-		shops.call("front", k, w - 0.6, kind, rng)
+		if (shops.get_script_method_list() as Array).any(func(m: Dictionary) -> bool: return m.name == "paint"):
+			shops.call("front", k, w - 0.6, kind, rng, color)
+		else:
+			shops.call("front", k, w - 0.6, kind, rng)
 		for x: float in [-(w * 0.5 - 1.1), w * 0.5 - 1.1]:
 			shops.call("wares", k.at_point(Vector3(x, 0, 0)), kind, rng)
 	else:

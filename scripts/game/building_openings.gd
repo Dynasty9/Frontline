@@ -58,6 +58,42 @@ static func window(k: BuildingKit, c: Vector3, size: Vector2, opts := {}) -> voi
 			shutter(k, Vector3(c.x + sx * w * 0.5, c.y, 0.02), Vector2(w * 0.5 + 0.03, h + 0.04), sx, a, style, opts.shutters)
 
 
+## A shop's display window: `c` the middle of the opening, `size` its width
+## and height, the fascia over it (BuildingShops.front). A shopfront is
+## joinery, all of it in the shop's paint (`frame`): pilasters up the piers
+## either side, a panelled stall riser under the glass with a sill along it,
+## a slim frame with a mullion or two and a transom light along the top, the
+## big panes (as likely to be shot out as any). opts as for window: frame,
+## glazing, cracked, lit, tape, and frame_kind (the surface: painted wood).
+static func shopfront(k: BuildingKit, c: Vector3, size: Vector2, opts := {}) -> void:
+	var w := size.x
+	var h := size.y
+	var fc: Color = opts.get("frame", Color(0.08, 0.17, 0.11))
+	var fk: String = opts.get("frame_kind", "wood_painted")
+	var bottom := c.y - h * 0.5
+	var top := c.y + h * 0.5
+	# the stall riser: a board across the foot of the window, two sunk
+	# panels in it, a sill over it throwing the rain off
+	k.box(Vector3(w, bottom, 0.06), Vector3(c.x, bottom * 0.5, 0.03), fk, fc)
+	var pw := (w - 0.3) * 0.5
+	for sx: float in [-1.0, 1.0]:
+		k.plate(Vector3(pw, bottom - 0.24, 0.012), Vector3(c.x + sx * (pw * 0.5 + 0.05), bottom * 0.5, 0.066), fk, fc.darkened(0.18))
+	k.box(Vector3(w + 0.06, 0.06, 0.16), Vector3(c.x, bottom + 0.03, 0.04), fk, fc.lightened(0.08), Vector3(0.06, 0, 0))
+	# the pilasters on the piers, a console at each head under the fascia's
+	# ends
+	for sx: float in [-1.0, 1.0]:
+		var px := c.x + sx * (w * 0.5 + 0.1)
+		k.box(Vector3(0.18, top + 0.05, 0.07), Vector3(px, (top + 0.05) * 0.5, 0.035), fk, fc)
+		k.box(Vector3(0.22, 0.12, 0.1), Vector3(px, 0.16, 0.05), fk, fc.darkened(0.15))
+		k.box(Vector3(0.22, 0.28, 0.12), Vector3(px, top - 0.08, 0.06), fk, fc.lightened(0.06))
+	# the frame, set a little back, its transom light along the top
+	var mullions := 1 if w < 2.6 else 2
+	var transom := 1.0 - 0.32 / h
+	var fp := Vector3(c.x, c.y, -0.05)
+	k.part(frame_shape(w, h, mullions, transom), fk, Transform3D(Basis.IDENTITY, fp), fc)
+	panes(k, fp, size, mullions, transom, opts.get("glazing", 0.45), opts.get("cracked", 0.6), "window_lit" if opts.get("lit", false) else "glass", opts.get("tape", false))
+
+
 ## The sill under an opening whose bottom is at `y`: from the frame out past
 ## the face, its top falling outwards, a drip under its front edge.
 static func sill(k: BuildingKit, x: float, y: float, w: float, inset: float, material: String, wall: Color) -> void:

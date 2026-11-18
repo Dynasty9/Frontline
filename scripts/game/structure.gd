@@ -364,6 +364,17 @@ func _part(p: Vector3, s: Vector3, nav: int, veh: int, cover := true, col := tru
 	return {"p": p, "s": s, "nav": nav, "veh": veh, "cover": cover, "col": col, "color": color, "r": r}
 
 
+## A shop's display window (house wall variant 3): its sill (the top of the
+## stall riser) and head (under the fascia: see BuildingShops.front), and how
+## wide it is in a bay `L` long.
+const SHOP_SILL := 0.7
+const SHOP_HEAD := 2.35
+
+
+static func shop_window_w(L: float) -> float:
+	return maxf(1.3, L - 0.6)
+
+
 func _define_parts() -> void:
 	parts = []
 	var L := size.x
@@ -401,6 +412,17 @@ func _define_parts() -> void:
 						var dp := _part(Vector3(0, 1.05, DOOR_Z), Vector3(w, 2.1, 0.08), Nav.FREE, Nav.FREE, false, true, c)
 						dp["door"] = true
 						parts.append(dp)
+				3:
+					# a shop's display window: nearly the whole bay glazed over a low
+					# stall riser (cover for a man kneeling), the fascia over it
+					var w := shop_window_w(L)
+					var pier := (L - w) * 0.5
+					parts = [
+						_part(Vector3(-L * 0.5 + pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(L * 0.5 - pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(0, SHOP_SILL * 0.5, 0), Vector3(w, SHOP_SILL, th), Nav.LOW, Nav.LOW, true, true, c),
+						_part(Vector3(0, (3.0 + SHOP_HEAD) * 0.5, 0), Vector3(w, 3.0 - SHOP_HEAD, th), Nav.FREE, Nav.FREE, false, true, c),
+					]
 				_:
 					parts = [_part(Vector3(0, 1.5, 0), Vector3(L, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c)]
 		"floor":
@@ -946,6 +968,9 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		gaps = [Rect2(-0.65, 1.0, 1.3, 1.0)]
 	elif variant == 2:
 		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
+	elif variant == 3:
+		var sw := shop_window_w(L)
+		gaps = [Rect2(-sw * 0.5, SHOP_SILL, sw, SHOP_HEAD - SHOP_SILL)]
 	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
 	# the foundation, below the ground where it's level, showing where the
 	# ground falls away under a house on a slope
@@ -981,7 +1006,19 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	if variant == 1 and war.randf() < 0.55:
 		BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, surf, tone, war)
 	if variant != 0 and war.randf() < 0.07:
-		BuildingWeathering.soot(k, 0.0, 2.0 if variant == 1 else 2.2, 1.3 if variant == 1 else 1.9, 2.85, surf, tone, war, L * 0.5 - 0.05)
+		var gap: Rect2 = gaps[0]
+		BuildingWeathering.soot(k, 0.0, gap.end.y, gap.size.x, 2.85, surf, tone, war, L * 0.5 - 0.05)
+	# the years' dirt: grime under the eaves, rain splashed up its foot
+	# (none on boards or sheet, whose laps stand proud of the face; a stream
+	# of its own)
+	var finish: String = BuildingMaterials.value(material, "finish", "render")
+	if finish in ["render", "brick", "stone", "panels", "cast"]:
+		var grime := RandomNumberGenerator.new()
+		grime.seed = rng.seed ^ 0x6d1e7a
+		var rects: Array = []
+		for b: Array in _body:
+			rects.append(b[0])
+		BuildingWeathering.grime(k, L, 2.9, rects, surf, tone, 1.0 if rendered else 0.55, grime)
 	if war.randf() < 0.22:
 		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), chips, war, gaps, L * 0.5)
 	if variant == 0 and war.randf() < 0.07:
@@ -1011,6 +1048,22 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			1:
 				BuildingFurnishings.radiator(room, 0.0, 1.0)
 	match variant:
+		3:
+			# a shop's window, in the shop's own paint (the fascia's colours),
+			# its stock set out behind the glass; a lamp on in some by night
+			var paint := BuildingShops.paint(ci)
+			var sw := shop_window_w(L)
+			var sopts := {"frame": paint, "glazing": 0.45}
+			if life.randf() < 0.4 and not dark:
+				sopts["lit"] = true
+				sopts["glazing"] = 0.8
+				_lit_glass = true
+			elif life.randf() < 0.5:
+				sopts["glazing"] = 0.8
+			if at_window < 0.3:
+				sopts["tape"] = true
+			BuildingOpenings.shopfront(k, Vector3(0, (SHOP_SILL + SHOP_HEAD) * 0.5, 0), Vector2(sw, SHOP_HEAD - SHOP_SILL), sopts)
+			BuildingShops.display(k, sw - 0.1, SHOP_SILL, paint, life)
 		1:
 			var opts := {"material": material, "wall": wall, "frame": trim}
 			# who lives here: curtains or a blind or nets (or none, in an empty

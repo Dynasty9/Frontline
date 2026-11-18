@@ -763,7 +763,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
   houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; moss and lichen
   grow on the tiles in uneven patches. Tiled roofs are weathered clay or concrete tile in five shades or slate and grey tile in three,
-  barns dull galvanised, rusted or red sheet; brick is old red-brown, and stone is coursed rubble (courses of three heights, stones
+  barns dull galvanised, rusted or red sheet; walls are dirty under the eaves and damp at the foot, with the odd run down from a gutter; brick is old red-brown, and stone is coursed rubble (courses of three heights, stones
   of their own lengths and shades) in pale lime mortar. Flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
@@ -783,7 +783,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and there a trampoline, all set dressing that a blast or a truck
   knocks over. On the walls are a house's services and the things by its door: meter boxes, outside taps
   with a hose on a hook, air conditioners on brackets or on a pad, satellite dishes on arms, and at the front
-  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
+  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: display windows over panelled stall risers with their stock set out behind the glass, a fascia with the shop's name painted to match, a striped awning, and on the
   pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
