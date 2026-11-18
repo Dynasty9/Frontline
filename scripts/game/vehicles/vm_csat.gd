@@ -634,9 +634,12 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 		# the minigun on its cradle; its box open on a shelf off the post's
 		# left, under the feeder, the chute dropping into it
 		var gy := 0.42
-		var g := k._pivot(t, Vector3(0, gy, -0.13))
-		_minigun(k, g, 0.65)
-		k.gun_assembly(g, Vector3(0, 0, -0.77))
+		# (laid about the barrels' rear, where the gun always pivoted)
+		var g := k._pivot(t, Vector3(0, gy, -0.25))
+		var h := k._pivot(g, Vector3(0, 0, 0.12))
+		_minigun(k, h, 0.65)
+		k._fold(h)
+		k.gun_assembly(g, Vector3(0, 0, -0.65))
 		_plate(k, t, Vector3(-0.04, -0.02, 0.2), Vector3(-0.5, -0.02, 0.2), 0.1, 0.025, "gunmetal_w", null, Vector3.BACK)
 		VehicleFittings.ammo_can(k, t, Vector3(-0.4, 0.12, 0.2), OLIVE, Vector3.ZERO, Vector3(0.2, 0.26, 0.34), true)
 		k.mg_tip = k._tip(t, Vector3(0, gy, -0.9))
