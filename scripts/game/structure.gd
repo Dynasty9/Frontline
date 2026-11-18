@@ -1123,7 +1123,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				_lit_glass = _lit_glass or not dark
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
-			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
+			var dc: Color = [Color(0.26, 0.2, 0.16), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.34, 0.15, 0.12)][(ci + 2) % 4]
 			_door_leaves = []
 			for sx in [-1.0, 1.0]:
 				var lost := rng.randf() < 0.25

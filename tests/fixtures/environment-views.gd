@@ -102,12 +102,14 @@ func capture() -> void:
 				break
 		# a rendered house's front at a man's eye, across its garden: what
 		# the years leave on a plain wall
+		# (and a brick house's, and a stone house's)
 		var to_sun: Vector3 = world.atmo.sun.global_basis.z
-		for st in world.structures_near(center, 60.0):
-			var out: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, 1)
-			if st.skind == "house_wall" and st.variant == 1 and BuildingMaterials.house(int(st.size.y)) == "plaster" and not st.dark and out.dot(to_sun) > 0.45:
-				views.append(["house-kerb", st.position, 16.0, -32.0, st.yaw])
-				break
+		for kerb: Array in [["house-kerb", "plaster"], ["brick-kerb", "brick"], ["stone-kerb", "stone"]]:
+			for st in world.structures_near(center, 90.0):
+				var out: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, 1)
+				if st.skind == "house_wall" and st.variant == 1 and BuildingMaterials.house(int(st.size.y)) == kerb[1] and not st.dark and out.dot(to_sun) > 0.45:
+					views.append([kerb[0], st.position, 16.0, -32.0, st.yaw])
+					break
 		# the central crossroads close up, the square, a car park from the street
 		views.append(["crossroads", center, 24.0, -48.0, 0.7])
 		for piece: Array in world.decor:
@@ -378,7 +380,7 @@ func capture() -> void:
 					world.cam.cam.global_position = eye
 					world.cam.cam.look_at(target)
 					break
-		if view[0] == "house-kerb":
+		if view[0] in ["house-kerb", "brick-kerb", "stone-kerb"]:
 			# square on to the wall from 7 m out (its outside is its +z)
 			var wall: Vector3 = view[1]
 			var b := Basis(Vector3.UP, float(view[4]))

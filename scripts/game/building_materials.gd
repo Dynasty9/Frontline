@@ -19,7 +19,7 @@ const PROFILES := {
 		"trim": "plaster", "sill": "plaster", "head": "plaster", "base": "plaster", "base_tone": -0.3, "cap": "plaster"},
 	"brick": {"surface": "brick", "color": Color(0.42, 0.27, 0.22), "finish": "brick",
 		"trim": "concrete", "sill": "concrete", "head": "concrete", "base": "brick", "base_tone": -0.35, "cap": "concrete",
-		"trim_color": Color(0.62, 0.6, 0.56)},
+		"trim_color": Color(0.53, 0.52, 0.49)},
 	"stone": {"surface": "stone", "color": Color(0.56, 0.53, 0.48), "finish": "stone",
 		"trim": "stone", "sill": "stone", "head": "stone", "base": "stone", "base_tone": -0.18, "cap": "stone"},
 	"concrete": {"surface": "concrete", "color": Color(0.5, 0.49, 0.46), "finish": "cast",
