@@ -19,3 +19,5 @@ caption = "A country road from afar and close up, the edge of town and a town st
 - **Sidewalk joints** hold grit, and moss where they stay damp.
 - **Car parks** are kerbed on their three open sides instead of a bare slab dropped on the grass.
 - **Cracks in town asphalt** run along and across the streets, sealed with tar, instead of curly lines.
+
+Wheel-rut lighting now follows the depressed surface: the sides shade into the rut, and the shoulders slope back into the meadow.

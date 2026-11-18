@@ -1,6 +1,15 @@
 extends Node
 
 func _ready() -> void:
+	if "--track-normals-only" in OS.get_cmdline_user_args():
+		TestRun.watch()
+		await check_track_normals()
+		print("TRACK_NORMALS passed")
+		Sfx._ensure()
+		while Music._task >= 0:
+			await get_tree().process_frame
+		TestRun.quit(get_tree())
+		return
 	check_release_forest_atlas()
 	var arrays := Atmosphere.terrain_materials()
 	assert(arrays.size() == 2)
@@ -44,6 +53,7 @@ func _ready() -> void:
 		await check_surf_continuity()
 		await check_vertex_ground_normals()
 		await check_rain_splashes()
+		await check_track_normals()
 		await check_road_surfaces()
 		await check_ground_grime()
 		await check_shrub_leaves()
@@ -797,3 +807,46 @@ func check_bunker_trench_cut() -> void:
 			assert(shot.get_pixel(16,32).a > 0.95, "Roof soil remains a solid roof above an excavation")
 	view.free()
 	print("TERRAIN_MATERIALS bunker bank trench cut passed")
+
+
+## Compare the rendered normal with the tangent of a depressed wheel track.
+func check_track_normals() -> void:
+	assert(DisplayServer.get_name() != "headless", "Track normals need a real renderer")
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(0, 2, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var source := Atmosphere.GROUND_SHADER
+	var begin := source.find("vec3 track_normal(")
+	var end := source.find("\n}", begin) + 2
+	assert(begin >= 0 and end > begin)
+	var shader := Shader.new()
+	shader.code = "shader_type spatial; render_mode unshaded; uniform float sample_slope;\n" + source.substr(begin, end - begin) + """
+void fragment() {
+	vec3 n = track_normal(vec3(0.0, 1.0, 0.0), vec2(1.0, 0.0), sample_slope, 1.0);
+	ALBEDO = n * 0.5 + 0.5;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	mesh.material_override = material
+	for x in [-0.16, 0.16]:
+		var dx := 0.0001
+		# Five-centimetre depression, sampled on both sides of its centre.
+		var derivative := (-0.05 * exp(-pow((x + dx) / 0.24, 2)) + 0.05 * exp(-pow((x - dx) / 0.24, 2))) / (2.0 * dx)
+		material.set_shader_parameter("sample_slope", derivative)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var c := view.get_texture().get_image().get_pixel(16, 16).srgb_to_linear()
+		var normal := Vector3(c.r, c.g, c.b) * 2.0 - Vector3.ONE
+		assert(absf(normal.dot(Vector3(1, derivative, 0))) < 0.025, "Track normal must be perpendicular to its rising/falling surface: %s" % normal)
+	view.queue_free()

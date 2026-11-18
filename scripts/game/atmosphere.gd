@@ -2633,6 +2633,12 @@ vec3 shore_gravel_color(vec2 p) {
 	return mix(vec3(luma), scan, 0.4) * vec3(1.12, 1.09, 1.02);
 }
 
+// A surface normal opposes the height gradient: the far side of a rut
+// rises out of the depression, so its normal points back into the rut.
+vec3 track_normal(vec3 base, vec2 outward, float slope, float coverage) {
+	return normalize(base - vec3(outward.x, 0.0, outward.y) * slope * coverage);
+}
+
 void fragment() {
 	vec2 p = wpos.xz;
 	if (texture(trench_mask, (p + __MAP_HALF__) / __MAP_SIZE__).r > 0.5) {
@@ -3033,7 +3039,7 @@ void fragment() {
 			float rut_slope = mix(0.09, 0.02, gravelled) * rut * 2.0 * rk_near / rut_w;
 			float roll = smoothstep(mix(1.4, 2.0, gravelled), mix(2.6, 3.2, gravelled), road_d);
 			float roll_slope = -0.05 * roll * (1.0 - roll) * 4.0 / 1.2;
-			moss_n = normalize(moss_n + vec3(outward.x, 0.0, outward.y) * (rut_slope + roll_slope) * track);
+			moss_n = track_normal(moss_n, outward, rut_slope + roll_slope, track);
 			exposed *= 1.0 - track;
 			// rain lies in the ruts first
 			puddle = max(puddle, wet * track * smoothstep(0.5, 0.7, rut * mix(0.45, 0.3, gravelled) + d1 * 0.55));
