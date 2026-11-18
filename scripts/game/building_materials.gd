@@ -60,7 +60,7 @@ const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "timber"]
 const ROOF_CLAY := [Color(0.45, 0.26, 0.19), Color(0.4, 0.25, 0.2), Color(0.35, 0.21, 0.17), Color(0.32, 0.24, 0.2), Color(0.34, 0.18, 0.15)]
 const ROOF_SLATE := [Color(0.25, 0.25, 0.26), Color(0.32, 0.31, 0.29), Color(0.21, 0.21, 0.21)]
 ## A barn's sheet roof: rusted, galvanised gone dull grey, or painted red.
-const BARN_SHEET := [Color(0.34, 0.25, 0.21), Color(0.36, 0.37, 0.37), Color(0.32, 0.16, 0.13)]
+const BARN_SHEET := [Color(0.34, 0.25, 0.21), Color(0.3, 0.31, 0.31), Color(0.32, 0.16, 0.13)]
 
 
 ## What a flat roof is covered in: bitumen felt gone dull black-grey, green-
@@ -140,7 +140,7 @@ static func house_color(ci: int, paint: Color) -> Color:
 			return [Color(0.6, 0.55, 0.46), Color(0.55, 0.53, 0.48), Color(0.63, 0.56, 0.45)][posmod(ci / HOUSE.size(), 3)]
 		"timber":
 			# a barn's boards: barn red, weathered grey, or dark green
-			return [Color(0.46, 0.15, 0.11), Color(0.45, 0.43, 0.39), Color(0.22, 0.29, 0.21)][posmod(ci / HOUSE.size(), 3)]
+			return [Color(0.37, 0.14, 0.1), Color(0.42, 0.4, 0.37), Color(0.2, 0.26, 0.19)][posmod(ci / HOUSE.size(), 3)]
 	return paint
 
 

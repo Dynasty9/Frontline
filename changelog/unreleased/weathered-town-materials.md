@@ -13,7 +13,7 @@ caption = "Before (left) and after (right): native town close and command views 
 +++
 
 - **Roofs:** each tiled roof is one of five weathered clays and concrete tiles or three slates and grey tiles, so a
-  street reads as houses built at different times. Barn roofs are dull galvanised or rusted sheet, not near white.
+  street reads as houses built at different times. Barn roofs are dull galvanised or rusted sheet, not near white, over boards in an old oxblood, grey or green.
 - **Brick** is the red-brown of old brick, with the photograph's own dark and pale bricks showing through.
 - **Stone** houses are coursed rubble: courses of different heights, stones of their own lengths and shades, set
   in pale lime mortar, warm buff and honey rather than grey.
