@@ -1,19 +1,19 @@
 {
   "entry": "changelog/unreleased/parish-church.md",
-  "summary": "A parish church men can go into, in a walled churchyard, on the edge of skirmish towns.",
+  "summary": "A stone parish church on the edge of skirmish towns, with a west door under its tower and a south porch, to fight over and inside.",
   "medium": "still",
-  "stage": "tests/fixtures/environment-views.gd (town); tools/showcase/building-surfaces.tscn",
-  "rationale": "New landmark building: the same camera on the same map before and after shows it in place; studio views from behind and with its roofs off show its build and its interior.",
-  "source_ref": "2c5106d92daee29849e1767abb72f8b927c791bf",
-  "before_ref": "e09de96a9eca5c266d1aa1327aaa3a0f4a185d5f",
+  "stage": "tests/fixtures/environment-views.gd (town); the game (--aivai, --scenario=church); tools/showcase/building-surfaces.tscn",
+  "rationale": "New landmark building and battle location: the road view shows it in place, close views show both entrances and men fighting inside with the roofs lifted, and studio views show its interior and build.",
+  "source_ref": "5c88dab8d25f817490c6e776d2db57d0f40ca055",
+  "before_ref": "9c048e4e7c7cf929bbda21567df5abc7f49a981f",
   "sources": [
     {
       "file": "changelog/unreleased/parish-church/comparison.jpg",
-      "sha256": "6a9010c349665e4045c9cca84e5f75ec24f7ce9e85dbe52f0b557455aa8c0834"
+      "sha256": "1bc0d15862bb83930ee8dcd5d9c26f200381a1f2d4b139573ca2cc0d5e9cb3eb"
     },
     {
       "file": "changelog/unreleased/parish-church/capture.json",
-      "sha256": "47701891fd1f5f3fabf74ca4bb55c6e37535bc25fca0985599bafa16f23d7767"
+      "sha256": "649a15b0339a8c97d10cadb953d3d2d4d8ea06bcef89c3efe36499f3e10919f1"
     }
   ],
   "output": null

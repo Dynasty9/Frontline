@@ -750,10 +750,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
   under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
-- A skirmish town has its parish church where a road comes in, in a walled churchyard of graves: a limewashed
-  nave and chancel with tall pointed windows under slate, and a solid west tower with a clock, louvred belfry,
-  battlements and a slate spire seen across the map. Men go in by its south door, fight from its windows (the
-  roofs lift off for them, over the pews and the altar), and its walls come down to rubble as a house's do.
+- A skirmish town has its parish church where a road comes in, in a walled churchyard of graves: a nave and
+  chancel of coursed stone with dressed quoins, buttresses and tall traceried windows of stained glass under a
+  steep slate roof, and a west tower with a clock, louvred belfry, battlements and a slate spire seen across the
+  map. It has two ways in: the west door under the tower (the tower's ground stage is its porch) and the south
+  door in a timber porch on stone dwarf walls (cover for men holding it). Men go in by either, fight from its
+  chest-high windows (the roofs lift off for them, over the pews, the pulpit, the lectern, the font and the choir
+  and altar), and its walls come down to rubble as a house's do. A squad told to hold it takes its places inside,
+  at the windows and doors, rather than out among the graves; its slate roof on oak trusses rarely catches fire.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
