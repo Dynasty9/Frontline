@@ -1742,8 +1742,10 @@ const SSGI_STRENGTH := 2.0
 const SSGI_FAR := Vector2(15.0, 50.0)
 const SSGI_FAR_REACH := 2.0
 const SSGI_FAR_STRENGTH := 2.5
-## How much more saturated the gathered light is laid on (1 as gathered).
+## How much more saturated the gathered light is laid on (1 as gathered),
+## near and from afar (FL_DEBUG_SSGI_GREYFAR: the old 0.75 from afar, to compare).
 const SSGI_BLEED := 1.6
+const SSGI_FAR_BLEED := 1.3
 ## The brightest a surface's estimated colour may be (a white wall's ~0.8).
 const SSGI_ALBEDO_CAP := 0.8
 
@@ -1794,6 +1796,7 @@ func _ssgi_tick() -> void:
 	# is capped at what its rays hit, and fewer rays a frame cap it lower.)
 	p[28] = 0.0 if OS.get_environment("FL_DEBUG_SSGI_BOUNCES") == "1" else 0.8
 	p[29] = 0.0 if OS.has_environment("FL_DEBUG_SSGI_NOFIX") else 1.0
+	p[30] = 0.75 if OS.has_environment("FL_DEBUG_SSGI_GREYFAR") else SSGI_FAR_BLEED
 	var to_rim := rim.global_transform.basis.z
 	var rc := rim.light_color.srgb_to_linear() * rim.light_energy * (1.0 if rim.visible else 0.0)
 	p[32] = to_rim.x

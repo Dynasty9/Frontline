@@ -1422,8 +1422,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   roofless floors lift plainly while open grass, lit by the sky alone, is untouched (it has nothing near to gather
   from); sunlit surfaces in the frame's brightest fifth gain about 5-7% (linear) on average. However strong it is laid on,
   the light a surface gathers never comes out brighter than the surfaces its rays hit (a yard walled in on every
-  side gets its walls' own light, no more), and from afar it is laid on a quarter greyer, so a yard is tinted by its
-  wall rather than painted it. Under cloud the walls have little light to throw, so there it stays subtle. Fires,
+  side gets its walls' own light, no more), and from afar it was laid on a quarter greyer, so a yard was tinted by its
+  wall rather than painted it; once sunlit ground stopped taking it, that went back up to 1.3 times as gathered, so a
+  red-brick house reddens the shade at its foot from the 55 m command height. Under cloud the walls have little light to throw, so there it stays subtle. Fires,
   lamps and flashes bounce the same way, since the pass reads the lit frame, flames and all: a burning car throws its
   orange onto the wall and grass beside it, and a shell's flash is thrown about the frame it bursts (the history is
   clipped to what this frame's rays see, so it comes and goes with the flash; cutting the history short on a jump
@@ -1444,7 +1445,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   in shade, and read as shade it was given a yellow near-white colour that tinted the light laid on it orange): the
   engine's shadow maps aren't open to the pass, so at half resolution each pixel facing the sun takes 16 steps
   towards it through the depth buffer, up to 10 m, as far as a house's or a tank's shadow falls on screen (a grass
-  blade's own shadow is too fine to see, so a lawn reads as in the sun). Its sunlight is taken as at least what
+  blade's own shadow is too fine to see, so a lawn reads as in the sun). That answer is brought up to full resolution
+  weighted by how near each half-resolution sample's brightness is to the pixel's, and trusted only when it is sure
+  (over 0.9): near a shadow's edge the brightness, exact on anything pale enough to show it, decides, so the lift
+  follows the shadow rather than the half-resolution pixels' steps. Its sunlight is taken as at least what
   level ground of its facing gets, and the shade's light counts Atmosphere's fill light from the side away from the
   sun, which lights shaded faces turned to it as strongly as the sky does.
   Smoke, dust and flames are drawn over the lit world, and the pass needs them drawn (a flame is a light it
@@ -1460,7 +1464,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   ground their own lights reach.
   At the edges of thin things (a man, a post) where all four half-resolution pixels belong to what stands in front,
   the upsample looks a pixel further out for one of the pixel's own surface; at 3x, soldiers against walls and
-  grass showed no halo either way. Godot's
+  grass showed no halo either way. With the roof
+  lifted off a house (as when men are inside), its sunlit floor lights the shaded floor along its walls and the walls
+  themselves. The light probes (`light_probes.gd`) shut out sky in streets and rooms and add a coarse bounce of their
+  own; with both on, the two mostly complement each other (the darkest 30% of a ruin: probes alone -21%, bounce light
+  alone +31%, both +2%; an alley -50%, +147%, +54%), and bounce light gives about a quarter less on top of the probes,
+  since its colour estimate still reads a surface against the open sky's light. In a 60 fps golden-hour pan and zoom
+  over the town, the bounce light changes about 1 level a frame (on a mean of 4) once the camera's shift is taken
+  out, against 2.8 for the whole picture, with no shimmer or crawl. Godot's
   own SSIL (the Indirect light setting) and SDFGI (Global illumination) stay as options, but on the RTS camera
   neither shows colour bleed: SSIL mostly darkens corners (over the town it lowered the frame's mean by half a
   level and added nothing visible), and SDFGI lifts the whole frame evenly (its cells are too coarse for a street

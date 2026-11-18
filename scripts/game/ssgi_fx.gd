@@ -383,7 +383,7 @@ layout(set = 0, binding = 0, std140) uniform Params {
 	vec4 far;   // distance (m) the far view starts and is full at; reach and strength there (multipliers)
 	vec4 sun;   // towards the sun (world); how much more saturated the gathered light is laid on
 	vec4 sun_col;  // the sun's light on a surface square to it (rgb, scene units)
-	vec4 opt;   // share of last frame's bounce fed back; upsample search (0/1); -; opaque picture taken (0/1)
+	vec4 opt;   // share of last frame's bounce fed back; upsample search (0/1); saturation from afar; opaque picture taken (0/1)
 	vec4 rim;   // towards the fill light (world)
 	vec4 rim_col;  // the fill light on a surface square to it (rgb, scene units)
 } P;
@@ -445,7 +445,10 @@ vec3 receiver_albedo(vec3 c, vec3 wn, float sunvis, out float sunny) {
 	// near-white, which tinted the light laid on it orange
 	vec3 raw = c / max(shade, vec3(1e-4));
 	float lit = max(max(dot(wn, P.sun.xyz), 0.0), max(P.sun.y, 0.0) * clamp(wn.y, 0.0, 1.0));
-	if ((sunvis > 0.5 || max(raw.r, max(raw.g, raw.b)) > P.amb.a) && lit > 0.0) {
+	// (the sun test is at half resolution, so near a shadow's edge it is
+	// smeared: there only a sure answer counts, and the brightness, which is
+	// exact on any surface pale enough to show it, decides the rest)
+	if ((sunvis > 0.9 || max(raw.r, max(raw.g, raw.b)) > P.amb.a) && lit > 0.0) {
 		vec3 b = c / max(shade + P.sun_col.rgb * lit, vec3(1e-4));
 		float mb = max(b.r, max(b.g, b.b));
 		a = mb > P.amb.a ? b * (P.amb.a / mb) : b;
@@ -874,6 +877,13 @@ void main() {
 	float wsum = 0.0;
 	float best = 0.0;  // how alike the likest of them is
 	float vis = 0.0;  // and whether the sun reaches them
+	float vsum = 0.0;
+	// (which of them the sun reaches is told at half resolution, and a shadow's
+	// edge runs through the full one: weighed also by how near each one's
+	// brightness is to this pixel's, the edge follows the shadow, not the
+	// half-resolution pixels' steps)
+	vec3 lumw = vec3(0.2126, 0.7152, 0.0722);
+	float pl = dot(clean(P.opt.w > 0.5 ? texelFetch(opaque_tex, p, 0).rgb : col.rgb), lumw);
 	for (int i = 0; i < 4; i++) {
 		ivec2 o = ivec2(i & 1, i >> 1);
 		ivec2 q = clamp(base + o, ivec2(0), hm);
@@ -886,10 +896,13 @@ void main() {
 		float w = (bw.x * bw.y + 1e-3) * like;
 		best = max(best, like);
 		sum += texelFetch(filt_tex, q, 0).rgb * w;
-		vis += texelFetch(rad_tex, q, 0).a * w;
+		vec4 rq = texelFetch(rad_tex, q, 0);
+		float wb = w * exp(-4.0 * abs(log((dot(rq.rgb, lumw) + 1e-3) / (pl + 1e-3))));
+		vis += rq.a * wb;
+		vsum += wb;
 		wsum += w;
 	}
-	float sunvis = wsum > 1e-5 ? vis / wsum : 0.0;
+	float sunvis = vsum > 1e-6 ? vis / vsum : 0.0;
 	// none of the four is this surface: a pixel at the edge of something thin
 	// (a man, a post, a barrel's rim) whose half-resolution pixels all went to
 	// whatever stands in front. Weighed as they are, it would take that
@@ -922,11 +935,13 @@ void main() {
 	// what a wall throws carries its own colour, but mixed over many rays and
 	// a surface's own tint, it greys: brought back a little, so the green of
 	// a wall reads in the tiles beside it
-	// (from afar the opposite: a wall's colour over a whole yard reads as a
-	// tint laid on, so there it is laid on a quarter greyer than gathered)
+	// (from afar a little less: a wall's colour laid over a whole yard read
+	// as a tint painted on, when sunlit yards took it too; now that only the
+	// shade does, a red brick wall reddening its foot still reads from the
+	// command height, a little over gathered)
 	float far_k = smoothstep(P.far.x, P.far.y, z);
 	float el = dot(e, vec3(0.2126, 0.7152, 0.0722));
-	e = max(vec3(el) + (e - vec3(el)) * mix(P.sun.w, 0.75, far_k), vec3(0.0));
+	e = max(vec3(el) + (e - vec3(el)) * mix(P.sun.w, P.opt.z, far_k), vec3(0.0));
 	vec3 c = clean(col.rgb);
 	// smoke, dust or a flame drawn over this pixel: the bounce light lands on
 	// the world behind them, and shows only as much as they let through. How

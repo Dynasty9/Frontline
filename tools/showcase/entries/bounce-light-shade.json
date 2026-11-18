@@ -2,17 +2,17 @@
   "entry": "changelog/unreleased/bounce-light-shade.md",
   "summary": "Bounce light kept to the shade (screen-space sun test), hidden behind smoke and dust, multi-bounce, on vehicles.",
   "medium": "still",
-  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud, FL_DEBUG_GI_CYCLE holding one frozen frame for off and High: tank: --scenario=tank --static --seed=3 --mood=day, FL_DEBUG_GI_AT=3, FL_DEBUG_GI_POSES=t5:tank:10:auto:2.4 (its shaded side to the camera); dust: the same at t2:tank:12:auto:3.14 with modes none, ssgi2_nosnap (no picture before the smoke) and ssgi2; golden hour: --host --team=0 --seed=3 --preset=high --mood=golden, ruin30:ruin:30:auto:0.4; night: --mood=night car16:car:16:auto:0.5 with FL_DEBUG_GI_IGNITE=0.9 FL_DEBUG_STEADY_FIRE=1 FL_DEBUG_GI_AT=14; each cropped (640x360 at 2x, or 960x540) on the window with the most added light, off over on with labels, an arrow and a caption, plus on-minus-off x4; pan: --fixed-fps 30, FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day, gamma-brightened",
-  "rationale": "The change is about where bounce light lands, so the tank is shot with its shaded side to the camera and the bounce-only panel shows the light on the hull side and skirts while the sunlit deck and lawn stay dark. The dust fix is about what must not show, so one three-way crop from a single run (off, laid over the dust, now) shows it at a glance. Golden hour and a night fire show it where it is strongest in a town; the pan clip answers whether it smears in motion. Midday and the 55 m command height were rendered too but are now faint, since sunlit ground no longer lifts, so they are not claimed.",
+  "stage": "game capture at 1600x900, --offscreen --perf=0 --nohud, FL_DEBUG_GI_CYCLE holding one frozen frame for off and High: tank: --scenario=tank --static --seed=3 --mood=day, FL_DEBUG_GI_AT=3, FL_DEBUG_GI_POSES=t5:tank:10:auto:2.4 (its shaded side to the camera); dust: the same at t2:tank:12:auto:3.14 with modes none, ssgi2_nosnap (no picture before the smoke) and ssgi2; golden hour: --host --team=0 --seed=3 --preset=high --mood=golden, ruin30:ruin:30:auto:0.4; night: --mood=night car16:car:16:auto:0.5 with FL_DEBUG_GI_IGNITE=0.9 FL_DEBUG_STEADY_FIRE=1 FL_DEBUG_GI_AT=14; each cropped (640x360 at 2x, or 960x540) on the window with the most added light, off over on with labels, an arrow and a caption, plus on-minus-off x4; pan: --fixed-fps 30, FL_DEBUG_GI_POSES=p:town:40:-40:1.57 FL_DEBUG_GI_PAN=6,-6,75 FL_DEBUG_GI_MODES=view_added --mood=day, gamma-brightened; red 55 m: --host --mood=day FL_DEBUG_GI_POSES=h1:house:55:auto:1.57 (rendered with the sun test's half-resolution answer trusted from 0.5, before it was raised to 0.9 and brought to full resolution by brightness; the town is laid out anew each run, and later runs had no red-brick house in view); room: FL_DEBUG_GI_LIFT=14 FL_DEBUG_GI_POSES=i1:house:16:-60:2.0 (the roofs within 14 m taken off, as when men are inside); golden pans: --fixed-fps 60 --resolution 1280x720 --mood=golden, FL_DEBUG_GI_POSES=p:town:35:auto:0.6 FL_DEBUG_GI_PAN=4,-3,240,6 (4 m/s by 3, zooming out 6 m/s), modes ssgi2 and view_added",
+  "rationale": "The change is about where bounce light lands, so the tank is shot with its shaded side to the camera and the bounce-only panel shows the light on the hull side and skirts while the sunlit deck and lawn stay dark. The dust fix is about what must not show, so one three-way crop from a single run (off, laid over the dust, now) shows it at a glance. Golden hour and a night fire show it where it is strongest in a town; the pan clip answers whether it smears in motion. Midday and the 55 m command height were rendered too but are now faint, since sunlit ground no longer lifts, so they are not claimed. The command-height red shot answers whether a wall's colour reads from where a player usually looks; the room shot shows a doorway-lit interior with the roof lifted; the 60 fps golden-hour pans (full look and bounce alone) answer whether the light shimmers or crawls at the command height under motion.",
   "source_ref": "dines/ssgi-a648db: prep reads the world before smoke and flames; level ground brightened by dust is masked",
   "sources": [
     {
       "file": "changelog/unreleased/bounce-light-shade/tank.jpg",
-      "sha256": "17eec3a545001ca25bb3e04afaf7781c02cf0f0ac03fab154d85572812127523"
+      "sha256": "ce9224ca2408ed2780e875c95c280232adc6e65437b40386738ddfad6734b9a4"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/tank-light.jpg",
-      "sha256": "d21b5c858904de37e6df8561a6771dc9cc10acff4064ee6518ff0610b35ef9b5"
+      "sha256": "e2cd855054c428d39b18e36644e8514ab55fe3eee9dcdc455e82b2944c17597d"
     },
     {
       "file": "changelog/unreleased/bounce-light-shade/dust.jpg",
@@ -41,6 +41,38 @@
     {
       "file": "changelog/unreleased/bounce-light-shade/pan.jpg",
       "sha256": "a5cf966a4405625ea44ddce6e095e392dec3271c0a8f2f7aac820e9dafa67b69"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/red55.jpg",
+      "sha256": "9f572f4c476efaa3232659d20c2b0e9ee56b5586854f438336fda1bd2400181c"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/red55-light.jpg",
+      "sha256": "de350fcbfabae136628b8ed8e9510f7e1a7cb73150c8fd4c5dff38921d1998a9"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/room.jpg",
+      "sha256": "908cbe32d50727e3bde8445a2f0d8b1b130ab7ccf399cb24947a180cbe9a38c9"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/room-light.jpg",
+      "sha256": "44b10f8e6c231ed0bcca55179f03d364dd79d7c4db41d254fa0fc79ab928bc3b"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/golden-pan.webm",
+      "sha256": "86c9acbeb100b97eee259e53cb6ef0b69bb86032c7e0b3852d72e7de20da283b"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/golden-pan.jpg",
+      "sha256": "9ad7425dd4b3b72bd2080a2b4997323747dc2a86d35fbed5b77a8f08e3d6d000"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/golden-pan-light.webm",
+      "sha256": "459779ea179746dbea48fc6ddde517c564ac7ba230309e13974b23a03aef48bf"
+    },
+    {
+      "file": "changelog/unreleased/bounce-light-shade/golden-pan-light.jpg",
+      "sha256": "6c7ceb0f6b90d8e649a811ed26bfa18b0c2948fc3729c2ee8c8e538ae3ee54b9"
     }
   ],
   "output": null

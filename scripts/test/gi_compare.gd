@@ -20,7 +20,8 @@ extends Node
 ## "car" (the car nearest it with a house wall close by, looked at from the
 ## far side so the wall stands behind it; FL_DEBUG_GI_IGNITE=heat sets it
 ## alight a second into the battle, to see a fire's light thrown about).
-## "tank" is the tank nearest where the camera starts (yaw then as given).
+## "tank" is the tank nearest where the camera starts (yaw then as given);
+## "house" the roofed house nearest the town (FL_DEBUG_GI_LIFT=m lifts roofs).
 ## Pitch "auto" leaves the camera's own pitch for that zoom.
 ##
 ## FL_DEBUG_GI_AB=mode,mode,...: instead of pictures, what each mode costs the
@@ -28,7 +29,7 @@ extends Node
 ## AB_ROUNDS times, so whatever else loads the machine falls on both halves
 ## alike; the first frames after each switch are left out.
 ##
-## FL_DEBUG_GI_PAN="vx,vz,frames": instead, from the first pose and in the
+## FL_DEBUG_GI_PAN="vx,vz,frames[,zoom]": instead, from the first pose and in the
 ## first mode, the camera pans at (vx, vz) m/s while the battle runs on, and
 ## every frame is saved (DIR/pan_000.png...): run it with --fixed-fps 30 for
 ## frames 1/30 s apart, to see the light hold (or smear) while the view moves.
@@ -56,6 +57,10 @@ const MODES := {
 	"view_through": {"ssil": false, "gi": false, "ssgi": 2, "view": 11},
 	"view_opaque": {"ssil": false, "gi": false, "ssgi": 2, "view": 12},
 	"view_sun": {"ssil": false, "gi": false, "ssgi": 2, "view": 13},
+	# with the light probes off (every other mode leaves them as the preset has them)
+	"ssgi2_greyfar": {"ssil": false, "gi": false, "ssgi": 2, "env": "FL_DEBUG_SSGI_GREYFAR"},
+	"np_none": {"ssil": false, "gi": false, "ssgi": 0, "light_probes": 0},
+	"np_ssgi2": {"ssil": false, "gi": false, "ssgi": 2, "light_probes": 0},
 	# the same with one of the bounce light's parts left out (see
 	# Atmosphere._ssgi_tick): one bounce only, the plain upsample, and the
 	# bounce light laid over smoke and dust (no picture of the world before them)
@@ -68,7 +73,7 @@ const MODES := {
 	"view_light1": {"ssil": false, "gi": false, "ssgi": 1, "view": 1},
 	"view_added1": {"ssil": false, "gi": false, "ssgi": 1, "view": 3},
 }
-const ENV := ["FL_DEBUG_SSGI_BOUNCES", "FL_DEBUG_SSGI_NOFIX", "FL_DEBUG_SSGI_NOSNAP"]
+const ENV := ["FL_DEBUG_SSGI_BOUNCES", "FL_DEBUG_SSGI_NOFIX", "FL_DEBUG_SSGI_NOSNAP", "FL_DEBUG_SSGI_GREYFAR"]
 ## frames each mode is held (SDFGI takes a while to converge); FL_DEBUG_GI_HOLD sets it
 var HOLD := int(OS.get_environment("FL_DEBUG_GI_HOLD")) if OS.has_environment("FL_DEBUG_GI_HOLD") else 90
 const SETTLE := 60  # and frames a new pose is given first, for the camera to glide there
@@ -100,6 +105,7 @@ var _pan: PackedStringArray = OS.get_environment("FL_DEBUG_GI_PAN").split(",", f
 ## light build up and settle on a still view
 var _series := int(OS.get_environment("FL_DEBUG_GI_SERIES"))
 var _found := {}
+var _probes := -1  # the light probes as the preset has them
 
 
 func _ready() -> void:
@@ -107,7 +113,7 @@ func _ready() -> void:
 	Settings.no_save = true
 
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
 	if _i < 0:
 		if world != null and not _lit and OS.has_environment("FL_DEBUG_GI_IGNITE") and float(world.get("time")) > 1.0:
 			_lit = true
@@ -119,7 +125,7 @@ func _process(_dt: float) -> void:
 		if world == null or float(world.get("time")) < _at:
 			return
 		DirAccess.make_dir_recursive_absolute(_dir)
-		if _pan.size() == 3:
+		if _pan.size() >= 3:
 			_i = 0
 			_set_pose(_poses[0])
 			_apply(_modes[0])
@@ -135,8 +141,8 @@ func _process(_dt: float) -> void:
 	if not _ab.is_empty():
 		_ab_tick()
 		return
-	if _pan.size() == 3:
-		_pan_tick()
+	if _pan.size() >= 3:
+		_pan_tick(dt)
 		return
 	# held there every frame: nothing (a key, the mouse at the window's edge)
 	# may nudge the view between one mode's picture and the next
@@ -205,6 +211,14 @@ func _set_pose(pose: String, quiet := false) -> void:
 	cam.set("pitch_deg", NAN if f[3] == "auto" else float(f[3]))
 	cam.set("yaw", yaw)
 	cam.call("focus", at)  # (last: it places the camera with the zoom and heading just set)
+	# FL_DEBUG_GI_LIFT=metres: the roofs that near are taken off, as the game
+	# does while men are inside, to see a room lit through its door and windows
+	if not quiet and OS.has_environment("FL_DEBUG_GI_LIFT"):
+		for st: Node3D in world.get("structures"):
+			if String(st.get("skind")) == "roof" and Vector2(st.position.x - at.x, st.position.z - at.z).length() < float(OS.get_environment("FL_DEBUG_GI_LIFT")):
+				var m: Node3D = st.get("model")
+				if m != null:
+					m.visible = false
 	if not quiet:
 		print("GICMP pose %s at %.1f,%.1f yaw %.2f" % [f[0], at.x, at.z, yaw])
 
@@ -239,6 +253,12 @@ func _search(what: String) -> Array:
 	var best_st: Node3D = null
 	var best_yaw := 0.0
 	var best_d := INF
+	if what == "house":
+		# the roofed house nearest the town's centre
+		for r in roofs:
+			if r.distance_to(town) < best_d:
+				best_d = r.distance_to(town)
+				best = r
 	if what == "tank":
 		# the tank nearest where the camera starts (the player's own, on open
 		# ground), looked at with the yaw as given
@@ -295,6 +315,9 @@ func _search(what: String) -> Array:
 
 func _apply(mode: String) -> void:
 	var want: Dictionary = MODES.get(mode, {})
+	if _probes < 0:
+		_probes = int(Settings.v.get("light_probes", 0))
+	Settings.v["light_probes"] = int(want.get("light_probes", _probes))
 	OS.set_environment("FL_DEBUG_SSGI_VIEW", str(want.get("view", 0)))
 	for e: String in ENV:
 		if e == String(want.get("env", "")):
@@ -302,7 +325,7 @@ func _apply(mode: String) -> void:
 		else:
 			OS.unset_environment(e)
 	for k in want:
-		if k != "view" and k != "env":
+		if k != "view" and k != "env" and k != "light_probes":
 			Settings.v[k] = want[k]
 	Settings.changed.emit()
 
@@ -338,10 +361,16 @@ func _ab_tick() -> void:
 	_ab_switch()
 
 
-func _pan_tick() -> void:
+func _pan_tick(dt: float) -> void:
 	var cam: Node = world.get("cam")
 	var fp: Vector3 = cam.get("focus_pos")
-	cam.call("focus", fp + Vector3(float(_pan[0]), 0.0, float(_pan[1])) / 30.0)
+	# (a fourth number zooms, metres a second; with --fixed-fps every frame
+	# is the same step of the battle's time)
+	if _pan.size() >= 4:
+		var d: float = cam.get("dist") + float(_pan[3]) * dt
+		cam.set("target_dist", d)
+		cam.set("dist", d)
+	cam.call("focus", fp + Vector3(float(_pan[0]), 0.0, float(_pan[1])) * dt)
 	# FL_DEBUG_GI_BLAST=frame: a shell bursts where the camera looks on that
 	# frame, to see how soon its flash is thrown about (and how soon it goes)
 	if OS.has_environment("FL_DEBUG_GI_BLAST") and _frames == int(OS.get_environment("FL_DEBUG_GI_BLAST")):
