@@ -314,9 +314,12 @@ static func _sensor_head(k: VehicleModels, p: Node3D, pos: Vector3, cam: String,
 	k._box(p, Vector3(0.12, 0.2, 0.12) * sc, pos + Vector3(0, -0.2, 0.02) * sc, "gunmetal_w")
 
 
-## A remote weapon station (FLW-style): a turntable, the cradle between two
-## yoke arms with the 12.7 mm HMG or the 40 mm GMG, the ammunition box on one
-## side and the sight on the other. Sets k.turret and k.mg_tip.
+## A remote weapon station (the FLW 200 pattern): a turntable, the cradle on
+## a cross shaft between two yoke arms with the 12.7 mm HMG or the 40 mm GMG,
+## and the elevating mass the station lays as one: the gun's ammunition box
+## hung outboard on its left, the belt's chute arched over into the feed, and
+## the sensor head (the day camera's window over the thermal imager's round
+## lens) on its right, each on a stub of the shaft. Sets k.turret and k.mg_tip.
 static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gmg: bool, cam: String, col, sc := 1.0) -> void:
 	var t := k._pivot(p, pos)
 	k.turret = t
@@ -325,20 +328,41 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gmg: bool, cam: Str
 	for s: float in [-1.0, 1.0]:
 		k._box(t, Vector3(0.06, 0.3, 0.26) * sc, Vector3(s * 0.2, 0.38, 0.0) * sc, cam, col)
 	k._cyl(t, 0.05 * sc, 0.05 * sc, 0.46 * sc, Vector3(0, 0.44, 0) * sc, Z90, "gunmetal_w", null, 10, false)
-	# the sight box on the right (the day camera's window over the thermal
-	# imager's round lens), the ammo box on the left
-	VehicleMounts.sight(k, t, Vector3(0.34, 0.46, -0.05) * sc, Vector3(0.16, 0.2, 0.3) * sc, [Rect2(Vector2(0, 0.02) * sc, Vector2(0.11, 0.09) * sc)], cam, col)
-	k._cyl(t, 0.035 * sc, 0.035 * sc, 0.02 * sc, Vector3(0.34, 0.39, -0.205) * sc, X90, "glass", null, 10, false)
+	# the gun's own pivot where its receiver was, so it lays about the same point
+	var g := k._pivot(t, Vector3(0, 0.46, 0.0 if gmg else 0.02) * sc)
+	var length := 0.78 if gmg else 1.56
+	var ammo := Color(0.3, 0.33, 0.23)
 	if gmg:
 		# HK GMG: a squat receiver, a short thick barrel, the big belt box
-		VehicleWeapons.gmg(k, t, Vector3(0, 0.46, 0.0) * sc, Vector3(0, 0.46, -0.78) * sc, sc, -1.0, false, "gunmetal_w", Color(0.3, 0.33, 0.23), 0.36)
-		k.mg_tip = k._tip(t, Vector3(0, 0.46, -0.78) * sc)
+		VehicleWeapons.gmg(k, g, Vector3.ZERO, Vector3(0, 0, -length) * sc, sc, -1.0, false, "gunmetal_w", ammo, 0.36)
 	else:
 		# M2: the long receiver, the barrel with its carrying handle, flash
-		# hider; its ammunition box is the station's, hung outboard of the yoke
-		VehicleWeapons.hmg(k, t, Vector3(0, 0.46, 0.02) * sc, Vector3(0, 0.46, -1.54) * sc, sc, 0.0)
-		k._box(t, Vector3(0.17, 0.22, 0.3) * sc, Vector3(-0.32, 0.44, 0.04) * sc, "paint", Color(0.3, 0.33, 0.23))
-		k.mg_tip = k._tip(t, Vector3(0, 0.46, -1.54) * sc)
+		# hider; its box is the station's, chuted over the yoke into the feed
+		VehicleWeapons.hmg(k, g, Vector3.ZERO, Vector3(0, 0, -length) * sc, sc, 0.0)
+		VehicleFittings.ammo_can(k, g, Vector3(-0.32, -0.03, 0.02) * sc, ammo, Vector3.ZERO, Vector3(0.17, 0.24, 0.32) * sc)
+		var a := Vector3(-0.26, 0.1, -0.06) * sc
+		var m := Vector3(-0.16, 0.135, -0.03) * sc
+		var f := Vector3(-0.09, 0.075, -0.01) * sc
+		for leg: Array in [[a, m], [m, f]]:
+			_strip(k, g, leg[0], leg[1], Vector2(0.09, 0.026) * sc, "metal_dark", Color(0.12, 0.12, 0.11))
+		k._cyl(g, 0.018 * sc, 0.018 * sc, 0.1 * sc, m, X90, "metal_dark", Color(0.12, 0.12, 0.11), 8, false)
+	# the shaft's stubs out through the arms to the box and the sensor head
+	for s: float in [-1.0, 1.0]:
+		k._cyl(g, 0.032 * sc, 0.032 * sc, 0.1 * sc, Vector3(s * 0.25, -0.02, 0.0) * sc, Z90, "gunmetal_w", null, 10, false)
+	VehicleMounts.sight(k, g, Vector3(0.34, 0.0, -0.07) * sc, Vector3(0.16, 0.2, 0.3) * sc, [Rect2(Vector2(0, 0.02) * sc, Vector2(0.11, 0.09) * sc)], cam, col)
+	k._cyl(g, 0.035 * sc, 0.035 * sc, 0.02 * sc, Vector3(0.34, -0.07, -0.225) * sc, X90, "glass", null, 10, false)
+	k.gun_assembly(g, Vector3(0, 0, -length) * sc)
+	k.mg_tip = k._tip(t, Vector3(0, 0.46, -0.78 if gmg else -1.54) * sc)
+
+
+## A flat strip from a to b running across the vehicle, `size` its width
+## (along the vehicle) and thickness: a feed chute's run of links.
+static func _strip(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, size: Vector2, mat: String, col = null) -> void:
+	var y := (b - a).normalized()
+	var x := Vector3.BACK
+	var z := x.cross(y).normalized()
+	x = y.cross(z).normalized()
+	k._add(p, Res.box(Vector3(size.x, a.distance_to(b), size.y)), mat, col, (a + b) * 0.5, Basis(x, y, z).get_euler(), Vector3.ONE, false)
 
 
 ## A slat cage panel: top and bottom rails, end posts and the vertical slats,
