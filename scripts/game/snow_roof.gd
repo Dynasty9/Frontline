@@ -270,7 +270,7 @@ void vertex() {
 }
 
 void fragment() {
-	// (drawn both ways, but lit by the normals it was built with, which face
+	// (drawn both ways, but lit by its own normals, which face
 	// out: the engine flips them on the faces it sees from behind)
 	if (!FRONT_FACING) {
 		NORMAL = -NORMAL;
