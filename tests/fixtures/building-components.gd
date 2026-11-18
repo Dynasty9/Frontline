@@ -336,6 +336,16 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# A ruin's wall (dark, with no world: as a ruined house's) breaks off along
+	# its top, no higher than the wall stood; its parts, its cover, stay whole.
+	for v in 3:
+		var rw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, 1.0, 0.4), false, 70 + v, true)
+		var lw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, 1.0, 0.4), false, 70 + v, false)
+		var rwb := _bounds(rw, Transform3D.IDENTITY)
+		var lwb := _bounds(lw, Transform3D.IDENTITY)
+		check(rwb.end.y <= 3.05 and rwb.end.y >= Structure.RUIN_CUT and rwb.size.x <= lwb.size.x + 0.05, "a ruin's wall breaks off along its top (%d: %s)" % [v, rwb])
+		rw.free()
+		lw.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:

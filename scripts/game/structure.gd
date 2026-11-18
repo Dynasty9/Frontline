@@ -968,7 +968,11 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		gaps = [Rect2(-0.65, 1.0, 1.3, 1.0)]
 	elif variant == 2:
 		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
-	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
+	if _ruined:
+		BuildingWalls.face(k, L, RUIN_CUT, material, wall, gaps, {})
+		_ruin_crown(_kit(rng), L, material, wall, rng)
+	else:
+		BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
 	# the foundation, below the ground where it's level, showing where the
 	# ground falls away under a house on a slope
 	k.box(Vector3(L, 0.5, 0.42), Vector3(0, -0.25, -0.2), "concrete", Color(0.5, 0.49, 0.46))
@@ -985,7 +989,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	var ivied := false
 	if variant == 0 and wear.randf() < (0.3 if material == "stone" else 0.12):
 		ivied = true
-		BuildingWeathering.ivy(k, wear.randf_range(-L * 0.25, L * 0.25), wear.randf_range(1.0, 1.8), 2.8, wear)
+		BuildingWeathering.ivy(k, wear.randf_range(-L * 0.25, L * 0.25), wear.randf_range(1.0, 1.8), RUIN_CUT - 0.1 if _ruined else 2.8, wear)
 	# rain run off the sill, and the war: bullet strikes, the odd shell hit,
 	# soot up from a window or door where a fire was; at the windows tape on
 	# the glass, boards across, sandbags along the sill. A stream of its own
@@ -1020,7 +1024,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	# (a barn is bare boards inside: no paint, pictures or radiators)
 	var barn := material == "timber"
 	if not barn:
-		BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
+		BuildingFurnishings.lining(room, L, RUIN_CUT if _ruined else 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
 		match variant:
 			0:
 				# what stands against a wall with no window or door in it (a
@@ -2679,6 +2683,57 @@ func house_dark() -> void:
 		world.stat("house_dark")
 
 
+## Where a ruin's wall breaks off: its body stands this high, its broken
+## crown (_ruin_crown) above. (Its cover stays the whole wall's: the crown is
+## above a standing man's eyes and fills most of what's left.)
+const RUIN_CUT := 2.4
+## A wall of a ruined house (one whose floor is a ruin's, its lamps long out):
+## found when its model is built, from the floor it stands on (or, with no
+## world, a dark wall).
+var _ruined := false
+
+
+func _ruin_wall() -> bool:
+	if skind != "house_wall" or not dark:
+		return false
+	if world == null:
+		return true
+	for st in world.structures_near(position, 8.0, true):
+		if (st as Structure)._covers(position, 0.45):
+			return st.variant == 1
+	return false
+
+
+## A ruin's wall broken off along its top, in a kit at the wall's middle
+## (local +z out): from RUIN_CUT up, its masonry stands in stepped, broken
+## lumps (a random walk of heights, here and there knocked down to the cut,
+## a stub standing to the old wall top), the courses' ends ragged, the top
+## scorched where the roof burned; the odd block fallen at its foot.
+func _ruin_crown(k: BuildingKit, L: float, material: String, wall: Color, rng: RandomNumberGenerator) -> void:
+	var crown := RandomNumberGenerator.new()
+	crown.seed = rng.seed ^ 0x4c7a91d3
+	var surface := BuildingMaterials.surface(material)
+	var x := -L * 0.5
+	var h := crown.randf_range(0.1, 0.5)
+	while x < L * 0.5 - 0.05:
+		var w := minf(crown.randf_range(0.18, 0.5), L * 0.5 - x)
+		h = clampf(h + crown.randf_range(-0.22, 0.22), 0.0, 0.5)
+		if crown.randf() < 0.12:
+			h = 0.0
+		if h > 0.04:
+			var col := wall.darkened(crown.randf_range(0.0, 0.08))
+			k.box(Vector3(w, h, 0.4), Vector3(x + w * 0.5, RUIN_CUT + h * 0.5, 0), surface, col)
+			# a broken course standing a little proud of the lump, its top scorched
+			if h > 0.15 and h < 0.48 and crown.randf() < 0.5:
+				var bw := w * crown.randf_range(0.4, 0.8)
+				k.box(Vector3(bw, 0.1, 0.36), Vector3(x + crown.randf_range(bw * 0.5, w - bw * 0.5), RUIN_CUT + h + 0.05, crown.randf_range(-0.02, 0.02)), surface, col.darkened(0.05))
+			k.plate(Vector3(w, 0.006, 0.4), Vector3(x + w * 0.5, RUIN_CUT + h + 0.003, 0), "plain", wall.lerp(C_CHAR, 0.55), Vector3.ZERO, false)
+		x += w
+	for i in crown.randi_range(1, 3):
+		var b := crown.randf_range(0.14, 0.3)
+		k.box(Vector3(b, b * 0.7, b * 0.8), Vector3(crown.randf_range(-L * 0.45, L * 0.45), b * 0.35, crown.randf_range(0.35, 0.8) * (1.0 if crown.randf() < 0.5 else -1.0)), surface, wall.darkened(0.1), Vector3(crown.randf_range(-0.3, 0.3), crown.randf() * TAU, crown.randf_range(-0.3, 0.3)))
+
+
 ## (server) This wall's or roof's lamps are out (see house_dark). Whether
 ## they were on till now.
 func go_dark() -> bool:
@@ -3111,6 +3166,7 @@ func _build_model() -> void:
 	add_child(model)
 	_bake = Mats.Bake.new() if skind in BAKED else null
 	_body = []
+	_ruined = _ruin_wall()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = (look if look > 0 else eid) * 7919 + variant
 	var bags: Array = []
@@ -3133,7 +3189,19 @@ func _build_model() -> void:
 		if skind == "house_wall":
 			# (what it was tinted, for stains to fade into: see _tone)
 			var drawn := Res.mat(col).albedo_color
-			_body.append([Rect2(p.p.x - p.s.x * 0.5, p.p.y - p.s.y * 0.5, p.s.x, p.s.y), Mats.tint_for(_surf_kind(drawn, null), drawn)])
+			var pp: Vector3 = p.p
+			var ps: Vector3 = p.s
+			if _ruined:
+				# a ruin's wall stands to its broken crown (see _ruin_crown): its
+				# body only to where the crown starts
+				var bottom: float = pp.y - ps.y * 0.5
+				if bottom >= RUIN_CUT - 0.01:
+					continue
+				ps.y = minf(ps.y, RUIN_CUT - bottom)
+				pp.y = bottom + ps.y * 0.5
+			_body.append([Rect2(pp.x - ps.x * 0.5, pp.y - ps.y * 0.5, ps.x, ps.y), Mats.tint_for(_surf_kind(drawn, null), drawn)])
+			_bx(pp, ps, col, p.r, true)
+			continue
 		_bx(p.p, p.s, col, p.r, skind != "floor")
 	var tc := _flag_color()
 	match skind:

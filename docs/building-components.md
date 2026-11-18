@@ -176,6 +176,12 @@ it, a joist or two run up out of it (charred or bare), and reinforcing rods bent
 stands proud of the cover boxes, and lumps at its edges bed into the ground; the fixture checks every size a
 fallen wall leaves. Render two with `--building-kinds=rubble`.
 
+
+A ruined house's walls break off along their tops (`Structure._ruin_crown`). A wall knows it's a ruin's when it's
+dark and stands on a ruin's floor (with no world, a dark wall). Its body stands to `RUIN_CUT` (2.4 m), with its
+inside lining capped there. Above, its masonry stands in stepped, broken lumps up to the old wall top: here and
+there knocked down to the cut, broken courses standing proud, the tops scorched, the odd block fallen at its foot.
+The wall's parts, its cover, stay whole: the crown is above a standing man's eyes and fills most of what's left.
 ## Barns
 
 A farmstead's barn is built as a house but weatherboarded: `BuildingMaterials.HOUSE` ends in `timber`, and
