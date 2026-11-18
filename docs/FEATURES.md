@@ -1338,9 +1338,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
 - **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
-  far side of the field lies in layers. Mist lies in a thin band a few metres deep, filling the valley, the hollows and
-  the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, when it lies deeper and
-  thinner, a soft veil over the low ground rather than a dense band; rising off wet ground as it dries after rain), thinning upward to a soft top so the ridges behind stand out as silhouettes. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
+  far side of the field lies in layers. Mist lies level in the low ground, a few metres deep over the valley floor (deeper and thinner at dawn), filling the valley, the hollows and
+  the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet ground as it
+  dries after rain), and a hill rises out of it rather than wearing it up its flanks; it takes little of the sun
+  straight through it and is lit mostly by the sky, evenly (an emission in its fog shader), so it reads as a pale sheet
+  rather than flaring into a glowing band toward a low sun, thinning upward to a soft top so the ridges behind stand out as silhouettes. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
   at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
   mist glows, and turned from it the sky lights it blue-grey. At dawn, golden hour and dusk a faint low haze fills the
   first tens of metres with the fog's anisotropy near 0.7-0.8 and little skylight in it, so it glows close around a low sun
@@ -1376,7 +1378,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   browser) glow in it: soft halos round the lamps, a brief bloom with each flash. The fog's grid can't hold a beam's
   edge, so each headlight draws its own: a glare spot on the lamp and a cone mesh whose shader follows the view ray
   through the cone (24 steps, stopped at the depth buffer) and adds up the light thrown back along it, bright by the
-  lamp and falling away over about 25 m, with a firm edge; the spot light lays the pool on the road. A column's dust shows thinner after dark, when only the headlights light it. Under rain the
+  lamp and dying away past about 15 m, with a firm edge; the spot light lays the pool on the road. A column's dust shows thinner after dark, when only the headlights light it. Under rain the
   showers further off hang as grey curtains from the cloud base (`rain_curtains.gd`, 24 camera-facing quads scattered
   over a 3.6 km tile that drifts with the clouds and wraps round the camera, none within 360 m, where the falling
   streaks are): soft veils, uneven across, feathered into the cloud base and slanted by the wind, some trailing off

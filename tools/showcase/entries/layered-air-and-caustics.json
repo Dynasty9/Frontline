@@ -76,32 +76,32 @@
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/headlights-poster.jpg",
-      "sha256": "609c93d017b91562b12125a13b122a2a1f73626079253d7f61cdf084de90b630",
+      "sha256": "4a7e37c56d3cc2a3c52c1c7c678551087cdd82cc0ed343f24aecd95d791d4104",
       "caption": "Middle frame of the headlights clip."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/headlights.webm",
-      "sha256": "439f1d90360bd5caebcfd506fc59980ba175e17a9a77cdf9c50eda69b3b2d3cd",
+      "sha256": "501ed69b523edd80e2e6fc6d46c2e004bd6f9885ff1df7d3afecd715fe928a22",
       "caption": "Seconds 2-12 of a 1280x720 movie, low and side-on: --scenario=convoy --seed=1 --set=mood:night --focus=0,30 --zoom=38 --pitch=-6 --cam-yaw=1.57."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/mist-command-view-off-on.jpg",
-      "sha256": "008c8deb86f8d5dd43249bb02ded588387e558a0e34b4b6e2d6861b82cee4b37",
+      "sha256": "ec865a40ae755aac05866b5bdf032add34bac497c0afa5abfcde1317c55ac74f",
       "caption": "OFF over ON, frozen at 8 s of --aivai --seed=3 --set=mood:dawn --focus=0,0 --zoom=55 --cam-yaw=4.5 (default command pitch), full frame."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/mist-flicker-poster.jpg",
-      "sha256": "abc5d16ff900d7db59c63a950c7812087058b6c5a2752d8393c6ab4c8f16b0f2",
+      "sha256": "8502dbb4e180ddba754a91989e53e38756ee7d927cd67311c12c690bc1d8dbc7",
       "caption": "ON frame of the mist flicker."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/mist-flicker.webm",
-      "sha256": "23db1da1ea078e7787d8087fcbe53af6e5b6ab489593476eeff578c9b29a53a7",
+      "sha256": "6a576a8352901a7df5af8bb00e5baa6745458b6fc90a7120be0ab38bb6625c1f",
       "caption": "The same frozen frame flipping OFF/ON every 30 frames (FL_DEBUG_AIR_FLIP=8), 8 s at 30 fps."
     },
     {
       "file": "changelog/unreleased/layered-air-and-caustics/mist-off-on.jpg",
-      "sha256": "f50dd2c6a98e228bfa595033975e81a79559553feb17ec65f37f27e7e7d201d3",
+      "sha256": "b180d43eff99583296cdf9cc9f2af052869c7abcb36641954fcc6767b2319bbe",
       "caption": "OFF over ON, frozen at 8 s of --aivai --seed=3 --set=mood:dawn --focus=0,0 --zoom=160 --pitch=-7 --cam-yaw=4.5, cropped to x300-1300 y200-700 of 1600x900."
     },
     {

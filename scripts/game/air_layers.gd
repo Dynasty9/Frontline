@@ -41,6 +41,10 @@ const MOOD := {
 ## (a thin, dense band), and the far field's smoke, dust and rain (close up
 ## the smoke is SmokePlumes').
 const MIST_D := 0.1
+## How much of the mist's light is the sky's, spread evenly through it, against
+## the sun's thrown through it: a morning's valley mist is a soft pale sheet
+## lit all over by the sky, brightening only a little toward a low sun.
+const MIST_SKY := 12.0
 const SMOKE_D := 0.012
 const DUST_D := 0.005
 const RAIN_D := 0.003
@@ -161,6 +165,8 @@ func _fit_volume() -> void:
 func survey() -> void:
 	grid.survey()
 	_fit_volume()
+	if mat:
+		mat.set_shader_parameter("floor_y", grid.floor_y)
 	if mat and atmo.deform_tex:
 		mat.set_shader_parameter("deform_tex", atmo.deform_tex)
 	if mat and world.water and not world.water.is_empty() and world.water.mask:
@@ -205,6 +211,7 @@ func apply_mood(m: String) -> void:
 	mat.set_shader_parameter("dust_col", DUST_COL)
 	mat.set_shader_parameter("rain_col", Color(0.55, 0.58, 0.62))
 	mat.set_shader_parameter("mist_h", _mist_h)
+	mat.set_shader_parameter("mist_sky", (Color(0.42, 0.48, 0.6) if night else fog).srgb_to_linear() * (0.05 if night else MIST_SKY))
 	mat.set_shader_parameter("haze_d", _haze)
 
 
@@ -387,6 +394,8 @@ uniform vec2 wind = vec2(0.92, 0.38);
 uniform float strength = 1.0;  // how much of it the camera's distance lets through
 uniform float mist_d = 0.03;
 uniform float mist_h = 6.0;
+uniform float floor_y = 0.0;  // the valley floor (WeatherGrid.floor_y)
+uniform vec3 mist_sky = vec3(0.0);  // the sky's light in the mist (linear)
 uniform float haze_d = 0.0005;
 uniform float low_d = 0.0;
 uniform float smoke_d = 0.03;
@@ -429,10 +438,13 @@ void fog() {
 			+ terrain_height(deform_tex, uv + vec2(0.0, o)) + terrain_height(deform_tex, uv - vec2(0.0, o))) * 0.25;
 		float hollow = clamp((around - g) / 5.0, 0.0, 1.0);
 		float lie = 0.12 + 1.4 * max(hollow, texture(water_near, uv).a);
-		// (thinning upward with a soft top, not cut off at a height; a deep
-		// layer, dawn's, is as much water spread thinner, so it reads as a
-		// soft veil over the low ground, not a glowing slab)
-		mist = mist_d * min(1.0, 5.0 / mist_h) * w.r * lie * exp(-h / mist_h) * smoothstep(mist_h * 4.0, mist_h * 0.5, h) * wisp;
+		// (it lies level, as a real valley's does: filling the low ground up
+		// to a soft top a little over its depth above the valley floor, so a
+		// hill rises out of it rather than wearing it up its flanks; densest
+		// close over the ground. A deep layer, dawn's, is as much water spread
+		// thinner)
+		float level = smoothstep(mist_h * 1.6, mist_h * 0.3, p.y - floor_y);
+		mist = mist_d * min(1.0, 5.0 / mist_h) * w.r * lie * level * (0.35 + 0.65 * exp(-h / mist_h)) * wisp;
 	}
 	float haze = haze_d * smoothstep(8.0, 40.0, h) * exp(-max(h - 40.0, 0.0) / 220.0) * (0.6 + 0.8 * n1);
 	// (and the low haze a low sun's shafts show in, thinning upward)
@@ -465,6 +477,10 @@ void fog() {
 		}
 		shade *= mix(1.0, lit, smoothstep(0.5, 0.25, to_sun.y));
 	}
-	ALBEDO = col * mix(1.0, shade, 0.75);
+	// the mist takes little of the sun straight through it and is lit by the
+	// sky instead, evenly, so it doesn't flare into a glowing band toward a low sun
+	float mshare = mist / max(total, 1e-6);
+	ALBEDO = col * mix(1.0, shade, 0.75) * mix(1.0, 0.15, mshare);
+	EMISSION = mist_sky * mist;
 }
 """

@@ -65,7 +65,7 @@ func setup(w) -> void:
 		l.spot_range = RANGE
 		l.spot_angle = HALF
 		l.spot_angle_attenuation = 0.9  # (a firm edge to the pool on the road)
-		l.spot_attenuation = 1.2
+		l.spot_attenuation = 1.7  # (bright on the road just ahead, fading with distance)
 		l.light_specular = 0.4
 		l.shadow_enabled = false
 		# (a little in the fog too, for the mist and dust round about)
@@ -97,7 +97,7 @@ func _process(dt: float) -> void:
 		_pick_t = 0.25
 		_pick(on)
 	var dark := clampf((level - 0.4) / 0.4, 0.0, 1.0)
-	var energy := 6.0 * dark
+	var energy := 9.0 * dark
 	for i in SLOTS:
 		var v = _on[i]
 		if v == null or not is_instance_valid(v):
@@ -215,7 +215,8 @@ void fragment() {
 			float cr = along * tan_half + 0.06;
 			float inside = 1.0 - smoothstep(cr * 0.72, cr, length(p.xy));
 			float fall = 1.0 - along / range_m;
-			sum += inside * fall * fall / (1.0 + along * 0.12) * dt;
+			// (and dying away faster past 15 m, where a lamp's throw gives out)
+			sum += inside * fall * fall / (1.0 + along * 0.12) * exp(-max(along - 15.0, 0.0) * 0.12) * dt;
 		}
 	}
 	ALBEDO = col * sum * k * 0.075;
