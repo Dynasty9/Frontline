@@ -14,6 +14,10 @@ caption = "A Coalition base before and after: barracks, factory and research pos
 [[screenshots]]
 file = "nets.jpg"
 caption = "The FOB's net pitched over the block, and a Rebel desert net, before and after"
+[[videos]]
+file = "material-sweep.webm"
+poster = "material-sweep.jpg"
+caption = "Before (left) and after (right): native posed soldier fixture, matched camera distance and lighting. Compatibility on llvmpipe software; no combat or performance claim."
 +++
 
 - **Uniforms:** hard-edged prints at their real size that run on round sleeves and helmets: woodland, leaf,
