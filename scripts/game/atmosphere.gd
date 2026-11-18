@@ -3058,10 +3058,10 @@ void fragment() {
 		float churned = smoothstep(0.25, 0.6, bowl * 1.3 + lip * 1.2 + boggy * 0.7 + (d3 - 0.5) * 0.3);
 		// (dusted at the edges, not cut out; and further off, where a tussock
 		// is smaller than a pixel, a gradual thinning rather than a hard line)
-		float soft = 0.2 + clamp(length(fwidth(p)) * 0.12, 0.0, 0.45);
+		float soft = 0.3 + clamp(length(fwidth(p)) * 0.15, 0.0, 0.6);
 		float cover_amt = smoothstep(-0.04, soft, depth - poke * 0.85);
 		// (even where it's scoured, snow stays in the hollows between the tussocks)
-		cover_amt = max(cover_amt, (1.0 - tussock) * 0.55 * smoothstep(-0.5, 0.3, depth));
+		cover_amt = max(cover_amt, (1.0 - tussock) * 0.65 * smoothstep(-0.6, 0.3, depth));
 		fall = cover_amt * lies * (1.0 - wm.a) * (1.0 - wet_sand);
 		slush = fall * churned * smoothstep(0.3, 0.75, d2 * 0.6 + d3 * 0.4);
 		fall *= 1.0 - churned;
@@ -3081,7 +3081,7 @@ void fragment() {
 		// (and in the open, bleached pale: dead straw stands out of snow light
 		// and warm, not as dark holes)
 		vec3 winter = vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7);
-		winter = mix(winter, vec3(0.19, 0.165, 0.12) * (0.75 + 0.5 * d3), 0.85 * (1.0 - wood_floor));
+		winter = mix(winter, vec3(0.2, 0.18, 0.145) * (0.8 + 0.4 * d3), 0.85 * (1.0 - wood_floor));
 		// (under the trees, a floor of dead leaves and needles, not the meadow's rows)
 		winter = mix(winter, vec3(0.085, 0.065, 0.045) * (0.7 + 0.6 * d3), 0.8 * wood_floor);
 		col = mix(col, winter, snow_cover * mix(0.75, 0.95, wood_floor) * (1.0 - exposed * clean));

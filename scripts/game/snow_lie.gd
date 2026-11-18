@@ -44,7 +44,7 @@ float snow_lie(vec2 p, float here, vec4 around, float spacing, vec3 to_sun) {
 	// (a slope facing the sun falls away toward it)
 	vec2 sl_sun = to_sun.xz / max(length(to_sun.xz), 0.001);
 	sl_lie -= clamp(-dot(sl_grad, sl_sun) * 3.0, 0.0, 0.4) * smoothstep(0.05, 0.35, to_sun.y);
-	sl_lie += (snow_noise(p / 260.0 + 3.1) - 0.5) * 0.8 + (snow_noise(p / 53.0 + 7.7) - 0.5) * 0.55;
+	sl_lie += (snow_noise(p / 260.0 + 3.1) - 0.5) * 0.45 + (snow_noise(p / 53.0 + 7.7) - 0.5) * 0.5;
 	// long streaks scoured along the wind, tens of metres long and a few across
 	float sl_streak = snow_noise(vec2(dot(p, sl_wind) / 34.0, dot(p, vec2(-sl_wind.y, sl_wind.x)) / 6.0) + 0.53);
 	sl_lie -= smoothstep(0.55, 0.85, sl_streak) * 0.45;

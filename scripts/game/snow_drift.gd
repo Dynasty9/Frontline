@@ -313,18 +313,34 @@ func stamp(sp: Array, r: Rect2i) -> void:
 ## foot of a thin wall, 0 inside a building.
 static func drift_at(lx: float, lz: float, wx: float, wz: float, hx: float, hz: float, reach: float, back: float, thin: bool) -> float:
 	if absf(lx) <= hx and absf(lz) <= hz:
-		return 0.6 if thin else 0.0
+		return 0.3 if thin else 0.0
 	var lee := _hit(lx, lz, -wx, -wz, hx, hz, reach)
 	var v := 0.0
 	if lee >= 0.0:
 		# (banked against the wall, a rounded crest a fifth of the way out where
-		# the eddy behind it drops the most, then a long tail feathering out)
-		var u := lee / reach
-		v = (0.55 + 0.45 * smoothstep(0.0, 0.22, u)) * (1.0 - smoothstep(0.22, 1.0, u))
+		# the eddy behind it drops the most, then a long tail feathering out;
+		# shorter toward the wall's ends, where the wind comes round them, so
+		# the drift tapers there rather than stopping square)
+		var ends := 1.0 - smoothstep(0.5, 1.0, _along(lx - wx * lee, lz - wz * lee, hx, hz))
+		var r := reach * (0.35 + 0.65 * ends)
+		if lee < r:
+			var u := lee / r
+			v = (0.55 + 0.45 * smoothstep(0.0, 0.22, u)) * (1.0 - smoothstep(0.22, 1.0, u)) * (0.5 + 0.5 * ends)
 	var face := _hit(lx, lz, wx, wz, hx, hz, back)
 	if face >= 0.0:
-		v = maxf(v, 0.5 * (1.0 - smoothstep(0.0, 1.0, face / back)))
+		# (a smaller bank on the windward side, standing off the wall's foot,
+		# where the wind striking it scours a scoop)
+		var f := face / back
+		v = maxf(v, 0.5 * smoothstep(0.0, 0.35, f) * (1.0 - smoothstep(0.35, 1.0, f)))
 	return v
+
+
+## How far along the face of the box (half extents hx, hz) the point (px, pz)
+## on its edge lies, 0 at the middle of that face to 1 at its corner.
+static func _along(px: float, pz: float, hx: float, hz: float) -> float:
+	var fx := absf(px) / maxf(hx, 0.01)
+	var fz := absf(pz) / maxf(hz, 0.01)
+	return fx if fz >= fx else fz
 
 
 ## Where a ray from (px, pz) along (dx, dz) first meets the box (half extents
@@ -481,7 +497,13 @@ void vertex() {
 	wpos.y = y;
 	// (its slopes a little steeper to the light than they are, so the crest
 	// and the hollow behind it read under a flat winter sky)
-	NORMAL = normalize(vec3(-(xp - xn) * 1.4, 2.0, -(zp - zn) * 1.4));
+	vec3 drift_n = normalize(vec3(-(xp - xn) * 1.4, 2.0, -(zp - zn) * 1.4));
+	// (at its thin edge, lit just as the ground it runs out into, so no
+	// outline shows: only its body is shaded as a heap)
+	vec2 at = (wpos.xz + __MAP_HALF__) / __MAP_SIZE__;
+	float gx = terrain_height(deform_tex, at + vec2(1.0, 0.0) / __MAP_SIZE__) - terrain_height(deform_tex, at - vec2(1.0, 0.0) / __MAP_SIZE__);
+	float gz = terrain_height(deform_tex, at + vec2(0.0, 1.0) / __MAP_SIZE__) - terrain_height(deform_tex, at - vec2(0.0, 1.0) / __MAP_SIZE__);
+	NORMAL = normalize(mix(normalize(vec3(-gx, 2.0, -gz)), drift_n, smoothstep(0.04, 0.3, deep)));
 	hollow = clamp((xp + xn + zp + zn - 4.0 * y) * 4.0, 0.0, 1.0);
 }
 
@@ -511,7 +533,7 @@ void fragment() {
 	// (none of it at the thin edge, so the drift runs out into the ground's
 	// own snow with no rim)
 	float body = smoothstep(0.05, 0.35, deep);
-	col *= 0.86 * clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.7 * body, 0.8, 1.12) * (1.0 - hollow * 0.12);
+	col *= 0.86 * clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.6 * body, 0.82, 1.05) * (1.0 - hollow * 0.12);
 	col *= mix(vec3(1.0), vec3(0.9, 0.95, 1.04), smoothstep(0.0, -0.25, dot(wn, to_sun) - to_sun.y) * body);
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
