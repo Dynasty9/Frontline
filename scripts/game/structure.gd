@@ -1414,12 +1414,18 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 	var k := _kit(rng).at_point(Vector3.ZERO, Vector3(0, 0.0 if long_x else PI * 0.5, 0))
 	k.sink.cast_all = true
 	if variant % 2 == 0:
-		var tint := Res.vary(Color(0.5, 0.22, 0.14), 0.12, rng) if rng.randf() < 0.75 else Color(0.36, 0.34, 0.32)
+		# (the same draws as ever: clay or not, and how far its shade is off;
+		# which clay or slate it is comes from a stream of its own)
+		var clay := rng.randf() < 0.75
+		var shade := rng.randf_range(-0.12, 0.12) if clay else 0.0
+		var kind_rng := RandomNumberGenerator.new()
+		kind_rng.seed = rng.seed ^ 0x2007c0
+		var tint := BuildingMaterials.roof_color(clay, shade, kind_rng)
 		var barn := material == "timber"
 		var covering := "roof_sheet" if barn else "roof_tile"
 		if barn:
-			# rusted, galvanised or painted red sheet
-			tint = [Color(0.45, 0.3, 0.22), Color(0.52, 0.53, 0.52), Color(0.44, 0.17, 0.13)][posmod(ci / BuildingMaterials.HOUSE.size() + 1, 3)]
+			# rusted, galvanised or painted red sheet, dulled by the weather
+			tint = BuildingMaterials.BARN_SHEET[posmod(ci / BuildingMaterials.HOUSE.size() + 1, 3)]
 		var end := L * 0.5 - 0.3
 		# its form: a third of them hipped, pitched anywhere from 24 to 36
 		# degrees (a stream of its own, so tints and chimneys stay as they were)
@@ -1518,9 +1524,10 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			for m in 15 * 15:
 				mottle.append(growth.randf())
 			var face := k.moved(Transform3D(Basis(Vector3.RIGHT, side * deg_to_rad(pitch)), Vector3(lx, BuildingRoofs.underside(fx, fz, h, pitch, lx, lz, hipped) + lift, lz))).at_point(Vector3.ZERO, Vector3(-PI * 0.5, 0, 0))
-			BuildingWeathering.stain(face, Rect2(-r, -r * 0.8, r * 2.0, r * 1.6), "roof_tile", on_tile, Color(1.3, 1.6, 1.2) if pale else Color(0.45, 0.68, 0.3), func(u: float, v: float) -> float:
+			BuildingWeathering.stain(face, Rect2(-r, -r * 0.8, r * 2.0, r * 1.6), "roof_tile", on_tile, Color(1.2, 1.4, 1.12) if pale else Color(0.6, 0.72, 0.42), func(u: float, v: float) -> float:
 				var q := Vector2(u * 2.0 - 1.0, v * 2.0 - 1.0)
-				var d := q.length() * (1.0 + 0.22 * sin(q.angle() * 4.0 + ph) + 0.1 * sin(q.angle() * 9.0 - ph))
+				# (its edge wanders in a few uneven lobes: no two alike, never a star)
+				var d := q.length() * (1.0 + 0.17 * sin(q.angle() * 2.0 + ph) + 0.11 * sin(q.angle() * 3.0 - ph * 1.7) + 0.06 * sin(q.angle() * 7.0 + ph * 0.6))
 				# (in clumps, thickest in the middle)
 				var spots := 0.35 + 0.65 * mottle[roundi(v * 14.0) * 15 + roundi(u * 14.0)]
 				return clampf((1.0 - d) * 1.6, 0.0, 1.0) * spots, 14, 14)

@@ -762,7 +762,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
   often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
   houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; moss and lichen
-  grow on the tiles, and flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  grow on the tiles in uneven patches. Tiled roofs are weathered clay or concrete tile in five shades or slate and grey tile in three,
+  barns dull galvanised, rusted or red sheet; brick is old red-brown, and stone is coursed rubble (courses of three heights, stones
+  of their own lengths and shades) in pale lime mortar. Flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or

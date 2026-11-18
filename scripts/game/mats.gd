@@ -1829,18 +1829,31 @@ void fragment() {
 		col = mix(col_b, col_a, fold) * (0.95 + weave * 0.08);
 		h = fold * 0.8 + weave * 0.1;
 	} else if (pattern == 11) {
-		vec2 bs = vec2(0.5, 0.3);
-		float kb = keep(bs.y, px);
-		vec2 q = uv / bs;
-		float row = floor(q.y);
-		q.x += h12(vec2(row, 3.7 + off.x));
-		vec2 cell = floor(q);
-		vec2 f = fract(q);
-		float e = mix(0.82, smoothstep(0.0, 0.08, f.x) * smoothstep(1.0, 0.92, f.x) * smoothstep(0.0, 0.12, f.y) * smoothstep(1.0, 0.88, f.y), kb);
+		// coursed rubble: courses of three heights in turn (a mason lays what
+		// the quarry gives him), stones of their own lengths in each course,
+		// each stone its own shade, bedded in pale lime mortar that the
+		// stones' rounded edges stand proud of
+		float kb = keep(0.22, px);
+		float band3 = uv.y / 0.86;
+		float set3 = floor(band3);
+		float in3 = fract(band3) * 0.86;
+		float row = set3 * 3.0 + step(0.34, in3) + step(0.56, in3);
+		float y0 = in3 < 0.34 ? 0.0 : (in3 < 0.56 ? 0.34 : 0.56);
+		float rh = in3 < 0.34 ? 0.34 : (in3 < 0.56 ? 0.22 : 0.3);
+		float sl = mix(0.38, 0.72, h12(vec2(row, 1.3 + off.y)));
+		vec2 q = vec2(uv.x / sl + h12(vec2(row, 3.7 + off.x)), (in3 - y0) / rh);
+		vec2 cell = vec2(floor(q.x), row);
+		vec2 f = vec2(fract(q.x), q.y);
+		float ex = 0.05 / sl;
+		float ey = 0.045 / rh;
+		float e = mix(0.86, smoothstep(0.0, ex * 1.6, f.x) * smoothstep(1.0, 1.0 - ex * 1.6, f.x) * smoothstep(0.0, ey * 1.6, f.y) * smoothstep(1.0, 1.0 - ey * 1.6, f.y), kb);
 		float rb = mix(0.5, h12(cell + off), kb);
-		vec3 sc = mix(col_a, col_c, rb) * (0.82 + 0.3 * tnoise(uv * 13.0));
-		col = mix(col_b * 0.8, sc, e);
-		h = e * (0.75 + 0.25 * tnoise(uv * 9.0 + rb * 10.0));
+		float warm = mix(0.5, h12(cell * 1.7 + 4.1 + off), kb);
+		vec3 sc = mix(col_a, col_c, rb) * mix(vec3(1.0), vec3(1.06, 1.0, 0.9), smoothstep(0.55, 0.9, warm) * kb);
+		sc *= (0.8 + 0.3 * tnoise(uv * 13.0)) * mix(1.0, 0.86 + 0.28 * h12(cell * 2.3 + off), kb);
+		vec3 mortar = mix(col_b, col_a * 1.08, 0.55) * (0.92 + 0.12 * tnoise(uv * 31.0));
+		col = mix(mortar, sc, e);
+		h = e * (0.7 + 0.3 * tnoise(uv * 9.0 + rb * 10.0));
 	} else if (pattern == 12) {
 		float fib = tfbm(vec2(uv.x * 9.0, uv.y * 0.8) + off);
 		col = mix(col_b, col_a, fib);

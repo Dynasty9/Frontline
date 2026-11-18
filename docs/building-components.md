@@ -74,6 +74,13 @@ A house's material follows its colour index (`BuildingMaterials.house`, `HOUSE`)
 the red-brown ones bare brick, the grey-brown ones rough stone. Brick and stone houses take the material's own
 colour (`house_color`), their roofs' gables follow, and their debris is their colour.
 
+A pitched roof's tint is `BuildingMaterials.roof_color`: three in four are clay or concrete tile (`ROOF_CLAY`,
+five weathered shades), the rest slate or grey tile (`ROOF_SLATE`); barns take `BARN_SHEET`. Which one is drawn
+from a stream of its own, so the roof's other choices are as they were. None is a new tile's bright orange: the
+tile photograph carries the tile-to-tile variation, the tint only the roof's age and make. Stone (the `stone`
+surface) is coursed rubble: three course heights in turn, a stone length per course, a shade per stone, in pale
+lime mortar.
+
 ## Lived-in houses and lamplight
 
 `BuildingFurnishings` dresses a house as somebody's home. At the windows: drapes, a roller blind or nets
