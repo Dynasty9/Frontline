@@ -29,7 +29,7 @@ const PAVEMENT := 19
 const TURF := 20
 const WEATHERED_PHOTO := 21
 const ROAD_PAINT := 22
-const FIELDSTONE := 23
+const FIELDSTONE := 24  # 23 is reserved by country-road playground rubber.
 const PHOTO_MEAN := preload("res://assets/town/material_means.tres")
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
@@ -1851,7 +1851,7 @@ void fragment() {
 		vec3 sc = mix(col_a, col_c, rb) * (0.82 + 0.3 * tnoise(uv * 13.0));
 		col = mix(col_b * 0.8, sc, e);
 		h = e * (0.75 + 0.25 * tnoise(uv * 9.0 + rb * 10.0));
-	} else if (pattern == 23) {
+	} else if (pattern == 24) {
 		// random rubble, laid as a waller lays field stones: stones of every
 		// size and shape (longer than they are tall), each its own tone,
 		// pointed between with mortar sunk back from their faces

@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/fieldstone-walls.md",
   "summary": "Stone garden and field walls built of field stone.",
-  "medium": "still",
+  "medium": "motion",
   "stage": "tests/fixtures/environment-views.gd (FL_ONLY_VIEW); tools/showcase/building-surfaces.tscn (low_wall_stone)",
-  "rationale": "Appearance change: walls in the map at the game's camera, and one up close in the studio, from the same cameras.",
+  "rationale": "Appearance change: walls in the map at the game's camera, and one up close in the studio, from the same cameras. A standalone native wall sweep exposes distance filtering and grazing-light response; original comparisons retained.",
   "source_ref": "3e055e781684329f11d159462e73d3302f43a1de",
   "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
   "sources": [
@@ -14,7 +14,37 @@
     {
       "file": "changelog/unreleased/fieldstone-walls/capture.json",
       "sha256": "4213a5c890348322fc4a13f097f714994cf6f68d17023095b170a7007a510624"
+    },
+    {
+      "file": "changelog/unreleased/fieldstone-walls/fieldstone-sweep.webm",
+      "sha256": "52a5d244769ea80b9b61f02c0cf6d94f166f2fcfc2b62ec4c145b89f3b5d050d"
+    },
+    {
+      "file": "changelog/unreleased/fieldstone-walls/fieldstone-sweep.jpg",
+      "sha256": "af9c5a4169fe2109b33450a128a221983a416031c3f9420e5c13b8ed8303a3f5"
     }
   ],
-  "output": null
+  "output": null,
+  "followup_capture": {
+    "source_ref": "8ab4f7f52b8a3106971f82d7cba7ebb9da7b82d2 plus fieldstone numeric ID renumber 23 to24 and capture-stage extension",
+    "renderer": "Godot4.7.2 Compatibility / Mesa llvmpipe software",
+    "command": "godot --path . --rendering-method gl_compatibility --fixed-fps 12 --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-single --building-kinds=low_wall_stone --building-motion --building-out=OUT",
+    "frames": 48,
+    "duration_seconds": 4,
+    "size_bytes": 230895,
+    "viewport": "1600x900 uncropped scaled960x540 with40px caption",
+    "camera": "native low_wall orthographic fixture, fitted size1x to3.5x and back",
+    "lighting": "12 degree sun elevation, azimuth -38 to142 and back, fixed exposure",
+    "validation": [
+      "Complete VP9 decode and encoded close/transition/distant/return frames reviewed",
+      "Clean import; building-components and structure-batches2/2",
+      "Disposable exact-head rehearsal with roads6e68f7e: fieldstone24, rubber23, rubber-only macro exception23; native shared wall/playground close and command-scale fixtures in Forward+ and Compatibility; combined footage not published"
+    ],
+    "limits": [
+      "Fixture, not gameplay or imported LOD validation",
+      "Close grazing light exposes angular fieldstone facets and strong coping highlights",
+      "No hardware performance claim"
+    ],
+    "stage_sha256": "f4701f951bf54bc49412e155046075c5761957f1954516baab1d759a68d0451e"
+  }
 }
