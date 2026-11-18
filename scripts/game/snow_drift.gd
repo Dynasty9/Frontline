@@ -533,7 +533,7 @@ void fragment() {
 	// (none of it at the thin edge, so the drift runs out into the ground's
 	// own snow with no rim)
 	float body = smoothstep(0.05, 0.35, deep);
-	col *= 0.86 * clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.6 * body, 0.82, 1.05) * (1.0 - hollow * 0.12);
+	col *= 0.82 * clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.6 * body, 0.82, 1.05) * (1.0 - hollow * 0.12);
 	col *= mix(vec3(1.0), vec3(0.9, 0.95, 1.04), smoothstep(0.0, -0.25, dot(wn, to_sun) - to_sun.y) * body);
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));

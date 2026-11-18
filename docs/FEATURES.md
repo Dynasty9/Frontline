@@ -1341,7 +1341,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   run dark through it. Dirt roads become a lane of slush between white verges with the ruts open to the mud and
   the plough's low banks along the sides; town streets are ploughed, a rough bank along each kerb (shaded as a
   ridge), black wet slush in the wheel paths and a grey film scraped between them; pavements, paths and the square
-  are trodden to a grey crust, and paths are worn through the gardens. Everything standing in it gathers snow on the
+  are trodden grey along meandering lanes over a light packing, and paths are worn through the gardens. Everything standing in it gathers snow on the
   faces turned to the sky (by the face's own direction, not its bumps: roofs, ledges, fence tops, sandbags,
   camouflage nets, trench spoil, the tops of trees and bushes, and the grass, which goes to winter straw), while
   walls stay bare but for a patchy crust on the face toward the wind. It never lies as an even coat: on a roof or a
@@ -1350,7 +1350,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   fall line, and trees hold it in lumps on their boughs, one tree more than its neighbour. Each house's roof is
   dressed for it the first time it snows (`Structure._snow_roof`): how much it holds, and whether the house is lived
   in and warm (more than half are; barns are cold and keep a thick coat), ride in its `snow_k` with its chimney, so a
-  warm roof thaws in wet, dark patches and bare round the chimney; and `SnowRoof` gives it a body of snow its faces
+  warm roof thaws round the chimney and over the rooms, through thin snow (the tiles faintly showing) and a band of
+  grey slush to bare tile darkened and glossy with meltwater; and `SnowRoof` gives it a body of snow its faces
   can't: a rounded lip curling over the eaves (thicker on steep sheet, broken where some fell, thinner up the
   gables), icicles in runs under a warm house's eaves, and on a flat roof drifts against the parapets, deep in the
   lee of the one the wind comes over. Under the trees (`Woodland`) the leaf litter, toadstools and root flares are buried, every
@@ -1369,7 +1370,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   a fire (paving, yards, the neighbours' roofs) the nearest eight as global shader values (`snow_thaw_0..7`), and
   the grass has them painted into its scar map. The wind heaps it against whatever stands in its way (`SnowDrift`): every wall, house,
   hedge, fence, wreck and car drifts a bank against its lee face that rises to a rounded crest a little way out and
-  tails off a few metres downwind (farther behind a tall wall, farther still behind a hedge or fence the wind half
+  tails off a few metres downwind, tapering toward its ends, (farther behind a tall wall, farther still behind a hedge or fence the wind half
   passes through), deeper along some stretches than others, with a smaller bank on the windward face, and none
   inside a roofed house. Each view stamps the drifts from the structures standing into a map a metre a texel (two on the bigger
   battlefields), so every peer gets the same ones, and lays raised snow over the ground where there are any, its relief shaded toward the sun

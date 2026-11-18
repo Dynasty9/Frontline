@@ -2471,8 +2471,11 @@ void fragment() {
 			? (drift - 0.5) * 3.8 + (0.5 - h) * 0.6 + (depth - 0.68) * 2.4
 			: (drift - 0.5) * 1.5 + (0.5 - h) * 1.8 + (depth - 0.72) * 2.6;
 		lying -= (1.0 - face) * 1.2;
-		// (a crisp edge: snow lies or it doesn't, it doesn't tint what's beneath)
-		float settled = smoothstep(0.0, 0.07, lying) * face;
+		// (a roof under a full fall is covered but for the odd thin place)
+		if (snow_k.y < 0.0) { lying += 0.2; }
+		// (a crisp edge on a hull: snow lies or it doesn't; on anything standing
+		// it thins over a few centimetres, the tiles or stones faintly through)
+		float settled = (vehicle_surface ? smoothstep(0.0, 0.07, lying) : smoothstep(-0.14, 0.1, lying)) * face;
 		if (vehicle_surface) {
 			// (a hull that has shaken most of it off keeps a grey film between the patches)
 			settled = max(settled, smoothstep(-0.5, 0.0, lying) * face * depth * 0.22);
@@ -2494,7 +2497,10 @@ void fragment() {
 		if (pattern == 18 || pattern == 22) {
 			settled *= mix(0.3, 0.85, smoothstep(0.35, 0.7, tfbm(wpos.xz * 0.4 + 7.0)));
 		} else if (pattern == 19) {
-			trodden = mix(0.55, 0.95, smoothstep(0.3, 0.7, tfbm(wpos.xz * 0.5 + 3.0)));
+			// (a light packing all over, and the ways people take worn to a
+			// grey crust: meandering lanes a metre or two wide)
+			float lane = abs(tfbm(wpos.xz * 0.045 + 11.0) - 0.5);
+			trodden = max(0.3 + 0.15 * tnoise(wpos.xz * 0.3), (1.0 - smoothstep(0.025, 0.06, lane)) * 0.9);
 		} else if (pattern == 20) {
 			float worn = abs(tfbm(wpos.xz * 0.11 + seed.xz * 0.1) - 0.5);
 			trodden = (1.0 - smoothstep(0.03, 0.07, worn)) * 0.85;
