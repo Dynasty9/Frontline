@@ -324,11 +324,12 @@ void vertex() {
 	burnt = marks.r;
 	thawed = marks.g;
 	rise = VERTEX.y * scale;
-	// In snow the leaf litter and the toadstools on the woodland floor are
-	// buried (until a fire or an engine thaws them out again); round each
-	// trunk is a well the crown kept the snow off, where the root flare and
-	// the needles show (kind 7: only in snow).
-	if ((kind == 2 || kind == 3) && snow_cover * (1.0 - thawed) > 0.3) VERTEX *= 0.0;
+	// In snow the leaf litter, the toadstools and the root flares on the
+	// woodland floor are buried (until a fire or an engine thaws them out
+	// again; a flare is a heavy scan, and every tree has one in each shadow
+	// cascade); round each trunk is a well the crown kept the snow off,
+	// where the needles show (kind 7: only in snow).
+	if ((kind == 2 || kind == 3 || (kind == 6 && INSTANCE_CUSTOM.a > 0.5)) && snow_cover * (1.0 - thawed) > 0.3) VERTEX *= 0.0;
 	if (kind == 7 && snow_cover * (1.0 - thawed) < 0.25) VERTEX *= 0.0;
 	if (textureLod(trench_mask, uv, 0.0).r > 0.3 || height - terrain_geology(deform_tex, uv) < -0.12 || (kind == 4 && burnt > 0.1)) VERTEX *= 0.0;
 	VERTEX.y += height / scale;
