@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/utility-poles.md",
+  "summary": "The poles along the roads now have braced crossarms, steps, number and danger plates and an earth wire. The ones carrying a transformer show its finned tank, its platform, fuses and the cable down to the ground.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (poles; main's pole drawn with the same shapes for the before)",
+  "rationale": "Appearance change of the overhead line's poles: a matched studio still of a stretch of line, and a close still of a transformer pole.",
+  "source_ref": "829d5dcc3cb8a0ea6eaca4873b22e80cbc4cef13",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/utility-poles/comparison.jpg",
+      "sha256": "ede8c3ab046f63e05485066405ac37395bcd7cefa69966454f928c22421c0f57"
+    },
+    {
+      "file": "changelog/unreleased/utility-poles/transformer.jpg",
+      "sha256": "0f0b4713c8fb244ff90bc888a23cf2a16a98257d7407114735185167b0f2b6df"
+    }
+  ],
+  "output": null
+}
