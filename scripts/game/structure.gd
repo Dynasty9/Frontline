@@ -1778,20 +1778,26 @@ static func _in_root(wk: VehicleModels, n: Node3D) -> Transform3D:
 
 
 ## The box round everything drawn under `n`, in its own space.
-static func _bounds_in(n: Node3D) -> AABB:
+static func _bounds_in(n: Node3D, orientation := Basis.IDENTITY) -> AABB:
 	var box := AABB()
 	var first := true
 	for mi: MeshInstance3D in n.find_children("*", "MeshInstance3D", true, false):
-		if mi.mesh == null:
+		if mi.mesh == null or mi.has_meta(&"shadow_proxy"):
 			continue
 		var xf := mi.transform
 		var up := mi.get_parent() as Node3D
 		while up != null and up != n:
 			xf = up.transform * xf
 			up = up.get_parent() as Node3D
-		var b := xf * mi.get_aabb()
-		box = b if first else box.merge(b)
-		first = false
+		xf = Transform3D(orientation, Vector3.ZERO) * xf
+		# Models batch many pieces into one mesh. Its box still contains empty
+		# corners, so ground contact must use its vertices, not its box corners.
+		for surface in mi.mesh.get_surface_count():
+			var vertices: PackedVector3Array = mi.mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
+			for vertex: Vector3 in vertices:
+				var point := xf * vertex
+				box = AABB(point, Vector3.ZERO) if first else box.expand(point)
+				first = false
 	return box
 
 
@@ -1834,12 +1840,11 @@ func _blow_turret(wk: VehicleModels, rng: RandomNumberGenerator) -> void:
 		# (its gun points away from the hull, not back across it)
 		tilt_at.y += PI
 		b = Basis.from_euler(tilt_at)
-	var lo := INF
-	var inner := INF  # how far it reaches back towards the hull
-	for i in 8:
-		var corner := b * (box.position + box.size * Vector3(i & 1, (i >> 1) & 1, (i >> 2) & 1))
-		lo = minf(lo, corner.y)
-		inner = minf(inner, corner.x * side)
+	# Orient the visible geometry before combining its bounds. Rotating the one large
+	# turret box includes empty corners below the gun and leaves it floating.
+	var resting_box := _bounds_in(t, b)
+	var lo := resting_box.position.y
+	var inner := resting_box.position.x if side > 0.0 else -resting_box.end.x
 	spot.x = side * (size.x * 0.5 + gap - inner)
 	var turn := Basis(Vector3.UP, rotation.y)
 	spot.y = world.ground_y(position + turn * spot) - position.y - lo - 0.18  # (bedded into the ground a little)

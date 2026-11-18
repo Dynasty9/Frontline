@@ -1,6 +1,6 @@
 extends Node3D
 ## Wrecked vehicles in the actual showroom battlefield (terrain, grass, sky
-## and lighting, High preset): one of each kind of hull in a row - a main
+## and lighting, High preset by default): one of each kind of hull in a row - a main
 ## battle tank, a tracked IFV, an 8x8 APC, an MRAP, a technical, a truck and a
 ## helicopter - all knocked out at once, the game's own death and fire code
 ## doing the rest (the tank's ammunition goes up, and its turret is blown off). Stills while they burn and again once they've burnt out,
@@ -10,10 +10,16 @@ extends Node3D
 ##                  out-wide.png, out-<kind>.png)
 ##   --label=TEXT   the caption (e.g. BEFORE / AFTER)
 ##   --kinds=a,b,c  a different row
+##   --motion=close|wide  five seconds of real destruction and settling
+##   --preset=medium     quality preset (default high)
+##   --capture-fps=15    match the engine --fixed-fps switch for normal speed
 const ORIGIN := Vector3(40, 0, 50)  # the row starts on open ground east of the base
 const SPACING := 15.0
 var output := ""
 var label := "CURRENT BUILD"
+var motion := ""
+var preset := "high"
+var capture_fps := 30
 var kinds: Array = ["slammer", "panther", "marshall", "hunter", "technical", "hemtt", "ghosthawk"]
 var field: World
 var wrecks: Array = []  # [kind, ground point]
@@ -25,12 +31,15 @@ func _ready() -> void:
 	TestRun.watch()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--frames="): output = arg.get_slice("=", 1)
+		if arg.begins_with("--capture-fps="): capture_fps = int(arg.get_slice("=", 1))
+		if arg.begins_with("--motion="): motion = arg.get_slice("=", 1)
+		if arg.begins_with("--preset="): preset = arg.get_slice("=", 1)
 		if arg.begins_with("--label="): label = arg.get_slice("=", 1)
 		if arg.begins_with("--kinds="): kinds = Array(arg.get_slice("=", 1).split(","))
 	if not output.is_empty():
 		DirAccess.make_dir_recursive_absolute(output)
 	seed(712)
-	Settings.apply_preset("high", false)
+	Settings.apply_preset(preset, false)
 	Settings.v.dof = false
 	field = World.new()
 	field.settings = {"scenario": "showroom", "seed": 712, "mood": "day", "map_size": 1024, "players": {}, "ai_teams": []}
@@ -66,8 +75,29 @@ func _ready() -> void:
 	canvas.add_child(caption)
 	_wide()
 	print("VEHICLE_WRECKS_WARMUP")
-	for i in 48:
+	for i in roundi(capture_fps * 1.6):
 		await RenderingServer.frame_post_draw
+		if i % 12 == 0:
+			print("VEHICLE_WRECKS warmup frame ", i)
+	if not motion.is_empty():
+		var at: Vector3 = wrecks[0][1]
+		camera.global_position = at + (Vector3(18, 14, 23) if motion == "close" else Vector3(28, 35, 45))
+		camera.look_at(at + Vector3(0, 1, 0))
+		caption.text = label + " · " + motion.to_upper() + " · NORMAL SPEED"
+		for i in capture_fps:
+			await RenderingServer.frame_post_draw
+		var started := field.time
+		for frame in capture_fps * 5:
+			if frame == capture_fps:
+				for vehicle: Vehicle in vehicles:
+					vehicle.take_damage(vehicle.max_hp * 3.0, null)
+			await RenderingServer.frame_post_draw
+			if frame % capture_fps == 0:
+				print("WRECK FRAME ", frame, " battle elapsed ", field.time - started)
+			get_viewport().get_texture().get_image().save_png(output.path_join("frame-%04d.png" % frame))
+		print("VEHICLE_WRECKS motion complete")
+		get_tree().quit(0)
+		return
 	for v: Vehicle in vehicles:
 		if is_instance_valid(v) and not v.gone:
 			v.take_damage(v.max_hp * 3.0, null)

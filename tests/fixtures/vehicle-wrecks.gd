@@ -42,6 +42,7 @@ func _ready() -> void:
 	field.rules = Rules.new(field)
 	field.nav = WreckNav.new()
 	_brew_up()
+	_contact_poses()
 	_every_wreck_replicates()
 	print("VEHICLE WRECKS ", checks, " checks, ", failures, " failures")
 	get_tree().quit(1 if failures else 0)
@@ -126,7 +127,13 @@ func _brew_up() -> void:
 		highest = maxf(highest, y)
 	var off := Defs.flat(wk.turret.global_position - wreck.global_position).length()
 	_check("thrown clear of the hull (%.1f m out)" % off, off > wreck.size.x * 0.5 + 0.8)
-	_check("resting on the ground, bedded in a little (lowest %.2f m)" % lowest, lowest < 0.0 and lowest > -0.5 and highest > 0.4)
+	_check("resting on the ground, bedded in a little (lowest %.2f m)" % lowest, lowest < 0.0 and highest > 0.4)
+	var mesh_lowest := INF
+	for mi: MeshInstance3D in wk.turret.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh and not mi.has_meta(&"shadow_proxy"):
+			for vertex: Vector3 in mi.mesh.get_faces():
+				mesh_lowest = minf(mesh_lowest, (mi.global_transform * vertex).y)
+	_check("actual turret meshes contact the ground (lowest %.2f m)" % mesh_lowest, mesh_lowest < 0.05 and mesh_lowest > -0.5)
 	var hole := false
 	for c in wk.root.get_children():
 		if c is MeshInstance3D and (c as MeshInstance3D).mesh is CylinderMesh:
@@ -151,3 +158,28 @@ func _every_wreck_replicates() -> void:
 		if wreck:
 			var props := wreck.get_props()
 			_check("%s: the clients are sent its paint, to build it burnt out" % kind, not wreck.wreck_finish.is_empty() and props.get("wreck_finish", {}) == wreck.wreck_finish)
+
+
+## Different seeded resting orientations must touch with actual meshes, not
+## an empty corner of the combined turret box.
+func _contact_poses() -> void:
+	var wreck := _knock_out("slammer", Vector3(160, 0, 0), 1)
+	if wreck == null:
+		_check("contact test creates a wreck", false)
+		return
+	for id in [1, 17, 53, 101, 227, 509]:
+		wreck.eid = id
+		wreck.model = Node3D.new()
+		wreck.add_child(wreck.model)
+		var wk := VehicleModels.build("slammer", 0, 1, false, true)
+		wreck._dress_vehicle(wk)
+		field.time = float(wreck.wreck_finish.since) + 10.0
+		wreck._update_turret_pose()
+		var lowest := INF
+		for mi: MeshInstance3D in wk.turret.find_children("*", "MeshInstance3D", true, false):
+			if mi.mesh and not mi.has_meta(&"shadow_proxy"):
+				for vertex: Vector3 in mi.mesh.get_faces():
+					lowest = minf(lowest, (mi.global_transform * vertex).y)
+		_check("seed %s meshes rest on ground (%.2f m)" % [id, lowest], lowest < 0.05 and lowest > -0.5)
+		wreck.model.free()
+		wreck.model = null

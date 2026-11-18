@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import dgram from "node:dgram";
 import { ROOT } from "./lib/game.mjs";
 
-test("ENet clients receive produced tank, IFV and technical wreck properties", { timeout: 180_000 }, async (t) => {
+test("ENet clients receive produced tank, Slammer and technical wreck properties", { timeout: 180_000 }, async (t) => {
   const socket = dgram.createSocket("udp4");
   await new Promise((resolve) => socket.bind(0, "127.0.0.1", resolve));
   const port = socket.address().port;
