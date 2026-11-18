@@ -23,6 +23,11 @@ caption = "The wind (blowing left to right here) heaps the snow against a hedger
 file = "comparison.jpg"
 caption = "The same town and the same tank battle under an overcast sky and in snow: white roofs and fields, slushy streets with white gutters, patchy snow on the tanks that have been fighting, tread marks through it and mud round the burning wreck."
 [[videos]]
+file = "track-engine-thaw.webm"
+poster = "track-engine-thaw.jpg"
+caption = "An untouched bank, a tank leaving tracks through the powder, then 96 seconds of engine thaw and the drive-away reveal. Actual gameplay in Compatibility, Medium: driving at 2× speed, idling at 36× time lapse, with brief control and result holds. Nearby powder stays unchanged."
+
+[[videos]]
 file = "hedge-motion.webm"
 poster = "hedge-motion.jpg"
 caption = "Earlier close view of snow along a burning hedgerow, before the bank-edge correction below. Four seconds at normal speed, Medium settings, Compatibility renderer."
@@ -46,6 +51,7 @@ caption = "Dry grass, current main above and the snow branch below: the grass an
 - **Roofs** each hold their own. The wind loads the slope in its lee and scours the one facing it, and the sunny slope thins first. Steep sheet roofs shed most of it in streaks; flat roofs keep a full coat with drifts banked against the parapets. The snow curls over the eaves in a rounded lip that shows how thick it lies. Barns are cold and keep a thick coat; most houses are lived in and warm, so their roofs thaw in wet, dark patches and bare round the chimney, with icicles hanging from the eaves.
 - **Vehicles** keep snow only on their flat tops (the deck, turret roof, fenders and stowage), in patches of their own; it slides off the glacis and sides, and the warm engine deck stays bare and wet. A vehicle standing still gathers a full load, and driving or swinging its turret shakes most of it off, so a parked or wrecked tank is far whiter than one in the fight.
 - **Drifts.** The wind heaps the snow against walls, houses, hedges, fences and wrecks: banked against the side away from the wind, rising to a rounded crest a little way out and tailing off a few metres beyond, deeper along some stretches than others, longer behind a tall wall or a hedge, with a smaller bank on the windward side. The thin outer edge meets the ground instead of floating above it. The grass in a drift is buried; knock the wall down and its drift goes with it, even while nearby drifts are still being built. Where roofs overlap, the remaining roof keeps the ground sheltered after one is destroyed.
+- Opening a snow battle no longer leaves an unexplained thaw patch beneath the starting camera.
 - **Heat melts it.** A fire thaws the snow round it, the ground to bare, wet earth with a rim of grey slush, and the streets, yards and neighbouring roofs to wet stone and tile, and it melts the snow off whatever is burning: a roof, a wreck, a tree. A vehicle that stands with its engine running leaves a damp, dark patch under it, and the bare patch on its engine deck spreads the longer it runs. A gun that has fired sheds the snow off its barrel until it cools. Thawed ground stays bare after the fire is out and only whitens again slowly while the snow keeps falling.
 - Snow that starts mid-battle settles over a few minutes and thaws slowly when it stops. The deep snow muffles the wind and the distant battle.
 - It's looks only: nothing sees, moves or burns any differently in snow. It works in the browser too.

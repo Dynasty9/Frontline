@@ -280,6 +280,10 @@ func _check_snow_drift() -> void:
 ## slowly, and only while it snows. The shaders read it without a texture of
 ## their own (the ground keeps to its sampler budget).
 func _check_snow_melt() -> void:
+	var warmup := Vfx.new()
+	add_child(warmup)
+	warmup.prewarm(Vector3.ZERO)
+	assert(warmup.burning().is_empty(), "shader warm-up fires must never reach snow melting")
 	for code in [Atmosphere.GROUND_SHADER, Atmosphere.ROAD_SHADER]:
 		assert(String(code).contains("uniform vec4 melt_spots[") and String(code).contains("snow_melted("))
 	assert(not SnowMelt.GLSL.contains("sampler"))

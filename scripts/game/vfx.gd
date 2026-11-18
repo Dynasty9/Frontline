@@ -86,6 +86,8 @@ func prewarm(at: Vector3) -> void:
 	plume(p, 1.0)
 	plume(p + Vector3(20, 0, 0), 2.4)
 	var b := make_burner(1.0)
+	# Shader warm-up is not a battlefield heat source: it must not thaw snow.
+	_burners.erase(b)
 	add_child(b)
 	b.global_position = p
 	burn_for(b, 1.0, 1.0)
