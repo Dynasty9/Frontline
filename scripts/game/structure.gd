@@ -1219,6 +1219,62 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 	_lamp(Vector3(-(W * 0.5 - 0.2), 0.95, -(L * 0.5 - 1.2)))
 
 
+## What a research post carries beyond its walls (in its kit, its front to
+## -z, its roof slab's top at 3.4 m): a parapet with its coping round the roof,
+## a roof hatch and vents, the cables from the mast and the dish run in a tray
+## to the hatch and down the side wall in a conduit to the generator; a dish
+## on a bracket on the back wall; a precast blast wall before the door and the
+## post's plate beside it; the generator in its canopy on skids, its exhaust.
+func _research_dress(rk: BuildingKit, wc: Color, rng: RandomNumberGenerator) -> void:
+	var hx := size.x * 0.5 + 0.15
+	var hz := size.z * 0.5 + 0.15
+	var roof := 3.4
+	for face in 4:
+		var a := face * PI * 0.5
+		var along := size.x + 0.3 if face % 2 == 0 else size.z + 0.3
+		var at := Vector3(sin(a) * (hx - 0.08), roof, cos(a) * (hz - 0.08))
+		var pk := rk.at_point(at, Vector3(0, a, 0))
+		pk.box(Vector3(along, 0.42, 0.16), Vector3(0, 0.21, 0), "precast", wc.darkened(0.04))
+		BuildingWalls.coping(pk, along + 0.04, 0.22, 0.42, "precast", wc)
+	# the hatch, vents, the cable tray from the mast and the dish to the hatch
+	rk.box(Vector3(0.8, 0.35, 0.8), Vector3(0.6, roof + 0.175, -1.4), "precast", wc.darkened(0.1))
+	rk.box(Vector3(0.86, 0.05, 0.86), Vector3(0.6, roof + 0.37, -1.4), "metal_dark", Color(0.24, 0.25, 0.25))
+	for v: Vector3 in [Vector3(-0.4, 0, 2.0), Vector3(2.2, 0, -0.4)]:
+		BuildingFittings.flue(rk, v + Vector3(0, roof, 0), 0.06, 0.5)
+	for seg: Array in [[Vector3(-2.2, 0, -2.2), Vector3(0.6, 0, -2.2)], [Vector3(0.6, 0, -2.2), Vector3(0.6, 0, -1.8)], [Vector3(1.5, 0, 1.5), Vector3(1.5, 0, -1.4)], [Vector3(1.5, 0, -1.4), Vector3(1.0, 0, -1.4)]]:
+		var p0: Vector3 = seg[0] + Vector3(0, roof + 0.18, 0)
+		var p1: Vector3 = seg[1] + Vector3(0, roof + 0.18, 0)
+		rk.bar(p0, p1, 0.16, 0.06, "metal_dark", Color(0.42, 0.43, 0.42), false)
+		var n := maxi(1, roundi(p0.distance_to(p1) / 1.0))
+		for i in n + 1:
+			var q := p0.lerp(p1, float(i) / n)
+			rk.box(Vector3(0.04, 0.18, 0.04), q - Vector3(0, 0.09, 0), "steel", Color(0.4, 0.41, 0.4), Vector3.ZERO, false)
+	# the conduit down the side wall to the generator, a junction box on it
+	var gx := size.x * 0.5
+	rk.rod(Vector3(gx + 0.06, roof + 0.25, 1.0), Vector3(gx + 0.06, 0.9, 1.0), 0.035, "metal_dark", Color(0.25, 0.26, 0.26), 6, false)
+	rk.box(Vector3(0.1, 0.3, 0.24), Vector3(gx + 0.06, 1.5, 1.0), "metal_dark", Color(0.3, 0.32, 0.3))
+	rk.rod(Vector3(gx + 0.06, 0.9, 1.0), Vector3(gx + 0.65, 0.55, 1.25), 0.03, "rubber", Color(0.08, 0.08, 0.08), 6, false)
+	# a dish on a bracket on the back wall
+	BuildingFittings.wall_dish(rk.on_face(Vector3(0, 0, size.z * 0.5), Vector3(0, 0, 1)), Vector3(-1.6, 2.6, 0), Vector3(0.4, 0.5, 0.9))
+	# the blast wall before the door, and the post's plate by it
+	var front := rk.on_face(Vector3(0, 0, -size.z * 0.5), Vector3(0, 0, -1))
+	# (the door is 1.5 m along the front, in the face kit's own x)
+	front.box(Vector3(2.2, 1.6, 0.3), Vector3(1.5, 0.8, 1.35), "precast", wc.darkened(0.06))
+	front.box(Vector3(2.4, 0.2, 0.7), Vector3(1.5, 0.1, 1.35), "precast", wc.darkened(0.1))
+	front.plate(Vector3(0.7, 0.36, 0.02), Vector3(0.25, 1.6, 0.03), "paint", Color(0.88, 0.88, 0.84))
+	BuildingShops.lettering(front.at_point(Vector3(0.25, 1.62, 0.05)), 0.55, Color(0.12, 0.14, 0.12), rng, 1)
+	# the generator in its canopy on skids, its louvres, its exhaust
+	var gen := rk.at_point(Vector3(gx + 1.0, 0, 1.5), Vector3(0, PI * 0.5, 0))
+	var olive := Color(0.32, 0.36, 0.26)
+	for sz: float in [-0.38, 0.38]:
+		gen.box(Vector3(1.7, 0.1, 0.1), Vector3(0, 0.05, sz), "steel", Color(0.25, 0.26, 0.27))
+	gen.box(Vector3(1.6, 0.9, 0.9), Vector3(0, 0.55, 0), "paint", olive)
+	gen.box(Vector3(1.66, 0.05, 0.96), Vector3(0, 1.02, 0), "paint", olive.darkened(0.1))
+	for sz: float in [-1.0, 1.0]:
+		BuildingOpenings.louvre(gen.at_point(Vector3(-0.35, 0, sz * 0.455), Vector3(0, 0.0 if sz > 0.0 else PI, 0)), Vector3(0, 0.55, 0), Vector2(0.7, 0.5), olive.darkened(0.2), "paint")
+	BuildingFittings.flue(gen, Vector3(0.55, 1.05, 0.25), 0.05, 0.45)
+
+
 func _lamp(p: Vector3) -> void:
 	BuildingFittings.lamp(BuildingKit.nodes(model), p, Vector3(-signf(p.x), 0, 0), 4.6)
 
@@ -3424,8 +3480,7 @@ func _build_model() -> void:
 			BuildingFittings.dish(rk, Vector3(1.5, 3.4, 1.5), 1.3, Vector3(0.6, 0, 0.3), Color(0.82, 0.82, 0.8), 0.9)
 			BuildingFittings.mast(rk, Vector3(-2.2, 3.4, -2.2), 4.0, 3, 0.4, Color(0.3, 0.31, 0.32), 0.22, 3.4, [0.55])
 			BuildingFittings.ac_unit(rk, Vector3(-1.6, 3.4, 1.4), 0.0, Color(0.6, 0.6, 0.58))
-			_mk(Res.box(Vector3(1.6, 1.0, 0.9)), "paint", Vector3(size.x * 0.5 + 1.0, 0.5, 1.5), Vector3.ZERO, Color(0.32, 0.36, 0.26))
-			BuildingFittings.flue(rk, Vector3(size.x * 0.5 + 1.4, 1.0, 1.7), 0.05, 0.45)
+			_research_dress(rk, wc, rng)
 			_flag = _box(Vector3(-1.75, 6.9, -2.2), Vector3(0.8, 0.5, 0.04), tc)
 		"depot":
 			for i in 6:
