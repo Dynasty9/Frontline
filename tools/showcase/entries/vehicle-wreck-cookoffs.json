@@ -1,11 +1,11 @@
 {
   "entry": "changelog/unreleased/vehicle-wreck-cookoffs.md",
-  "summary": "Destroyed vehicles burn out end to end (black char, heat-greyed paint, rust, soot, ash, tyres and canvas gone, blackened ground, debris), a tank whose ammunition goes up loses its turret, and shot-down helicopters lie crashed and broken.",
-  "medium": "still",
-  "stage": "tests/fixtures/vehicle-wreck-clips.tscn; tests/fixtures/helicopter-world-clips.tscn",
-  "rationale": "Original wreck follow-up stills, reused without recapture on the integration tree. The burnt-out sheet compares the same stage, seed and elapsed time; the tank after-view is reframed to include the hull and detached turret, so its camera is not matched. The helicopter sheet shows crash poses and broken rotors. These stills show appearance and settled poses, not turret-launch or crash motion. The original capture.json retains the capture circumstances. Retained historical appearance evidence only; the new battle-clock motion has not yet completed visual validation.",
-  "source_ref": "bb117f7c3b9bfb389d657acb16eca27a978935a6",
-  "before_ref": "1c6e13a7",
+  "summary": "Cook-off turrets lift, tumble and settle on the ground; recorded wrecks restore across seeks and reopens.",
+  "medium": "motion",
+  "stage": "Godot_v4.7.2-stable_linux.x86_64 --path REPO --audio-driver Dummy --rendering-method gl_compatibility --resolution 960x540 --fixed-fps 15 res://tests/fixtures/vehicle-wreck-clips.tscn -- --motion=close_OR_wide --preset=medium --capture-fps=15 --kinds=slammer --frames=OUTPUT --label=MAIN_OR_AFTER",
+  "rationale": "Normal-speed real destruction shows the turret arc and low settling motion, first at a matched close camera against current main, then at gameplay distance. The original appearance sheets remain available. Motion-capture.json records the software Compatibility renderer and limits. Replay and network compatibility are demonstrated by separate tests, not this footage.",
+  "source_ref": "c58befc56cb31112f6cbcc60086c28d4464bd05d",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
   "sources": [
     {
       "file": "changelog/unreleased/vehicle-wreck-cookoffs/burnt-out.jpg",
@@ -18,7 +18,25 @@
     {
       "file": "changelog/unreleased/vehicle-wreck-cookoffs/capture.json",
       "sha256": "867b79e8732386179582f0ef39846aa81a8476c9a0f901c7e2543b01afc43749"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-wreck-cookoffs/cookoff-motion.webm",
+      "sha256": "aa8e34b78d0d0361de0a802a9686ef7b8d98fd0be734816cb22742043575a4ae"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-wreck-cookoffs/cookoff-motion.jpg",
+      "sha256": "88a328f608a4ee2406a94c5a34c9be45c0a5ff049f1f25ce5f653af7852113af"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-wreck-cookoffs/motion-capture.json",
+      "sha256": "3c13160012e95286a57ef59fd4be2314379effb6aad614a51c4fa7a69105619a"
     }
   ],
-  "output": null
+  "output": null,
+  "original_still_provenance": {
+    "stage": "tests/fixtures/vehicle-wreck-clips.tscn; tests/fixtures/helicopter-world-clips.tscn",
+    "rationale": "Original wreck follow-up stills, reused without recapture on the integration tree. The burnt-out sheet compares the same stage, seed and elapsed time; the tank after-view is reframed to include the hull and detached turret, so its camera is not matched. The helicopter sheet shows crash poses and broken rotors. These stills show appearance and settled poses, not turret-launch or crash motion. The original capture.json retains the capture circumstances. Retained historical appearance evidence only; the new battle-clock motion has not yet completed visual validation.",
+    "source_ref": "bb117f7c3b9bfb389d657acb16eca27a978935a6",
+    "before_ref": "1c6e13a7"
+  }
 }
