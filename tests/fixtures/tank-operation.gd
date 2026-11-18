@@ -199,9 +199,18 @@ func _check_running_gear() -> void:
 	# Look straight down at the stowed links and the bare glacis beside them.
 	var bare := body.intersect_ray(Vector3(-0.53, 2, -2.32), Vector3.DOWN)
 	assert(not bare.is_empty())
+	# A crew keeps a few links in the rack's four places, in short runs (it
+	# has used some): each place holds a link standing proud of the plate or
+	# is bare plate, never a link sunk into it, and at least one is held.
+	var held := 0
 	for x: float in [0.245, 0.435, 0.625, 0.815]:
 		var link := body.intersect_ray(Vector3(x, 2, -2.32), Vector3.DOWN)
-		assert(not link.is_empty() and link.position.y > bare.position.y + 0.05, "Spare links must stand proud of the sloping plate")
+		assert(not link.is_empty(), "Expected the glacis under the spare-link rack")
+		if link.position.y > bare.position.y + 0.05:
+			held += 1
+		else:
+			assert(absf(link.position.y - bare.position.y) < 0.02, "Spare links must stand proud of the sloping plate")
+	assert(held > 0, "The rack must hold at least one spare link")
 	for belt in built.belts:
 		# Headless rendering has no readback of instance transforms. Sample
 		# the same contact run from the curve that positions those instances.

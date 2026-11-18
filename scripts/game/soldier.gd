@@ -1077,6 +1077,8 @@ func _alive(dt: float) -> void:
 			_man_tick(dt)
 		"tunnel":
 			_tunnel_tick(dt)
+		"dugout":
+			_dugout_tick(dt)
 		"board":
 			_board_tick(dt)
 		"resupply":
@@ -3270,6 +3272,12 @@ func _hidden(dt: float) -> void:
 		riding = null
 		unhide(position)
 		return
+	if hidden_reason == "dugout":
+		# below until the squad stands to, or the stairs come in
+		var st := hidden_in
+		if st == null or not is_instance_valid(st) or not TrenchNet.has_dugout(st) or squad == null or squad.drill != "dugout":
+			leave_dugout()
+		return
 	hidden_t -= dt
 	if hidden_t > 0.0:
 		return
@@ -4014,6 +4022,55 @@ func _tunnel_tick(dt: float) -> void:
 	world.stat("tunnel_in")
 	st.inside.append(self)
 	st.net_dirty = true
+
+
+## Down the dugout stairs while the shells come over (see SquadBrain.shelter).
+func order_dugout(st: Structure) -> void:
+	if not can_take_orders():
+		return
+	_clear_task()
+	task = "dugout"
+	task_ent = st
+	go_to(TrenchNet.dugout_door(st), "task", 2)
+
+
+func _dugout_tick(dt: float) -> void:
+	var st := task_ent as Structure
+	if st == null or not TrenchNet.has_dugout(st) or TrenchNet.dugout_room(st) <= 0 or squad == null or squad.drill != "dugout":
+		task = ""
+		return
+	var door := TrenchNet.dugout_door(st)
+	if _move_tick(dt, _speed()):
+		_choose_act(true)
+		return
+	if Defs.flat(door - position).length() > 1.8:
+		go_to(door, "task", 2)
+		return
+	task = ""
+	hide_in("dugout", 9999.0, st)
+	position = door
+	st.inside.append(self)
+	st.net_dirty = true
+	world.stat("dugout_in")
+
+
+## Up the stairs and out into the trench. A section brought in on top of the
+## dugout buries its entrance: the men dig themselves out, bruised and cut.
+func leave_dugout() -> void:
+	var st := hidden_in
+	var door := position
+	var along := Vector3.RIGHT
+	var buried := false
+	if st != null and is_instance_valid(st):
+		st.inside.erase(self)
+		st.net_dirty = true
+		door = TrenchNet.dugout_door(st)
+		along = Basis(Vector3.UP, st.yaw) * Vector3.RIGHT
+		buried = st.gone or (st.built and st.trench_depth() < 0.85)
+	unhide(door + along * world.rng.randf_range(-1.2, 1.2))
+	if buried:
+		world.stat("dugout_buried")
+		take_damage(world.rng.randf_range(12.0, 35.0), null, Vector3.UP, "explosion")
 
 
 func _pilot_tick(dt: float) -> void:

@@ -339,6 +339,7 @@ uniform bool body = true;  // the body surface (cloth and vest), or the kit
 uniform bool print_digital = false;  // reuse the texture's own pixels
 uniform bool reprint = true;  // or leave the cloth's own print
 instance uniform vec2 camo_seed = vec2(0.0);
+// CLOUD_SHADOW
 
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 float tnoise(vec2 p) { return (texture(noise_tex, p * 0.0625).r - 0.467) * 1.103 + 0.5; }
@@ -386,6 +387,7 @@ void fragment() {
 	NORMAL_MAP = texture(normal_tex, UV).rgb;
 	ROUGHNESS = 0.92;
 	SPECULAR = 0.2;
+	// CLOUD_FRAGMENT (the probes' terms)
 }
 """
 
@@ -402,7 +404,7 @@ static func swat_material(original: StandardMaterial3D, surface: int, pattern: S
 		return _swat_mats[key]
 	if _swat_shader == null:
 		_swat_shader = Shader.new()
-		_swat_shader.code = Mats.code(SWAT_SHADER.replace("// CAMO", GLSL))
+		_swat_shader.code = Mats.code(LightProbes.inject(SWAT_SHADER.replace("// CAMO", GLSL)))
 	var m := ShaderMaterial.new()
 	m.shader = _swat_shader
 	m.set_shader_parameter("albedo_tex", original.albedo_texture)

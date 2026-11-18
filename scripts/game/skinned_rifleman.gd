@@ -111,12 +111,14 @@ func build(clips: Dictionary = MocapCharacter.CLIPS, role_prop: Node3D = null, u
 				material.roughness = 0.85
 				material.metallic_specular = 0.25
 				if camo_pattern != "" or camo_gear != null:
-					# his uniform reprinted in his side's camouflage (Camo)
+					# his uniform reprinted in his side's camouflage (Camo), lit
+					# by the light probes like the rest of him
 					mesh.set_surface_override_material(surface, Camo.swat_material(mesh.mesh.surface_get_material(surface), surface, camo_pattern, camo_gear))
 					if not Mats.per_material:
 						mesh.set_instance_shader_parameter(&"camo_seed", camo_seed)
 					continue
-				mesh.set_surface_override_material(surface, material)
+				# (the same, reading the light probes: a man indoors or under trees takes their shade)
+				mesh.set_surface_override_material(surface, LightProbes.skin_material(material))
 
 	skeleton = visual.find_children("*", "Skeleton3D", true, false)[0]
 	for player in visual.find_children("*", "AnimationPlayer", true, false):

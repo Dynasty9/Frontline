@@ -578,7 +578,25 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 						var sx := rng.randf_range(-0.2, 0.2) * (maxf(0.0, gx - 0.016) if nx > 1 else gx)
 						var sz := rng.randf_range(-0.2, 0.2) * (maxf(0.0, gz - 0.016) if nz > 1 else gz)
 						at += Vector3(sx, 0, sz)
-				k._box(m, Vector3(bw, ph, bd), at, mat, tint)
+				var stencil := l == layers - 1 and minf(bw, bd) >= 0.18
+				# (a stencilled lid sits 2 mm down, so its paint stands clear of
+				# the lid without lifting the stack's top)
+				var sink := 0.002 if stencil else 0.0
+				k._box(m, Vector3(bw, ph - sink, bd), at - Vector3(0, sink * 0.5, 0), mat, tint)
+				if stencil:
+					# The lot's stencil on the lid, two lines of it along the box's
+					# length toward one end (black on a wooden crate, pale on a
+					# painted box), so from above a box reads as a box of stores.
+					var long_z := bd >= bw
+					var length := bd if long_z else bw
+					var across := bw if long_z else bd
+					for row: float in [-0.12, 0.08]:
+						var o := Vector3(across * row, ph * 0.5 - 0.001, length * 0.12)
+						var mark := Vector3(across * 0.07, 0.002, length * 0.42)
+						if not long_z:
+							o = Vector3(o.z, o.y, o.x)
+							mark = Vector3(mark.z, mark.y, mark.x)
+						k._box(m, mark, at + o, "plain_dark" if wood else mat, null if wood else Color(0.72, 0.69, 0.58), Vector3.ZERO, false)
 				if wood:
 					for e: float in [-1.0, 1.0]:
 						k._box(m, Vector3(bw + 0.016, band, bd + 0.016), at + Vector3(0, e * (ph * 0.5 - band * 0.5 - minf(0.04, ph * 0.1)), 0), "wood_dark")
