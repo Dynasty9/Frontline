@@ -34,8 +34,8 @@ def main():
             urllib.request.urlretrieve(source["url"], path)
         assert hashlib.sha256(path.read_bytes()).hexdigest() == source["sha256"], path
     means = ['[gd_resource type="Resource" format=3]', '', '[resource]']
-    for name in ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand", "road_damaged_clean"]:
-        size = (2048, 2048) if name == "aerial_asphalt_01" else (1024, 1024)
+    for name in ["aerial_asphalt_01", "concrete_pavement", "leafy_grass", "roof_tiles", "weathered_planks", "concrete_floor_01", "asphalt_02", "brick_wall_001", "plastered_wall", "tree_bark_03", "gravelly_sand", "road_damaged_clean", "gravel_road", "gravel_floor_02"]:
+        size = (2048, 2048) if name in {"aerial_asphalt_01", "gravel_road"} else (1024, 1024)
         def read(channel):
             return Image.open(CACHE / f"{name}_{channel}_2k.jpg").resize(size, Image.Resampling.LANCZOS)
         read("diff").convert("RGB").save(ASSETS / f"{name}_color.jpg", quality=95)

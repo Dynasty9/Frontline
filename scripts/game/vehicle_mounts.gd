@@ -10,9 +10,19 @@ static func _mount(k: VehicleModels, parent: Node3D, center: Vector3, rotation: 
 
 ## Box mantlet or cradle, with a rounded casting and bolted trunnion covers.
 ## Preserve the authored barrel centre: the mount never adds or moves a muzzle.
-static func mantlet(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat: String, col = null, rotation := Vector3.ZERO) -> void:
+## `boot` = (the barrel's radius, the cover's length): the canvas dust cover a
+## main gun wears where it leaves the mantlet (zero: none, as before). Strapped
+## round the casting's front and tied round the barrel, it keeps grit and rain
+## out of the gap the gun recoils and elevates through; its pleats and its
+## dark proofed cloth are what make a tank's gun read as growing out of the
+## turret rather than as a tube stuck on a box. It runs along -Z from the
+## casting's front face on its centre line, so a gun passed through the
+## mantlet's centre (as every main gun is) goes through it.
+static func mantlet(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat: String, col = null, rotation := Vector3.ZERO, boot := Vector2.ZERO) -> void:
 	var mount := _mount(k, parent, center, rotation)
 	k._add(mount, BevelMesh.make(size, minf(size.x, minf(size.y, size.z)) * 0.12), mat, col, Vector3.ZERO)
+	if boot.x > 0.0 and boot.y > 0.0:
+		_gun_boot(k, mount, -size.z * 0.5, minf(size.x, size.y) * 0.46, boot.x, boot.y)
 	var radius := minf(size.y, size.z) * 0.23
 	for side: float in [-1.0, 1.0]:
 		var at := Vector3(side * size.x * 0.5, 0, size.z * 0.12)
@@ -25,6 +35,27 @@ static func mantlet(k: VehicleModels, parent: Node3D, size: Vector3, center: Vec
 			var a := TAU * i / 4.0
 			VehicleBody.fastener(k, mount, at + Vector3(side * radius * 0.16, sin(a) * radius * 0.7, cos(a) * radius * 0.7), Vector3.RIGHT * side, radius * 0.13)
 	k._fold(mount)
+
+## Proofed canvas, near black olive (a dust cover, a mantlet boot).
+const BOOT := Color(0.2, 0.21, 0.16)
+
+## The mantlet's canvas dust cover (see mantlet): from the casting's face at
+## `face` (z, in the mount's space) forward along -Z, `length` long, gathered
+## from `radius` at the face down onto the barrel (`barrel` its radius) in
+## three pleats, each fold puffed out where it starts and drawn in where the
+## next laps over it, and a strap cinched round the barrel at its front.
+static func _gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float, barrel: float, length: float) -> void:
+	var tied := barrel + minf(0.02, barrel * 0.2)
+	if radius <= tied:
+		radius = tied * 1.3
+	var step := length / 3.0
+	for i in 3:
+		var r0 := lerpf(radius, tied, i / 3.0) * (1.0 if i == 0 else 1.06)
+		var r1 := lerpf(radius, tied, (i + 1) / 3.0)
+		# (the first fold's back end a centimetre into the casting's face)
+		k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, 0, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), "canvas", BOOT, 12)
+	k._cyl(mount, tied + 0.008, tied + 0.008, minf(0.035, length * 0.2), Vector3(0, 0, face - length + minf(0.035, length * 0.2) * 0.5), Vector3(PI / 2, 0, 0), "canvas", BOOT.darkened(0.25), 12, false)
+
 
 ## Width is X. End caps stay within the authored envelope; front and back receive
 ## the same hardware so a rear bumper needs no reversed coordinate convention,

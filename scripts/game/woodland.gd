@@ -13,7 +13,7 @@ func setup() -> void:
 	var scans := ["fern_02", "dead_tree_trunk_02", "", "", "", "fern_02", "tree_stump_01", "nettle_plant", "nettle_plant", "rock_moss_set_01", "rock_moss_set_01", "grass_medium_01", "grass_medium_01", "pine_sapling_small-twig", "pine_sapling_small-bark", "pine_sapling_small-twig", "pine_sapling_small-bark"]
 	scans.append("shrub_02")
 	scans.append("")
-	var shader := CloudShadow.make(MapDims.shader(SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
+	var shader := CloudShadow.make(MapDims.shader(SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX)
 	for i in meshes.size():
 		var material := ShaderMaterial.new()
 		material.shader = shader

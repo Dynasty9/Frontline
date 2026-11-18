@@ -438,6 +438,27 @@ static func _registration(center: Vector3, size: Vector2) -> String:
 	return out
 
 
+## A craft's registration drawn from its seed (its entity id in play, so
+## peers agree and two boats of a kind differ): `letters` letters (a port's
+## or a state's code) from the ones a stencil cuts square, a space, and
+## `digits` digits, as a fishing port numbers its boats ("LH 143") or a state
+## its pleasure craft ("FL 4127"). `salt` gives another number from the same
+## seed.
+static func craft_number(seed: int, letters := 2, digits := 4, salt := 0) -> String:
+	var h := _hash(seed, 11 + salt)
+	var out := ""
+	for i in letters:
+		out += PLATE_LETTERS[posmod(h, PLATE_LETTERS.length())]
+		h = _hash(h, 1)
+	if letters > 0 and digits > 0:
+		out += " "
+	for i in digits:
+		# (no leading nought on a registration)
+		out += PLATE_DIGITS[1 + posmod(h, 9) if i == 0 else posmod(h, 10)]
+		h = _hash(h, 1)
+	return out
+
+
 ## Embossed characters as raised bars (their top and four sides) standing up
 ## from z = 0, one merged mesh per registration and height.
 static func _emboss(text: String, height: float) -> ArrayMesh:

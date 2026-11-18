@@ -196,8 +196,43 @@ func _ready() -> void:
 			for part: Array in parts:
 				assert(part[1] == Mats.get_mat(VehicleMaterials.key("burnt", kit.surface_family)), "No reflective glass or signal lenses on wreck equipment")
 		kit.root.free()
+	_gun_feed()
 	print("VEHICLE_COMPONENTS passed")
 	TestRun.quit(get_tree())
+
+## A gun's can is open, and its belt runs out of it into the gun: the lid
+## swung clear of the can's mouth, the belt's rounds lying in the mouth, a
+## pitch apart all the way, rising over the lip and into the feed tray.
+func _gun_feed() -> void:
+	var mouth := AABB(Vector3(-0.06, 0.085, -0.13), Vector3(0.12, 0.12, 0.26))
+	for open in [false, true]:
+		var kit := VehicleModels.new()
+		kit.root = Node3D.new()
+		kit._baking = true
+		VehicleFittings.ammo_can(kit, kit.root, Vector3.ZERO, Color.OLIVE, Vector3.ZERO, Vector3(0.16, 0.2, 0.3), open)
+		assert(kit.root.get_child_count() == 0, "A can must fold into the bake")
+		var covered := false
+		for part: Array in kit._parts[kit.root]:
+			covered = covered or _bounds([part]).intersects(mouth)
+		assert(covered != open, "A gun's can stands open, its mouth clear; a stowed one is shut" if open else "A stowed can keeps its lid on")
+		kit.root.free()
+	# (the .50's own can and tray, and the 7.62's: VehicleWeapons.hmg, mmg)
+	for feed: Array in [[Vector3(-0.18, -0.07, 0.08), Vector3(0.12, 0.19, 0.29), Vector3(-0.084, 0.072, 0.03), 0.011], [Vector3(0.08, -0.07, 0.02), Vector3(0.08, 0.13, 0.15), Vector3(0.042, 0.045, -0.02), 0.0062]]:
+		var can: Vector3 = feed[0]
+		var size: Vector3 = feed[1]
+		var tray: Vector3 = feed[2]
+		var radius: float = feed[3]
+		var rounds := VehicleWeapons._belt_rounds(can, size, tray, radius)
+		var rim := can.y + size.y * 0.4
+		assert(rounds.size() >= 5, "A belt shows a run of rounds, not a stub")
+		var first := rounds[0]
+		assert(absf(first.x - can.x) < size.x * 0.5 and absf(first.z - can.z) < size.z * 0.5 and first.y < rim and first.y > rim - radius * 2.0, "The belt starts lying in the can's mouth")
+		for i in range(1, rounds.size()):
+			var gap := rounds[i].distance_to(rounds[i - 1])
+			assert(absf(gap - radius * 2.35) < radius * 0.02, "One belt, a round every pitch, none run into the next: %.4f apart" % gap)
+		assert(rounds[rounds.size() - 1].distance_to(tray) < radius * 2.35 * 1.5, "It runs right into the feed tray")
+		assert(rounds[rounds.size() - 1].y > rim, "It rises out of the can")
+
 
 func _bounds(parts: Array) -> AABB:
 	var bounds := AABB()

@@ -4,6 +4,1048 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v2.0.2: Rooms and narrow spaces take their skylight from the world round them
+
+*18 November 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v2.0.2)
+
+### New
+
+#### Rooms and narrow spaces take their skylight from the world round them
+
+Light probes work out how much sky every room, wall foot, wood and street can see. Rooms stay dim indoors with their roof lifted, wet floors under a roof stop mirroring the sky, woods sit in a green shade, fires glow on the ground round them, and open ground looks as before.
+
+[Watch: The same frame with the probes switched off and on every second: the room goes indoors, its shade lifted by warm bounce.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.2) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.2/light-probes/room-flicker.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **Shade from the sky:** the foot of walls and the ground between houses see less of the sky than open ground,
+  so they take less skylight and less of the cool fill light. Open fields and roof tops look as before.
+- **Bounced light:** a sunlit patch on a floor or wall throws warm light into the shade round it, so a room's
+  dark corners are dim, not black.
+- **Reflections know what's overhead:** wet floors indoors, under eaves and in trenches no longer mirror the bright
+  sky they can't see; they reflect the room round them instead.
+- **Woods:** under the trees the ground, the grass and ferns on it and the soldiers sit in a dimmer, green-tinted shade.
+- **Fires and street lamps** throw a little warm light on the walls and ground round them, past where their own
+  light reaches, but not through walls. In the browser, which has no fire lights, this is the glow fires give.
+- **No light through walls:** the floor along a wall indoors and the top of a wall no longer pick up light from
+  the other side.
+- **It keeps up with the battle:** houses blown down, trees felled or burnt, doors flung open, trenches dug and
+  new craters change the probes round them within a moment. A fresh crater's bowl sits in a little shade of its own.
+- **Follows the time of day:** with Time passes on, the light bounced round rooms and streets dims and reddens with
+  the evening and follows the sun across the sky, smoothly, with no visible steps. Rooms at dusk stay dim, not black.
+- **Vehicles and soldiers shade the ground:** a parked tank or truck sits in a soft dark pool of its own, and a
+  standing soldier in a faint one.
+- **Rooms read as indoors:** when soldiers go in and the roof lifts away, the room no longer stands in full
+  sunlight. The probes know it's a room and keep it dim, lit by its windows, door and the light bouncing in.
+- **Light probes** in Settings › Graphics: **High** (from the High preset up), **Low** (only the shade from the
+  sky; the Medium preset and the browser) or **Off** (the Low preset).
+
+![Midday, a room seen through its lifted roof. Left, without and with the probes: with them the room reads as indoors, and its sunlit patch bounces warm light into the shade. Right, what the probes see (the share of sky each surface sees; dark is shut in) and the difference they make, four times over (darker where they take light, warmer where the bounce adds it).](changelog/v2.0.2/light-probes/room-under-roof.jpg)
+
+![The same room in the rain. Without the probes its wet tiles mirror the grey sky over the roof; with them a reflection shows the sky only where the sky can be seen, so the floor indoors goes dark and wet.](changelog/v2.0.2/light-probes/wet-room-rain.jpg)
+
+![The edge of a wood at midday, time frozen so only the light changes. Under the trees the ground, the ferns and the men sit in a dimmer, greener shade; the open meadow beside them is unchanged.](changelog/v2.0.2/light-probes/wood-edge.jpg)
+
+![Fires at night: a burning hedge and a grass fire. With the probes their light reaches past their own glow, warming the ground several metres round them (about half as bright again round the grass fire); walls keep it in.](changelog/v2.0.2/light-probes/fire-glow-night.jpg)
+
+![Parked vehicles on an overcast day. With the probes each sits in a soft contact shadow, darkest under its tracks and wheels and fading out a metre or so round it; the deck and roof still see the sky.](changelog/v2.0.2/light-probes/tank-shade.jpg)
+
+![A fresh shell crater: its bowl sees a little less of the sky than the field round it, so it reads as a hollow.](changelog/v2.0.2/light-probes/crater.jpg)
+
+![The same room at golden hour: the low sun across the far wall is cut back, the shaded walls and floor warm with its bounce, and the grass in the house's shade by its walls darkens a little. The difference panel, four times over around mid grey (grey is no change), shows all three.](changelog/v2.0.2/light-probes/room-golden-hour.jpg)
+
+[Watch: With Time passes on, a room and a street from late afternoon into dusk, the clock run sixty times over: the light bounced into the room dims and reddens with the evening, smoothly, with no steps as the probes follow the sun.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.2) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.2/light-probes/dusk-timelapse.webm))
+
+[Watch: A house blown down, the game beside the probe term: within a second the probes are traced again, and the open floor gets its sky and sun back.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.2) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.2/light-probes/destroyed-house.webm))
+
+</details>
+
+### Improved
+
+#### Machine guns fed from open cans
+
+A mounted machine gun's ammunition can is open now, and its belt of brass rounds runs out of it and into the gun, instead of three rounds floating over a shut lid.
+
+![Before and now, close up: a technical's heavy machine gun, an Offroad's .50 and the MB 4WD's light machine gun. The can was shut with a few rounds hovering over its lid; now its lid is off and the belt lies in it, rising over the lip into the gun's side.](changelog/v2.0.2/gun-belts/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Belts:** every machine gun with a can beside it, from the .50s and DShKs to the 7.62s, is fed by a belt of brass rounds in blackened links. The belt lies folded in the can's mouth, then rises over the lip into the feedway in the gun's side.
+- **Cans:** the can on a gun has its lid off, as gunners leave it so the belt runs freely. Cans stowed in a truck bed stay shut.
+- **DShK:** its rear sight stands on the feed cover instead of floating above the gun, and its wooden spade grips are shaped to the hand rather than ending flat like pegs.
+
+</details>
+
+#### Gravel roads, dirt tracks and weathered bridge decks
+
+Country gravel, earth supply tracks and paved bridge decks have distinct surfaces, with worn wheel paths, natural shoulders and cleaner joins.
+
+![Country gravel up close: photographed aggregate, wheel wear, dirt shoulders and roadside markers.](changelog/v2.0.2/roadside-verges/gravel.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Photographed worn road and coarse gravel surfaces replace the smooth sand strip. Compacted wheel tracks contrast with loose aggregate, while narrow patches of grass survive between them.
+- Irregular road edges expose darker soil before meeting the grass. Rain darkens the fines and collects in the wheel tracks.
+- Sparse reflector posts and small loose stone deposits frame country routes while keeping junctions, buildings and water clear.
+- Road surfaces follow the ground in shorter panels, with a shallow crown on unpaved routes. Town kerbs and the driving width stay the same.
+- Supply tracks have darker earth and two compacted wheel ruts, with a wider, broken strip of grass between them.
+- Bridge decks use weathered asphalt and worn road paint, with expansion joints. Gravel no longer overlaps the deck in jagged wedges, and the bridge surface responds to rain.
+- Dust trails onto town paving at gravel entrances; concrete driveways are divided by fine slab joints.
+
+![The original gravel upgrade, now at full width: matched before and after views of the road surface.](changelog/v2.0.2/roadside-verges/comparison.jpg)
+
+![Supply tracks before and after this pass: compacted earth, two wheel ruts and a broken grassy centre.](changelog/v2.0.2/roadside-verges/supply-track.jpg)
+
+![Bridge before and after: weathered asphalt, worn edge lines, expansion joints and gravel ending cleanly at the deck.](changelog/v2.0.2/roadside-verges/bridge.jpg)
+
+![Loose fines trail from the gravel onto town asphalt; kerbs, drains, repairs and worn markings frame the street.](changelog/v2.0.2/roadside-verges/town-entrance.jpg)
+
+</details>
+
+#### Trenches fitted out, with dugouts to shelter in
+
+Finished trenches are sandbagged and revetted, with ladders and dugout entrances. Squads shelter in their dugouts under shellfire and stand to when it lifts.
+
+[Watch: Rebel fighters on the fire step come under mortar fire, run along the trench to their dugout leaving a sentry, then stand to when the barrage lifts. Played at 1.5x speed; the mortar barrage is a controlled demonstration.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.2) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.2/trench-fittings/dugout.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **Parapets:** the front of every fire bay is faced with a low wall of sandbags, two bags high, in the same earth-caked hessian as the ground around them.
+- **Revetment:** walls are held up with planks behind posts, or on some sections corrugated iron on pickets.
+- **Along the bays:** scaling ladders against the front wall, ammunition boxes on the fire step and the field telephone line along the back wall.
+- **Dugouts:** some rear bays lead down to a dugout through a timber door frame in the back wall, with a gas blanket rolled over the door. Shelled squads go below, leaving a sentry on the parapet, and are back on the fire step when the barrage lifts, the enemy comes within 90 m, or you give them an order. A shell that brings the section down buries the entrance, and the men dig themselves out hurt. Right-click a dugout's doorway to send a squad below yourself; it stays there until you order it out or the enemy comes on.
+- **Manning the line:** a squad told to defend a trench line spreads along the fire steps of the bays facing the enemy, and moving along a trench no longer cuts corners over the parapet.
+
+![The same trench before and after, same seed and camera: a low sandbag parapet along the front of each fire bay, plank and corrugated-iron revetment, ladders and ammunition on the fire step.](changelog/v2.0.2/trench-fittings/comparison.jpg)
+
+![Close up: a dugout entrance with its gas blanket, a machine-gun bay on the trench's front lip, corrugated-iron revetment, and the fire bays from above.](changelog/v2.0.2/trench-fittings/details.jpg)
+
+</details>
+
+#### Camouflage nets, bolted armour and weather you can see
+
+Crews carry camouflage nets and branches; armour gets welded edges, bolted modules, stowage baskets and gun covers; paint varies plate to plate and gathers dust and grime you can see from the battle camera; car roofs stop flashing white; helicopters get shaped tails; boats get wet waterlines and rust.
+
+![Matched studio views: before on the left, after on the right. A pickup, the T-55, a BTR, the Centauro, a HEMTT workshop, the Leopard 2, the T-100, the Mohawk, a Warrior whose crew has camouflaged it, a HEMTT's tyres and the gun trawler.](changelog/v2.0.2/vehicle-nets-armour-and-weathering/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- About half the tanks, carriers and trucks carry their crew's camouflage: a net bundled into a basket or
+  thrown over a bin, and cut branches laid along the loads, in green or sand to match the paint. Which
+  vehicles, and how heavily, changes from vehicle to vehicle.
+- Armour edges are chamfered and welded on NATO, CSAT and independent tanks and carriers, so their roofs
+  catch a line of light instead of ending in a knife edge. The Leopard 2's add-on armour is separate bolted
+  modules, and the T-100's roof bricks sit on the turret instead of hanging off its edge. Here and there a
+  brick is a mismatched replacement.
+- Turrets carry open stowage baskets with kit inside, decks have dark non-slip walkways, and main guns wear
+  a canvas cover where they leave the turret. The T-55's fuel tanks are painted and its loader's hatch is
+  open. BTR window shutters are hinged visors, and some crews drive with them closed. The Bradley's exhaust
+  is a grille.
+- Paint varies from plate to plate. Dust gathers on decks and roofs, and grime streaks the sides, at a size
+  you can see from the battle camera. Rounded edges show worn highlights.
+- Car and pickup roofs show their paint instead of a white flash. HEMTT workshop and ambulance roofs show
+  panels, lifting eyes and air-conditioning units.
+- Military trucks roll on mud tyres with chunky lugs. Spare track links hang in short runs. Mudflaps hang
+  their own way, and some are torn. Crates carry stencils. Canvas tilts sag between their bows.
+- Helicopter tails and stub wings are shaped like wings instead of planks. Cowlings have chamfered edges and
+  access panels, with a patchwork of refitted panels that differs from airframe to airframe. Oil and exhaust
+  streak the fuselages, and serial numbers vary.
+- Boats are dark and wet at the waterline. Rust runs from the trawler's scuppers and portholes, its funnel is
+  sooty, and boats carry registration numbers.
+
+</details>
+
+## v2.0.1: Choose how good the AI is
+
+*17 November 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v2.0.1)
+
+### New
+
+#### Choose how good the AI is
+
+Play vs AI and the lobby now set the AI commander's level: Recruit, Regular, Veteran, or Adaptive, which eases off when you're losing badly and presses harder when you're cruising.
+
+![The opponent's level in Play vs AI, with what it means](changelog/v2.0.1/ai-difficulty/opponent.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Recruit** is slow to react and slow to push out new bases, attacks piecemeal and straight at you, never lays ambushes, scouts or calls for
+  help, fires only on big targets and leaves battered squads in the fight. Its lorries carry 15% less.
+- **Regular** is the AI as it has been: it flanks, ambushes your roads, calls in fire and pulls out battered squads.
+- **Veteran** reacts quickly, gathers bigger attacks, fires on smaller groups, scouts more and saves its squads
+  sooner. Its lorries carry 15% more.
+- **Adaptive** starts as a Regular and, every minute, weighs the battle: well ahead, it eases off; well behind,
+  it presses harder.
+- The level applies to every AI in the battle, including one fighting beside you in co-op. Supply only changes
+  for a side no player commands, so an AI ally never costs you anything.
+- The loading brief and the status line show the AI's level.
+
+</details>
+
+#### Bounce light: sunlit walls and streets light each other
+
+Sunlight thrown back off walls, roofs and roads now lights what faces them, in their colours: a sunlit wall warms the pavement, a plaza lights the statue in it, the floor of a roofless ruin picks up its walls. A new Bounce light setting, on from High.
+
+[Watch: Off and on in turn, a second each, on the same frozen frames: midday, golden hour and overcast (the last view, from the usual command height, shows how faint it is from up there).](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/bounce-light/flicker.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **What you'll see:** shaded walls facing a sunlit street glow with its colour, plinths, benches and kerbs
+  standing on sunlit paving catch its warmth from below, and rooms open to the sky fill with light off their
+  own walls, and light carries on from there, so shadows beside furniture and rubble are lifted rather than
+  black. Sunlit floors light the foot of the walls above them, fading up the wall, and a coloured wall tints
+  what lies beside it. Open ground, lit by the sky alone, looks as before, and sunlit surfaces aren't veiled.
+- **It holds still while you pan and zoom:** the light is kept from frame to frame and moves with the world,
+  and nothing moving drags a smear behind it.
+- **Settings > Graphics > Lighting > Bounce light:** Off, Medium or High (High casts more rays, for less grain).
+  It's on Medium in the High preset and on High in Ultra and Cinematic, and costs well under a millisecond a frame
+  on a fast graphics card (at 1600x900 on an RTX 3090, about a third of a millisecond on High; Medium less).
+- The browser version draws without it.
+
+![Midday, inside a roofless ruin: the foot of the shaded wall glows warm with light off the sunlit floor, fading up the wall (off above, on below)](changelog/v2.0.1/bounce-light/midday.jpg)
+
+![The same, bounce light only (on minus off, four times brighter): it climbs the walls from the floor](changelog/v2.0.1/bounce-light/midday-light.jpg)
+
+![Golden hour, from 30 m: the shaded floor and the far wall of a ruin lift](changelog/v2.0.1/bounce-light/golden.jpg)
+
+![Golden hour, bounce light only (four times brighter)](changelog/v2.0.1/bounce-light/golden-light.jpg)
+
+![Overcast, from 30 m: the floor and the walls' feet lift, lit by the paler ground round them](changelog/v2.0.1/bounce-light/overcast.jpg)
+
+![Overcast, bounce light only (four times brighter)](changelog/v2.0.1/bounce-light/overcast-light.jpg)
+
+[Watch: The bounce light alone (brightened) while the camera pans fast: it stays on what it lights, with no smears or trails.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/bounce-light/pan.webm))
+
+</details>
+
+#### Furnished houses
+
+When your men go into a house and the roof lifts, the rooms are lived in: wardrobes, bookcases, kitchens, settees, desks, and a table with its chairs.
+
+![Three houses with the roof off, before and after, then each room closer](changelog/v2.0.1/furnished-houses/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Against the walls** without a window or door: a wardrobe (a suitcase on top of some), a bookcase full of books, a dresser with the television or a lamp on it, a settee, a kitchen with its sink, cooker and wall cupboards, or a desk with its chair pushed in. Pictures and shelves hang over the low pieces.
+- **In the middle** of a big enough room: a table with its chairs, a cloth and plates on some, a chair knocked over now and then.
+- Furniture is scenery: it doesn't block your men or give them cover.
+
+</details>
+
+#### Bigger houses, on two floors, with wings
+
+Towns and farms have houses of more shapes and sizes: many of the bigger ones and most shops near the middle are on two floors, some have a wing out of the back, and farmhouses are big again.
+
+![The same houses before and after, from the front and from behind, and the town from above](changelog/v2.0.1/house-plans/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Two floors**: many of the bigger houses, most shops near the middle of town (with flats over them) and most farmhouses have a floor above, with its own windows, curtains and a lamp on in some rooms.
+- **Wings**: a wide house with a long garden may have a wing out of the back, at one end (an L) or in the middle (a T), its roof matching the house's.
+- **The fighting is on the ground floor**: the floor above lifts off with the roof when your men go in, and if a wall under it is blown in, the floor above comes down with its roof.
+- Streets and lots are laid out as before; gardens keep clear of the wings.
+
+</details>
+
+#### Motion blur, and rain that soaks everything
+
+Rotor blades, flung bodies and flying debris smear as they would through a camera's shutter, while your pans stay sharp. In the rain, vehicles, buildings and gear turn dark and glossy with water.
+
+![A helicopter's tail rotor with motion blur off and on; a tank and its sandbags in the rain before and now: the paint darker with a film of water, the canvas soaked.](changelog/v2.0.1/motion-blur-and-rain/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Motion blur** (Settings > Lighting & Look > Camera and lens): Off, Objects, or Objects + camera. Objects blurs what moves fast but keeps the map sharp while you pan; Objects + camera blurs a quick pan too, and Reduce motion keeps pans sharp regardless. The Cinematic preset uses Objects. Not in the browser version.
+- **Rain on everything**, on every preset: in the rain, vehicles, buildings, sandbags and kit take on water as the ground and streets already did. Cloth, timber and concrete darken as they soak; paint and metal take a glossy film; tops get wettest, undersides stay drier, and water runs down walls and hulls in streaks. Rain that starts mid-battle soaks things over half a minute, and they dry over three once it stops.
+- Vehicles, cab windows, small street stones and distant explosion clouds now dissolve smoothly between their near and far versions as you zoom, instead of popping.
+
+</details>
+
+#### Streets with their furniture
+
+The town's streets have traffic lights (dark, with the power off), a telephone box, post boxes, an advertising column, hoardings, street names, and belongings dropped by people fleeing the fighting.
+
+![The crossroads, the square and a street corner, before and after, and the new pieces close up](changelog/v2.0.1/street-furniture/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **The crossroads** has traffic lights on all four corners, dark now the power's off; now and then one hangs askew or its pole leans where something hit it.
+- **The main street** has a telephone box (a pane or two shot out) and pillar post boxes; **the square** an advertising column pasted round with posters.
+- **Hoardings** stand over car parks and bombed-out lots, their posters half torn away on some.
+- **Street names** stand on posts at the junctions.
+- **On the pavements**, what people running from the fighting dropped: suitcases, a holdall, a bundle, now and then a pram or a bike on its side, papers blown about.
+- Tanks and blasts knock them down like the rest of the street furniture.
+
+</details>
+
+#### Time passes: the sun moves and dusk turns to night
+
+A new Time passes setting lets a battle's light move on as it's fought. The sun crosses the sky and golden hour fades through dusk into a moonlit night in about forty minutes. Everyone who has it on sees the same sky.
+
+[Watch: Forty minutes of battle in fifteen seconds: golden hour, sunset, a blue dusk with the street lights coming on, and moonlit night over the town.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/time-passes/time-passes.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **Settings > Lighting & Look > Time passes.** It's off by default and on in the Cinematic preset. With it off,
+  nothing changes.
+- A battle opens at its time of day and the clock runs on from there, six times as fast as life. Dawn brightens
+  into midday, midday turns to golden hour, and golden hour goes on through sunset and dusk into night. A night
+  battle sees the sky pale towards dawn after about an hour and a half.
+- The sun moves steadily and shadows lengthen and swing round. After sunset the sky glows on, the blue deepens and
+  the stars come out. The moonlight takes over only once the sun has gone.
+- Lamps come on in windows and street lights light up at dusk. The night's flares go up once it's dark. The hills'
+  long shadows, the water, smoke, fire light and the clouds over the mountains all follow the light.
+- Rain, overcast and haze are weather, not a time of day, so they hold.
+- The light comes from the battle's own clock. Every player who has the setting on sees the same sky at the same
+  moment, and a replay shows it again exactly. Night still only changes how the battle looks: soldiers see as far
+  as they did.
+
+![The same view as the clock runs: golden hour, sunset, blue hour and night.](changelog/v2.0.1/time-passes/golden-to-night.jpg)
+
+</details>
+
+### Improved
+
+#### Follow the battlefield as it loads
+
+Desktop battles now show map-generation stages instead of waiting silently for the host. Joining also skips a redundant vehicle pathfinding grid.
+
+<details>
+<summary>Explore this change</summary>
+
+The loading bar follows generation, building your view, and final rendering in order. Ground preparation reports completed rows instead of advancing on a four-second timer and then stopping. Starting a battle while scripts are still compiling keeps the loading screen responsive. Progress represents completed stages, not an estimate of seconds remaining.
+
+Clients still build the same ground heights and slopes; vehicle pathfinding preparation stays with the host that runs the battle.
+
+</details>
+
+#### Hold until Lancer arrives
+
+Bridgehead gives you time to reorganise, warns of armour and mortars, and ends when the relief tanks actually reach your cleared position.
+
+[Watch: Lancer's tanks cover the crossing as the counterattack gives way to the handover. Silent gameplay excerpt, 14 seconds.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/bridgehead-relief/relief.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- After taking the bridge, use twenty seconds to position your AT team and cover the ford.
+- Radio warnings precede the BTR and mortar attack, so you can reposition before contact.
+- Scouts mark an optional observer-and-radio pair on the near-bank flank after you clear the village. Clear their position before taking the bridge, or keep your force together and endure their fire. Neutralising the pair stops future salvos, even if a casualty is later revived.
+- Lancer drives up from the village during the defence. Keep troops at the bridgehead and clear the enemy out before handing over. If both tanks are destroyed or immobilised short of the bridgehead, the relief fails instead of leaving you waiting forever.
+- The handover holds for six seconds before the report, giving you time to see the relief arrive.
+- The briefing explains your two artillery missions and their three-minute cooldown. It no longer threatens a bridge demolition that never happens.
+
+</details>
+
+#### Barns that look like barns
+
+A farmstead's barn is no longer just a big house: it's weatherboarded in barn red, grey or green under a corrugated sheet roof, with a braced loft door in each gable and straw on its floor.
+
+![A farm's barn and a farmstead in the game, before and after](changelog/v2.0.1/farm-barns/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Weatherboarded walls** in barn red, weathered grey or dark green, white-trimmed.
+- **Corrugated sheet roof**, rusted, galvanised or painted red, a little steeper than a house's, with no chimney or aerial.
+- **A loft door** high in each gable end, framed and braced in white, under a hoist beam.
+- **Ledged board doors**, no curtains or lamps in the windows, no paint or pictures inside, and straw strewn over a bare concrete floor.
+- **Houses on sloping ground** stand level on a concrete foundation, so their walls no longer poke up through the roof on the uphill side.
+- Barns stand where they did and give the same cover as before.
+
+</details>
+
+#### Earthworks with character
+
+Trenches mix exposed soil, torn turf, damp ground and patched timber, with rougher banks and a more complete defensive position.
+
+[Watch: A six-second camera orbit over the new earth and timber materials; simulation held for inspection.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/field-fortifications/earthworks.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- Dark topsoil gives way to lighter subsoil and stony pockets, with roots, damp patches and leaf litter. Scanned dirt has close-up grain and relief; rain darkens it and spreads puddles.
+- Ragged spoil, worn firing-step edges and physical retaining boards break up the cuts. Weathered duckboards rest on bearers above the mud, and timber roofs shelter the resting bays. Joined cuts clear unsupported boards and bags from the passage.
+- Bunkers have continuous earth banks that meet the hillside and uneven soil over their roof logs. Newly placed banks clear existing grass and shrubs. The trench assault scenario now includes a rear communication route, ammunition under cord-backed camouflage netting, sandbags and anti-tank obstacles, using the existing buildable defenses.
+
+![Before and after: layered earth, broken-up timber lining and uneven spoil. Same trench, seed and camera.](changelog/v2.0.1/field-fortifications/comparison.jpg)
+
+![At trench height: dark topsoil over lighter subsoil, retaining boards and raised duckboards.](changelog/v2.0.1/field-fortifications/inside.jpg)
+
+![The trench scenario's log bunker, rear communication trench and covered ammunition position.](changelog/v2.0.1/field-fortifications/bunker.jpg)
+
+</details>
+
+#### Sheds and trampolines in the back gardens
+
+Many town gardens now have a timber shed at the bottom, and some lawns a trampoline.
+
+![The same garden from behind the house, before and after](changelog/v2.0.1/garden-sheds/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Garden sheds**: about two in five gardens deep enough for one have a boarded shed at the bottom under a felted roof, its door facing the house, in one of four colours.
+- **Trampolines** stand on some lawns with room for them.
+- Like the rest of the garden, they're scenery: a shell or a passing truck knocks them over.
+
+</details>
+
+#### What each graphics setting costs
+
+A benchmark now measures what each graphics setting costs the graphics card. On an RTX 3090 at 1080p, shadows, anti-aliasing and fire shadows are what cost; the Cinematic camera and lens effects, heat haze and cloud shadows hardly register.
+
+<details>
+<summary>Explore this change</summary>
+
+Measured on an RTX 3090 at 1920 x 1080, Cinematic settings, a tank battle at golden hour seen from the command camera, the battle held still. Each setting was switched off and on ten times in a row. The figures are from two separate runs:
+
+| Setting | Costs the graphics card |
+|---|---|
+| Shadow quality Ultra (against Off) | 7 to 9 ms a frame |
+| Render scale 100% (against 50%) | 7 ms |
+| Anti-aliasing MSAA 4x + SMAA (against Off) | 3 ms |
+| Shadows from fire and flares (nearest 6) | about 3 ms |
+| Texture filtering 16x | about 1.7 ms |
+| View distance Far (against Near) | about 1.4 ms |
+| Global illumination | 1.1 ms |
+| Ambient occlusion, depth of field | about 0.5 ms each |
+| Lens flare, sun shafts, local exposure, eye adaptation, film look, heat haze, physical sky, cloud shadows, adaptive shadows | too little to measure (under about half a millisecond each) |
+
+The whole frame took about 16 ms. A slower card pays more, in roughly the same order. The physical sky costs more when the camera is tilted up and a lot of sky is in view.
+
+</details>
+
+#### Gunners on the guns, and guns that look real up close
+
+Technicals, Humvees, light strike vehicles, armed boats and Ghost Hawks now have a gunner on the gun, hands on its grips. Pickup guns stand tall over the cab, the Humvee has a real gunner's turret that turns with its .50, and mounted guns get a phosphated finish, their real details and barrels that smoke after a burst.
+
+[Watch: The firing line before (top) and now (bottom): the technical's and the Humvee's gunners work their guns as they're laid, the Humvee's turret turning whole, and the hot barrels smoke after each burst.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/gun-crews/gun-crews.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **Gunners:** every crew-served gun has its gunner now: a technical's DShK or .50, a Humvee's .50, the Prowler's .50 on its roof ring, the MB 4WD's light machine gun, the armed motorboat's PKM and a Ghost Hawk's two door guns. Remote weapon stations and turret guns are worked from inside, as before.
+  - In a pickup he stands on the bed floor behind the gun, the grips at his chest. As it swings he walks round the pedestal to stay behind them, and never steps off the bed.
+  - In a Humvee he stands in the hatch, chest and head inside the turret's shields.
+  - In the Prowler he stands in the roof ring; at a boat's bow he kneels, and in a helicopter's door he crouches.
+- **The Humvee's turret** is an O-GPK, and the whole turret turns with the gun.
+  - Steel shields in facets round the hatch, each with a thick ballistic window at the gunner's eye level, open at the back.
+  - The .50 sits on its cradle at the front of the ring, its ammo can on a tray at its side, and its barrel runs out through the front shield's slot.
+- **Pickup guns stand tall:** the technical's DShK and the Offroad's .50 sit on tall pedestals with their bores half a metre over the cab roof, so they fire forward over the cab. Their shields are smaller and cleaner.
+- **Door guns** rest pointing out of their doors, the gunner inside behind them, and swing out to what they shoot at.
+- **Up close:** the guns are phosphated steel, near black and matte, worn where hands and belts rub them.
+  - The .50 has the cooling holes through its barrel support, its trunnion block, rivets and a flaring flash hider.
+  - The 7.62s have a slotted flash hider and front sight.
+  - The DShK has its belt rising out of its box, its rear sight, charging handle and trigger.
+- **Barrel smoke:** a gun hot from a burst goes on smoking when it stops. Thin wisps curl off the muzzle and drift away, thicker after a long burst and from a cannon.
+
+![Before and now: a technical side-on, its DShK now on a tall pedestal and firing over the cab, its gunner on the bed floor behind it; the same gun close up; the Humvee's turret, now an O-GPK with the .50 out through its front slot, from the front and from behind with the gunner in the hatch; and the technical's gun swung to the left, its gunner gone round the pedestal with it.](changelog/v2.0.1/gun-crews/comparison.jpg)
+
+</details>
+
+#### A cleaner battle display
+
+The observer's controls, the minimap's edge, the fire mission key, the pause menu and the end of a watched battle all match the rest of the battle display.
+
+![Before and after: the observer's controls, the fire missions and minimap, the end of a watched battle, and the pause menu](changelog/v2.0.1/hud-finish/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Observer controls** sit on the edge of the screen as a single ruled strip instead of a row of boxed buttons. The ones that are on light up with an underline.
+- **The minimap** has a hairline edge instead of a thick black border.
+- **The fire mission key** sits in a key box like every other key on screen.
+- **The pause menu** fits its options, with no empty space under the last one.
+- **Watching a battle**, the end says "Coalition victory" rather than "Coalition win".
+- The radio mark over a squad leader flickers once when an order arrives, then holds steady, instead of pulsing.
+
+</details>
+
+#### Gardens and yards that people live in
+
+Town houses have what their people keep round them: bins at the corner, pots by the door, a bicycle against the wall, and out the back a woodpile, a table and chairs and now and then a kennel.
+
+![The same house from the street and from the garden, before and after](changelog/v2.0.1/lived-in-yards/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Wheelie bins** stand at a front corner of most houses, away from the door.
+- **Pots of flowers** sit by some front doors, and **a bicycle** leans on a side wall here and there.
+- **Out the back**: a **woodpile** against the wall with its chopping block and the axe left in it, a **table and chairs** on the grass, some under a parasol, and the odd **kennel** in a corner of the garden.
+- They're set dressing: they give no cover, and a shell or a passing truck knocks them over.
+
+</details>
+
+#### Operations with a stronger finish
+
+Beachhead's defence starts when you take the harbour, Sky Hook requires the full airlift and column fight, Ambush Alley reacts to first contact, and Kingpin helps you pursue a fleeing target.
+
+<details>
+<summary>Explore this change</summary>
+
+- **Beachhead:** take the harbour, turn inland and prepare for the counterattack. Its two waves now follow your capture of the quay instead of running down while you are still fighting the AA guns. Reserves wait inland and advance into battle; scouting ahead can weaken them before they attack. Hold for ninety seconds and clear the remaining attackers to win. Keeping Neptune afloat is an optional objective. Landing boats and their passengers stay under one commander, giving both players infantry to lead in two-player co-op.
+- **Sky Hook:** watch the vanguard countdown, deliver the Nyx and defeat the technical and both BTRs. Radio calls recognise a successful delivery and prompt a new firing position if the fight drags on; keeping the Mohawk flying is an optional objective.
+- **Ambush Alley:** the reaction-force clock begins when the convoy takes damage, with a visible forty-five-second warning. Further hits never reset it. Its Hunter enters on the village road instead of getting stuck beyond it. Three convoy vehicles are enough to withdraw; destroying all four is an optional challenge.
+- **Kingpin:** sightings move Kassem's last-known-position marker when he flees. Searching his reported position prompts a street search if he has left, without revealing him through fog of war. Escape warnings count down the final ninety and thirty seconds; keeping an extraction Hunter intact is optional.
+- Grounded vehicles and delivered sling cargo now count correctly on elevated terrain. Passengers flying overhead cannot capture or contest a ground objective.
+- The mission report now records completed optional objectives; hover over the count to see each result.
+- The after-action summary waits for its initial layout before drawing, avoiding invalid hit areas as the report opens.
+
+</details>
+
+#### Ground vehicles share the group’s travel pace
+
+Select a squad on foot and a ground vehicle together and give them a Move order. The driver uses the squad’s selected pace for that trip. A separate move order lets the vehicle drive at normal speed again.
+
+#### Mounted guns that aim, kick and look the part
+
+Vehicle machine guns, autocannon and AA guns now elevate onto what they're shooting at, door gunners swing their guns out of the door, every round kicks the gun back on its mount, and 25 and 30 mm cannon fire like cannon.
+
+[Watch: The same moments before (top) and now (bottom), on the battlefield: the Bradley's 25 mm and the Marshall's 40 mm firing at trucks, a technical's ZU-23 after a helicopter, the armed motorboat, and a Ghost Hawk's door gun firing at a truck off to its side.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/mounted-guns/mounted-guns.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **Laid on the target:** machine guns, autocannon and twin AA guns elevate onto what they're firing at. A ZU-23 or an AA tank climbs after a helicopter, a remote weapon station tilts up, a helicopter's guns depress onto the ground below. Until now only tank main guns moved.
+- **Door gunners:** a Ghost Hawk's door gun swings out of its own door to whatever it's shooting at, instead of firing from its stowed position along the fuselage. Pintle guns on hulls swing the same way.
+- **Recoil:** each round runs the gun back on its mount with a little jump at the muzzle, a 40 mm far more than a machine gun. An IFV's cannon no longer jolts its whole turret.
+- **Cannon fire:** the Bradley's 25 mm Bushmaster, the attack helicopters' 30 mm chain guns and the ZU-23 now flash and bark like the cannon they are, not like a .50.
+- **Brass and links** fly from the gun's receiver, not from beside the muzzle; a coaxial gun keeps its cases inside the turret.
+- **Details:** autocannon barrels step down from a thick chamber end and carry a clamp and a ported muzzle brake; ammunition belts show their rounds; the .50 has its feed-cover latch and charging handle. The armed motorboat finally carries the PKM it fires.
+- **In solo play and multiplayer** guns now lay on their targets on your screen too, tank main guns included: before, only the host's view moved them.
+
+- **Older recordings:** battles recorded in v2.0.0 remain playable. They use their original gun direction because those recordings did not include an aim target.
+
+![Before and now, the same moments: a technical's ZU-23 firing at a helicopter overhead, a Ghost Hawk's door gun firing at a truck off to its side, a Bradley's 25 mm, and the armed motorboat, which had no gun on it at all.](changelog/v2.0.1/mounted-guns/comparison.jpg)
+
+</details>
+
+#### Rain you can see falling, and lightning you can see
+
+In the rain, drops ring the puddles and burst on roofs, decks and helmets, while walls under a roof stay dry. Lightning now strikes visibly on the horizon, lights the clouds and the field from its side, and its thunder arrives as late as the bolt is far.
+
+[Watch: Rings in a puddle, drops on a tank's deck, a hut dry under its eaves, then two strikes seen from low down: one 1.1 km away, its thunder 3.4 s later; one 550 m away, its thunder 1.6 s later (the clip is silent).](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/rain-and-lightning/rain-and-lightning.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **Rings in the puddles**: while the rain is falling, every drop that lands in a puddle, rut or gutter sends a ring out across it; wet soil and asphalt ring faintly too.
+- **Drops on everything standing in it**: roofs, vehicle decks and helmets near the camera spark with tiny bursts of spray, and on High effects the odd rivulet runs down a hull's side or a wall out in the open.
+- **Dry under a roof**: the walls of houses, huts and sheds stay dry up to the eaves, all but a ragged band at the foot that the drops splash back onto, and nothing inside gets rained on. A ruin with its roof fallen in takes the rain like the street.
+- From the usual command camera height these settle into a softer, rain-roughened sheen instead of flickering. Effects Low has none of it, Medium the rings and drops, High all of it. The browser version has the drops on surfaces.
+- **Lightning you can see**: every half a minute or so a forked bolt strikes somewhere ahead of you, a few hundred metres to a couple of kilometres off, flickering for a moment. The clouds around it light up and the field flashes from its side; a near strike lights it far more than a distant one. Some flashes stay inside the cloud.
+- **Thunder by its distance**: the thunder now comes as late as the bolt is far, about three seconds per kilometre, from its direction: a sharp crack close by, a low rumble from far off.
+- **Rain on the lens** (Cinematic, or with Lens flare on): when the camera looks out across the field rather than down at it, drops gather on the glass, sit and dry, and now and then one runs down, each showing the scene behind it upside down.
+
+![Rain rings running out across a puddle beside a tank, each drop's ring its own size](changelog/v2.0.1/rain-and-lightning/rings.jpg)
+
+![Drops bursting on a tank's deck, the puddles round it ringed by the rain](changelog/v2.0.1/rain-and-lightning/deck.jpg)
+
+![A house in the rain: its roof running wet, its walls and gables dry under it](changelog/v2.0.1/rain-and-lightning/house.jpg)
+
+![A strike half a kilometre off, forking as it comes down, with rain on the lens (Cinematic)](changelog/v2.0.1/rain-and-lightning/lightning.jpg)
+
+</details>
+
+#### Fences built the way they really are
+
+Gardens, farms, playgrounds and the armies' compounds are fenced with real kinds of fence, from white pickets and featheredge boards to chain-link, and barbed wire comes new, rusted or in the armies' dull issue finish.
+
+![A street now: bow-top railings round the playground, chestnut paling next door, iron railings on a brick wall opposite](changelog/v2.0.1/realistic-fences/street-fences.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Gardens:** painted picket fences with pointed tops, iron railings with spear heads on a low brick wall,
+  chestnut paling woven into wire, and tall featheredge privacy fences down the sides of back gardens. Each house
+  keeps one look, and most front gardens have a gate, shut or left swinging.
+- **Farms and allotments:** weathered post-and-rail along the farm roads (the odd rail split and hanging) and
+  chain-link round the allotments. Playgrounds get bow-top railings.
+- **The military:** a 2.4 m security fence runs along the back of the Coalition's HQ. The Rebels' HQ is fenced
+  with what they had: crooked stakes, slack rusty wire, roofing sheets and pallets wired into the gaps, a rusty coil
+  dragged along the outside. The town's supply dump is screened with mesh panels in concrete feet, some hung with
+  scrim and weighted with sandbags.
+- **Barbed wire** is made as the real thing is: two strands twisted tight, and every 11 cm a barb of two short
+  wires coiled round them, their four cut ends standing out as sharp points at odd angles.
+  It comes bright and new along compound walls, rusted brown and slack on farms and the Rebels' wire, and in the
+  Coalition's dull issue finish. Concertina obstacles are pulled out so their loops cross, as clipped coils do.
+- Fences have grass growing up through their feet, paint gone chalky, a picket missing here, a board kicked out
+  there, and they follow the ground where it slopes.
+- Chain-link and mesh are see-through and fade to a grey veil at a distance, as the real thing does.
+
+![The same street before](changelog/v2.0.1/realistic-fences/street-fences-before.jpg)
+
+![The security fence behind an HQ: chain-link on posts set in concrete, barbed wire and a razor coil on Y-arms, floodlights](changelog/v2.0.1/realistic-fences/hq-perimeter.jpg)
+
+![Barbed wire up close (four times life size): the armies' issue wire, rusted wire, new galvanised](changelog/v2.0.1/realistic-fences/barbed-wire.jpg)
+
+![The three wire finishes, strung on posts and along a farm's rails; the Rebels' improvised HQ fence; concertina obstacles, the Coalition's and the Rebels'](changelog/v2.0.1/realistic-fences/wire-and-military.jpg)
+
+![Mesh panels hung with olive scrim screen the town's supply dump](changelog/v2.0.1/realistic-fences/supply-dump-screen.jpg)
+
+![Six of the garden and field fences, each with its gate](changelog/v2.0.1/realistic-fences/fence-kinds.jpg)
+
+</details>
+
+#### Roofs that differ like a real town's
+
+House roofs are no longer all the same gable: they're pitched differently, about a third are hipped (pyramids over square houses), and some are mended with a tarp, holed, or have a skylight.
+
+![Four houses from the street, from behind and after dark, a tarp close up, a ruin after dark, and the town from above, before and after](changelog/v2.0.1/roofscapes/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Pitch**: roofs rise anywhere from shallow to steep instead of all at one angle.
+- **Hipped roofs**: about a third slope down on all four sides, with tiles over the hips and gutters all round; over a square house they make a pyramid.
+- **Mending and damage**: here and there a roof has a tarpaulin pulled over it, heaped over the broken tiles and creased where old tyres and a sandbag weigh it down, its corners tied to the gutter; or a hole with the battens showing.
+- **Skylights** are let into some roofs, and a few of them are lit after dark.
+- **Lamplight after dark** is softer: a lit window or skylight gleams instead of flaring.
+- **Lamps go out** in a ruined house, and in a house once it's shelled, loses a wall or its roof catches fire.
+- Chimneys sit properly on whatever slope is under them. Roofs are still scenery only, so cover and movement are unchanged.
+
+</details>
+
+#### Rubble that looks like rubble
+
+Where a wall has come down, the rubble is a heap of broken masonry with bricks, plaster slabs, a charred joist and bent rods sticking out, instead of grey blocks.
+
+![Rubble heaps and a ruined house, before and after](changelog/v2.0.1/rubble-heaps/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **A heap, not blocks**: rubble is a rough mound of broken masonry, highest to one side.
+- **On it**: lumps of brick (some still mortared together), slabs of painted plaster, a joist or two run up out of it, charred or bare, and reinforcing rods bent out of the concrete.
+- It gives the same cover as before, whether the map put it there or a wall was just brought down.
+
+</details>
+
+#### Shop fronts on the town's main streets
+
+The shops by the town square look like shops: a painted fascia with the shop's name, a striped awning, a hanging sign, and their wares out on the pavement.
+
+![A parade of shops and a shop in town, before and after](changelog/v2.0.1/shop-fronts/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Fascias**: each shop has a painted board over its windows with its name in raised letters, and about half have a sign standing out from the wall on a bracket.
+- **Awnings**: striped canvas on metal arms with a scalloped edge, in the shop's colours, high enough to walk under.
+- **On the pavement**, clear of the door: a **greengrocer's** crates of fruit and vegetables on a stand, a **cafe's** tables and chairs, a **baker's** sandwich board and tubs of flowers, a **hardware shop's** sacks, gas bottles and buckets, a **newsagent's** paper rack and board.
+- The wares are scenery: no cover, and a shell or a passing truck knocks them over.
+
+</details>
+
+#### No more stutter when parked cars and wrecks come into view
+
+Panning across a town froze the picture for a tenth to a quarter of a second each time a parked car or a burnt-out tank came into view. Now a car is put together over a few frames, and wrecks and cars that look alike are copied.
+
+<details>
+<summary>Explore this change</summary>
+
+- A car coming into view costs at most a few hundredths of a second spread over a few frames, where it used to cost 100-290 ms in one. It appears a fraction of a second later instead.
+- Burnt-out tanks are all the same hulk, so every one after the first is copied in about 5 ms instead of built in about 190. Cars of the same model and paint are copied the same way.
+- Battles load a little faster too: the map's hulks used to take nearly two seconds of the load.
+- Cars and wrecks look exactly as before.
+
+</details>
+
+#### Smoother frame rate over towns, fewer stutters
+
+Looking over the town draws about a third as much as before, so the frame rate there roughly doubles, and panning or jumping the camera seldom stalls while scenery and grass are built.
+
+![The same town views before and after: the picture is unchanged, drawn in well under half the draws](changelog/v2.0.1/smoother-towns/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Towns draw far less.** Houses, garden walls and trees are merged block by block as soon as a block is built (in a town that used to wait for the whole neighbourhood, so it hardly ever happened), and each model casts its shadow from one shape instead of one per material. Over the town, the draws a frame fell from about 8,000 to about 2,000, and the time the processor spends preparing the picture from 17 ms to under 6.
+- **Far fewer freezes on camera moves.** Scenery and grass coming into view are built nearest first, a few milliseconds' worth each frame, instead of all in one frame (up to most of a second over a street of houses). A parked car or wreck seen for the first time still costs a short hitch.
+- **Vehicles appear faster.** Their distant-view meshes are made once for each kind and shared, so a tank's model builds in about a third of the time.
+- **Solo battles' connection readout** (in the console's `why` and `net`) now says that the host is your own computer and its round trip follows your frame rate, instead of blaming the network.
+
+</details>
+
+#### Town streets that look lived in
+
+Town roads, sidewalks and the square look like real, used streets now: worn asphalt with patched repairs and sealed cracks, drain grates and manholes, faded markings, and paving laid slab by slab.
+
+![The town's central crossroads and square from the same cameras, before and after](changelog/v2.0.1/town-streets/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Asphalt** wears the way traffic wears it: tyres polish the wheel paths, oil drips down the middle of each lane, and grit and damp gather in the gutters along the kerb.
+- **Repairs** show as saw-cut patches of newer asphalt edged with sealant, instead of flat black boxes, and cracks are filled with tar.
+- **Drain grates** sit in the gutters and **manhole covers** in the lanes.
+- **Zebra crossings and parking bays** are painted on the road, so they pick up its grain and wear through in places. The centre line stops short of each crossing.
+- **Sidewalks** shade each slab along its real joints, not a grid laid across them, and lose the pink cast. The odd slab has been relaid or stained.
+- **The square** is paved in large stone slabs instead of a pink checkerboard of tiles.
+- **Kerbs** are a quieter grey instead of a bright white strip.
+- **In the rain** the junctions, crossings and car parks get as wet as the road round them.
+
+</details>
+
+#### A steadier step across trench edges
+
+Soldiers use separate takeoff and landing poses as they cross a trench lip. Close up, Rebel fighters and their medics use the animated infantry model with faction colors and their own equipment.
+
+[Watch: Same cameras and seed. The first pair compares the previous trench fix with the directional animation. The second pair compares the original and skinned infantry. Watch the soldier beside the vehicle step into the trench, then compare the Rebel fighters and medic.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/trench-infantry/comparison.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+The existing clip preserves the original framing and playback speed. Foliage partly hides foot placement, and the dark character view does not establish close-up animation or equipment quality.
+
+</details>
+
+#### Better-built decks, truck bodies, launchers, lamps and aircraft stores
+
+Twenty more vehicle parts now share one detailed design across the roster: engine grilles, track running gear, truck beds and box bodies, missile launchers, lamps, gun mounts, missiles, pods and engine intakes.
+
+![Matched close-ups: before on the left, after on the right. The A-10's engine fan, the T-55's glacis, the Bradley's TOW launcher, HEMTT and Zamak repair bodies, the Humvee's front, an offroad gun mount and an F-16's underwing stores.](changelog/v2.0.1/vehicle-construction-pass-2/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Engine decks, radiators and exhausts have recessed grilles with proper slats; tank tracks have rubber-tyred
+  return rollers and hinged, raked skirt panels; smoke dischargers sit on bolted brackets with their firing
+  cables.
+- Truck beds have rails, stake posts, hinged dropsides and tailgates. Workshop and medical bodies have framed
+  doors, roller shutters and ladders. Pickup gun mounts stand on braced posts behind proper shields, with
+  welded roll cages and bull bars.
+- Missile launch boxes show their tube mouths. Lamps sit in housings with guards and indicators.
+- Missiles have real noses, seekers and thin fins, and pods carry their lugs and seams. The A-10's engine fans
+  are finally visible in its intakes, and helicopters gain detailed hub caps, pylons and sensor mounts.
+- The T-55's splash board and the BTR-80's window frames, which were hidden inside the hull, now show.
+- Every gun still fires from exactly the same point.
+
+</details>
+
+#### Better-built running gear, crew fittings, cranes and aircraft details
+
+Forty more vehicle parts now share one detailed design: track guards, tow cables, suspension, exhausts, searchlights, light bars, benches, tanker walkways, cranes, gun mounts, muzzle brakes, aircraft landing gear, bombs and more.
+
+![Matched close-ups: before on the left, after on the right.](changelog/v2.0.1/vehicle-construction-pass-3/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Tanks have bolted track guards with brackets and hinged mudguards, spare track links on retaining bars,
+  stowed tow cables with thimble eyes, muzzle brakes, muzzle sensors and proper pintle mounts for their
+  machine guns. Self-propelled guns rest on travel locks and recoil on real hydraulic cylinders.
+- Wheeled vehicles have suspension arms with coil-over dampers, routed exhausts with silencers, air-cleaner
+  stacks, searchlights, light bars and beacons, number plates, and lever handles on armoured doors.
+- Trucks gain benches, tanker walkways with manholes and handrails, pump cabinets, gas bottle racks, roof
+  racks, stacked and strapped crates, and cranes with slewing rings, rams and hook blocks.
+- Helicopters stand on trailing-arm gear and tail wheels with real struts; aircraft carry detailed bombs,
+  flare dispensers, formation lights, refuelling receptacles and chin-gun housings. Boats have bow eyes and
+  hung fenders.
+- Seat backs lean back rather than toward the people sitting in them, and the Merkava loader's machine gun
+  stands on its mount instead of floating above the roof.
+- Every gun still fires from exactly the same point.
+
+</details>
+
+#### Oil drums, spare-wheel carriers and fitted windows, doors and hatches
+
+Vehicles carry proper 200-litre drums and hang their spare wheels on real carriers, and hundreds of windows, doors, hatches, sights, fuel tanks and gun mounts that were drawn by hand now use the shared, detailed versions.
+
+![Matched close-ups: before on the left, after on the right.](changelog/v2.0.1/vehicle-construction-pass-4/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- 200-litre drums on the T-55's rear plate and in the trucks' cargo loads have rolled rims, rolling hoops,
+  filler bungs and steel straps.
+- Spare wheels hang on real carriers: hub plates on doors and cab backs, the Hunter's swing-out arm, cradles
+  with U-bolts behind cabs and on platforms, and a ratchet strap in the technical's bed. No spare floats any more.
+- Vision blocks and door windows sit in rubber seals; doors, gear doors and hatches have hinges and handles;
+  sights, radar panels, fuel tanks, bumpers, gun pintles and cannon barrels match across every army.
+- Fixed along the way: the HEMTT repair truck's tool lockers no longer sit inside its rear wheels, and door
+  seams on the Xian and Caesar lie on the skin instead of standing off it.
+
+</details>
+
+#### Lighter vehicle models
+
+Every vehicle model now has about 45% less geometry and builds about 38% faster, and looks the same.
+
+<details>
+<summary>Explore this change</summary>
+
+- The parts every vehicle shares (tyres, bolts, hinges, lamps, shackles, smoke dischargers, lockers and dozens
+  more) were rebuilt to draw only what can be seen: hidden caps and inner faces are gone, small parts use fewer
+  segments, and bends no longer carry a ball at every joint. Side-by-side renders of every vehicle family differ
+  on at most 0.03% of pixels.
+- Measured across all 135 vehicle models on one machine (Godot 4.7.2, team 0, seed 3, two runs each): geometry
+  fell from 33.1 million to 18.5 million vertices, and building every model from cold took 16.3 seconds instead
+  of 26.4. GPU time per frame on the vehicle roster scenario barely moved (13.8 to 13.1 ms at the median, within
+  run-to-run noise), so expect smoother vehicle spawns rather than a higher frame rate on that scene.
+- Searchlights show their lens: a solid collar used to hide it.
+
+</details>
+
+#### Tactical numbers, insignia, welds and glass
+
+Tanks and armoured vehicles carry tactical numbers and welded, chamfered armour; aircraft wear national insignia, bort numbers and exhaust soot; cars get tinted glass, pressed-metal bonnets and trim.
+
+![Matched close-ups: before on the left, after on the right. The Varsuk, Kuma, Namer, Merkava, a hatchback, a minibus, the Shikra and the Kajman.](changelog/v2.0.1/vehicle-markings-and-finish/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Tanks, infantry fighting vehicles and APCs carry tactical numbers on their turrets or hull sides. On CSAT
+  and independent armour the number changes from vehicle to vehicle, and it burns off a wreck.
+- Hull and turret edges are chamfered or welded, so they catch the light instead of ending in a knife edge.
+  The Namer family carries rows of bolted armour modules, the Merkava's wedge turret shows its plate seams,
+  and tanks get tow cables along their guards, rolled tarps on their decks and soot behind their exhausts.
+- Aircraft wear national insignia on wings, fins and booms, with serials, bort numbers or civil
+  registrations, panel joints and exhaust soot. CSAT's jets now wear camouflage instead of flat sand.
+- Car glass is tinted and glossy, with seats and a dark cabin behind it, instead of reading as an open
+  frame. Bonnets and roofs catch light like pressed metal, with shut lines, black trim, B-pillars and proper
+  tail-lamp clusters. Van and truck windows reflect the sky, and boat hulls are smoothly faired.
+- Armoured glass on the Humvee and Hunter has a green tint.
+
+</details>
+
+#### Mud, stencils, car wheels and real track links
+
+Armour carries mud and dust low on its hull and running gear and stencilled numbers that change from vehicle to vehicle; US vehicles wear bumper codes; cars roll on alloys and plastic trims; Russian-style tracks have single-pin links; glass reflects the sky; helicopter rotors blur into a disc.
+
+![Matched close-ups: before on the left, after on the right. The Kuma, Abrams, Bradley, Kamysh, Merkava, Marshall, an SUV and a minibus.](changelog/v2.0.1/vehicle-mud-wheels-and-tracks/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Armour and trucks carry wet mud low on the hull, wheels and tracks, with a ragged splash line and paler
+  dust above it that settles on the upper faces. Cars pick up road dust along their sills and boats a
+  waterline stain. The mud stays put on a turning wheel and moves with a traversing turret.
+- Tactical numbers are stencilled in heavy bars in a worn army paint instead of bright white. Every NATO,
+  CSAT and independent vehicle carries its own number. US Army vehicles also wear bumper codes for their
+  battalion and company ("2-34 AR", "B24"), front and back.
+- Cars roll on car wheels: low-profile tyres on five- or six-spoke alloys, or domed plastic trims on small
+  cars and vans, instead of truck rims. Parked cars show their wheels under black arch trims.
+- Russian-style tracks (CSAT's armour and the T-55) have cast single-pin links with a guide horn on every
+  link, running between twin-ringed sprockets. Western tracks have rubber pads and end connectors, with
+  centre guides on the Leopard 2, Warrior and Wiesel.
+- Vehicle glass reflects the sky and the sun instead of reading as a flat black panel from above.
+- A helicopter's rotor blurs into a soft disc in flight, with a faint ring at its tips and ghost blades
+  that no longer flicker. Jets and gunships carry gun-gas and exhaust soot. The NATO Blackfish now wears
+  its insignia and serials.
+
+</details>
+
+#### Rotor discs, rusted wrecks and each crew's own kit
+
+A helicopter's rotor reads from above as a soft disc instead of a pale ring; burnt-out hulks and gutted cars turn to rust, ash and soot instead of black shapes; trucks and armour carry their own crew's load and tarps; hulls, bonnets and cabins get edges that catch the light.
+
+![Matched studio views: before on the left, after on the right. A supply helicopter and the Blackfish in flight, a Marshall wreck, a burnt-out car, the Hunter's bonnet, and two Zamak ammo trucks.](changelog/v2.0.1/vehicle-rotors-wrecks-and-kit/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- A helicopter's main rotor blurs into a soft, darker disc that you can see from the battle camera, with faint
+  blade streaks and a soft edge, instead of a thin pale ring that looked like a selection circle. Tail rotors,
+  the Blackfoot's and Orca's ducted fans, drones' rotors and aircraft propellers blur too instead of strobing.
+- Burnt-out hulks on the map and gutted cars turn rust-brown with grey ash on their upper faces, scorched
+  paint low down, and soot streaking up their sides, instead of featureless black shapes. A gutted car's
+  tyres burn down to the wire, and the windows are sooty empty frames. A hulk that catches fire again only
+  blackens in patches.
+- Each crew stows its own load. Trucks of one kind carry different tarps and stacks of crates, with some
+  ammunition already issued. Bags, bedrolls, jerrycans and ammo cans come in mixed colours. Canvas tilts
+  differ in shade from truck to truck.
+- Roofs, bonnets, consoles and superstructures have chamfered edges that catch the light: the Hunter's and
+  Prowler's bonnets, the HEMTT's nose, boat consoles and the patrol ship's and trawler's deckhouses.
+
+</details>
+
+#### Wrecks that look burnt out
+
+A destroyed vehicle now burns out properly: the fire spreads over the whole hull, leaving charred steel, rust and ash, and shot-down helicopters lie crashed and broken.
+
+![The same tank, technical and helicopter, two minutes after they were knocked out, before (top) and after (bottom).](changelog/v2.0.1/vehicle-wrecks/burnt-out.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Burnt out, end to end:** every wreck, from tanks and APCs to trucks, technicals and helicopters, burns out from
+  where the fire took hold. Over the best part of a minute the burn creeps across the hull, leaving charred steel,
+  rust running down the sides, soot streaks and ash on the tops, with a few islands of blistered paint.
+- **Embers:** while it burns, embers glow in the seams around the heart of the fire.
+- **What burns away:** tyres burn off and wheeled vehicles sit down on their rims, canvas covers are gone, the grass
+  around the wreck is burnt flat and the ground blackened, and torn-off pieces lie round it.
+- **Crashed helicopters:** the blades shatter as they hit the ground: stubs at the hub, others snapped and bent into
+  the dirt, some flung clear, and the tail rotor is usually gone. A helicopter that spun in lies rolled onto its side
+  with its nose dug in; one that autorotated to a heavy landing sits slumped on its belly.
+
+![The same two shoot-downs before (top) and after (bottom): a spin-in and a heavy landing, close up and from the commander's camera.](changelog/v2.0.1/vehicle-wrecks/helicopter-crash.jpg)
+
+</details>
+
+#### Meter boxes, air conditioners and house numbers on the walls
+
+House walls now carry the things real ones do: meter boxes, outside taps, air conditioners, satellite dishes, and by the front door a number, a letterbox and a mat.
+
+![A house from the front corner and a street of houses, before and after](changelog/v2.0.1/wall-fittings/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Services**: about one plain wall in four has a meter cabinet (with the duct its cable comes up in, or a gas box on the ground), an outside tap with a hose coiled beside it, an air conditioner on wall brackets or on a pad at the foot of the wall, or a satellite dish on an arm.
+- **At the front door**: most houses have their number on a plate beside the door, many a letterbox, and half a mat on the step.
+- Barns get only a meter and a tap. It's all part of the wall it's fixed to, with no collision of its own, so cover and movement are unchanged.
+
+</details>
+
+#### Walls that have seen the war
+
+Town walls carry the marks of the fighting and the weather: bullet strikes, shell hits blown through to the brick, soot over burned-out windows, rain streaks, and windows taped, boarded or sandbagged.
+
+![The same house and street from the same cameras, before and after](changelog/v2.0.1/war-worn-walls/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Bullet strikes**: about one wall in five has taken a burst of fire, flakes of render knocked off round dark holes.
+- **Shell hits**: now and then the render is blown off a wall to the brick behind it, scorched round and spattered with strikes.
+- **Soot** climbs the wall above the odd window or door where a fire burned inside, fading into the paint.
+- **Rain streaks** run down from the ends of many window sills.
+- **Windows**: some lived-in houses have taped their glass in crosses, some windows are boarded across, and some have sandbags laid along the sill.
+- It's all on the face of the wall: cover, movement and lines of fire are unchanged, and a boarded window still has gaps to see and shoot through.
+
+</details>
+
+#### Roofs that have weathered
+
+Tiled roofs grow moss and lichen, and flat roofs carry rain stains, patched membrane, moss along their parapets and vent pipes, so the town from above looks lived under for years.
+
+![Tiled and flat roofs, and the town from above, before and after](changelog/v2.0.1/weathered-roofs/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Moss and lichen** grow in mottled patches on tiled roofs, mostly on the back slope: dark green where it stays damp, pale yellow-grey where it's dry.
+- **Flat roofs** have dark rings where rain stood in the hollows (some green with algae), patches of newer membrane over old leaks, moss along the foot of a parapet, and a vent pipe or two.
+- It's all on the roof's surface and fades into it, and roofs are still scenery only.
+
+</details>
+
+#### Layered woodland
+
+Scanned trees, shrubs and undergrowth give woods a more natural shape, with leaf-covered soil, deadwood and small butterflies.
+
+[Watch: A small butterfly flutters above the woodland floor. Six seconds at normal speed, without sound.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.1) ([Direct MP4](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.1/woodland-life/butterflies.mp4))
+
+<details>
+<summary>Explore this change</summary>
+
+Broadleaf trees and two mature fir shapes use scanned trunks and branches, with irregular crowns and rooted bases. Shrubs, bracken, nettles and young pines form patches beneath them. Leaf-and-moss soil connects the stand, interrupted by fallen trunks, stumps, stones, loose leaves and small brown mushrooms.
+
+Small tortoiseshell butterflies flutter near the undergrowth in daylight and golden-hour weather. Rain and the Wildlife setting hide them without rearranging the surrounding plants. The new ground details follow the terrain and avoid roads, buildings, water and barren slopes. They add no obstacles or cover, and follow grass quality; the forest soil remains with grass disabled.
+
+![Before above, after below: a generated woodland at eye level (left) and the forest floor (right). Each pair uses the same seed and camera, captured from the parent revision and the updated game.](changelog/v2.0.1/woodland-life/comparison.jpg)
+
+![Weathered wood, bracken and forest soil, young pines and shrubs, and the canopy in golden-hour light.](changelog/v2.0.1/woodland-life/details.jpg)
+
+</details>
+
+### Fixed
+
+#### A faster Windows installer
+
+The Windows installer unpacks the game in seconds instead of sitting on a stuck progress bar for a minute or more. The download is about 4% bigger.
+
+<details>
+<summary>Explore this change</summary>
+
+- **Installing** takes seconds: the game is packed in a way that unpacks many times faster.
+- **The progress** shown while it copies the game now counts up as it goes.
+
+</details>
+
+#### Make the GPU benchmark clear about Time passes
+
+The stationary GPU benchmark now marks Time passes as unmeasured instead of implying that it can price a moving sky while the battle clock is held.
+
+<details>
+<summary>Explore this change</summary>
+
+The report still compares the other graphics settings and restores every setting without saving. Time passes is listed separately, with an explanation that its sky relighting, terrain-shadow rebakes and reflection recaptures need an advancing battle clock. This fixes the benchmark's Cinematic coverage check without claiming a zero cost or a new performance measurement.
+
+</details>
+
+#### Heat haze no longer floods the error log
+
+With heat haze on, every vehicle destroyed while burning logged an error every frame for four minutes, thousands a minute, and sent them in error reports. It's quiet now.
+
+<details>
+<summary>Explore this change</summary>
+
+- A destroyed vehicle's own fire no longer counts as heat once the vehicle is cleared away: its wreck burns, and shimmers, in its place.
+- How the haze looks is unchanged.
+
+</details>
+
+#### Clearer helicopter selections and a better crew pose
+
+A selected helicopter’s footprint follows the ground around the aircraft. At a mortar pit, the crew member’s gloves meet the model.
+
+![The selected Mohawk on its landing pad and the crew member at the mortar pit, from the same cameras before and after.](changelog/v2.0.1/landing-ring-and-crew-pose/comparison.jpg)
+
+#### Meadow grass and bushes stand out again
+
+Open fields show their tall grass tufts and leafy bushes from the battle camera again, instead of looking mown flat.
+
+![Before above, after below: the same seed and camera. Grass tufts and leafy bushes are back in the fields; the undergrowth beneath the trees is unchanged.](changelog/v2.0.1/meadow-grass-visible/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Grass blades in open fields are broad enough to see from a commander's height again.
+- Bushes scattered across meadows are full, leafy shrubs again; ferns, nettles, saplings and shrubs under the trees
+  are unchanged.
+
+</details>
+
+#### Doors, gear, arches and muzzles that fit
+
+Helicopter gear hangs from the fuselage, every gun shows a dark bore, armoured cars' wheel arches are welded on, and doors, hatches and cranes fit their vehicles.
+
+<details>
+<summary>Explore this change</summary>
+
+- Left-hand doors on the BTR, Sochor, MB 4WD, van and every fitted door, and the gear doors of the A-10,
+  Wipeout, AC-130 and Blackfish, had their inside face or hinges turned outward; they mirror the right-hand side.
+- Deck hatches on the RHIB and the patrol ship lie on the slope instead of sinking one edge into it, and the
+  Merkava and Namer glacis access panels are hinged hatches.
+- The Offroad and the technical tow on a ball hitch, the civilian 4x4 and truck have painted tow hooks, the
+  Stomper's sensor mast leans as it should, and the Angara's Afghanit dischargers are proper launch tubes.
+- Helicopter main gear hangs from fittings on the fuselage: the Ghost Hawk's, Black Hawk's, Apache's and
+  Kajman's drag beams and shock struts used to end in mid-air beside it.
+- Every gun's muzzle shows a dark bore instead of a grey disc, and the Sochor's and Scorcher's muzzle brakes
+  read as open.
+- The Ifrit's, Qilin's and Typhoon's faceted wheel arches are one band welded to the hull instead of three
+  loose planks, the Zamak repair truck's folded crane clears its body's roof, and the Xian's missile tubes
+  are a packed launcher on cradles under the stub wing.
+
+</details>
+
 ## v2.0.0: Cinematic lighting
 
 *12 November 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v2.0.0)
