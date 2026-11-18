@@ -765,6 +765,46 @@ canvas boot, a camouflage net's cloth where the seed camouflages a vehicle that 
   by `VmBoat._lettering`); `VmShips._streak`, `_wall_streak`, `_drip`, `_stain` and `_coat` (rust runs in
   three graded coats tinting the paint they cross), `_funnel_soot`, and `_digits`' `shade` (a drop shadow).
 
+### Eleventh pass: gun boots, foliage, matte steel and moulded parts
+
+Five agents (aircraft; CSAT, independent and core armour; NATO; core materials and parked cars; running gear,
+kit and small boats) each closed eight to ten gaps, starting with the tenth pass's leftovers. Nodes, meshes,
+wheels and rotors are unchanged on every model except the Hunter GMG, whose weapon station now casts its own
+shadow (one node and one mesh fewer). Vertices rise 1.7% across the roster at seed 3, at most 5.3% (the
+Angara).
+
+- **Airframes**: `VmHeli._skirt` carries a roof fairing's bottom outline down onto the roof, pulling its foot
+  in where the flank narrows. `VehicleModels.loft(..., smooth)` rolls the top edge over in a quarter round
+  with each flank its own smoothing group (the Mohawk's and Ghost Hawk's cowls; `_cowl_top`'s inset follows
+  it). `VmPlane.glow` is 58% of its old size; `VmPlane.canopy_frame` lays sill rails and arches;
+  `VehicleAirfoils.surface` tints a hinged surface 8% darker than its wing box; `wing_lines` reaches the
+  drones and the Xi'an.
+- **Armour**: `VehicleMounts.mantlet`'s `boot` on CSAT and independent guns, and `VehicleMounts._gun_boot` on a
+  pivot on the gun's slide for VmCore's Abrams and T-55, so the cover elevates with the gun.
+  `VehicleBody.cut_branches(k, parent, a, b, out, salt)` lays two or three branches per side along a fender or
+  skirt top for a heavily camouflaged crew; `VmNato._branches` does the same along NATO hull sides and
+  `VmCsat._roof_net` / the Zamak and HEMTT cabs carry a kit-seeded net. Spare links on the Varsuk, T-14 hull and
+  Stalker hull; tactical numbers 0.34-0.45 m. `VmCore._idler` is a `VehicleWheels.road` wheel without rubber.
+  `VmNato._mk_turret` builds the Merkava turret in three levels to an arrowhead nose.
+- **Small metal**: `VehicleMounts.applique` paints its bolt heads, `receiver` tints feed covers to the gun's
+  steel, and `VmNato._rcws` paints the turntable; skirt rails and baskets take the paint. The gunmetal
+  profile is metal 0.5 / roughness 0.54 with darker colours. `VehicleModels._mark_mat` makes team marks matte
+  (cached per team, not mutating `Res.mat`). Plain `paint` on the automotive family takes the `service`
+  profile (matte, edge-worn); civilian lamps use `signal_lens`.
+- **The older car model** (`VehicleModels.build_car` / `_car`, the studio's `civilian_0`-`4`; the town parks
+  VmCiv's cars, so play reaches it only as a fallback): the house is a `VmCiv._yloft`, the body a
+  `VehicleWheelArches._xbody` with arches; `_car_face` finds the nose and tail at a height for
+  `rectangular_headlamp`, `signal_lens` indicators and tail lenses and a slatted grille; door seams stop at
+  the sill and `VmCiv._bonnet_line` draws the bonnet; a hash of paint and shape picks chrome or black bumpers
+  and wheel trims. `VehicleCab.upper` rolls and crowns the cab roof and adds drip rails.
+- **Kit and running gear**: `VehicleCloth.LEAVES` are living greens with a drying olive-gold; `branch` lays
+  sprays wider than tall, and `bag`, `roll` and `VehicleEquipment.storage` lay longer branches more often.
+  Scrim leaves are bigger. `VehicleWheels._road_tyre` chamfers a road wheel's outer rubber edge;
+  `_sidewall` raises a maker's name and size code on pneumatic tyres of 0.3 m and up.
+- **Boats and ships**: `VmShips._drip` lays five graded coats (two faint fringes, `STREAK_STAIN`, `FRINGE`) and
+  `_funnel_soot` four. `VmBoat._moulded` lofts the water scooter's hood, pedestal and saddles (old cache keys
+  kept); `_outboard` lofts cowling, leg and apron. The SURCs carry kit-seeded numbers on the cabin.
+
 ### Gun mounts: laying, recoil and the guns themselves
 
 The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of
