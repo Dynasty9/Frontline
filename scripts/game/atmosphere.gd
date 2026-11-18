@@ -3046,12 +3046,12 @@ void fragment() {
 	if (snow_cover > 0.0) {
 		lie = snow_lie(p, here, around, wide_step, snow_sun());
 		lie += smoothstep(0.1, 0.6, flow) * 0.35 + max(0.0, cavity) * 0.3;
-		lie -= wood_floor * 0.7;
+		lie -= wood_floor * 0.4;
 		// (a fresh fall fills the hollows first)
 		float depth = lie * snow_cover;
 		float clump = smoothstep(0.4, 0.8, d2 * 0.65 + d1 * 0.35 + meadow_turf * 0.12 + wood_floor * 0.25);
 		float tussock = d3 * 0.65 + texture(detail_tex, p / 0.55 + 0.13).r * 0.35;
-		float poke = tussock * mix(0.35, 1.25, clump);
+		float poke = tussock * mix(0.3, 1.5, clump);
 		float lies = 1.0 - smoothstep(0.32, 0.95, slope + (patch - 0.5) * 0.3);
 		// (a bog shows wet only in spots, where the water stands through)
 		float boggy = mud_cover * smoothstep(0.62, 0.8, d2 * 0.5 + d1 * 0.3 + d3 * 0.2) * smoothstep(1.3, 0.6, lie);
@@ -3072,7 +3072,7 @@ void fragment() {
 		snow = max(snow, fall);
 		// (under the snow the grass has died back to a dull winter brown: where
 		// it shows through, it's straw and dead stalks, not a summer lawn)
-		col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7), snow_cover * 0.7 * (1.0 - exposed * clean));
+		col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7), snow_cover * mix(0.7, 0.95, wood_floor) * (1.0 - exposed * clean));
 	}
 	// Wind ripples are resolved only while they cover several pixels.
 	float snow_phase = dot(p, vec2(0.8, 0.6)) * 1.3 + (macro - 0.5) * 7.0 + patch * 9.0;

@@ -2509,11 +2509,15 @@ void fragment() {
 			settled *= 1.0 - smoothstep(0.1, 0.6, melted);
 			thaw_wet = smoothstep(0.45, 0.8, melted) * face * min(1.0, snow_cover * 4.0);
 		}
+		float slushed = 0.0;
 		if (heat > 0.0) {
 			float stack = 1.0 - smoothstep(0.55, 1.5, distance(wpos.xz, snow_k.zw) + (drift - 0.5) * 0.6);
-			float patches = smoothstep(0.68, 0.8, tnoise(tp.xz * 0.45 + seed.xz) * 0.6 + drift * 0.4) * heat;
+			float warmth = tnoise(tp.xz * 0.45 + seed.xz) * 0.6 + drift * 0.4;
+			float patches = smoothstep(0.7, 0.8, warmth) * heat;
 			float bare = max(stack, patches * 0.85);
 			settled *= 1.0 - bare;
+			// (and round each bare patch the snow has gone to grey, wet slush)
+			slushed = smoothstep(0.6, 0.7, warmth) * heat * (1.0 - bare);
 			thaw_wet = max(thaw_wet, bare * face * min(1.0, snow_cover * 4.0));
 		}
 		if (pattern == 20) {
@@ -2523,6 +2527,7 @@ void fragment() {
 		vec3 snow = vec3(0.8, 0.83, 0.88) * (0.93 + 0.07 * drift);
 		// (packed down and trodden grey, the prints in it)
 		snow = mix(snow, vec3(0.36, 0.37, 0.39) * (0.85 + 0.3 * tnoise(wpos.xz * 2.7)), trodden);
+		snow = mix(snow, vec3(0.42, 0.44, 0.47), slushed * 0.7);
 		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
 		ALBEDO = mix(ALBEDO, snow, settled);
 		// (meltwater on the thawed paving and roofs, on the warm deck, and round the snow's edge)

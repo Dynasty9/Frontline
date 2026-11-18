@@ -631,7 +631,8 @@ void vertex() {
 	// (and where a fire or an engine has thawed it, the grass stands up again;
 	// heaped against a wall or a hedge, SnowDrift, it's buried altogether)
 	float banked = smoothstep(0.08, 0.4, texture(drift_tex, at).r) * (1.0 - burnt);
-	float bury = clamp(drifted + (rnd - 0.5) * 0.25, 0.05, 0.97);
+	// (what stands out of it is bowed by the weight it carried: lower still)
+	float bury = clamp(drifted + (rnd - 0.5) * 0.25, 0.05, 0.97) * 0.75 + 0.25;
 	VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(bury, 1.0, banked);
 	// stand on the ground as it is now (shell holes, rims)
 	VERTEX.y += here / max(0.05, length(MODEL_MATRIX[1].xyz));
@@ -659,7 +660,8 @@ void fragment() {
 	// Under snow the grass is winter straw, its foot buried white and only the
 	// tips standing out of it, those dusted too.
 	if (snow_cover > 0.0) {
-		col = mix(col, dry_col * 0.8, snow_cover * 0.6);
+		// (dead and bleached: pale straw, not a dark green)
+		col = mix(col, dry_col * vec3(1.05, 1.0, 0.9), snow_cover * 0.88);
 		vec3 snow = vec3(0.8, 0.83, 0.88);
 		col = mix(col, snow, snow_cover * mix(mix(0.55, 1.0, drifted), mix(0.2, 0.6, drifted), smoothstep(0.3, 0.85, h)) * (1.0 - burnt) * (1.0 - thawed));
 		col *= 1.0 - thawed * snow_cover * 0.3;  // (wet with the melt)

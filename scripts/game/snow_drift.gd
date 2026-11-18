@@ -148,7 +148,11 @@ func _kind(st) -> float:
 func _spec(st, k: float) -> Array:
 	var h := minf(4.0, float(st._vis_height()))
 	var porous: bool = st.skind == "fence" or (st.skind == "low_wall" and int(st.variant) % 3 == 1)
+	# (a garden wall or a hedge drifts out a long way for its height; behind a
+	# house the eddy is short and steep for its size)
 	var reach := clampf(2.0 + 2.2 * h, 3.0, 10.0) * (1.35 if porous else 1.0)
+	if h > 2.0:
+		reach = clampf(2.5 + 1.1 * h, 3.0, 6.5)
 	var back := minf(2.0, reach * 0.3)
 	var c := cos(float(st.yaw))
 	var s := sin(float(st.yaw))
@@ -487,7 +491,9 @@ void fragment() {
 	// a cool shade darker; a shade greyer in the hollow at its foot)
 	vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	vec3 to_sun = normalize(snow_sun());
-	col *= clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.9, 0.75, 1.15) * (1.0 - hollow * 0.12);
+	// (and as dim as the ground's snow round it, which its own bakes of the
+	// sky it can see and of the hills' shade take down: measured, about 0.86)
+	col *= 0.86 * clamp(1.0 + (dot(wn, to_sun) - to_sun.y) * 0.9, 0.75, 1.15) * (1.0 - hollow * 0.12);
 	col *= mix(vec3(1.0), vec3(0.9, 0.95, 1.04), smoothstep(0.0, -0.25, dot(wn, to_sun) - to_sun.y));
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));

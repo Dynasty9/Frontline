@@ -17,8 +17,34 @@ extends RefCounted
 ##   the lee of the one facing the wind, a shallow one against the far one.
 
 const WIND := Vector3(0.924, 0, 0.382)  # (Fires.WIND, flat and normalised)
+## How many roofs may be dressed in one frame (a town's worth at once would hitch).
+const PER_FRAME := 3
 
 static var _mat: ShaderMaterial
+static var _frame := -1
+static var _count := 0
+
+
+## The mesh as it's built: an indexed list, filled directly (a SurfaceTool's
+## per-vertex calls cost a few milliseconds a roof).
+class Build:
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	var idx := PackedInt32Array()
+
+	func quad(a: int, b: int, cc: int, d: int) -> void:
+		idx.append_array(PackedInt32Array([a, b, cc, a, cc, d]))
+
+
+## Whether another roof may be dressed this frame (PER_FRAME).
+static func turn() -> bool:
+	var f := Engine.get_process_frames()
+	if f != _frame:
+		_frame = f
+		_count = 0
+	_count += 1
+	return _count <= PER_FRAME
 
 
 ## The cap for a roof whose form its model recorded (Structure._roof_form), in
@@ -26,26 +52,29 @@ static var _mat: ShaderMaterial
 ## draw. `heat` 0 (cold) to 1, `carry` how much this roof holds, `yaw` the
 ## structure's (to find the wind in the roof's frame).
 static func cap(form: Dictionary, heat: float, carry: float, yaw: float, rng: RandomNumberGenerator) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var b := Build.new()
 	var ang: float = form.get("ang", 0.0)
-	var turn := Basis(Vector3.UP, ang)
 	# (the wind in the kit's frame)
-	var wind := (Basis(Vector3.UP, yaw) * turn).inverse() * WIND
+	var wind := (Basis(Vector3.UP, yaw) * Basis(Vector3.UP, ang)).inverse() * WIND
 	if form.get("flat", false):
-		_parapets(st, form, wind, rng)
+		_parapets(b, form, wind, rng)
 	else:
-		_eaves(st, form, heat, carry, turn, rng)
-	var arrays := st.commit_to_arrays()
-	if (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).is_empty():
+		_eaves(b, form, heat, carry, rng)
+	if b.idx.is_empty():
 		return null
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = b.v
+	arrays[Mesh.ARRAY_NORMAL] = b.n
+	arrays[Mesh.ARRAY_COLOR] = b.c
+	arrays[Mesh.ARRAY_INDEX] = b.idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
 
 
 ## A pitched roof's lips and icicles (BuildingRoofs.gable and hip's geometry).
-static func _eaves(st: SurfaceTool, form: Dictionary, heat: float, carry: float, turn: Basis, rng: RandomNumberGenerator) -> void:
+static func _eaves(b: Build, form: Dictionary, heat: float, carry: float, rng: RandomNumberGenerator) -> void:
 	var t := deg_to_rad(float(form.pitch))
 	var tn := tan(t)
 	var ov := 0.35
@@ -53,10 +82,10 @@ static func _eaves(st: SurfaceTool, form: Dictionary, heat: float, carry: float,
 	var fx: float = maxf(float(form.fx), fz)
 	var th: float = form.get("th", 0.09)
 	var edge := float(form.h) - ov * tn + th / cos(t)  # the covering's top at the eave's edge
-	# (sheet lets go of it sooner and drops more of it at the eaves; a warm
-	# house's has mostly melted and run off as icicles)
+	# (a barn's cold sheet drops most of what slides off it at the eaves; a warm
+	# house's has partly melted and run off as icicles)
 	var r := (0.28 if form.get("barn", false) else 0.21) * clampf(carry, 0.6, 1.2) * (1.0 - heat * 0.3)
-	var sides: Array = []  # [from, to, outward (horizontal), its own length]
+	var sides: Array = []  # [from, to, outward (horizontal)]
 	if form.get("hipped", false):
 		var ex := fx + ov
 		var ez := fz + ov
@@ -76,24 +105,24 @@ static func _eaves(st: SurfaceTool, form: Dictionary, heat: float, carry: float,
 			# up the verges, a thinner lip
 			for e: float in [-1.0, 1.0]:
 				var n := Vector3(0, cos(t), s * sin(t))
-				_roll(st, Vector3(e * run, edge, s * reach), Vector3(e * run, ridge, 0.0), Vector3(e, 0, 0), n, r * 0.45, 0.25, rng, 0.0)
+				_roll(b, Vector3(e * run, edge, s * reach), Vector3(e * run, ridge, 0.0), Vector3(e, 0, 0), n, r * 0.45, 0.25, rng, 0.0)
 	for side: Array in sides:
 		var o: Vector3 = side[2]
 		var n := (o * sin(t) + Vector3.UP * cos(t)).normalized()
 		var d := (o * cos(t) - Vector3.UP * sin(t)).normalized()
-		_roll(st, side[0], side[1], d, n, r, 1.0, rng, 1.0)
+		_roll(b, side[0], side[1], d, n, r, 0.45, rng, 1.0)
 		if heat > 0.0:
-			_icicles(st, side[0], side[1], o, edge - th / cos(t) - 0.12, heat, rng)
+			_icicles(b, side[0], side[1], o, edge - th / cos(t) - 0.12, heat, rng)
 
 
-## A rounded lip of snow along a roof's edge from `a` to `b`: `d` points out
+## A rounded lip of snow along a roof's edge from `a` to `e`: `d` points out
 ## over the edge in the slope's plane, `n` out of the slope. It lies on the
 ## covering `tail` metres up the slope and curls over and down past the edge.
 ## `breaks` how often it's broken (where some of it fell). (vertex colour red:
 ## 0 snow, 1 ice; green: how far round the curl, for its shading)
-static func _roll(st: SurfaceTool, a: Vector3, b: Vector3, d: Vector3, n: Vector3, r: float, tail: float, rng: RandomNumberGenerator, breaks: float) -> void:
-	var length := a.distance_to(b)
-	var along := (b - a) / maxf(length, 0.001)
+static func _roll(b: Build, a: Vector3, e: Vector3, d: Vector3, n: Vector3, r: float, tail: float, rng: RandomNumberGenerator, breaks: float) -> void:
+	var length := a.distance_to(e)
+	var along := (e - a) / maxf(length, 0.001)
 	var segs := maxi(1, int(ceil(length / 0.5)))
 	# the cross-section, in (d, n): from the covering up the slope, over the
 	# top, round the edge and down
@@ -102,27 +131,27 @@ static func _roll(st: SurfaceTool, a: Vector3, b: Vector3, d: Vector3, n: Vector
 	for i in 7:
 		var phi := lerpf(PI * 0.5, down_a - 0.25, i / 6.0)
 		section.append(Vector2(r * 0.25, 0.0) + Vector2(cos(phi), sin(phi)) * r)
-	# how thick it is at each joint along its length (gusts, and gaps where it fell)
-	var thick := PackedFloat32Array()
+	var cols := section.size()
+	var normals: Array[Vector3] = []
+	for i in cols:
+		normals.append(_curl_normal(section, i, d, n))
+	var base := b.v.size()
 	for j in segs + 1:
+		# how thick it is at each joint along its length (gusts, and gaps where it fell)
 		var k := rng.randf_range(0.65, 1.15)
 		if breaks > 0.0 and rng.randf() < 0.12 * breaks and j > 0 and j < segs:
 			k = 0.0
-		thick.append(k)
+		var at := a + along * (length * j / segs)
+		for i in cols:
+			var q: Vector2 = section[i]
+			# (scaled toward the edge: a gap closes the lip down onto it)
+			b.v.append(at + d * (q.x if i == 0 else q.x * k) + n * (q.y * k))
+			b.n.append(normals[i])
+			b.c.append(Color(0.0, float(i) / (cols - 1), 0.0))
 	for j in segs:
-		for i in section.size() - 1:
-			var quad: Array[Vector3] = []
-			var at: Array[int] = []
-			for c in [[j, i], [j + 1, i], [j + 1, i + 1], [j, i + 1]]:
-				var q: Vector2 = section[c[1]]
-				var k: float = thick[c[0]]
-				# (scaled toward the edge: a gap closes the lip down onto it)
-				quad.append(a + along * (length * c[0] / segs) + d * (q.x if c[1] == 0 else q.x * k) + n * (q.y * k))
-				at.append(c[1])
-			for idx in [0, 1, 2, 0, 2, 3]:
-				st.set_color(Color(0.0, float(at[idx]) / (section.size() - 1), 0.0))
-				st.set_normal(_curl_normal(section, at[idx], d, n))
-				st.add_vertex(quad[idx])
+		for i in cols - 1:
+			var p := base + j * cols + i
+			b.quad(p, p + cols, p + cols + 1, p + 1)
 
 
 ## The lip's normal at a point of its section: out from the middle of the
@@ -134,11 +163,11 @@ static func _curl_normal(section: Array[Vector2], k: int, d: Vector3, n: Vector3
 	return (d * dir.x + n * dir.y).normalized()
 
 
-## Icicles under an eave from `a` to `b` (outward `o`), hanging from `y`: in
+## Icicles under an eave from `a` to `e` (outward `o`), hanging from `y`: in
 ## runs where the meltwater drips off the warm roof, the longest mid-run.
-static func _icicles(st: SurfaceTool, a: Vector3, b: Vector3, o: Vector3, y: float, heat: float, rng: RandomNumberGenerator) -> void:
-	var length := Vector2(a.x - b.x, a.z - b.z).length()
-	var along := Vector3(b.x - a.x, 0, b.z - a.z) / maxf(length, 0.001)
+static func _icicles(b: Build, a: Vector3, e: Vector3, o: Vector3, y: float, heat: float, rng: RandomNumberGenerator) -> void:
+	var length := Vector2(a.x - e.x, a.z - e.z).length()
+	var along := Vector3(e.x - a.x, 0, e.z - a.z) / maxf(length, 0.001)
 	var x := rng.randf_range(0.1, 0.8)
 	while x < length - 0.1:
 		var run := rng.randf_range(0.6, 2.4) * heat
@@ -148,37 +177,35 @@ static func _icicles(st: SurfaceTool, a: Vector3, b: Vector3, o: Vector3, y: flo
 			var long := rng.randf_range(0.06, 0.38) * (1.0 - absf(x - mid) / maxf(run * 0.5, 0.1) * 0.6) * (0.6 + 0.4 * heat)
 			var rad := rng.randf_range(0.016, 0.03)
 			var top := Vector3(a.x, y, a.z) + along * x + o * (0.14 + rng.randf_range(-0.02, 0.02))
-			_cone(st, top, rad, long)
+			_cone(b, top, rad, long)
 			x += rng.randf_range(0.07, 0.22)
 		x = end + rng.randf_range(0.8, 3.0)
 
 
-static func _cone(st: SurfaceTool, top: Vector3, rad: float, long: float) -> void:
-	var tip := top - Vector3(0, long, 0)
-	var ring: Array[Vector3] = []
+static func _cone(b: Build, top: Vector3, rad: float, long: float) -> void:
+	var base := b.v.size()
 	for i in 4:
 		var a := i * PI * 0.5 + 0.4
-		ring.append(top + Vector3(cos(a), 0, sin(a)) * rad)
+		var out := Vector3(cos(a), 0, sin(a))
+		b.v.append(top + out * rad)
+		b.n.append((out + Vector3(0, -rad / maxf(long, 0.01), 0)).normalized())
+		b.c.append(Color(1.0, 0.0, 0.0))
+	b.v.append(top - Vector3(0, long, 0))
+	b.n.append(Vector3.DOWN)
+	b.c.append(Color(1.0, 0.0, 0.0))
 	for i in 4:
-		var p0 := ring[i]
-		var p1 := ring[(i + 1) % 4]
-		var nrm := (p1 - p0).cross(tip - p0).normalized()
-		if nrm.dot((p0 + p1) * 0.5 - top) < 0.0:
-			nrm = -nrm
-		for p in [p0, p1, tip]:
-			st.set_color(Color(1.0, 0.0, 0.0))
-			st.set_normal(nrm)
-			st.add_vertex(p)
+		b.idx.append_array(PackedInt32Array([base + i, base + (i + 1) % 4, base + 4]))
 
 
 ## A flat roof's drifts against its parapets (BuildingRoofs.flat: the deck's
 ## top 0.2 above the walls, parapets 0.18 thick inside its edge).
-static func _parapets(st: SurfaceTool, form: Dictionary, wind: Vector3, rng: RandomNumberGenerator) -> void:
+static func _parapets(b: Build, form: Dictionary, wind: Vector3, rng: RandomNumberGenerator) -> void:
 	var L: float = form.L
 	var W: float = form.W
 	var deck := float(form.h) + 0.2
 	var ix := L * 0.5 - 0.13
 	var iz := W * 0.5 - 0.13
+	var prof: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(0.25, 0.92), Vector2(0.55, 0.62), Vector2(0.8, 0.25), Vector2(1.0, 0.0)]
 	for q in 4:
 		var o := Basis(Vector3.UP, q * PI * 0.5) * Vector3(0, 0, 1)  # out through this parapet
 		var into := o.dot(wind)  # (+: the wind blows out over it, so it's the far one)
@@ -192,24 +219,21 @@ static func _parapets(st: SurfaceTool, form: Dictionary, wind: Vector3, rng: Ran
 		var reach := iz if q % 2 == 0 else ix
 		var face := o * reach + Vector3.UP * deck
 		var segs := maxi(1, int(ceil(half * 2.0)))
-		var prof: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(0.25, 0.92), Vector2(0.55, 0.62), Vector2(0.8, 0.25), Vector2(1.0, 0.0)]
-		var vary := PackedFloat32Array()
+		var base := b.v.size()
 		for j in segs + 1:
-			vary.append(rng.randf_range(0.7, 1.15) * (smoothstep(0.0, 0.8, half - absf(-half + 2.0 * half * j / segs)) * 0.6 + 0.4))
+			var k := rng.randf_range(0.7, 1.15) * (smoothstep(0.0, 0.8, half - absf(-half + 2.0 * half * j / segs)) * 0.6 + 0.4)
+			for i in prof.size():
+				var pr: Vector2 = prof[i]
+				b.v.append(face + along * (-half + 2.0 * half * j / segs) - o * (pr.x * wide * k) + Vector3.UP * (pr.y * deep * k + 0.01))
+				# (the bank's slope: down and away from the parapet)
+				var slope := 1.3 * deep / maxf(wide, 0.05) * (1.0 if i > 0 and i < prof.size() - 1 else 0.4)
+				b.n.append((Vector3.UP - o * slope).normalized())
+				b.c.append(Color(0.0, 0.0, 0.0))
+		var cols := prof.size()
 		for j in segs:
-			for i in prof.size() - 1:
-				var quad: Array[Vector3] = []
-				for c in [[j, i], [j + 1, i], [j + 1, i + 1], [j, i + 1]]:
-					var pr: Vector2 = prof[c[1]]
-					var k: float = vary[c[0]]
-					quad.append(face + along * (-half + 2.0 * half * c[0] / segs) - o * (pr.x * wide * k) + Vector3.UP * (pr.y * deep * k + 0.01))
-				var nrm := (quad[1] - quad[0]).cross(quad[3] - quad[0]).normalized()
-				if nrm.y < 0.0:
-					nrm = -nrm
-				for idx in [0, 1, 2, 0, 2, 3]:
-					st.set_color(Color(0.0, 0.0, 0.0))
-					st.set_normal(nrm)
-					st.add_vertex(quad[idx])
+			for i in cols - 1:
+				var p := base + j * cols + i
+				b.quad(p, p + cols, p + cols + 1, p + 1)
 
 
 static func material() -> ShaderMaterial:
@@ -243,6 +267,15 @@ void vertex() {
 }
 
 void fragment() {
+	// (drawn both ways, but lit by the normals it was built with, which face
+	// out: the engine flips them on the faces it sees from behind)
+	if (!FRONT_FACING) {
+		NORMAL = -NORMAL;
+	}
+	// (its top as soft as the roof's own coat, Mats: so the two meet without a seam)
+	if (ice < 0.5) {
+		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, 0.4 * (1.0 - smoothstep(0.3, 0.6, curl))));
+	}
 	// (melted off round a fire, as the roof's own: SnowMelt)
 	if (snow_thaw_0.z > 0.0 && surface_thaw(wpos.xz, 0.0) > 0.35) {
 		discard;

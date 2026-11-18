@@ -405,7 +405,7 @@ void fragment() {
 	}
 	ROUGHNESS = mix(ROUGHNESS, 0.85, snowed);
 	BACKLIGHT = kind == 0 || kind == 5 ? vec3(0.05,0.08,0.02) * (1.0 - snowed) : vec3(0.0);
-	if (kind == 0 || kind == 2 || kind == 4 || kind == 5) {
+	if (kind == 0 || kind == 2 || kind == 4 || kind == 5 || kind == 7) {
 		vec3 normal = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 		normal.y = abs(normal.y);
 		NORMAL = normalize((VIEW_MATRIX * vec4(normal, 0.0)).xyz);

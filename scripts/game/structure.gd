@@ -1589,7 +1589,7 @@ func _roof_view(dt: float) -> void:
 			break
 	if model.visible == inside:
 		model.visible = not inside
-	if world.atmo and world.atmo.snow_cover > 0.0 and not _roof_form.is_empty() and not burnt 			and (_snow_cap == null or not is_instance_valid(_snow_cap) or _snow_cap.get_parent() != model):
+	if world.atmo and world.atmo.snow_cover > 0.0 and not _roof_form.is_empty() and not burnt 			and (_snow_cap == null or not is_instance_valid(_snow_cap) or _snow_cap.get_parent() != model) and SnowRoof.turn():
 		_snow_roof()
 
 
