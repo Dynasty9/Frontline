@@ -336,6 +336,13 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# The water tower stands on its piers within its footprint, its finial at
+	# 13.5 m or so.
+	var wtk := kit()
+	BuildingLandmarks.water_tower(wtk, wtk.rng)
+	var wtb := _bounds(wtk.sink.root, Transform3D.IDENTITY)
+	check(wtb.size.x <= 6.5 and wtb.size.z <= 6.4 and wtb.position.y >= -0.01 and wtb.end.y > 13.0 and wtb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % wtb)
+	wtk.sink.root.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:

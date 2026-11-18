@@ -268,6 +268,17 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## The water tower
+
+A town's water tower is `BuildingLandmarks.water_tower`, standing where Decor's `water_tower` stands:
+- **The legs:** four round columns splayed out to concrete piers, two tiers of struts with crossed tension rods and
+  turnbuckles between them, the riser pipe up the middle.
+- **The tank:** on its ring girder, with a catwalk and railing round its foot, its plates in riveted bands with rust
+  weeping from the top seam, under a cone roof with a hatch, a vent and a finial.
+- **The ladders:** one up a leg in its safety cage to the catwalk, another up the tank to the roof.
+
+Render it with `--building-kinds=water_tower`.
+
 ## Who uses what
 
 | Component | Users |
