@@ -1433,13 +1433,13 @@ static func _glasshouse(k: VehicleModels, parent: Node3D, key: String, lo: Packe
 		var v0 := 0.04
 		var v1 := 0.95
 		if face == 2:
-			openings = [[0.12, 0.88]] if key == "civ_off" else ([[0.1, 0.9]] if key == "civ_suv" else [[0.08, 0.92]])
-			v0 = 0.22 if key == "civ_off" else (0.16 if key == "civ_suv" else 0.12)
-			v1 = 0.86 if key == "civ_off" else (0.88 if key == "civ_suv" else 0.9)
+			openings = [[0.12, 0.88]] if key == "civ_off" else ([[0.1, 0.9]] if key.begins_with("civ_suv") else [[0.08, 0.92]])
+			v0 = 0.22 if key == "civ_off" else (0.16 if key.begins_with("civ_suv") else 0.12)
+			v1 = 0.86 if key == "civ_off" else (0.88 if key.begins_with("civ_suv") else 0.9)
 		elif face in [1, 3]:
-			openings = [[0.06, 0.94]] if key == "civ_off" else ([[0.03, 0.43], [0.47, 0.8]] if key == "civ_suv" else [[0.04, 0.42], [0.47, 0.75], [0.79, 0.9]])
-			v0 = 0.08 if key == "civ_off" else (0.1 if key == "civ_suv" else 0.07)
-			v1 = 0.88 if key == "civ_suv" else 0.9
+			openings = [[0.06, 0.94]] if key == "civ_off" else ([[0.03, 0.43], [0.47, 0.8]] if key.begins_with("civ_suv") else [[0.04, 0.42], [0.47, 0.75], [0.79, 0.9]])
+			v0 = 0.08 if key == "civ_off" else (0.1 if key.begins_with("civ_suv") else 0.07)
+			v1 = 0.88 if key.begins_with("civ_suv") else 0.9
 			if face == 3:
 				openings.reverse()
 				for i in openings.size():
@@ -1534,21 +1534,24 @@ static func _suv(k: VehicleModels, seed: int) -> void:
 	var hi := PackedVector3Array([Vector3(-0.7, 1.72, 0.06), Vector3(0.7, 1.72, 0.06), Vector3(0.66, 1.69, 1.08), Vector3(-0.66, 1.69, 1.08)])
 	if k.wreck:
 		hi = PackedVector3Array([Vector3(-0.69, 1.7, 0.12), Vector3(0.69, 1.7, 0.12), Vector3(0.64, 1.66, 0.85), Vector3(-0.64, 1.66, 0.85)])
-	_glasshouse(k, m, "civ_suv", lo, hi, 0.04, col)
+	# (the live SUV's longer roof and its glass under keys of their own: a
+	# wreck keeps the old roof under the old ones, and the mesh cache is by key)
+	var gk := "civ_suv" if k.wreck else "civ_suv_lv"
+	_glasshouse(k, m, gk, lo, hi, 0.04, col)
 	var inside := Vector3(0, 1.4, 0.5)
-	_pane(k, m, "civ_suv_ws", _face(lo, hi, 0), inside, 0.03, 0.97, 0.04, 0.95, 0.0, 0.012, "glass")
+	_pane(k, m, gk + "_ws", _face(lo, hi, 0), inside, 0.03, 0.97, 0.04, 0.95, 0.0, 0.012, "glass")
 	if absi(hash([col, 43])) % 4 == 0:
 		VehicleEquipment.sunshade(k, m, _face(lo, hi, 0), inside, VehicleEquipment.SHADES[absi(hash([col, 44])) % VehicleEquipment.SHADES.size()])
-	_pane(k, m, "civ_suv_rw", _face(lo, hi, 2), inside, 0.1, 0.9, 0.16, 0.88, 0.0, 0.012, "glass")
+	_pane(k, m, gk + "_rw", _face(lo, hi, 2), inside, 0.1, 0.9, 0.16, 0.88, 0.0, 0.012, "glass")
 	# the sliding sunroof over the front seats (opaque: the roof lining is
 	# behind it)
-	_pane(k, m, "civ_suv_roof", [hi[0], hi[1], hi[2], hi[3]], inside, 0.18, 0.82, 0.1, 0.7, 0.0, 0.006, "glass")
+	_pane(k, m, gk + "_roof", [hi[0], hi[1], hi[2], hi[3]], inside, 0.18, 0.82, 0.1, 0.7, 0.0, 0.006, "glass")
 	for f in [1, 3]:
 		var a: bool = f == 1
 		for w in [[0.03, 0.43], [0.47, 0.8]]:
 			var u0: float = w[0] if a else 1.0 - float(w[1])
 			var u1: float = w[1] if a else 1.0 - float(w[0])
-			_pane(k, m, "civ_suv_sw%d_%d" % [f, int(u0 * 100)], _face(lo, hi, f), inside, u0, u1, 0.1, 0.88, 0.0, 0.012, "glass")
+			_pane(k, m, (gk + "_sw%d_%d") % [f, int(u0 * 100)], _face(lo, hi, f), inside, u0, u1, 0.1, 0.88, 0.0, 0.012, "glass")
 	_car_details(k, m, 0.05, zr, 1.19)
 	# the alloys: silver, but one owner in three ordered them in anthracite (a
 	# street of these on one wheel read as stamped from one mould; a wreck's
