@@ -43,8 +43,11 @@ func check(k: VehicleModels, envelope: AABB, label: String) -> void:
 	k.root.free()
 
 func glass_count(k: VehicleModels) -> int:
+	# (sights and vision blocks are armoured glass: thick, dark, coated)
 	var glass := Mats.get_mat(VehicleMaterials.key("glass", k.surface_family))
-	return materials(k).count(glass)
+	var armour := Mats.get_mat(VehicleMaterials.key("armor_glass", k.surface_family))
+	var all := materials(k)
+	return all.count(glass) + all.count(armour)
 
 func _ready() -> void:
 	TestRun.watch()
