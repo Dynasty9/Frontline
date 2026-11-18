@@ -662,7 +662,7 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	_bx(k, el, Vector3(0.5, 0.12, 0.3), Vector3(0, -0.06, -0.2), cm, col)
 	_bx(k, el, Vector3(0.12, 0.34, 0.14), Vector3(-0.08, 0.3, 0.12), gm)
 	VehicleMounts.sight(k, el, Vector3(-0.08, 0.5, 0.1), Vector3(0.24, 0.16, 0.2), [Rect2(Vector2.ZERO, Vector2(0.16, 0.1))], gm)
-	k.mg_tip = k._tip(el, Vector3(0, 0.04, -2.74))  # (the hiders' mouths)
+	k.mg_tip = k._tip(el, Vector3(0, 0.04, -2.72))
 	# two seats with backrests behind the guns, each on its post, handwheels
 	# in front of them
 	for sx in [-1.0, 1.0]:

@@ -1359,7 +1359,7 @@ static func _zu23(k: VehicleModels, team: int) -> void:
 		_bx(k, el, Vector3(0.18, 0.03, 0.58), Vector3(s * 0.38, 0.18, 0.1), "paint", g.darkened(0.2))
 		_bx(k, el, Vector3(0.1, 0.16, 0.2), Vector3(gx, -0.18, 0.15), "gunmetal_w")
 	_bx(k, el, Vector3(0.22, 0.1, 0.4), Vector3(0, -0.05, -0.2), "paint", g)
-	k.mg_tip = k._tip(el, Vector3(0, 0.02, -2.66))  # (the hiders' mouths)
+	k.mg_tip = k._tip(el, Vector3(0, 0.02, -2.63))
 	# the gunner's seat and his sight on the left, the hand wheels, the second
 	# seat on the right
 	_bx(k, t, Vector3(0.05, 0.4, 0.06), Vector3(-0.3, 0.75, -0.3), "gunmetal_w")
@@ -1798,7 +1798,7 @@ static func _btr80(k: VehicleModels, team: int, seed := 0) -> void:
 	# conical flash hider on its muzzle; the coaxial PKT's port to its right
 	VehicleWeapons.autocannon(k, t, Vector3(0, gy, -0.89), Vector3(0, gy, -2.9), Vector2(0.065, 0.62), Vector2(0.034, 0.032), Vector2(0.032, 0.001))
 	VehicleWeapons.cone_hider(k, t, Vector3(0, gy, -2.9), 0.032, 0.052, 0.2)
-	k.mg_tip = k._tip(t, Vector3(0, gy, -2.93))
+	k.mg_tip = k._tip(t, Vector3(0, gy, -2.92))
 	VehicleWeapons.coax(k, t, Vector3(0.2, gy - 0.04, -0.85), 0.4, 0.02)
 	# the gunner's sight on the left of the roof, a vision block right, the hatch
 	VehicleMounts.sight(k, t, Vector3(-0.2, 0.62, -0.25), Vector3(0.16, 0.2, 0.2), [Rect2(Vector2(0, 0.02), Vector2(0.1, 0.08))], "gunmetal_w")
