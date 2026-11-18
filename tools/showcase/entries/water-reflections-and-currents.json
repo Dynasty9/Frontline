@@ -3,7 +3,7 @@
   "summary": "Rivers, ponds and the sea reflect the banks, trees, bridges and boats around them, and rivers run downstream round their bends.",
   "medium": "still",
   "stage": "Off-screen game renders (main.gd --screenshot), matched before/after: --aivai --seed=3 --mood=day river view and --mission=beachhead --play beach view",
-  "rationale": "The outcome is how the water looks: reflections, the darker river channel and the current's lanes. Matched stills of a river under a bridge and of the Beachhead shore show them at a readable size. The current's motion is slow drift, which stills carry through the lanes it leaves; the GPU cost is a measurement stated in the pull request, not a picture.",
+  "rationale": "Preserve the original matched stills for reflection appearance and river depth. Stills cannot establish downstream motion, camera-pan stability, or off-screen fallback; a matched gameplay WebM remains required for those claims.",
   "source_ref": "b054bb01 (before) and cef1f8b7 (after), Godot 4.7.2 Forward+, RTX 3090",
   "before_ref": "Clean copy of b054bb01 rendered with the same commands; only the water view differs between the two trees.",
   "capture": {
@@ -15,13 +15,16 @@
     "Godot import: no SCRIPT ERROR or Parse Error",
     "Headless --scenario=naval seed 3: exit 0, no script errors",
     "Off-screen renders on Low, Medium, High and Ultra water, and gl_compatibility on High and Low: no shader or script errors",
-    "--gpu-bench --gpu-bench-only=water,scale: High over Low water at most about 0.2 ms on an RTX 3090 (within the runs' noise)",
+    "Historical RTX 3090 High-minus-Low samples are recorded in the PR; competing processes and sample spreads prevent a reliable cost bound.",
     "python .github/scripts/changelog.py check passed"
   ],
   "limitations": [
     "Reflections show only what is on screen and opaque; flames and smoke are not mirrored.",
     "GPU timings were taken on a machine shared with other Godot runs; spreads of 0.3 to 1.6 ms.",
-    "No clip of the current's motion."
+    "No clip of the current's motion.",
+    "The stills predate the reflection hit-validation follow-up; they do not validate that change.",
+    "Follow-up: Compatibility shader compilation of the exact reflection functions passed on Godot 4.7 / Mesa llvmpipe for 11 and 16 steps. Full game rendering was blocked by incomplete asset retrieval; Forward+ has no Vulkan device/driver in this cloud workspace.",
+    "Hit validation adds an initial depth lookup and a refined-hit lookup, and rejected candidates can continue marching. No same-scene GPU cost has been measured for this follow-up."
   ],
   "sources": [
     {

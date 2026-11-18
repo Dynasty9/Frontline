@@ -30,3 +30,7 @@ caption = "The same beach before"
   runs downwind, and the far sea mirrors the sky evenly instead of breaking into dark blotches.
 - Medium keeps the flowing rivers and their lanes without the reflections; on Low the ripples still follow
   the current.
+
+Reflections now require a front-to-back depth crossing and fade out when the refined hit is too far behind the visible surface. This guards against foreground silhouettes being accepted as reflected surfaces while the camera moves. Off-screen rays continue to use the sky fallback.
+
+The images above show the original reflection pass, before this hit-validation follow-up. Matched gameplay clips, shoreline and camera-pan review, and an uncontended same-scene GPU comparison for the follow-up are still pending.

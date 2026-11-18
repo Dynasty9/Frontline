@@ -976,6 +976,7 @@ vec2 to_uv(vec3 v, mat4 pr) {
 vec4 mirror(vec3 o, vec3 dir, float dist, mat4 pr, mat4 ip) {
 	float stride = max(0.35, dist * 0.012);
 	vec3 a = o;
+	float previous = -a.z - scene_z(to_uv(a, pr), ip);
 	for (int i = 0; i < MIRROR_STEPS; i++) {
 		vec3 b = a + dir * stride;
 		if (b.z > -0.2) {
@@ -986,21 +987,32 @@ vec4 mirror(vec3 o, vec3 dir, float dist, mat4 pr, mat4 ip) {
 			break;
 		}
 		float behind = -b.z - scene_z(uv, ip);
-		if (behind > 0.0 && behind < stride * 1.5 + 0.6) {
+		// Only refine a crossing from in front of the depth surface. A ray
+		// already behind a foreground hull must not mirror its silhouette.
+		if (previous <= 0.0 && behind > 0.0 && behind < stride * 1.5 + 0.6) {
+			vec3 lo = a;
+			vec3 hi = b;
 			for (int j = 0; j < 4; j++) {
-				vec3 m = (a + b) * 0.5;
+				vec3 m = (lo + hi) * 0.5;
 				if (-m.z > scene_z(to_uv(m, pr), ip)) {
-					b = m;
+					hi = m;
 				} else {
-					a = m;
+					lo = m;
 				}
 			}
-			uv = to_uv(b, pr);
-			// (fading out toward the screen's edges and the far end of the ray)
-			vec2 e = smoothstep(vec2(0.0), vec2(0.07), uv) * smoothstep(vec2(1.0), vec2(0.93), uv);
-			return vec4(textureLod(screen_tex, uv, 0.0).rgb, e.x * e.y * (1.0 - smoothstep(0.5, 1.0, float(i) / float(MIRROR_STEPS))));
+			uv = to_uv(hi, pr);
+			// A silhouette is a depth discontinuity, not a surface crossing.
+			// Reject its residual after refinement; never grow this thickness
+			// with the march stride or distant banks become thick mirrors.
+			float gap = -hi.z - scene_z(uv, ip);
+			float confidence = 1.0 - smoothstep(0.15, 0.6, gap);
+			if (confidence > 0.0) {
+				vec2 e = smoothstep(vec2(0.0), vec2(0.07), uv) * (vec2(1.0) - smoothstep(vec2(0.93), vec2(1.0), uv));
+				return vec4(textureLod(screen_tex, uv, 0.0).rgb, confidence * e.x * e.y * (1.0 - smoothstep(0.5, 1.0, float(i) / float(MIRROR_STEPS))));
+			}
 		}
 		// (passing behind something nearer: it may come out beyond it)
+		previous = behind;
 		a = b;
 		stride *= 1.4;
 	}
