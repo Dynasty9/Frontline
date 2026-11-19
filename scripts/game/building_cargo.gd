@@ -53,6 +53,23 @@ static func stack(k: BuildingKit, variant: int, seed_from: RandomNumberGenerator
 			ammo_box(k, Vector3(0.6 + rng.randf_range(-0.08, 0.08), top, rng.randf_range(-0.15, 0.15)), AMMO, _olive(rng), rng.randf_range(0.3, 1.2), _lot(rng))
 
 
+## One pallet load at `base` (see _load), for whatever stacks stores: the
+## town's supply dump. Returns how high the load stands.
+static func pallet_load(k: BuildingKit, base: Vector3, kind: int, rng: RandomNumberGenerator) -> float:
+	return _load(k, base, kind, rng)
+
+
+## A row of ammunition boxes stacked `layers` high at `base` along x, `n` of
+## them, as they're stood by a command post's door.
+static func ammo_row(k: BuildingKit, base: Vector3, n: int, layers: int, rng: RandomNumberGenerator) -> void:
+	var lot := _lot(rng)
+	for i in n:
+		for layer in layers:
+			if layer == layers - 1 and rng.randf() < 0.3:
+				continue  # (the top one's been taken)
+			ammo_box(k, base + Vector3(i * (AMMO.x + 0.04), layer * AMMO.y, rng.randf_range(-0.03, 0.03)), AMMO, _olive(rng), rng.randf_range(-0.06, 0.06), lot, layer == 0)
+
+
 ## A pallet at `base` with its load: 0 a low crate with two ammunition boxes
 ## on it, 1 three layers of ammunition boxes (the top one laid across, to tie
 ## the stack), 2 a tall crate. Returns how high the load stands.
