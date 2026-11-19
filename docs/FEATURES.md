@@ -1918,6 +1918,8 @@ Delta 1 - take objective, D4. Wilco.").
 
 ### Imported rifleman and shared impacts
 
+When a soldier changes direction, the visible body finishes its outgoing stride and turns toward the new heading. The close-up skeleton and distant formation share the same motion. The host keeps the model within 32 cm of the simulated position, and clients use their existing position interpolation.
+
 The detailed rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. Locally installed Male Injured Pack clips supply standing limping and dazed recovery with the rifle slung. Installed Talking, Laughing and Arm Stretching clips also replace the standing relaxed idles and recover to the armed pose; Rifle Idle supplies the armed lookout. Foot plants retain the visible boot position when acquiring contact. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
 
 When the local Mixamo prone family is installed, forward/backward crawling, stops, idle, firing, reload and grenade throw use captured clips. The installed crouch-to-prone and prone-to-crouch transitions supply entry and recovery; the kneeling pair remains the fallback. A prone-specific captured flinch supplies frontal hit reactions while keeping the weapon grips. The shared controller preserves hand contacts during prone idle/fire and releases the hands for crawling, reloading and throwing. These local evaluation assets are not bundled automatically; missing clips retain the procedural fallback.
