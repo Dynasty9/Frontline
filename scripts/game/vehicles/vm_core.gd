@@ -917,6 +917,11 @@ static func _bedroll(k: VehicleModels, parent: Node3D, center: Vector3, length: 
 	var rng := VehicleCargo.kit(k, parent, center, 2)
 	if rng != null:
 		cloth = VehicleCargo.kit_colour(rng, cloth, VehicleCargo.KIT_CLOTH, 0.4)
+	# Coyote and sand shells are dull, greyish tans: at the kit palette's
+	# brown the game's sun turned a roll terracotta, the warmest thing on the
+	# hull, so a live roll's colour keeps a dull tan's saturation at most.
+	if not k.wreck:
+		cloth = Color.from_hsv(cloth.h, minf(cloth.s, 0.26), cloth.v)
 	if _roll_mesh == null:
 		var fabric := SurfaceTool.new()
 		fabric.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -943,10 +948,15 @@ static func _bedroll(k: VehicleModels, parent: Node3D, center: Vector3, length: 
 				fabric.add_index(index)
 		fabric.generate_normals()
 		_roll_mesh = fabric.commit()
-	k._add(parent, _roll_mesh, "canvas", cloth, center, Vector3.ZERO, Vector3(length * 0.5, radius, radius * 1.12))
+	# A crew's bedroll is a sleeping bag in a nylon shell, not cotton duck:
+	# in the canvas finish's warm tone the game's sun turned a tan roll the
+	# orange of a terracotta pot, the warmest thing on a tank. (A wreck's
+	# stays canvas, which a burnt hulk burns away.)
+	var shell := "canvas" if k.wreck else "nylon"
+	k._add(parent, _roll_mesh, shell, cloth, center, Vector3.ZERO, Vector3(length * 0.5, radius, radius * 1.12))
 	# The wound layers show on its ends as a darker spiral, the rolled
 	# cloth's edge winding in to the core.
-	k._add(parent, _bedroll_spiral(), "canvas", cloth.darkened(0.25), center, Vector3.ZERO, Vector3(length * 0.5, radius, radius * 1.12), false)
+	k._add(parent, _bedroll_spiral(), shell, cloth.darkened(0.25), center, Vector3.ZERO, Vector3(length * 0.5, radius, radius * 1.12), false)
 	for s: float in [-1.0, 1.0]:
 		var strap := center + Vector3.RIGHT * s * length * 0.275
 		# (webbing, a strap's own weave; a wreck's burnt away with the roll)

@@ -12,7 +12,8 @@ caption = "Matched studio views: before on the left, after on the right. The Sla
   hang loose at the hem, with straps you can see. A tarp over a loose load drapes soft over it.
 - Bags, rucksacks, bedrolls and buggy harnesses have dark plastic buckles, so stowed kit no longer shows a pale
   tag on every lid.
-- Sandbags are pressed flat and matt, and white sacks are grey with the earth they were filled with.
+- Sandbags are pressed flat and matt, and white sacks are grey with the earth they were filled with. Bedrolls on
+  tank bustles are dull tan nylon instead of terracotta.
 - The engine-deck covers on NATO tanks are punched all over with small holes, instead of two rows of large dots.
 - The floor under a truck's tilt is in shade, the HEMTT and Tempest vary their roof recognition panels by body,
   and the M35's wheels are painted with the truck.

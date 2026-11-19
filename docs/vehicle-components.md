@@ -1162,6 +1162,8 @@ count (-0.02%): the plainer spares pay for the perforated decks (up to +3.1% on 
 - **Sandbags**: `VehicleCloth._sack`'s top is pressed flat with square shoulders, not a loaf's dome; every sack is
   matt `canvas` (woven polypropylene included), and the poly lot's white and sand are dirtied to a mid grey and
   a duller sand, so a wall of them is no longer the brightest thing on a cab.
+- **Bedrolls**: `VmCore._bedroll` builds a live roll in the `nylon` finish and keeps its colour to a dull tan's
+  saturation, so a coyote roll on a tank's bustle no longer turns terracotta in the sun (a wreck's stays canvas).
 - **Perforated decks**: `VehicleFittings._perforated` punches the cover all over, 6.5 cm apart in staggered rows
   along the plate's edges, all the holes in one mesh: from the battle camera a finely darkened plate.
 - **Spares**: `VehicleWheels.spare(..., against)` takes a point on the panel the spare is carried against (its
