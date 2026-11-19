@@ -421,10 +421,13 @@ static func turret_ring(k: VehicleModels, parent: Node3D, center: Vector3, top_r
 ## from the battle camera, not a pale blue pane like a windscreen. (Within
 ## the glass tint's range: a paler colour clamps to the cab glass's own pale
 ## blue-grey, which is how both used to glow sky-blue.)
-const OPTIC := Color(0.17, 0.135, 0.12)
+## (At 0.17 the window went as black as the slot round it and the sight read
+## as a hole: a shade lighter keeps it a dark lens.)
+const OPTIC := Color(0.24, 0.21, 0.19)
 ## A cupola's vision block: 10 cm of laminated armour glass seen end on, so
-## its green goes nearly black from outside; only the sky's sheen lies on it.
-const BLOCK := Color(0.11, 0.15, 0.13)
+## its green goes dark from outside, the sky's sheen lying on it. (At 0.11 the
+## blocks vanished into the cupola wall: a dark green-grey keeps them glass.)
+const BLOCK := Color(0.2, 0.27, 0.25)
 
 ## Armoured sight head (gunner's box, commander's panoramic head) with its
 ## window on the local -Z face. `windows` holds Rect2s: position is the window

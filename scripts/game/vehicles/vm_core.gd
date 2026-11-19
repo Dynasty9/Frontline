@@ -501,23 +501,31 @@ static func _on_turret(k: VehicleModels, p: Node3D) -> bool:
 
 
 ## A steel tow cable coiled flat on a deck as a crew lays it down to keep it
-## from kinking: a turn and three quarters of 28 mm wire rope spiralling in
-## from `radius`, each turn inside the last, the swaged ferrule of its eye at
-## the outer end. `rng` turns the coil.
+## from kinking: three turns of 32 mm wire rope spiralling in from `radius`,
+## each turn laid tight inside the last, so the coil reads from the battle
+## camera as one thick dark band of cable (a turn and three quarters with a
+## hand's width between them read as a thin wire hoop). Tow cable lives in
+## grease and road dirt: dull near-black, never bright wire. The swaged
+## ferrule of its eye lies at the outer end. `rng` turns the coil.
 static func _cable_coil(k: VehicleModels, p: Node3D, at: Vector3, radius: float, rng: RandomNumberGenerator) -> void:
-	var wire := 0.014
+	var wire := 0.016
 	var start := rng.randf_range(0.0, TAU)
+	var turns := 3.0
+	# (each turn a wire's width and a little inside the last; a small coil
+	# keeps an open eye in its middle, as wire rope won't bend tighter)
+	var step := minf(wire * 2.1, radius * 0.55 / turns)
 	var route: Array = []
-	for i in 23:
-		var f := float(i) / 22.0
-		var a := start + f * 1.75 * TAU
-		var rr := radius * (1.0 - 0.2 * f)
-		route.append(at + Vector3(cos(a) * rr, wire, sin(a) * rr))
-	VehicleFrames.path(k, p, route, wire, "steel", Color(0.2, 0.21, 0.19), 5, false)
+	for i in 37:
+		var f := float(i) / 36.0
+		var a := start + f * turns * TAU
+		var rr := radius - f * turns * step
+		route.append(at + Vector3(cos(a) * rr, wire * 0.92, sin(a) * rr))
+	VehicleFrames.path(k, p, route, wire, "gunmetal_w", Color(0.11, 0.11, 0.1), 5, false)
 	var a0 := start
 	var tangent := Vector3(-sin(a0), 0, cos(a0))
 	var end: Vector3 = route[0]
-	VehicleFrames.tube(k, p, end - tangent * 0.07, end, wire * 1.5, "steel", Color(0.4, 0.41, 0.38), 6, false)
+	# (the ferrule as greasy as the rope: a bright one glinted as a spark)
+	VehicleFrames.tube(k, p, end - tangent * 0.07, end, wire * 1.4, "gunmetal_w", Color(0.13, 0.13, 0.12), 6, false)
 
 
 ## The lower side plates of a wheeled carrier, with an arch cut over every
@@ -1236,7 +1244,9 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 	# tail lights, tow hooks
 	_bx(k, m, Vector3(2.6, 0.4, 0.06), Vector3(0, 1.22, 3.06), "gunmetal_w", null, Vector3(-0.35, 0, 0))
 	# (the drums are run dry first and dropped: about a crew in four has
-	# dumped one, its brackets left bare; from the kit seed, so neighbours
+	# dumped one, and its two brackets with it, as they're the drum's own
+	# cradle bolted to the plate: left behind, the bare arms stuck out into
+	# the air behind the deck like spikes; from the kit seed, so neighbours
 	# differ, and scenery and wrecks carry both)
 	var drums := VehicleCargo.kit(k, m, Vector3(0, 1.5, 3.3), 0x55d)
 	var dropped := 0.0
@@ -1248,8 +1258,8 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 		# down to the two brackets off the plate.
 		if s != dropped:
 			VehicleEquipment.drum(k, m, Vector3(s * 0.66, 1.5, 3.3), 0.29, 0.86, Vector3.BACK, "paint", dc, Vector3(s, 1, 0), 0.2, [-0.15, 0.25], 16)
-		for dz: float in [-0.15, 0.25]:
-			_bar(k, m, Vector3(s * 0.66, 1.18, 3.06), Vector3(s * 0.66, 1.2, 3.3 + dz), 0.05, 0.04, "gunmetal_w", null, false)
+			for dz: float in [-0.15, 0.25]:
+				_bar(k, m, Vector3(s * 0.66, 1.18, 3.06), Vector3(s * 0.66, 1.2, 3.3 + dz), 0.05, 0.04, "gunmetal_w", null, false)
 		_taillight(k, m, Vector3(s * 1.2, 1.25, 3.1))
 		_shackle(k, m, Vector3(s * 0.75, 0.7, 2.95), 1.0)
 	k._cyl(m, 0.13, 0.14, 2.7, Vector3(0, 1.0, 3.12), Z90, "bark", null, 10)
@@ -1633,9 +1643,13 @@ static func _hilux_dshk(k: VehicleModels) -> void:
 		# along its cut edges and where water runs off its bolts, a stain
 		# streaking down the door under it. Rusted across its whole face in
 		# one even speckle, the plate read as a texture swatch glued on.)
-		var steel: Color = [Color(0.3, 0.29, 0.26), Color(0.4, 0.4, 0.38), Color(0.24, 0.22, 0.2)][plate.randi_range(0, 2)]
+		# (Mill scale and primer are dull: as polished gunmetal the plate
+		# mirrored a dark sky and read as a black hole in the door. So it's
+		# matt paint-finish steel in the scale's blue-grey, a grey primer, or
+		# a darker scale gone dusty.)
+		var steel: Color = [Color(0.35, 0.37, 0.39), Color(0.46, 0.46, 0.44), Color(0.3, 0.31, 0.32)][plate.randi_range(0, 2)]
 		for s: float in [-1.0, 1.0]:
-			VehicleMounts.applique(k, m, Vector3(s * 0.893, 0.8, 0.5), Vector3(0.78, 0.4, 0.012), Vector3(0, s * PI / 2, 0), "gunmetal_w", steel, Vector2i(3, 2))
+			VehicleMounts.applique(k, m, Vector3(s * 0.893, 0.8, 0.5), Vector3(0.78, 0.4, 0.012), Vector3(0, s * PI / 2, 0), "paint", steel, Vector2i(3, 2))
 			for z: float in [0.2, 0.62]:
 				# (on the door's skin, from under the plate's foot to the sill)
 				_daub(k, m, s * 0.873, z, 0.57, Vector2(0.06, 0.09), 0.0, int(z * 10.0) % 3, Color(0.36, 0.22, 0.13), "paint")
@@ -2673,8 +2687,14 @@ static func _truck(k: VehicleModels, team: int) -> void:
 	# doesn't know: lit like an open deck it read bright past the rolled
 	# flap, so it's taken down as the tilt's liner is, toward the brown of the
 	# dirt boots carry in (darkened alone, the paint went the slate of the sky
-	# it reflects). (A wreck's floor stays as it was.)
-	VehicleCargo.flatbed(k, m, -0.35, 3.05, 2.3, 1.37, "paint", col, 0.48, 0, 0.0, 0.0, 0.14, "wood_dark" if k.wreck else "paint", null if k.wreck else col.darkened(0.4).lerp(Color(0.2, 0.18, 0.1), 0.3), Vector3.ZERO, 0.06)
+	# it reflects). (A wreck's floor stays as it was.) Even so a paint finish
+	# keeps a sheen of the open sky the renderer can't shut out under the
+	# cover (about a third of the light on it, whatever its colour), and with
+	# a side curtain rolled up the floor read a pale flat grey, brighter than
+	# the sunlit body. So it takes the dead-matt finish of the cloth over it,
+	# the one that holds least of the sky: worn paint gone dark with trodden
+	# dirt, in the shade the tilt casts.
+	VehicleCargo.flatbed(k, m, -0.35, 3.05, 2.3, 1.37, "paint", col, 0.48, 0, 0.0, 0.0, 0.14, "wood_dark" if k.wreck else "canvas", null if k.wreck else col.darkened(0.55).lerp(Color(0.16, 0.14, 0.09), 0.35), Vector3.ZERO, 0.06)
 	for s: float in [-1.0, 1.0]:
 		VehicleFittings.mudflap(k, m, Vector3(s * 0.95, 0.5, 3.15), Vector2(0.36, 0.4))
 		_taillight(k, m, Vector3(s * 0.9, 1.1, 3.08))

@@ -1174,6 +1174,38 @@ count (-0.02%): the plainer spares pay for the perforated decks (up to +3.1% on 
   their paint mirrors the sky); `VmNato._hemtt_cab_detail(..., salt)` and `VmCsat._typhoon(..., salt)` salt the cab
   roof's recognition panel by body, as the Zamak's are; the M35's pressed-steel wheels are painted with the truck.
 
+### Twenty-second pass: against the morning
+
+Three reviewers rendered every vehicle as it stood before the thirteenth pass's day of work and after the
+twenty-first, side on and from above, and listed what had come out worse; five agents fixed their lists. Nodes and
+meshes are unchanged; vertices rise 0.09%, no model by more than 2.5% (the Scorcher's racks).
+
+- **Markings**: `VehicleModels._mark_col` mixes each side's colour 75-80% into a mid grey (a warm one for the red
+  side, which a neutral grey turned mauve), roofs a shade darker than flanks: faded tactical paint near the hull's
+  value, the side's hue still plain, where the pale cornflower blue had been the brightest thing on a drab hull;
+  `VmPlane.wing_marks` draws narrower bands. `_team_mark(..., skin)` lays a mark on a curved skin in finer pieces
+  (the Little Bird's boom, the Buzzard's flank).
+- **Recognition panels**: none on truck cabs (`_hemtt_cab_detail`, `_typhoon`, `_zamak_cab`); elsewhere
+  `VehicleEquipment.recognition_panel` folds the sheet faded toward the dust, darkened and desaturated.
+- **Glass**: `VmPlane.CLEAR_CANOPY` takes the sky's sheen where the mirrored view points up and at the rim, its
+  normal leaning skyward for a sun highlight, so a canopy reads as glass over the crew; the `armor_glass` profile
+  glazes and mirrors more, and `VehicleMounts.OPTIC` and `BLOCK` are a shade lighter, so armoured windscreens,
+  sights and vision blocks read as dark glass, not holes.
+- **Rotors**: `VehicleRotors.BLUR_SHADER` covers a seventh over the cabin and a quarter outboard in a darker haze,
+  thins near the camera only within a few metres, and takes a `solidity` (1.4 for propellers and fans, which
+  `VehiclePropellers.disc_material` sets; drones' props now share its material).
+- **Cars and boats**: the pickup's tonneau is near-black matt vinyl with dark rails, sagging 4 cm between bows; the
+  MB 4WD's own-colour top is dark grey vinyl and its bonnet less crowned (`VmCiv._xbody(..., crown)`); sunshades go
+  up only in parked cars; the tractor's doors are glazed; the kart is moulded plastic; the motorboat's bimini boot
+  and the van's roof lose their glare; the assault boat's floor is darker.
+- **Trucks and kit**: the M35's and the HEMTT troop body's decks under the tilt are dead-matt trodden dirt (any
+  paint's sheen took the sky and lit the floor pale); live tilts fade toward khaki (`VehicleCloth.SUN_FADED_LIVE`);
+  `VehicleCargo.tilt_colour` darkens a touch; HEMTT ammunition beds are stencilled boxes again, long crates rarer and
+  hashed per pallet; the technical's door plate is matt mill scale; `VmCore._cable_coil` is three dark greasy
+  turns; the T-55 builds a drum's brackets only with the drum; the Zamak has its own bold grille
+  (`VmIndep._zamak_grille`); the Scorcher's roof kit sits in rails; the Panther's bags are kit bags with straps; the
+  Tempest's rear load clears its crane; the Tigris's and Futura's chevrons sit on clear roof.
+
 ### Gun mounts: laying, recoil and the guns themselves
 
 The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of

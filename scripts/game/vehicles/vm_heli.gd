@@ -348,9 +348,10 @@ static func _door_rail(k: VehicleModels, p: Node3D, h: Hull, z0: float, z1: floa
 ## The fuselage is a solid, so the cabin is laid on its skin a few millimetres
 ## apart, back to front, which from the battle camera reads as a room behind
 ## the door. The seats' webbing is kit-seeded: a crew re-slings a torn seat in
-## whatever webbing the depot has. Wrecks keep their doors shut.
-static func _cabin(k: VehicleModels, p: Node3D, h: Hull, key: String, z0: float, z1: float, t0: float, t1: float, floor_t: float, pan: Vector3, seats: int, web: Color, sx := 0.0) -> void:
-	_patch(k, p, h, key + "_dark", z0, z1, t0, t1, "plain_dark", Color(0.05, 0.05, 0.055), 0.006, 0.02, sx)
+## whatever webbing the depot has. Wrecks keep their doors shut. `dark` is
+## the cabin's lining as it shows in the doorway's shade.
+static func _cabin(k: VehicleModels, p: Node3D, h: Hull, key: String, z0: float, z1: float, t0: float, t1: float, floor_t: float, pan: Vector3, seats: int, web: Color, sx := 0.0, dark := Color(0.05, 0.05, 0.055)) -> void:
+	_patch(k, p, h, key + "_dark", z0, z1, t0, t1, "plain_dark", dark, 0.006, 0.02, sx)
 	if floor_t > t0:
 		_patch(k, p, h, key + "_floor", z0, z1, t0, floor_t, "nonslip", Color(0.2, 0.205, 0.2), 0.009, 0.02, sx)
 	var pitch := (z1 - z0) / float(seats)
@@ -991,7 +992,10 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 	if v != 2:
 		# the FLIR ball hanging on its neck under the nose
 		VehicleEquipment.sensor(k, m, Vector3(0, 0.5, -1.8), Vector3.ONE * 0.13 * 2.0, "paint", Color(0.3, 0.31, 0.3), "ball", Vector3(0.05, 0.05, 0.18))
-		k._team_mark(m, team, Vector3(0, 1.94, 2.6), Vector3(0.14, 0.02, 0.6))
+		# the side's chevron on top of the boom, between the whip antenna and
+		# the beacon: painted round the boom's curve (a flat card stood 10 cm
+		# over the round boom with its arms in the air), 5 mm proud of it
+		k._team_mark(m, team, Vector3(0, 1.84, 2.82), Vector3(0.16, 0.02, 0.5), _tube_skin(Vector3(0, 1.64, 1.2), Vector3(0, 1.76, 4.8), 0.205, 0.105))
 	_rotor(k, m, Vector3(0, 2.58, -0.25), 5, 4.03, 0.17, true, 0.3, 0.012, 0.2)
 
 
@@ -1894,7 +1898,11 @@ static func _orca(k: VehicleModels, team: int, armed: bool) -> void:
 	for s: float in [1.0, -1.0]:
 		var rng := VehicleCargo.kit(k, m, Vector3(s, 1.4, -2.0), 74)
 		if not armed and not k.wreck and not k.burnt and not (rng != null and rng.randf() < 0.25):
-			_cabin(k, m, h, "heli_or_cab", -2.58, -1.47, -2.55, 2.32, -1.7, Vector3(-0.6, -0.25, 1.4), 2, Color(0.36, 0.34, 0.26), s)
+			# (the Ka-60's cabin is lined in a grey that shows as a shaded room
+			# through the door, not a black hole; its troop seats' backs reach
+			# shoulder height, in a dark grey-green webbing: tall khaki seat
+			# backs read as two panels stuck on the blue-grey airframe)
+			_cabin(k, m, h, "heli_or_cab", -2.58, -1.47, -2.55, 2.32, -1.7, Vector3(-0.6, -0.25, 0.8), 2, Color(0.25, 0.26, 0.23), s, Color(0.1, 0.11, 0.12))
 			_patch(k, m, h, "heli_or_door", -1.45, 0.5, -2.6, 2.33, mat, col, 0.03, 0.01, s)
 			_patch(k, m, h, "heli_or_dwino", -1.15, 0.15, 0.3, 1.85, "glass", null, 0.042, 0.03, s)
 		else:
@@ -2224,10 +2232,10 @@ static func _prop(k: VehicleModels, p: Node3D, pos: Vector3, r: float, nb := 2, 
 		var disc := PlaneMesh.new()
 		disc.size = Vector2(r, r) * 2.0
 		blur.mesh = disc
-		blur.material_override = VehicleModels._blur_mat()
-		Mats.set_inst(blur, &"blade_count", float(nb))
-		# (the disc in the blades' own plastic)
-		Mats.set_inst(blur, &"blade_tint", col)
+		# (a propeller's disc, in the blades' own plastic: broad blades on a
+		# small circle fill more of it than a rotor's, and one shared material
+		# per count and colour needs no per-object values)
+		blur.material_override = VehiclePropellers.disc_material(nb, 0.12, col)
 		blur.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		blur.position = Vector3(0, r * 0.08, 0)
 		blur.visible = false

@@ -1133,7 +1133,11 @@ func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunme
 ## still tells the sides apart from the battle camera, and so does its shape
 ## (`_mark_outline`). Laid on the box's outer face, which stood clear of the
 ## hull everywhere the box showed. Burnt off a wreck with the paint.
-func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
+## On a curved skin (a tail boom, a fuselage's tapering flank) a flat card
+## stands off the curve with its arms in the air: the caller's `skin` (a
+## point in model space moved onto the skin, a few millimetres proud of it)
+## lays the mark on the curve instead, in finer pieces that follow it.
+func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3, skin := Callable()) -> void:
 	if wreck or team < 0:
 		return
 	var normal := Vector3.UP
@@ -1153,7 +1157,11 @@ func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
 		size = Vector2(s.x, s.y)
 		thin = s.z
 	var o := pos + normal * thin * 0.5
-	VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return o + along * q.x + up * q.y, normal, _mark_col(team, false, normal == Vector3.UP), "paint", true, 0)
+	var col := _mark_col(team, false, normal == Vector3.UP)
+	if skin.is_valid():
+		VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return skin.call(o + along * q.x + up * q.y), normal, col, "paint", true, 2)
+		return
+	VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return o + along * q.x + up * q.y, normal, col, "paint", true, 0)
 
 
 ## A team mark's outline, `size` (across, up) centred on the origin: the
@@ -1176,27 +1184,28 @@ static func _mark_outline(team: int, size: Vector2) -> PackedVector2Array:
 	return PackedVector2Array([Vector2(-w + slant, -h), Vector2(w, -h), Vector2(w - slant, h), Vector2(-w, h)])
 
 
-## A team mark's paint: the side's colour lerped toward a pale grey, a pale
-## service blue or a pale brick at about value 0.6, light enough to stand off
-## dark camouflage and dark enough not to glow like a sticker on sand (sunk to
-## the hull's grey and darkened, it was as dark as olive camouflage, and the
-## sides could not be told apart from the battle camera). On a wing's tip
-## band (`band`), laid flat to the sun across a wide airfoil, those pale
-## tints read as lit strips, the palest things on the airframe (a sky blue,
-## a salmon pink): there each side's is a duller service shade, the blue side
-## a mid service blue and the red a brick near the insignia's red, of about
-## the same lightness, as identification bands are painted. A roof's mark
-## (`roof`) faces the sun and the battle camera square on, so the flank's tint
-## there was the palest, most saturated patch on the roof, a sky-blue or
-## salmon sticker over the camouflage: it is mixed a shade darker and greyer,
-## still the lightest paint on the roof and still the side's hue.
+## A team mark's paint: the side's colour mixed most of the way into a mid
+## grey, as a unit's tactical marks are brushed in flat, subdued paint that
+## the sun and dust fade further: a dusty slate blue for one side and a dull
+## brick for the other, both of about the lightness of the hull round them
+## and of each other. Pale tints of the side's colour glowed (a cornflower
+## or salmon sticker, the loudest thing on a drab vehicle from the battle
+## camera) and a dark navy read as a hole in the roof; mixed this far the
+## side's hue still shows against tan, olive and grey, and so does the mark's
+## shape (`_mark_outline`). A roof's mark (`roof`) faces the sun and the
+## battle camera square on and takes more light than a flank's, so it is
+## mixed a shade darker to come out no brighter. A wing's tip band (`band`)
+## lies flat to the sun across a wide, lit airfoil on a light grey airframe:
+## its paint is the duller still, so it frames the wing without reading as a
+## lit strip.
 static func _mark_col(team: int, band := false, roof := false) -> Color:
 	var tc: Color = Defs.TEAM_COLORS[team]
-	if band:
-		return tc.lerp(Color(0.27, 0.3, 0.33), 0.6) if team == 0 else tc.lerp(Color(0.4, 0.36, 0.33), 0.53)
-	if roof:
-		return tc.lerp(Color(0.46, 0.48, 0.46), 0.45)
-	return tc.lerp(Color(0.74, 0.74, 0.7), 0.4)
+	# (the red side's grey is a warm one: mixed into a neutral grey its red
+	# turned a mauve under the sky's blue light, where a red oxide's brick
+	# stays red)
+	var grey := Vector3(1.0, 0.93, 0.83) if team != 0 else Vector3.ONE
+	var v := 0.35 if band else (0.34 if roof else 0.4)
+	return tc.lerp(Color(grey.x * v, grey.y * v, grey.z * v), 0.8 if band else (0.78 if roof else 0.75))
 
 
 # --- tanks -----------------------------------------------------------------------

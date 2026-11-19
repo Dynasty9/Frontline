@@ -656,10 +656,18 @@ static func recognition_panel(k: VehicleModels, parent: Node3D, center: Vector3,
 		return false
 	var face: Color = PANEL_FACES[rng.randi_range(0, 1)]
 	# a season in the sun bleaches the dye toward a chalky pink or apricot,
-	# and the dust the hull wears lies thick on it
+	# and the dust the hull wears lies thick on it. A panel stowed folded on
+	# a roof for months is a faded, filthy rag of its orange or cerise, about
+	# the hull's own value with its hue still in it: kept at the dye's
+	# strength (even dulled by the dust) it read from the battle camera as a
+	# terracotta or pink tile, the loudest thing on the vehicle.
 	face = face.lerp(Color(0.9, 0.78, 0.7), rng.randf_range(0.0, 0.14))
 	var dust: Color = VehicleMaterials.DIRT.get(k.surface_family, VehicleMaterials.DIRT.armor).dust_col
-	face = face.lerp(dust, rng.randf_range(0.35, 0.5))
+	face = face.lerp(dust, rng.randf_range(0.55, 0.68)).darkened(rng.randf_range(0.3, 0.4))
+	# (and the sun takes the dye's strength as well as its value: even dark,
+	# a cerise at full strength read as a red tile on a sand hull at dusk)
+	var grey := face.get_luminance()
+	face = face.lerp(Color(grey, grey, grey), 0.4)
 	if not folded and rng.randf() < 0.67:
 		folded = true
 	# (laid by hand, a few degrees off square, in the plane it lies on)
@@ -863,18 +871,23 @@ static func bed_cover(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 			# camera, a black mat over the bed; each bow now stands as a
 			# ridge with the slack falling away from it, held up a little on
 			# the bed's centreline where it rests on the bow's crown.)
+			# (At 2.6 cm, under the old pale coating, the slack still lay flat
+			# from above: a soft cover pulls down 4 cm between bows 70 cm
+			# apart, and the matt vinyl's soft sheen then shades each dip.)
 			var f := fmod(float(j), 4.0) / 4.0
 			for i in nx:
 				var u := -1.0 + 2.0 * i / float(nx - 1)
-				var sag := 0.026 * pow(sin(PI * f), 0.8) * (1.0 - pow(absf(u), 2.4))
+				var sag := 0.04 * pow(sin(PI * f), 0.8) * (1.0 - pow(absf(u), 2.4))
 				h.append(0.008 - sag)
 		_sheets[key] = _sheet(size, nx, nz, h, 0.035)
 	var m := k._pivot(parent, center)
 	k._add(m, _sheets[key], mat, col, Vector3.ZERO)
-	# The rail's anodised aluminium edge, clamped along the top of each bed
-	# side over the cover's edge: a bright line from cab to tailgate that
-	# frames the cover from above (under the hem, as it was, nothing of it
-	# showed, and the cover read as a mat laid edge to edge).
+	# The rail's aluminium edge, clamped along the top of each bed side over
+	# the cover's edge, frames the cover from above (under the hem, as it
+	# was, nothing of it showed, and the cover read as a mat laid edge to
+	# edge). The rails sold with soft covers are anodised black, a dark satin
+	# line against the vinyl: in bright steel they drew a hard white glint
+	# down each side of the bed from the battle camera.
 	for s: float in [-1.0, 1.0]:
-		k._add(m, _plate(Vector3(0.016, 0.016, size.y * 0.98)), "steel", Color(0.6, 0.61, 0.6), Vector3(s * (size.x * 0.5 - 0.007), 0.014, 0), Vector3.ZERO, Vector3.ONE, false)
+		k._add(m, _plate(Vector3(0.016, 0.016, size.y * 0.98)), "plain_dark", Color(0.035, 0.035, 0.037), Vector3(s * (size.x * 0.5 - 0.007), 0.014, 0), Vector3.ZERO, Vector3.ONE, false)
 	k._fold(m)

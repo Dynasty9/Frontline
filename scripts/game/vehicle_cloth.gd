@@ -398,8 +398,12 @@ static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array
 
 
 ## The faded issue shade a tilt's roof goes after a few summers in the sun:
-## paler and greyer than the sides, which the roof shades.
+## paler and greyer than the sides, which the roof shades. (A wreck's.)
 const SUN_FADED := Color(0.60, 0.58, 0.50)
+## The same on a running truck: olive duck bleaches toward a warm khaki, the
+## dye's green going first. (Toward the greyer shade, on a tilt as dark as the
+## hull a bleached width read slate blue in the sky's light, a different cloth.)
+const SUN_FADED_LIVE := Color(0.6, 0.55, 0.42)
 ## How much more or less than the rest each roof width has faded, bay by bay.
 const ROOF_FADES: Array[float] = [0.0, 0.06, -0.04, 0.035, -0.055, 0.05]
 static var _tilts := {}
@@ -427,7 +431,7 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 		if not wide.is_empty() and rng.randf() < 0.5:
 			patch = Vector2i(wide[rng.randi_range(0, wide.size() - 1)], rng.randi_range(0, 2))
 			var other := VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_TARP, 0.0)
-			patch_col = col.lerp(other, 0.5).darkened(0.07) if rng.randf() < 0.6 else col.lerp(SUN_FADED, 0.3)
+			patch_col = col.lerp(other, 0.5).darkened(0.07) if rng.randf() < 0.6 else col.lerp(SUN_FADED if k.wreck else SUN_FADED_LIVE, 0.3)
 	# In the heat a crew rolls a side curtain up to the eaves (or both) and
 	# straps it there, so the bows, benches and bed show.
 	var rolled := 0
@@ -437,7 +441,8 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 	var built := _tilt_meshes(profile, bows, variant)
 	# (the roof bleached by the sun on every tilt, the curtains under the
 	# eaves a shade darker, where road dirt and the rain's run-off stain them)
-	var roof := col.lerp(SUN_FADED, 0.26)
+	var faded := SUN_FADED if k.wreck else SUN_FADED_LIVE
+	var roof := col.lerp(faded, 0.26)
 	var side := col.darkened(0.06)
 	for part: Array in built[0]:
 		var width := int(part[2])
@@ -446,7 +451,7 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 		# (each roof width sewn from its own bolt and bleached its own amount,
 		# so from above the bays don't read as one lid)
 		# (posmod, not %: models are built on worker threads)
-		var c := col.lerp(SUN_FADED, 0.26 + ROOF_FADES[posmod(int(part[1]) + variant * 2, ROOF_FADES.size())]) if width == 1 else side
+		var c := col.lerp(faded, 0.26 + ROOF_FADES[posmod(int(part[1]) + variant * 2, ROOF_FADES.size())]) if width == 1 else side
 		if Vector2i(int(part[1]), width) == patch:
 			c = patch_col
 		k._add(parent, part[0], "canvas_white", c, Vector3.ZERO)

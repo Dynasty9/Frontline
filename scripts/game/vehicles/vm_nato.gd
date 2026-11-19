@@ -1405,9 +1405,15 @@ static func _scorcher(k: VehicleModels, team: int, seed := 0) -> void:
 	_walkway(k, t, Vector3(0, 1.28, 1.8), Vector2(1.7, 0.7))
 	# the crew's kit on the roof's front corners, ahead of the hatch and the
 	# remote gun's base (a self-propelled gun's crew stows on its roof what
-	# the turret has no room for: bare, the big lid read as an empty box)
+	# the turret has no room for: bare, the big lid read as an empty box),
+	# each in a low rail rack welded to the roof, as a Paladin's crew carries
+	# it, so nothing lies loose to slide off when the turret swings (a roll and
+	# a can left lying bare on the roof read as dropped there)
 	VmCore.roof_kit(k, t, Vector3(-0.7, 1.28, -0.5), 0.0, Vector2(0.55, 0.6), 0, BAG)
 	VmCore.roof_kit(k, t, Vector3(0.65, 1.28, -0.55), 0.0, Vector2(0.5, 0.55), 1, BAG)
+	if not k.wreck:
+		VehicleMounts.basket(k, t, Vector3(-0.7, 1.285, -0.5), Vector3(0.62, 0.13, 0.66), "paint", STOW)
+		VehicleMounts.basket(k, t, Vector3(0.65, 1.285, -0.55), Vector3(0.58, 0.13, 0.62), "paint", STOW)
 	_bustle_basket(k, t, Vector3(0, 0.5, 2.8), Vector3(2.8, 0.42, 0.48), 2.55, cam)
 	for i in 3:
 		k._bag(t, Vector3(0.7, 0.36, 0.4), Vector3(-0.9 + i * 0.9, 0.7, 2.8), "canvas", BAG if i != 1 else STOW)
@@ -1592,8 +1598,13 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 	if stow:
 		# the stowage basket standing on the roof's back
 		_bustle_basket(k, m, Vector3(0, roof + 0.015, 3.0), Vector3(2.8, 0.3, 0.9), 0.0, cam)
+		# (kit bags, longer than they are deep, each cinched by its strap and
+		# buckled on top: in near-square places they came out as rucksacks
+		# whose lids hid their straps, slumped plain blocks from the side; a
+		# wreck keeps its old places)
+		var place := Vector3(0.7, 0.32, 0.6) if k.wreck else Vector3(0.8, 0.32, 0.52)
 		for i in 3:
-			k._bag(m, Vector3(0.7, 0.32, 0.6), Vector3(-0.85 + i * 0.85, roof + 0.2, 3.0), "canvas", BAG if i != 1 else STOW, Vector3(0, (i - 1) * 0.08, 0))
+			k._bag(m, place, Vector3(-0.85 + i * 0.85, roof + 0.2, 3.0), "canvas", BAG if i != 1 else STOW, Vector3(0, (i - 1) * 0.08, 0))
 	# the rear: the big ramp with its door, hinges, steps
 	VehicleDoors.leaf(k, m, Vector3(2.0, 1.55, 0.1), Vector3(0, 1.35, 3.8), cam)
 	VehicleDoors.leaf(k, m, Vector3(0.62, 1.1, 0.04), Vector3(0.45, 1.4, 3.86), cam)
@@ -1860,9 +1871,9 @@ static func _hemtt_chassis(k: VehicleModels, team: int, paint: Color, detailed :
 	_team_mark(k, m, team, Vector3(-1.205, 1.6, -3.7), Vector3(0.02, 0.24, 0.6))
 
 
-## Pressed cab panels shared by every mission body. `salt` draws the roof's
-## recognition panel apart for each body.
-static func _hemtt_cab_detail(k: VehicleModels, paint: Color, salt := 0) -> void:
+## Pressed cab panels shared by every mission body. (`_salt` drew the roof's
+## recognition panel apart for each body; the roof carries none now.)
+static func _hemtt_cab_detail(k: VehicleModels, paint: Color, _salt := 0) -> void:
 	var m := k.root
 	var dirt := Color(0.24, 0.21, 0.16)
 	# The cab's roof is VehicleCab.upper's one pressing, its edge rolled over
@@ -1875,11 +1886,9 @@ static func _hemtt_cab_detail(k: VehicleModels, paint: Color, salt := 0) -> void
 	var rng := VehicleCargo.kit(k, m, net, 17)
 	if rng != null and VehicleCloth.camouflage(k) > 0.0 and rng.randf() < 0.5:
 		VehicleCloth.roof_net(k, m, net, Vector3(1.0, 0.2, 0.7), Vector3.ZERO, rng)
-	else:
-		# or, in its place, an air-recognition panel folded beside the hatch,
-		# drawn apart for each body: the six HEMTTs share this cab, and a
-		# column of them in one kit wore one panel each, alike
-		VehicleEquipment.recognition_panel(k, m, Vector3(-0.5, 2.905, -3.62), Vector3.ZERO, true, 0.2, salt)
+	# (no air-recognition panel on the cab roof: even folded and faded it was
+	# the loudest patch on the truck from the battle camera, a pink or orange
+	# tile; a truck's crew keeps its panel in the cab)
 	# the crew's own kit along the roof's right edge beside the hatch, where
 	# the man in it can reach down for it (a cab roof with one hatch on it
 	# read as a bare plate from the battle camera)
@@ -1944,9 +1953,12 @@ static func _hemtt(k: VehicleModels, team: int, body: String, seed := 0) -> void
 			# sky's light shut out as well as the sun's, which the renderer
 			# doesn't know: lit like an open deck it read bright through the
 			# rolled back, so it's taken down as the tilt's liner is, toward the
-			# brown of the dirt boots carry in: darkened alone, the paint went
-			# the slate of the sky it reflects. A wreck's stays as it was.)
-			VehicleCargo.flatbed(k, m, -2.4, 5.05, 2.44, 1.38, cam, null, sh, 6, 1.1, 0.0, 0.16, "paint", paint.darkened(0.42).lerp(Color(0.2, 0.18, 0.1), 0.3) if body == "troop" and not k.wreck else paint.darkened(0.1), Vector3(1.1, 0.18, 0.2), 0.06)
+			# brown of the dirt boots carry in, and in a dead-matt finish: any
+			# paint's sheen took the sky's grey and lifted the floor back to a
+			# pale open deck under the cover, whatever its tint. A wreck's stays
+			# as it was.)
+			var shaded := body == "troop" and not k.wreck
+			VehicleCargo.flatbed(k, m, -2.4, 5.05, 2.44, 1.38, cam, null, sh, 6, 1.1, 0.0, 0.16, "canvas" if shaded else "paint", paint.darkened(0.55).lerp(Color(0.16, 0.14, 0.09), 0.35) if shaded else paint.darkened(0.1), Vector3(1.1, 0.18, 0.2), 0.06)
 			_hemtt_tail(k, paint, 5.05)
 			if body == "troop":
 				# the canvas tilt over its bows, the back rolled up over the benches

@@ -19,13 +19,15 @@ extends RefCounted
 ## them backwards. Lit, so it darkens with the scene at dusk and at night.
 ## `blade_count` and the blades' colour (`blade_tint`) are per rotor; `hub`
 ## is where the blades begin, as a fraction of the radius (a propeller's
-## spinner, a fan's boss).
+## spinner, a fan's boss); `solidity` scales how much of the disc the blades
+## fill (a propeller's broad blades fill more than a rotor's).
 const BLUR_SHADER := """
 shader_type spatial;
 render_mode blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
 instance uniform float blade_count = 4.0;
 instance uniform vec4 blade_tint : source_color = vec4(0.15, 0.155, 0.16, 1.0);
 uniform float hub = 0.12;
+uniform float solidity = 1.0;
 varying vec2 disc_xy;
 void vertex() {
 	// the disc's plane against a fixed world direction: the hub's spin drops out
@@ -41,27 +43,28 @@ void fragment() {
 	// the tip path, its edge fading over the outer fifth of the radius (the
 	// tips sweep the most circle with the least blade, and the blades flex
 	// and flap, so the tip path is never one line: no outline)
-	float body = smoothstep(hub * 0.6, hub + 0.1, r) * (1.0 - smoothstep(0.8, 1.0, r));
+	float body = smoothstep(hub * 0.6, hub + 0.1, r) * (1.0 - smoothstep(0.86, 1.0, r));
 	// how much of each circle the blades cover: over the outer half, where
 	// the blades are widest against the circle they sweep and the camera
-	// sees the disc round the fuselage, about a fifth, more than a real
-	// rotor's 5-10% solidity (at that, or at 0.15, a helicopter over grass
-	// from 40 m showed its hub and nothing else: it read as a fuselage
-	// sliding over the ground, not as flying); over the cabin, where the
-	// blade roots are narrow, about an eighth, so the airframe under it
-	// still reads (a fifth there paved it over like frosted glass)
-	float cover = mix(0.12, 0.22, smoothstep(0.35, 0.7, r));
+	// sees the disc round the fuselage, about a quarter, more than a real
+	// rotor's 5-10% solidity (at that, or at a fifth in a pale haze, a
+	// helicopter over grass from 40 m showed its hub and nothing else: it
+	// read as a fuselage sliding over the ground, not as flying, and a
+	// drone's or a ducted fan's small discs vanished); over the cabin,
+	// where the blade roots are narrow, about a seventh, so the airframe
+	// under it still reads (a quarter there paved it over like frosted glass)
+	float cover = mix(0.14, 0.25, smoothstep(0.35, 0.7, r)) * solidity;
 	// the tip path: the tips move fastest and smear the most, a soft band
 	// just inside the edge a little denser than the disc, in the blades' own
 	// paint (a pale band there, however faint and soft, still read from the
 	// battle camera as a selection circle round the aircraft)
 	float tq = (r - 0.84) * 10.0;
 	float tip = exp(-tq * tq);
-	cover += 0.012 * tip;
+	cover += 0.03 * tip;
 	// within a few metres the frame holds a few blades' faint arcs, not a
 	// sheet: a rotor passing the camera thins out rather than smoking it over,
 	// its ghost blades with it
-	float near = mix(0.45, 1.0, smoothstep(3.0, 14.0, length(VERTEX)));
+	float near = mix(0.45, 1.0, smoothstep(1.5, 9.0, length(VERTEX)));
 	// the ghost blades, each a soft leading edge and a short trailing smear,
 	// swept back a little toward the tips (a crisp edge and a long smear
 	// read from above as the dark scythes of a ceiling fan)
@@ -78,19 +81,20 @@ void fragment() {
 	// and the RTS games' discs are: the blades are dark paint and the disc
 	// shades what's under it, never lifts it (a haze even a touch lighter
 	// than the paint matched sunlit grass's value and vanished into it, and a
-	// pale one read as a dish); about value 0.12 on the usual near-black
-	// blades, a touch darker in the tip band, each ghost blade's leading edge
+	// pale one read as a dish, while a black one at the same share read too
+	// heavy over the cabin); about a third of the usual near-black blades'
+	// value, a touch darker in the tip band, each ghost blade's leading edge
 	// darker still. Lit, so it still goes dark with the scene at dusk and at
 	// night.
 	float dark = clamp(ghost * 1.6, 0.0, 1.0);
-	vec3 haze = blade_tint.rgb * mix(0.62, 0.5, tip * 0.35);
-	ALBEDO = mix(haze, blade_tint.rgb * 0.35, dark);
+	vec3 haze = blade_tint.rgb * mix(0.34, 0.26, tip * 0.5);
+	ALBEDO = mix(haze, blade_tint.rgb * 0.15, dark);
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	// (blended after tonemapping, in display space, a layer darker than the
 	// ground shows denser than the linear blend draws it, the darker the
 	// more, about twice for the ghost blades' dark: thinned to match, so the
 	// browser build's disc reads as Forward+'s does)
-	seen = 1.0 - pow(1.0 - seen, mix(0.75, 0.4545, dark));
+	seen = 1.0 - pow(1.0 - seen, mix(0.62, 0.4545, dark));
 #endif
 	ALPHA = clamp(seen, 0.0, 0.75);
 	// (matte: a swept disc is no smooth sheet to mirror the sky, and at the

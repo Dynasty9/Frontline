@@ -1766,6 +1766,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   harnesses, flatter matt sandbags, shaded floors under truck tilts, cab panels varied by body, painted M35 wheels,
   and spare wheels that skip the face nobody sees. See "Twenty-first pass" in [the component
   guide](vehicle-components.md).
+- **Faded markings and glass that reads as glass** (twenty-second pass): every vehicle reviewed against the morning
+  before the thirteenth pass; side markings are faded tactical paint near the hull's value, truck cabs carry no
+  recognition panels, canopies, armoured windscreens and vision blocks read as glass, rotor discs show again, and
+  tonneaus, tops, windscreens, truck beds, tilts, coils, brackets, grilles and kit that had come out worse are fixed.
+  See "Twenty-second pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

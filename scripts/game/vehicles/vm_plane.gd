@@ -216,18 +216,35 @@ static func canopy_frame(k: VehicleModels, p: Node3D, key: String, cst: Array, z
 ## Canopy glass you can see into, as the Black Wasp's gold canopy is: smoked,
 ## clearest looking straight down through it, the sky's sheen (`sheen`, a
 ## stealthy canopy's gold or plain grey-blue) taking over toward its edges.
+## Glass reads as glass by the sky in it: where the view, mirrored off the
+## pane, looks up into the sky, a pale sheen in the tint's own hue lies over
+## it (faint where the eye looks straight in, so the crew still shows, full
+## toward the edges), and its reflection leans up toward the sky, as the
+## opaque glass's does (Mats' surface_glaze), so the sun puts a highlight
+## on it from the battle camera, softened a little by the acrylic's scuffs
+## (a mirror-sharp one filled a whole flat pane with white). A pane seen from
+## the side mirrors the ground and stays dark and clear, as a real side
+## window does. (Dark glass alone, clear over a dark cockpit, read from above
+## as an open frame round the crew.)
 ## One material per tint, shared by every aircraft wearing it.
 const CLEAR_CANOPY := "shader_type spatial;
 render_mode depth_prepass_alpha;
 uniform vec3 deep : source_color;
 uniform vec3 sheen : source_color;
 void fragment() {
-	float rim = pow(1.0 - max(dot(normalize(NORMAL), normalize(VIEW)), 0.0), 2.2);
-	ALBEDO = mix(deep, sheen, rim);
+	vec3 n = normalize(NORMAL);
+	vec3 v = normalize(VIEW);
+	float rim = pow(1.0 - max(dot(n, v), 0.0), 2.2);
+	vec3 wr = (INV_VIEW_MATRIX * vec4(reflect(-v, n), 0.0)).xyz;
+	float sky = smoothstep(-0.2, 0.8, wr.y);
+	float g = rim * mix(0.5, 1.0, sky) + 0.22 * sky * (1.0 - rim);
+	vec3 lift = sheen * (0.34 / max(max(sheen.r, sheen.g), max(sheen.b, 0.002)));
+	ALBEDO = mix(deep, lift, g);
 	METALLIC = 0.14;
-	ROUGHNESS = 0.13;
+	ROUGHNESS = 0.17;
 	SPECULAR = 0.6;
-	ALPHA = mix(0.4, 0.9, rim);
+	ALPHA = mix(0.42, 0.9, g);
+	NORMAL = normalize(n + (VIEW_MATRIX * vec4(0.0, 0.3, 0.0, 0.0)).xyz);
 }
 "
 static var _clear_shader: Shader
@@ -679,7 +696,8 @@ static func nav_light(k: VehicleModels, p: Node3D, center: Vector3, size: Vector
 ## (two badges on one wing), but crews in a coalition war paint
 ## identification bands across the wing tips, where they frame the
 ## silhouette from above. The band runs the tip's whole chord just inboard
-## of the navigation light, `s` x 0.7 wide (at least 0.25 m), wherever the
+## of the navigation light, `s` x 0.5 wide (at least 0.22 m: wider, it read
+## from the battle camera as a painted wingtip rather than a band), wherever the
 ## caller's span `_x` (the old mark's) lay. The blue side's band is notched
 ## into a chevron on its inboard edge, the red side's straight, so the sides
 ## differ in shape as well as colour. It is laid in strips down the chord,
@@ -689,7 +707,7 @@ static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, _x: 
 	if k.wreck or team < 0:
 		return
 	var tip: float = (secs[secs.size() - 1][0] as Vector3).x
-	var bw := maxf(s * 0.7, 0.25)
+	var bw := maxf(s * 0.5, 0.22)
 	var x1 := tip - clampf(tip * 0.035, 0.1, 0.3)
 	var x0 := x1 - bw
 	var w0 := surf_at(secs, x0)
@@ -983,7 +1001,13 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	# national markings
 	wing_marks(k, m, team, ws, 3.3, 0.6)
 	for s in [-1.0, 1.0]:
-		k._team_mark(m, team, Vector3(s * 0.47, 1.1, 3.6), Vector3(0.02, 0.34, 0.34))
+		# (on the tail cone's upper flank, laid on the skin 6 mm proud: a flat
+		# mark at mid-flank stood off the narrowing cone and lay on its shaded
+		# lower half, which from above merged with the ground beside the
+		# fuselage and left the mark floating outside its outline)
+		var fl := side_skin(st, s)
+		var sd: float = s
+		k._team_mark(m, team, Vector3(s * 0.47, 1.28, 3.35), Vector3(0.02, 0.3, 0.3), func(q: Vector3) -> Vector3: return (fl.call(q) as Vector3) + Vector3(sd * 0.006, 0, 0))
 	# the AAF's paint: roundels above and below the wings and on the fin, the
 	# serial on the nose, panel joints over the wings, the tail cone sooted
 	# ahead of the jet pipe

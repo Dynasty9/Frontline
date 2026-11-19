@@ -84,7 +84,13 @@ static func tilt_colour(k: VehicleModels, parent: Node3D, col: Color) -> Color:
 	# (a wreck's keeps the shade it always had)
 	if k.wreck:
 		return kit_colour(rng, col, KIT_TARP, 0.6)
-	return kit_colour(rng, col, KIT_CANVAS, 0.3).lerp(DUCK, 0.3)
+	# (Proofed duck is wax-dressed and weathers darker, not chalkier: leaned
+	# a third of the way to the raw duck and left at its value, the cover
+	# read from above as a pale khaki sheet beside the cab, paler than the
+	# drab tilts it replaced. A touch of the duck and a shade down keeps it
+	# its own stuff at about the hull's value, the roof's sun-fading, see
+	# VehicleCloth._tilt, lifting it from there.)
+	return kit_colour(rng, col, KIT_CANVAS, 0.3).lerp(DUCK, 0.12).darkened(0.13)
 
 
 static func pallet(k: VehicleModels, parent: Node3D, base: Vector3, size: Vector2, height := 0.1) -> void:
@@ -199,10 +205,17 @@ static func flatbed(k: VehicleModels, parent: Node3D, z0: float, z1: float, widt
 		for i in range(1, planks):
 			k._box(parent, Vector3(0.008, 0.004, length - 0.04), Vector3(lerpf(-hw, hw, float(i) / planks), floor_y + 0.001, zc), "plain_dark", null, Vector3.ZERO, false)
 	else:
-		# Welded plate seams across a steel deck.
+		# Welded plate seams across a steel deck (on a deck of its own finish,
+		# a shade under the deck's: in the sides' paint they drew lines paler
+		# than a floor darkened for the shade under a tilt).
 		var plates := maxi(2, roundi(length / 1.25))
+		var seam_mat := mat
+		var seam_col: Variant = dark
+		if deck_mat != "" and deck_col is Color and not k.wreck:
+			seam_mat = dm
+			seam_col = (deck_col as Color).darkened(0.2)
 		for i in range(1, plates):
-			k._box(parent, Vector3(width - 0.06, 0.004, 0.01), Vector3(0, floor_y + 0.001, lerpf(z0, z1, float(i) / plates)), mat, dark, Vector3.ZERO, false)
+			k._box(parent, Vector3(width - 0.06, 0.004, 0.01), Vector3(0, floor_y + 0.001, lerpf(z0, z1, float(i) / plates)), seam_mat, seam_col, Vector3.ZERO, false)
 	# The rub rails: pressed channels proud of both deck edges, a sill at the tail.
 	for s: float in [-1.0, 1.0]:
 		k._box(parent, Vector3(0.02, deck * 0.92, length), Vector3(s * (hw + 0.01), floor_y - deck * 0.5, zc), mat, col)
@@ -622,8 +635,13 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 	var nz := maxi(1, grid.z)
 	# A crew's strapped pallet of painted boxes is now and then another store
 	# on the same footprint: long crates (rockets, mortar bombs) laid across
-	# it two high, so a bed of pallets isn't one box repeated.
-	if rng != null and not k.wreck and not straps.is_empty() and nx > 1 and nz > 1 and VehicleMaterials.profile(mat, k.surface_family) != "wood" and rng.randf() < 0.33:
+	# it two high, so a bed of pallets isn't one box repeated. (One pallet in
+	# six: at one in three an ammunition truck's bed read from above as a few
+	# broad flat green panels, not a load of boxes. The draw is hashed: the
+	# second draws of the generators of one bed's pallets, seeded from places
+	# a step apart, run alike, so a truck went nearly all long crates or
+	# none.)
+	if rng != null and not k.wreck and not straps.is_empty() and nx > 1 and nz > 1 and VehicleMaterials.profile(mat, k.surface_family) != "wood" and float(hash(rng.randi()) & 1023) / 1024.0 < 0.17:
 		nx = 1
 		ny = maxi(2, ny)
 	var lift := maxf(0.0, pallet_height)
@@ -648,13 +666,15 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 	var wood_col := Color(1, 1, 1)
 	# The lot's stencil (-1 the builders' one: two long lines on every lid).
 	# A crew's stack is from one lot, its lids stencilled one way, or not on
-	# top at all (half of them: the marking is on the ends): two short lines
+	# top at all (one in five: the marking is on the ends): two short lines
 	# of the lot's text, a painted lot band across one end, or a small block
 	# of text; each box was set down either way round. (A wreck's keep theirs.)
+	# (With half the lids blank, a bed of ammunition read from above as plain
+	# green boxes; the stencilling is what says "ammunition".)
 	var style := -1
 	if rng != null and not k.wreck:
 		var pick := rng.randf()
-		style = 0 if pick < 0.5 else (1 if pick < 0.68 else (2 if pick < 0.84 else 3))
+		style = 0 if pick < 0.2 else (1 if pick < 0.55 else (2 if pick < 0.72 else 3))
 	# A wooden crate is boards nailed square, its lid three planks: the lot's
 	# marking a small block of stencilled text, never two long bars (which
 	# read as a chest's straps); a wreck's keep theirs.

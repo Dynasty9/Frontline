@@ -583,11 +583,12 @@ static func _zodiac(k: VehicleModels, team: int) -> void:
 		var top := 0.21 + 0.12 * f * f
 		rings.append(_rz([0.05, ky, hw * 0.8, ky + 0.07, hw, top, -hw, top, -hw * 0.8, ky + 0.07, -0.05, ky], z))
 	k._add(m, VehicleModels.solid(rings, "boat_crrc_floor"), tm, tc.lightened(0.04), Vector3.ZERO)
-	# aluminium floorboards: bare treadplate, scuffed dull, the one light
-	# metal in the boat against the black of the tubes (in the tubes' grey
-	# they read as more fabric; a wreck's as before)
+	# aluminium floorboards: bare treadplate, scuffed dull and grey with salt
+	# and boots, a shade lighter than the black of the tubes (in the tubes'
+	# grey they read as more fabric; at 0.4 the diamond plate shone pale
+	# inside the dark boat from above; a wreck's as before)
 	for zz in [[1.88, 0.94], [0.9, -0.06], [-0.1, -1.0]]:
-		k._box(m, Vector3(0.84, 0.02, zz[0] - zz[1]), Vector3(0, 0.218, (zz[0] + zz[1]) * 0.5), "plain_dark" if k.wreck else "tread", Color(0.2, 0.2, 0.2) if k.wreck else Color(0.4, 0.41, 0.4))
+		k._box(m, Vector3(0.84, 0.02, zz[0] - zz[1]), Vector3(0, 0.218, (zz[0] + zz[1]) * 0.5), "plain_dark" if k.wreck else "tread", Color(0.2, 0.2, 0.2) if k.wreck else Color(0.26, 0.27, 0.26))
 	# the transom with its knees and the motor pad
 	k._box(m, Vector3(1.02, 0.5, 0.07), Vector3(0, 0.38, zt + 0.02), "paint", Color(0.12, 0.12, 0.12), Vector3(0.1, 0, 0))
 	k._box(m, Vector3(0.34, 0.05, 0.15), Vector3(0, 0.635, zt + 0.045), "wood_dark")
@@ -669,10 +670,12 @@ static func _bimini(k: VehicleModels, m: Node3D, p: Dictionary, seed: int, strip
 			# the rear support it rests in, down to the quarter
 			var qst := _station(p, _u(p, boot.z + 0.35))
 			_rod(k, m, Vector3(s * 0.8, boot.y - 0.05, boot.z), Vector3(s * (_beam(qst) - 0.07), _top(qst), boot.z + 0.35), 0.012, "steel", STAINLESS, 5)
-		# (the boot: a zipped canvas sausage round the folded top, its zip
-		# along the top, a little flattened where the bows press into it)
-		k._add(m, Res.capsule(0.085, 1.72, 10), "canvas", cloth, boot, Vector3(0, 0, PI / 2), Vector3(0.8, 1, 1))
-		k._box(m, Vector3(1.5, 0.006, 0.014), boot + Vector3(0, 0.07, 0), "plain_dark", Color(0.08, 0.08, 0.08), Vector3.ZERO, false)
+		# (the boot: a zipped canvas sleeve round the folded top, its zip
+		# along the top, pressed flat and wide by the bows and the cloth
+		# folded in it: round, it stood up as a glossy sausage, its sheen one
+		# hard line down its length)
+		k._add(m, Res.capsule(0.085, 1.72, 10), "canvas", cloth, boot, Vector3(0, 0, PI / 2), Vector3(0.58, 1, 1.3))
+		k._box(m, Vector3(1.5, 0.006, 0.014), boot + Vector3(0, 0.05, 0), "plain_dark", Color(0.08, 0.08, 0.08), Vector3.ZERO, false)
 		return
 	var corner: Array[float] = [top - 0.02, top + 0.02, top - 0.03]
 	for b in 3:

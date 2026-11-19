@@ -54,9 +54,9 @@ static func build(k: VehicleModels, key: String, team: int, seed: int) -> bool:
 		"quadbike":
 			_quad(k, seed)
 		"hatchback", "hatchback_sport":
-			_hatch(k, seed, key == "hatchback_sport")
+			_hatch(k, seed, key == "hatchback_sport", team)
 		"suv":
-			_suv(k, seed)
+			_suv(k, seed, team)
 		"kart":
 			_kart(k, seed)
 		"tractor":
@@ -124,8 +124,8 @@ static func _taper(z: float, rnd: Array) -> float:
 	return VehicleWheelArches._taper(z, rnd)
 
 
-static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = [], roll := 0.0) -> void:
-	VehicleWheelArches._xbody(k, parent, key, prof, x0, x1, ch, arches, mat, col, segs, rnd, roll)
+static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = [], roll := 0.0, crown := VehicleWheelArches.CROWN) -> void:
+	VehicleWheelArches._xbody(k, parent, key, prof, x0, x1, ch, arches, mat, col, segs, rnd, roll, crown)
 
 
 static func _flare(k: VehicleModels, parent: Node3D, key: String, zc: float, yc: float, r0: float, r1: float, x0: float, x1: float, a0: float, a1: float, mat: String, col = null, segs := 6) -> void:
@@ -552,8 +552,9 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	_glasshouse(k, m, "civ_off", lo, hi, 0.04, col, fin)
 	var inside := Vector3(0, 1.5, -0.2)
 	_pane(k, m, "civ_off_ws", _face(lo, hi, 0), inside, 0.03, 0.97, 0.04, 0.95, 0.0, 0.012, "glass")
-	# a parked one's sun shade up behind the windscreen, on some (by paint)
-	if v == "" and absi(hash([col, 43])) % 4 == 0:
+	# a parked one's sun shade up behind the windscreen, on some (by paint;
+	# a pickup being driven has none up)
+	if v == "" and team < 0 and absi(hash([col, 43])) % 4 == 0:
 		VehicleEquipment.sunshade(k, m, _face(lo, hi, 0), inside, VehicleEquipment.SHADES[absi(hash([col, 44])) % VehicleEquipment.SHADES.size()])
 	_pane(k, m, "civ_off_bw", _face(lo, hi, 2), inside, 0.12, 0.88, 0.22, 0.86, 0.0, 0.012, "glass")
 	_pane(k, m, "civ_off_swr", _face(lo, hi, 1), inside, 0.06, 0.94, 0.08, 0.9, 0.0, 0.012, "glass")
@@ -606,10 +607,12 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	VehicleMounts.hitch(k, m, Vector3(0, 0.49, 2.606), Vector3(0.14, 0.18, 0.2), Vector3.ZERO, "ball")
 	# Some owners snap a soft tonneau over the empty bed, on the rails and two
 	# bows (the paint picks it, as the stock keys a parked pickup): black
-	# vinyl when new, a few summers on a charcoal the sun has dulled to a
-	# mid grey (at 0.2 the faded one still read as black)
+	# vinyl when new, a few summers on a charcoal the sun has dulled. It is
+	# matt, a rubbery leather-grain vinyl with only a soft sheen (in the
+	# glossy coating, a mid grey, it mirrored the sky as a blank pale card
+	# over half the truck from above).
 	if v == "" and absi(hash([col, 37])) % 5 < 2:
-		VehicleEquipment.bed_cover(k, m, Vector3(0, 1.284, 1.45), Vector2(1.8, 2.1), 2, Color(0.16, 0.16, 0.155) if absi(hash([col, 37])) % 5 == 0 else Color(0.28, 0.28, 0.27))
+		VehicleEquipment.bed_cover(k, m, Vector3(0, 1.284, 1.45), Vector2(1.8, 2.1), 2, Color(0.07, 0.07, 0.068) if absi(hash([col, 37])) % 5 == 0 else Color(0.13, 0.13, 0.125), "rubber")
 	elif v == "" and not k.wreck and absi(hash([col, 37])) % 5 == 2:
 		# or a load roped down in the bed under a tarp: a blue polythene one
 		# from the hardware shop, glossy and smooth, or an old army drab in
@@ -762,7 +765,10 @@ static func _mb4wd(k: VehicleModels, team: int, seed: int, v: String) -> void:
 	k._box(m, Vector3(hw * 2.0, 0.3, 0.16), Vector3(0, 1.07, -0.78), fin, col)
 	# bonnet over a narrow engine bay, then the flat-topped wings with flares
 	k._box(m, Vector3(1.2, 0.36, 1.1), Vector3(0, 0.78, -1.4), "plain_dark")
-	_xbody(k, m, "civ_mb_bonnet", [-1.96, 0.9, -0.84, 0.9, -0.84, 1.17, -1.96, 1.12], -0.71, 0.71, 0.03, [], fin, col, 8, [], ROLL_BOXY)
+	# (the G's bonnet is near flat, pressed with only a faint dome: crowned
+	# as a saloon's, the sun gathered on it in one hot round spot; a wreck
+	# keeps the bonnet it had)
+	_xbody(k, m, "civ_mb_bonnet", [-1.96, 0.9, -0.84, 0.9, -0.84, 1.17, -1.96, 1.12], -0.71, 0.71, 0.03, [], fin, col, 8, [], ROLL_BOXY, VehicleWheelArches.CROWN if k.wreck else 0.08)
 	for s in [-1.0, 1.0]:
 		var x0 := 0.6 if s > 0 else -0.95
 		_xbody(k, m, "civ_mb_wing%d" % int(s), [-2.0, 0.76, -1.9, 0.68, -0.84, 0.6, -0.84, 1.06, -1.98, 1.06], x0, x0 + 0.35, 0.03, [[zf, wr, ar]], fin, col, 5, [], ROLL_BOXY)
@@ -924,9 +930,11 @@ static func _mb_top(k: VehicleModels, seed := 0, paint = null, fin := "car_paint
 	var pick := 0 if seed == 0 else th % tops.size()
 	# Army-surplus olive and the sand and khaki ducks go on the olive and sand
 	# bodies they came off or match; on any other paint the hood is the black
-	# the dealer fitted, or on a white or silver car one in three is a vinyl
-	# in the body's own colour (an olive hood on a white car read as a camo
-	# tarp thrown over a civilian one). A wreck keeps its pick.
+	# the dealer fitted, or on a white or silver car one in three is the
+	# dark grey vinyl sold for the pale paints (an olive hood on a white car
+	# read as a camo tarp thrown over a civilian one; one in the body's own
+	# white read as a featureless lid, its bows' clamps black blocks at the
+	# windscreen's corners). A wreck keeps its pick.
 	var own_colour := false
 	if not k.wreck and paint is Color and seed != 0:
 		var c: Color = paint
@@ -935,7 +943,7 @@ static func _mb_top(k: VehicleModels, seed := 0, paint = null, fin := "car_paint
 			pick = 0
 	var top: Color = tops[0] if seed == 0 else tops[pick].lerp(Color(0.55, 0.53, 0.48), 0.12 * float((th >> 4) % 3))
 	if own_colour:
-		top = (paint as Color).darkened(0.06)
+		top = Color(0.22, 0.22, 0.215)
 	# The factory hood and the khaki replacements sold for it are vinyl:
 	# smooth, a little glossy, even in tone. The ex-army olive and the
 	# bleached sand are cotton duck, matte and mottled by the weather. (A
@@ -1284,7 +1292,10 @@ static func _van_cab(k: VehicleModels, col: Color, ws: Array, zf: float, zr: flo
 	# (where the windscreen's line crosses the waist)
 	var zw := -2.08 + (waist - 1.29) / (2.15 - 1.29) * 0.66
 	_xbody(k, m, "civ_van_cab_lo", [-2.1, 0.36, zb, 0.36, zb, waist, zw + 0.06, waist, -2.08, 1.29, -2.1, 1.25], -hw, hw, 0.07, [[zf, wr, ar]], "car_paint", col, 8, [], ROLL)
-	_xbody(k, m, "civ_van_rear", [zb, 0.36, 2.95, 0.36, 2.95, 2.5, 2.88, 2.6, -0.6, 2.6, -1.0, 2.56, zb, 2.414], -hw, hw, 0.07, [[zr, wr, ar]], "car_paint", col, 8, [0.0, 0.0, 0.1, 0.04], ROLL)
+	# (a high roof is a long, near-flat pressing stiffened by its ribs, not a
+	# domed lid: crowned as a car's, its whole length gathered the sun into
+	# one blown-white blob from above)
+	_xbody(k, m, "civ_van_rear", [zb, 0.36, 2.95, 0.36, 2.95, 2.5, 2.88, 2.6, -0.6, 2.6, -1.0, 2.56, zb, 2.414], -hw, hw, 0.07, [[zr, wr, ar]], "car_paint", col, 8, [0.0, 0.0, 0.1, 0.04], ROLL, 0.08)
 	var inside := Vector3(0, 1.8, -1.5)
 	var faces := [[ws, inside, [Rect2(0.04, 0.06, 0.92, 0.88)]],
 		[[Vector3(-hw, 2.15, -1.42), Vector3(hw, 2.15, -1.42), Vector3(hw, 2.414, zb), Vector3(-hw, 2.414, zb)], inside, []]]
@@ -1490,7 +1501,7 @@ static func _quad(k: VehicleModels, seed: int) -> void:
 ## pointed nose, a long raked windscreen, a rising beltline and a short,
 ## steep hatch. The Sport sits lower on dark wheels, with a roof spoiler, a
 ## splitter and skirts and a two-tone racing livery.
-static func _hatch(k: VehicleModels, seed: int, sport: bool) -> void:
+static func _hatch(k: VehicleModels, seed: int, sport: bool, team := -1) -> void:
 	var m := k.root
 	var col := _paint(seed, 53, false)
 	var acc := Color(0.82, 0.81, 0.77)
@@ -1533,7 +1544,8 @@ static func _hatch(k: VehicleModels, seed: int, sport: bool) -> void:
 	_glasshouse(k, m, key, lo, hi, 0.03, col)
 	var inside := Vector3(0, 1.2 + dy, 0.6)
 	_pane(k, m, key + "_ws", _face(lo, hi, 0), inside, 0.03, 0.97, 0.04, 0.95, 0.0, 0.012, "glass")
-	if absi(hash([col, 43])) % 4 == 0:
+	# (only in a parked car: see _suv)
+	if team < 0 and absi(hash([col, 43])) % 4 == 0:
 		VehicleEquipment.sunshade(k, m, _face(lo, hi, 0), inside, VehicleEquipment.SHADES[absi(hash([col, 44])) % VehicleEquipment.SHADES.size()])
 	_pane(k, m, key + "_rw", _face(lo, hi, 2), inside, 0.08, 0.92, 0.12, 0.9, 0.0, 0.012, "glass")
 	if not sport:
@@ -1780,7 +1792,7 @@ static func _car_details(k: VehicleModels, m: Node3D, dy: float, zr: float, ywip
 ## SUV: a BMW X6 (E71) - a big high-shouldered body on large wheels under a
 ## coupe roofline sloping all the way to the boot lip, the twin kidney grille,
 ## twin ring headlights, L-shaped tail lights and quad exhausts.
-static func _suv(k: VehicleModels, seed: int) -> void:
+static func _suv(k: VehicleModels, seed: int, team := -1) -> void:
 	var m := k.root
 	var col := _paint(seed, 61, false)
 	var hw := 0.97
@@ -1845,7 +1857,10 @@ static func _suv(k: VehicleModels, seed: int) -> void:
 	_glasshouse(k, m, gk, lo, hi, 0.04, col)
 	var inside := Vector3(0, 1.4, 0.5) + up
 	_pane(k, m, gk + "_ws", _face(lo, hi, 0), inside, 0.03, 0.97, 0.04, 0.95, 0.0, 0.012, "glass")
-	if absi(hash([col, 43])) % 4 == 0:
+	# (a shade is put up only in a parked car: one being driven shows its
+	# dash through the glass, where a shade turned the windscreen to a pale
+	# opaque card)
+	if team < 0 and absi(hash([col, 43])) % 4 == 0:
 		VehicleEquipment.sunshade(k, m, _face(lo, hi, 0), inside, VehicleEquipment.SHADES[absi(hash([col, 44])) % VehicleEquipment.SHADES.size()])
 	_pane(k, m, gk + "_rw", _face(lo, hi, 2), inside, 0.1, 0.9, 0.16, 0.88, 0.0, 0.012, "glass")
 	# the sliding sunroof over the front seats (opaque: the roof lining is
@@ -1986,9 +2001,12 @@ static func _kart(k: VehicleModels, seed: int) -> void:
 		# into its walls and crowned, the livery's panel moulded into its
 		# crown inside that roll (cut as a faceted wedge it read as a toy's
 		# with dead-sharp edges, the panel overhanging it).
-		_yloft(k, m, "civ_kart_nose_r", [[-0.38, -0.92, 0.38, -0.92, 0.5, -0.66, -0.5, -0.66], [-0.28, -0.88, 0.28, -0.88, 0.42, -0.68, -0.42, -0.68]], [0.05, 0.15], 0.04, "car_paint", col, Vector3.ZERO, 0.4)
+		# (Kart bodywork is rotomoulded polyethylene, its colour in the
+		# plastic: a satin, faintly waxy finish. In a car's clear-coated
+		# paint the white pods caught the sun as a hot round blob.)
+		_yloft(k, m, "civ_kart_nose_r", [[-0.38, -0.92, 0.38, -0.92, 0.5, -0.66, -0.5, -0.66], [-0.28, -0.88, 0.28, -0.88, 0.42, -0.68, -0.42, -0.68]], [0.05, 0.15], 0.04, "plastic", col, Vector3.ZERO, 0.4)
 		_yloft(k, m, "civ_kart_nose_tip_r", [[-0.24, -0.845, 0.24, -0.845, 0.375, -0.71, -0.375, -0.71], [-0.19, -0.82, 0.19, -0.82, 0.29, -0.725, -0.29, -0.725]], [0.145, 0.172], 0.012, "paint", acc, Vector3.ZERO, 0.3)
-	k._add(m, VehicleModels.loft("civ_kart_panel", [-0.2, -0.47, 0.2, -0.47, 0.2, -0.43, -0.2, -0.43], [-0.16, -0.4, 0.16, -0.4, 0.16, -0.36, -0.16, -0.36], 0.1, 0.42), "car_paint", col, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("civ_kart_panel", [-0.2, -0.47, 0.2, -0.47, 0.2, -0.43, -0.2, -0.43], [-0.16, -0.4, 0.16, -0.4, 0.16, -0.36, -0.16, -0.36], 0.1, 0.42), "car_paint" if k.wreck else "plastic", col, Vector3.ZERO)
 	k._box(m, Vector3(0.24, 0.17, 0.012), Vector3(0, 0.3, -0.425), "paint", Color(0.88, 0.87, 0.83), Vector3(-0.22, 0, 0), false)
 	# The driver's race number painted on the panel and the pods' plates (two
 	# black blocks per plate read as holes cut in the white). A wreck keeps
@@ -2027,7 +2045,7 @@ static func _kart(k: VehicleModels, seed: int) -> void:
 					lt.append_array([-float(rt[i]), rt[i + 1]])
 				rb = lb
 				rt = lt
-			_yloft(k, m, "civ_kart_pod_r%d" % int(s), [rb, rt], [0.06, 0.2], 0.035, "car_paint", col, Vector3.ZERO, 0.4)
+			_yloft(k, m, "civ_kart_pod_r%d" % int(s), [rb, rt], [0.06, 0.2], 0.035, "plastic", col, Vector3.ZERO, 0.4)
 		k._box(m, Vector3(0.012, 0.1, 0.22), Vector3(s * 0.645, 0.13, 0.05), "paint", Color(0.88, 0.87, 0.83), Vector3.ZERO, false)
 		if k.wreck:
 			k._box(m, Vector3(0.014, 0.07, 0.04), Vector3(s * 0.65, 0.13, 0.02), "paint", ink, Vector3.ZERO, false)
@@ -2048,8 +2066,12 @@ static func _kart(k: VehicleModels, seed: int) -> void:
 		# (the pan tilted back toward the backrest, as a kart driver sits)
 		k._add(m, BevelMesh.make(Vector3(0.3, 0.045, 0.27), 0.015), "plain", shell, Vector3(0, 0.115, 0.17), Vector3(0.18, 0, 0))
 		k._add(m, BevelMesh.make(Vector3(0.34, 0.4, 0.03), 0.012), "plain", shell, Vector3(0, 0.31, 0.33), Vector3(0.3, 0, 0))
+		# (the sides are moulded in one with the pan: their feet sit down in
+		# the pan's edge along its length and their backs against the
+		# backrest, where steeper and higher they stood off it as two loose
+		# plates with daylight under them)
 		for s in [-1.0, 1.0]:
-			k._add(m, BevelMesh.make(Vector3(0.025, 0.17, 0.22), 0.01), "plain", shell, Vector3(s * 0.165, 0.21, 0.25), Vector3(-0.35, 0, -0.2 * s), Vector3.ONE, false)
+			k._add(m, BevelMesh.make(Vector3(0.025, 0.2, 0.22), 0.01), "plain", shell, Vector3(s * 0.16, 0.19, 0.22), Vector3(-0.15, 0, -0.2 * s), Vector3.ONE, false)
 	for s in [-1.0, 1.0]:
 		k._box(m, Vector3(0.05, 0.08, 0.02), Vector3(s * 0.08, 0.12, -0.6), "gunmetal_w", null, Vector3(0.4, 0, 0), false)
 	_rod(k, m, Vector3(0, 0.1, -0.55), Vector3(0, 0.42, -0.2), 0.012, "steel", tube, 6)
@@ -2168,6 +2190,14 @@ static func _tractor(k: VehicleModels, seed: int) -> void:
 		# pane there at all, where a thin seal left an open roll frame)
 		var border := minf(0.04, minf(size.x, size.y) * 0.1)
 		k._add(m, VehicleGlazing._frame(size, border, 0.012 + 0.02), "rubber", null, b[1], b[2], Vector3.ONE, false)
+		# The doors' big panes are glazed glass with the sky's sheen down
+		# them, as a cab's side glass shows from across a field: clear on
+		# every face, the cab read as a bare roll cage from the side. The
+		# windscreen, the rear screen and the low panes stay clear, so the
+		# seat, the wheel and the console still show through the cab.
+		if absf((b[2] as Vector3).y) > 0.1 and size.y > 0.6:
+			k._add(m, VehicleGlazing._pane(size, 0.012), "glass", null, b[1], b[2], Vector3.ONE, false)
+			continue
 		sheet.append([VehicleGlazing._pane(size, 0.0), Transform3D(Basis.from_euler(b[2]), b[1])])
 	if not sheet.is_empty():
 		_clear_cab(k, m, [], "paint", grey, sheet)

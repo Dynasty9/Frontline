@@ -60,10 +60,14 @@ const PROFILES := {
 	# several centimetres thick, tinted green-black through its layers and set
 	# deep in a steel frame. No cab shows through it, only its own dark depth,
 	# and each laminate face adds a faint image of its own, so it gives back a
-	# dull, softened sheen of the sky low down rather than the bright blue
-	# mirror of a car's thin screen (from above, a tank's blocks read as dark
-	# slots in the cupola, a protected cab's windows as near-black panes).
-	"armor_glass": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.14, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.5, "surface_glaze": 0.12},
+	# slightly softer sheen of the sky than a car's thin screen, over a darker
+	# glass. Its reflection leans up toward the sky as the plain glass's does:
+	# from above, a tank's blocks read as deep green-grey glass in the cupola
+	# and a protected cab's windows as dark panes with the sky's sheen across
+	# them, still glass, never a hole (with next to no sky in it, the
+	# reflection leaning only a little up, they went the near-black of an
+	# open slot).
+	"armor_glass": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.08, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.7, "surface_glaze": 0.6},
 	"nonslip": {"surface_normal_strength": 0.65, "surface_finish": 4, "surface_weather": 0.23, "surface_grain": 0.75, "surface_roughness": 0.22, "map": "nonslip", "rough": 0.92, "metal": 0.0, "bump": 0.18, "grime": 0.13, "surface_scale": 2.0},
 	"tread": {"surface_normal_strength": 0.7, "surface_finish": 4, "surface_weather": 0.20, "surface_grain": 0.25, "surface_roughness": 0.42, "map": "tread", "rough": 0.76, "metal": 0.0, "bump": 0.65, "grime": 0.13, "surface_scale": 0.65, "surface_tone": 0.18},
 	"oxidized": {"surface_normal_strength": 0.55, "surface_finish": 3, "surface_weather": 0.25, "surface_grain": 0.35, "surface_roughness": 0.62, "map": "oxidized", "rough": 0.43, "metal": 0.85, "bump": 0.08, "grime": 0.15, "surface_scale": 1.0, "surface_corrosion": 1.0, "surface_tone": 0.12},

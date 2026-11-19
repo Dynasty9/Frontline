@@ -802,8 +802,11 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	# of the weapon stations' sweep (left or right as the crew threw it)
 	var net_side := -1.0 if posmod(seed, 2) == 0 else 1.0
 	_roof_net(k, m, Vector3(net_side * 0.72, 2.2, 0.8), Vector2(0.56, 0.8))
-	# and the section's kit on the roof's other side, abreast of it
-	VmCore.roof_kit(k, m, Vector3(-net_side * 0.76, 2.2, 0.8), 0.0, Vector2(0.34, 0.78), 2, Color(0.33, 0.33, 0.24))
+	# and the section's kit on the roof's other side, abreast of it: a
+	# strapped kit bag in the crew's dull canvas, or two ammunition cans (a
+	# patch too narrow for the cans turned every bundle into a duffel, a pale
+	# smooth pill on the roof once sun-faded)
+	VmCore.roof_kit(k, m, Vector3(-net_side * 0.76, 2.2, 0.8), 0.0, Vector2(0.5, 0.78), 2, Color(0.27, 0.28, 0.2))
 	# the tactical number low on each upper side, between the exhaust and the
 	# first firing port
 	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.18, Vector3(1.45, 1.42, 3.3), Vector3(1.45, 1.42, -2.0), Vector3(1.15, 2.2, -2.0), Vector3(1.15, 2.2, 3.3), Vector2(0.585, 0.23))
@@ -913,7 +916,10 @@ static func _stalker(k: VehicleModels, team: int, seed := 0) -> Vector3:
 		VehicleFittings.panel_hatch(k, m, Vector3(s * 0.48, 1.74, 2.4), Vector3(0.6, 0.05, 0.75), c)
 	# the section's camouflage net rolled and strapped across the roof behind them
 	VehicleCloth.roll(k, m, Vector3(0, 1.84, 2.95), 0.12, 1.3, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
-	k._team_mark(m, team, Vector3(0, 1.735, 3.3), Vector3(0.7, 0.02, 0.4))
+	# the side's mark on the clear roof between the turret's rear and the
+	# troop hatches, where the turret's sweep passes over it (behind the roll
+	# it lay half under it, its tips poking out either side)
+	k._team_mark(m, team, Vector3(0, 1.735, 1.78), Vector3(0.7, 0.02, 0.38))
 	# the tactical number on each upper side, between the bins and the vision
 	# blocks, as big as the side takes (40 cm figures, read from the battle
 	# camera; the sloped side faces up at it)
@@ -1236,7 +1242,9 @@ static func _futura(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleMounts.sight(k, t, Vector3(-0.42, 0.98, -0.25), Vector3(0.36, 0.26, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.12))], c)
 	VehicleMounts.sight(k, t, Vector3(0.45, 1.25, 0.6), Vector3(0.3, 0.22, 0.3), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.1))], c, null, Vector3(0.08, 0.1, 0.41))
 	_rcws(k, t, Vector3(-0.3, 0.86, 1.0), "hmg")
-	k._team_mark(t, team, Vector3(0, 0.865, 1.35), Vector3(0.6, 0.02, 0.4))
+	# the side's mark on the roof's clear right half behind the commander's
+	# sight (centred, the remote gun's base hid half of it)
+	k._team_mark(t, team, Vector3(0.3, 0.865, 1.36), Vector3(0.5, 0.02, 0.34))
 
 
 ## 2S9 Sochor: the T-100 hull under a big flat-sided howitzer turret (2S35
@@ -1461,8 +1469,9 @@ const CANVAS_TAN := Color(0.47, 0.42, 0.31)  # on canvas_white: tints above the 
 ## headlights, a ladder of steps, mirrors on long arms; the frame, the fuel
 ## tank and the exhaust stack behind the cab, six wheels (one axle at the
 ## front, two at the back). The mission module goes on from z = -2.1.
-## `salt` draws the roof's recognition panel apart for each mission module.
-static func _typhoon(k: VehicleModels, team: int, salt := 0) -> void:
+## (`_salt` drew the roof's recognition panel apart for each mission module;
+## the roof carries none now.)
+static func _typhoon(k: VehicleModels, team: int, _salt := 0) -> void:
 	var m := k.root
 	var c := CAM
 	k._box(m, Vector3(0.95, 0.28, 8.4), Vector3(0, 0.96, 0.05), "gunmetal_w")
@@ -1525,11 +1534,9 @@ static func _typhoon(k: VehicleModels, team: int, salt := 0) -> void:
 	var camo := VehicleCloth.camouflage(k)
 	if net != null and camo > 0.0 and net.randf() < camo + 0.2:
 		_roof_net(k, m, net_at, Vector2(0.58, 0.68))
-	else:
-		# or, in its place, an air-recognition panel folded on the roof's
-		# crown, drawn apart for each module: the five Tempests share this
-		# cab, and a column of them in one kit wore one panel each, alike
-		VehicleEquipment.recognition_panel(k, m, Vector3(-0.55, 3.165, -3.1), Vector3.ZERO, true, 0.2, salt)
+	# (no air-recognition panel on the cab roof: even folded and faded it was
+	# the loudest patch on the truck from the battle camera, a pink or orange
+	# tile; a truck's crew keeps its panel in the cab)
 	# the crew's own kit beside the hatch on the roof's right, where the man
 	# in it can reach down for it (one hatch on a bare plate read as nothing
 	# from above)
@@ -1562,11 +1569,14 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 			# long missile crates stacked three high forward, rows of ammunition
 			# boxes behind them, each stack on its pallet and strapped down, cans
 			# at the tail. Shorter stacked cases preserve the clearance below the
-			# folded boom.
+			# folded boom. The last row, under the boom's head and its hook
+			# block, is a layer of shorter cases, so a tarp lashed over it
+			# clears the hook (at the full height the boom's end ran into it).
 			for x: float in [-0.54, 0.54]:
 				VehicleCargo.crate_stack(k, m, Vector3(x, 1.51, -0.55), Vector3(1.0, 0.93, 1.9), Vector3i(1, 3, 1), "paint", OLIVE, 0.1, [-0.55, 0.55], -0.08)
 			for z: float in [0.95, 1.83, 2.71]:
-				VehicleCargo.crate_stack(k, m, Vector3(0, 1.51, z), Vector3(2.1, 0.92, 0.8), Vector3i(3, 2, 1), "paint", OLIVE.darkened(0.06), 0.1, [0.0], -0.12)
+				var high := 0.92 if z < 2.5 or k.wreck else 0.8
+				VehicleCargo.crate_stack(k, m, Vector3(0, 1.51, z), Vector3(2.1, high, 0.8), Vector3i(3, 2, 1), "paint", OLIVE.darkened(0.06), 0.1, [0.0], -0.12)
 			for j in 4:
 				k._box(m, Vector3(0.4, 0.3, 0.55), Vector3((j - 1.5) * 0.5, 1.66, 3.8), "paint", Color(0.27, 0.29, 0.21))
 			# the loading crane behind the cab on its king post, its boom folded

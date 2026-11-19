@@ -971,7 +971,9 @@ static func _zamak(k: VehicleModels, team: int, kind: String, seed: int) -> void
 ## single tyres (tandem bogie at the back), the protruding engine bonnet
 ## with its grille, flat-topped wings carrying round headlights, the
 ## squared-off cab with a split windscreen, the spare wheel upright behind it.
-static func _zamak_cab(k: VehicleModels, team: int, cam: String, col, kind := "") -> void:
+## (`_kind` drew the roof's recognition panel apart for each variant; the
+## roof carries none now.)
+static func _zamak_cab(k: VehicleModels, team: int, cam: String, col, _kind := "") -> void:
 	var m := k.root
 	# chassis rails and cross members, axles with their differentials, springs
 	for s: float in [-1.0, 1.0]:
@@ -988,7 +990,7 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col, kind := ""
 		VehicleRunningGear.axle(k, m, Vector3(0, 0.6, z), 1.7, 0.08)
 	# the bonnet: louvres down its sides, the grille in front
 	k._add(m, _armour([_ring(_oct(-0.6, 0.6, -3.62, -2.12, 0.08), 1.12), _ring(_oct(-0.5, 0.5, -3.48, -2.12, 0.14), 1.84)], "indep_zk_bonnet", 0.035), cam, col, Vector3.ZERO)
-	VehicleFittings.grille(k, m, Vector3(0, 1.48, -3.62), Vector2(0.92, 0.65), Vector3(-0.20, PI, 0), cam, col, 7, true)
+	_zamak_grille(k, m, Vector3(0, 1.48, -3.62), Vector2(0.92, 0.65), Vector3(-0.20, PI, 0), cam, col, 7)
 	k._box(m, Vector3(0.9, 0.03, 0.04), Vector3(0, 1.84, -2.2), "gunmetal_w", null, Vector3.ZERO, false)
 	k._box(m, Vector3(0.03, 0.02, 1.3), Vector3(0, 1.845, -2.85), "gunmetal_w", null, Vector3.ZERO, false)
 	for s: float in [-1.0, 1.0]:
@@ -1037,12 +1039,9 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col, kind := ""
 	var camo := VehicleCloth.camouflage(k)
 	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
 		VehicleCloth.roof_net(k, m, net_at, Vector3(0.78, rng.randf_range(0.1, 0.17), 0.72), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
-	else:
-		# or, in its place, an air-recognition panel folded on the roof (its
-		# 1.83 m doesn't fit the cab's roof laid out), drawn apart for each
-		# variant: the seven Zamaks share this cab, and a column of them in
-		# one kit wore one panel each, alike
-		VehicleEquipment.recognition_panel(k, m, Vector3(-0.42, 2.765, -1.3), Vector3.ZERO, true, 0.2, 0 if kind == "" else hash(kind) & 0xffff)
+	# (no air-recognition panel on the cab roof: even folded and faded it was
+	# the loudest patch on the truck from the battle camera, a pink or orange
+	# tile; a truck's crew keeps its panel in the cab)
 	# behind the cab: the spare wheel upright in its frame, the air intake,
 	# the fuel tank on the left and the battery box on the right
 	# (its face against the cab's back plain, as nobody sees it)
@@ -1064,6 +1063,32 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col, kind := ""
 	if bags != null and bags.randf() < (0.5 if team == 1 else 0.25):
 		for s: float in [-1.0, 1.0]:
 			VehicleCloth.sandbags(k, m, Vector3(s * 0.93, 1.445, -2.96), Vector3(s * 0.93, 1.445, -2.2), bags, lot, 2 if bags.randf() < 0.6 else 1)
+
+
+## The KamAZ's radiator grille, placed as VehicleFittings.grille is: a pressed
+## frame round `bars` deep vertical bars in the truck's paint, flat-faced and
+## standing 2 cm proud of the opening, running 5 cm back into it, and the
+## radiator's black core behind them, its tubes across. (The shared grille is
+## an armoured louvre bank pressed at 8 cm or less over a core in the paint's
+## shade: on the truck's nose that read as a fine, muddy mesh where a truck's
+## grille is a few bold bars with black between them. A wreck keeps it.)
+static func _zamak_grille(k: VehicleModels, p: Node3D, center: Vector3, size: Vector2, rotation: Vector3, material: String, col, bars: int) -> void:
+	if k.wreck:
+		VehicleFittings.grille(k, p, center, size, rotation, material, col, bars, true)
+		return
+	var basis := Basis.from_euler(rotation)
+	var surface := VehicleSurface.plane(center, basis.x, basis.y)
+	var x := size.x * 0.5
+	var y := size.y * 0.5
+	var cut := minf(0.035, minf(x, y) * 0.12)
+	var outline := PackedVector2Array([Vector2(-x + cut, -y), Vector2(x - cut, -y), Vector2(x, -y + cut), Vector2(x, y - cut), Vector2(x - cut, y), Vector2(-x + cut, y), Vector2(-x, y - cut), Vector2(-x, -y + cut)])
+	var bounds := Rect2(-x, -y, size.x, size.y)
+	var rim := minf(0.025, minf(size.x, size.y) * 0.065)
+	var inset := Geometry2D.offset_polygon(outline, -rim * 1.5)
+	k._add(p, surface.patch(outline, -0.025, 0.012), "plain_dark", Color(0.03, 0.032, 0.03), Vector3.ZERO)
+	VehicleBody.boundary(k, p, surface, outline, 0.0, rim * 0.7, true, 0, material, col)
+	VehicleFittings._slats(k, p, surface, inset[0], bounds, 1, clampi(ceili(size.y / 0.055), 6, 40), 0.22, -0.012, 0.0, "gunmetal", Color(0.12, 0.13, 0.12))
+	VehicleFittings._slats(k, p, surface, inset[0], bounds, 0, bars, 0.46, 0.02, 0.05, material, col, 0.0)
 
 
 ## The flatbed on the chassis, on its runners; `sides` > 0 gives it dropsides
