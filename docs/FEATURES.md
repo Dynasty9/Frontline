@@ -527,7 +527,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   they leapfrog, so nobody is ever in the open without a team covering him. The covering team's gunner puts a
   burst into the hedge or house where the enemy was last heard (*recon by fire*). Ordered to run (Shift) it
   just runs. A squad sent to hold somewhere a long way off gets there as a squad, then spreads into its
-  positions - and *clears* any house on that ground first: two men stack on the door, kick it in, go through
+  positions. On a long move, followers take nearby places relative to the leader’s next waypoint, including when a new order reverses their direction. The squad *clears* any house on that ground first: two men stack on the door, kick it in, go through
   (a grenade first only if someone's known to be inside) and call "Clear!".
 - **Near ambush.** Hit at 30 metres or less, a steady squad that isn't hopelessly outnumbered assaults straight
   into the ambush instead of lying in the killing zone.
