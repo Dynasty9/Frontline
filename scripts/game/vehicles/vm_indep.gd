@@ -109,7 +109,8 @@ static func _glacis_grille(k: VehicleModels, p: Node3D, x: float, w: float, a: V
 	var d := b - a
 	var mid := a.lerp(b, (t0 + t1) * 0.5) + Vector2(-d.y, d.x).normalized() * 0.03
 	# Turned half a turn past the plate's own tilt, so the grille's +Z faces out.
-	VehicleFittings.grille(k, p, Vector3(x, mid.y, mid.x), Vector2(w, d.length() * (t1 - t0)), Vector3(atan2(d.x, d.y) + PI, 0, 0), mat, col, count)
+	# (in the woven mesh the AAF's hulls wear over their intakes)
+	VehicleFittings.grille(k, p, Vector3(x, mid.y, mid.x), Vector2(w, d.length() * (t1 - t0)), Vector3(atan2(d.x, d.y) + PI, 0, 0), mat, col, count, false, 4)
 
 
 ## A cylinder placed in a local frame t (a part group turned as one).
@@ -628,9 +629,10 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.lifting_eye(k, t, Vector3(s * 1.38, 0.86, -1.4), 0.0, 0.05)
 		VehicleFittings.lifting_eye(k, t, Vector3(s * 1.36, 0.86, 1.5), 0.0, 0.05)
 	k._box(t, Vector3(0.1, 0.06, 0.1), Vector3(0.0, 1.32, 1.55), "gunmetal_w", null, Vector3.ZERO, false)
-	# an air-recognition panel, folded, on the turret roof behind the
-	# commander's cupola, clear of the wind sensor's mast
-	VehicleEquipment.recognition_panel(k, t, Vector3(0.55, 0.862, 1.0), Vector3.ZERO, true)
+	# (no air-recognition panel: on the turret roof, even folded and dulled,
+	# it was the loudest patch on the tank from the battle camera, and the
+	# hull has no deck it lies flat on: the bustle's basket and cage sweep
+	# the engine deck, the cheek modules overhang the front deck)
 	# the crew's kit on the bare plate: aft of the remote station on the
 	# left, and ahead of the loader's hatch beside the sight, clear of the
 	# roof's seams
@@ -826,6 +828,14 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 		# the hull's side: a chine strake at mid height, stowage boxes aft,
 		# the side's lifting eyes
 		k._box(m, Vector3(0.05, 0.06, 7.2), Vector3(s * 1.345, 1.84, 0.0), cam, col)
+		# the side plate's welds: along its foot, where the wheel wells'
+		# plates are welded on under it, and a butt joint up its middle
+		# between the axles (a 7 m flank is rolled as two plates), so the
+		# flank reads as welded armour rather than one moulded slab
+		# (a wreck stays as it was)
+		if not k.wreck:
+			VehicleBody.bead(k, m, [Vector3(s * 1.338, 1.215, -3.5), Vector3(s * 1.338, 1.215, 3.5)], 0.012, cam, col, 4, false)
+			VehicleBody.bead(k, m, [Vector3(s * 1.338, 1.23, 0.03), Vector3(s * 1.338, 1.81, 0.03)], 0.012, cam, col, 4, false)
 		VehicleEquipment.storage(k, m, Vector3(s * 1.41, 1.5, 1.7), Vector3(0.16, 0.42, 1.0), cam, col, Vector3.ZERO)
 		k._box(m, Vector3(0.02, 0.04, 0.95), Vector3(s * 1.495, 1.62, 1.7), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleEquipment.storage(k, m, Vector3(s * 1.41, 1.5, -1.62), Vector3(0.16, 0.42, 0.7), cam, col, Vector3.ZERO)
@@ -865,6 +875,10 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.panel_hatch(k, m, Vector3(s * 0.5, 2.1, 2.55), Vector3(0.66, 0.06, 0.8), cam, col, 1.0)
 	# a camouflage net rolled across the roof behind the hatches
 	VehicleCloth.roll(k, m, Vector3(0, 2.2, 3.3), 0.12, 1.5, Z90, Color(0.33, 0.35, 0.24))
+	# the section's kit along the roof's right edge, outboard of the troop
+	# hatch where it doesn't foul its swing (kit only in the turret's basket
+	# left the long roof bare plate from above)
+	VmCore.roof_kit(k, m, Vector3(0.99, 2.08, 2.55), 0.0, Vector2(0.26, 0.8), 2, Color(0.33, 0.35, 0.24))
 	# the rear door: vision block, handle, hinges; a step under it. (The door
 	# is in the upright back plate, its sill where the lower plate starts to
 	# slope away under it: run on down, its foot hung 15 cm off that plate.)
@@ -929,7 +943,7 @@ static func _zamak(k: VehicleModels, team: int, kind: String, seed: int) -> void
 	var cam: String = pc[0]
 	var col = pc[1]
 	var tarp := Color(0.37, 0.39, 0.27) if team != 1 else Color(0.5, 0.46, 0.34)
-	_zamak_cab(k, team, cam, col)
+	_zamak_cab(k, team, cam, col, kind)
 	match kind:
 		"zamak":
 			_zamak_bed(k, cam, col, 0.55)
@@ -957,7 +971,7 @@ static func _zamak(k: VehicleModels, team: int, kind: String, seed: int) -> void
 ## single tyres (tandem bogie at the back), the protruding engine bonnet
 ## with its grille, flat-topped wings carrying round headlights, the
 ## squared-off cab with a split windscreen, the spare wheel upright behind it.
-static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
+static func _zamak_cab(k: VehicleModels, team: int, cam: String, col, kind := "") -> void:
 	var m := k.root
 	# chassis rails and cross members, axles with their differentials, springs
 	for s: float in [-1.0, 1.0]:
@@ -1024,8 +1038,11 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
 		VehicleCloth.roof_net(k, m, net_at, Vector3(0.78, rng.randf_range(0.1, 0.17), 0.72), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
 	else:
-		# or, in its place, an air-recognition panel folded on the roof
-		VehicleEquipment.recognition_panel(k, m, Vector3(-0.42, 2.765, -1.3), Vector3.ZERO, true)
+		# or, in its place, an air-recognition panel folded on the roof (its
+		# 1.83 m doesn't fit the cab's roof laid out), drawn apart for each
+		# variant: the seven Zamaks share this cab, and a column of them in
+		# one kit wore one panel each, alike
+		VehicleEquipment.recognition_panel(k, m, Vector3(-0.42, 2.765, -1.3), Vector3.ZERO, true, 0.2, 0 if kind == "" else hash(kind) & 0xffff)
 	# behind the cab: the spare wheel upright in its frame, the air intake,
 	# the fuel tank on the left and the battery box on the right
 	VehicleWheels.spare(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, cam, col)

@@ -802,6 +802,8 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	# of the weapon stations' sweep (left or right as the crew threw it)
 	var net_side := -1.0 if posmod(seed, 2) == 0 else 1.0
 	_roof_net(k, m, Vector3(net_side * 0.72, 2.2, 0.8), Vector2(0.56, 0.8))
+	# and the section's kit on the roof's other side, abreast of it
+	VmCore.roof_kit(k, m, Vector3(-net_side * 0.76, 2.2, 0.8), 0.0, Vector2(0.34, 0.78), 2, Color(0.33, 0.33, 0.24))
 	# the tactical number low on each upper side, between the exhaust and the
 	# first firing port
 	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.18, Vector3(1.45, 1.42, 3.3), Vector3(1.45, 1.42, -2.0), Vector3(1.15, 2.2, -2.0), Vector3(1.15, 2.2, 3.3), Vector2(0.585, 0.23))
@@ -942,7 +944,10 @@ static func _kamysh(k: VehicleModels, team: int, seed := 0) -> void:
 	# the twin Titan launchers on arms either side, smoke dischargers behind
 	for s in [-1.0, 1.0]:
 		k._box(t, Vector3(0.25, 0.14, 0.3), Vector3(s * 0.98, 0.42, 0.05), "gunmetal_w")
-		VehicleWeapons.missile_box(k, t, Vector3(s * 1.2, 0.5, -0.15), Vector3(0.32, 0.6, 1.35), 2, 1, 0.1, "paint", OLIVE, Vector3.ZERO, false, Vector3(-s, 0, 0), Vector2(0, 0.28))
+		# (the launchers come painted in the turret's sand, as the turret's
+		# other fittings: olive boxes were the darkest thing on a sand hull;
+		# a wreck keeps its old ones)
+		VehicleWeapons.missile_box(k, t, Vector3(s * 1.2, 0.5, -0.15), Vector3(0.32, 0.6, 1.35), 2, 1, 0.1, "paint", OLIVE if k.wreck else GUN_PAINT, Vector3.ZERO, false, Vector3(-s, 0, 0), Vector2(0, 0.28))
 		_smoke(k, t, Vector3(s * 0.85, 0.55, 0.65), s, 3, 1.2)
 	_antenna(k, t, Vector3(-0.6, 0.62, 0.9), 1.6)
 
@@ -983,7 +988,7 @@ static func _tigris(k: VehicleModels, team: int, seed := 0) -> void:
 	# twin missile boxes either side of the mast
 	for s in [-1.0, 1.0]:
 		k._box(t, Vector3(0.12, 0.2, 0.3), Vector3(s * 0.72, 1.15, 0.5), "gunmetal_w")
-		VehicleWeapons.missile_box(k, t, Vector3(s * 0.72, 1.4, 0.35), Vector3(0.36, 0.34, 1.15), 1, 2, 0.065, "paint", OLIVE, Vector3.ZERO, false, Vector3.DOWN, Vector2(0.17, 0))
+		VehicleWeapons.missile_box(k, t, Vector3(s * 0.72, 1.4, 0.35), Vector3(0.36, 0.34, 1.15), 1, 2, 0.065, "paint", OLIVE if k.wreck else GUN_PAINT, Vector3.ZERO, false, Vector3.DOWN, Vector2(0.17, 0))
 	_hatch(k, t, Vector3(0.55, 1.05, 0.2), 0.25)
 
 
@@ -1168,7 +1173,7 @@ static func _varsuk(k: VehicleModels, team: int, seed := 0) -> void:
 	for s in [-1.0, 1.0]:
 		k._box(t, Vector3(0.12, 0.16, 0.5), Vector3(s * 1.415, 0.4, -0.5), "gunmetal_w")
 		for i in 2:
-			VehicleWeapons.missile_box(k, t, Vector3(s * (1.555 + i * 0.03), 0.3 + i * 0.22, -0.57 - i * 0.04), Vector3(0.22, 0.2, 0.46), 1, 2, 0.065, "paint", OLIVE, Vector3(-0.12, s * 0.25, 0), false, Vector3(-s, 0, 0))
+			VehicleWeapons.missile_box(k, t, Vector3(s * (1.555 + i * 0.03), 0.3 + i * 0.22, -0.57 - i * 0.04), Vector3(0.22, 0.2, 0.46), 1, 2, 0.065, "paint", OLIVE if k.wreck else GUN_PAINT, Vector3(-0.12, s * 0.25, 0), false, Vector3(-s, 0, 0))
 		VehicleMounts.radar_array(k, t, Vector3(0.22, 0.14, 0.16), Vector3(s * 1.1, 0.86, -0.82), "gunmetal_w", null, Vector3(0, s * -0.7, 0))
 		_smoke(k, t, Vector3(s * 1.3, 0.7, 0.35), s, 4, 0.9)
 		# antennas at the bustle's back corners
@@ -1515,6 +1520,10 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 	# crew camouflages it (VehicleCloth.camouflage): the roof is the first
 	# thing the battle camera sees of a cab-over
 	_roof_net(k, m, Vector3(-0.6, 3.12, -3.1), Vector2(0.58, 0.68))
+	# the crew's own kit beside the hatch on the roof's right, where the man
+	# in it can reach down for it (one hatch on a bare plate read as nothing
+	# from above)
+	VmCore.roof_kit(k, m, Vector3(0.88, 3.12, -3.15), 0.0, Vector2(0.3, 0.8), 3, Color(0.4, 0.38, 0.29))
 
 
 ## A camouflage net stowed on a roof at `foot` (`size` its x and z reach),

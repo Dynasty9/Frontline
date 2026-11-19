@@ -301,11 +301,17 @@ static func slats(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, heig
 			var foot := a.lerp(b, float(i) / panels)
 			_flat_bar(k, parent, foot, foot + Vector3.UP * height, 0.03, 0.075, normal, frame_mat, frame_col, true)
 	var count := maxi(2, ceili((a.distance_to(b) if vertical else height) / spacing))
+	# The bars a shade darker than the paint they came in: their flame-cut
+	# edges rust bare and they hold the road's grime, where the frame's flat
+	# faces stay as clean as the hull. Their lit top edges in the hull's own
+	# value read from above as a pale picket fence round the hull.
+	var bar_col: Color = col if col is Color else Mats._preset(VehicleMaterials.key(mat, k.surface_family)).get("col_a", Color(0.3, 0.3, 0.28))
+	bar_col = bar_col.darkened(0.15)
 	for i in range(1, count):
 		var t := float(i) / count
 		var from := a.lerp(b, t) if vertical else a + Vector3.UP * height * t
 		var to := from + Vector3.UP * height if vertical else b + Vector3.UP * height * t
-		_flat_bar(k, parent, from, to, 0.012, 0.075, normal, mat, col, false)
+		_flat_bar(k, parent, from, to, 0.012, 0.075, normal, mat, bar_col, false)
 
 
 ## A flat bar from `from` to `to`, `thick` across and `deep` along `normal`.
@@ -731,7 +737,11 @@ static func crane(k: VehicleModels, parent: Node3D, base: Vector3, heel: Vector3
 		var foot: Vector3 = ram[0]
 		var end: Vector3 = ram[1]
 		var radius: float = ram[2]
-		VehicleFrames.ram(k, parent, foot, end, radius, "gunmetal_w", null, 0.4, across)
+		# The luffing ram's cylinder comes painted with the boom; only its
+		# rod is bare, hard-chromed where it slides through the gland. A
+		# cylinder of bare gunmetal read as one long chrome tube. (A wreck's
+		# stays as it was.)
+		VehicleFrames.ram(k, parent, foot, end, radius, "gunmetal_w" if k.wreck else mat, null if k.wreck else col, 0.4, across)
 	if not hook.is_finite():
 		return
 	var s := sheave if sheave.is_finite() else tip

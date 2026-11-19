@@ -1150,7 +1150,7 @@ func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
 		size = Vector2(s.x, s.y)
 		thin = s.z
 	var o := pos + normal * thin * 0.5
-	VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return o + along * q.x + up * q.y, normal, _mark_col(team), "paint", true, 0)
+	VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return o + along * q.x + up * q.y, normal, _mark_col(team, false, normal == Vector3.UP), "paint", true, 0)
 
 
 ## A team mark's outline, `size` (across, up) centred on the origin: the
@@ -1182,11 +1182,17 @@ static func _mark_outline(team: int, size: Vector2) -> PackedVector2Array:
 ## tints read as lit strips, the palest things on the airframe (a sky blue,
 ## a salmon pink): there each side's is a duller service shade, the blue side
 ## a mid service blue and the red a brick near the insignia's red, of about
-## the same lightness, as identification bands are painted.
-static func _mark_col(team: int, band := false) -> Color:
+## the same lightness, as identification bands are painted. A roof's mark
+## (`roof`) faces the sun and the battle camera square on, so the flank's tint
+## there was the palest, most saturated patch on the roof, a sky-blue or
+## salmon sticker over the camouflage: it is mixed a shade darker and greyer,
+## still the lightest paint on the roof and still the side's hue.
+static func _mark_col(team: int, band := false, roof := false) -> Color:
 	var tc: Color = Defs.TEAM_COLORS[team]
 	if band:
 		return tc.lerp(Color(0.27, 0.3, 0.33), 0.6) if team == 0 else tc.lerp(Color(0.4, 0.36, 0.33), 0.53)
+	if roof:
+		return tc.lerp(Color(0.46, 0.48, 0.46), 0.45)
 	return tc.lerp(Color(0.74, 0.74, 0.7), 0.4)
 
 

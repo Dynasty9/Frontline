@@ -56,8 +56,23 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	# lip at each face, eight wheel nuts a face and the hub. Small wheels need
 	# half the segments to look as round.
 	k._add(pv, drum(r * 0.54, r * 0.54, w * 0.67, 32 if fine else 16), hub_kind, hub_col, Vector3.ZERO, AXLE, Vector3.ONE, false)
+	# A running wheel's inner face looks at the axle and the arch's shadow:
+	# the nuts are on the outer face only, as on the real wheel (the studs
+	# come through from the hub), and the inner flange is the small wheel's
+	# coarser lip. A wheel on its parent's centre line, and a spare, show both.
+	var inner := -signf(pos.x) if register and pos.x != 0.0 else 0.0
 	for side: float in [-1.0, 1.0]:
-		k._add(pv, _lip(fine), hub_kind, hub_col, Vector3(side * w * 0.37, 0, 0), AXLE, Vector3.ONE * r, false)
+		k._add(pv, _lip(fine and side != inner), hub_kind, hub_col, Vector3(side * w * 0.37, 0, 0), AXLE, Vector3.ONE * r, false)
+		if side == inner:
+			continue
+		if not register:
+			# A spare's nuts are on the hub it came off: its stud holes are
+			# open, the dark through them a ring round the hub on both faces.
+			var stud := _disc(r * 0.03, 6)
+			for i in 8:
+				var a := TAU * i / 8.0
+				k._add(pv, stud, "rubber", Color(0.03, 0.03, 0.03), Vector3(side * (w * 0.335 + 0.003), sin(a) * r * 0.31, cos(a) * r * 0.31), Vector3(0, 0, -side * PI / 2), Vector3.ONE, false)
+			continue
 		# A nut's foot sits on the disc, so it has no base; its top faces out.
 		var nut := drum(r * 0.03, r * 0.03, w * 0.08, 6, false)
 		for i in 8:
@@ -73,11 +88,13 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 		var faces: Array[float] = [1.0, -1.0]
 		if register:
 			faces = [signf(pos.x) if pos.x != 0.0 else 1.0]
-		var hole := drum(r * 0.062, r * 0.062, 0.006, 10, false)
+		# (each hole is the dark of the hub seen through the disc: a flat dark
+		# face just proud of the steel, with no rim of its own to stand on it)
+		var hole := _disc(r * 0.062, 10)
 		for f: float in faces:
 			for i in 6:
 				var a := TAU * (i + 0.5) / 6.0
-				k._add(pv, hole, "rubber", Color(0.03, 0.03, 0.03), Vector3(f * (w * 0.335 + 0.002), sin(a) * r * 0.425, cos(a) * r * 0.425), Vector3(0, 0, -f * PI / 2), Vector3.ONE, false)
+				k._add(pv, hole, "rubber", Color(0.03, 0.03, 0.03), Vector3(f * (w * 0.335 + 0.003), sin(a) * r * 0.425, cos(a) * r * 0.425), Vector3(0, 0, -f * PI / 2), Vector3.ONE, false)
 	if register and profile == "offroad" and r >= 0.4 and k.surface_family == "armor" and w <= r * 1.2 and not k.wreck:
 		# A military truck or armoured car pumps its tyres up and down on the
 		# move (central tyre inflation): the rotary seal on the hub's end and
@@ -419,6 +436,25 @@ static func drum(top: float, bottom: float, h: float, segs: int, base := true) -
 	return VehicleBody.drum(top, bottom, h, segs, true, base)
 
 
+## A flat round face of `segs` sides about +Y, facing +Y (a drum's cap
+## alone): a fan without a centre point. Cached by size.
+static func _disc(radius: float, segs: int) -> ArrayMesh:
+	var key := "disc_%.4f_%d" % [radius, segs]
+	if _meshes.has(key):
+		return _meshes[key]
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	for i in segs:
+		var a := TAU * i / float(segs)
+		verts.append(Vector3(sin(a) * radius, 0, cos(a) * radius))
+		norms.append(Vector3.UP)
+	for i in range(1, segs - 1):
+		_tri(idx, verts, Vector3.UP, 0, i, i + 1)
+	_meshes[key] = _mesh(verts, norms, idx)
+	return _meshes[key]
+
+
 ## The rim's rolled lip (ring(0.49, 0.55) as it was, scaled by the radius).
 ## Six sides round a tube a few centimetres thick, and the hub disc's 32
 ## round the wheel, read as round; a small wheel's lip is a few millimetres
@@ -669,7 +705,14 @@ static func road(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: fl
 	var outer := signf(pos.x) if pos.x != 0 else 1.0
 	for side: float in [-1.0, 1.0]:
 		var x: float = side * w * 0.30
-		if rubber and side == outer:
+		# The inboard twin's hull-side face looks at the hull a hand's width
+		# away, behind its twin and the track: its tyre and its disc have no
+		# cap there (each drum turned so its open end faces the hull).
+		var hull := pos.x != 0.0 and side != outer
+		var toward := Vector3(0, 0, side * PI / 2)
+		if hull:
+			k._add(pv, drum(r, r, w * 0.38, 28, false), "rubber" if rubber else ("gunmetal_w" if k.wreck else "steel"), null, Vector3(x, 0, 0), toward)
+		elif rubber and side == outer:
 			# The outer tyre's outer edge, the one that shows past the track
 			# and under the skirts, is moulded round, not cut square: a single
 			# chamfer, shaded round into the face and the tread (see _road_tyre).
@@ -680,7 +723,10 @@ static func road(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: fl
 			# against the painted disc inside them.
 			k._add(pv, drum(r, r, w * 0.38, 28), "rubber" if rubber else ("gunmetal_w" if k.wreck else "steel"), null, Vector3(x, 0, 0), AXLE)
 		k._add(pv, drum(r * 0.82, r * 0.77, w * 0.40, 28), mat, col, Vector3(x, 0, 0), AXLE)
-		k._add(pv, drum(r * 0.66, r * 0.66, w * 0.41, 24), mat, col, Vector3(x, 0, 0), AXLE, Vector3.ONE, false)
+		if hull:
+			k._add(pv, drum(r * 0.66, r * 0.66, w * 0.41, 24, false), mat, col, Vector3(x, 0, 0), toward, Vector3.ONE, false)
+		else:
+			k._add(pv, drum(r * 0.66, r * 0.66, w * 0.41, 24), mat, col, Vector3(x, 0, 0), AXLE, Vector3.ONE, false)
 		# The inboard twin's bolts face the hull side, behind the track; a
 		# wheel on its parent's centre line keeps both faces' bolts.
 		if pos.x != 0.0 and side != outer:

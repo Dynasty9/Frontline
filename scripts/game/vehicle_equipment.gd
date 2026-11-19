@@ -644,10 +644,12 @@ const PANEL_CORD: Array[Color] = [Color(0.24, 0.24, 0.17), Color(0.09, 0.09, 0.0
 ## and scenery and wrecks never carry one: it's the warmest colour on a
 ## vehicle from the air, which is the point, so the battle camera picks out
 ## the few that do. Nothing when it isn't laid; true when it is.
-static func recognition_panel(k: VehicleModels, parent: Node3D, center: Vector3, rot := Vector3.ZERO, folded := false, chance := 0.2) -> bool:
+static func recognition_panel(k: VehicleModels, parent: Node3D, center: Vector3, rot := Vector3.ZERO, folded := false, chance := 0.2, salt := 0) -> bool:
 	if k.wreck or k.burnt:
 		return false
-	var rng := VehicleCargo.kit(k, parent, center, 41)
+	# (`salt` draws it apart for models that share one spot: a family's
+	# variants on one cab, so a column of them doesn't wear one panel)
+	var rng := VehicleCargo.kit(k, parent, center, 41 + salt)
 	# (fewer than a crew's kit might suggest: even dulled, a panel is the
 	# loudest patch on a vehicle from the battle camera, so one in eight)
 	if rng == null or rng.randf() >= minf(chance, 0.12):

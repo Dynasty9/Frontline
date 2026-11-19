@@ -97,7 +97,8 @@ static func _zy_grille(k: VehicleModels, p: Node3D, x: float, w: float, a: Vecto
 	var d := b - a
 	var dn := d.normalized()
 	var c := (a + b) * 0.5 + Vector2(-dn.y, dn.x) * push
-	VehicleFittings.grille(k, p, Vector3(x, c.y, c.x), Vector2(w, d.length()), Vector3(atan2(d.x, d.y) + PI, 0, 0), mat, null, count)
+	# (the Merkava and Namer hulls' perforated armour cover, not louvres)
+	VehicleFittings.grille(k, p, Vector3(x, c.y, c.x), Vector2(w, d.length()), Vector3(atan2(d.x, d.y) + PI, 0, 0), mat, null, count, false, 3)
 
 
 ## An access hatch (VehicleFittings.panel_hatch) lying on a sloped face as _zy
@@ -838,6 +839,12 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 		# a bolted appliqué module over the driver's and engine bay's flank
 		_xy_module(k, m, s, -1.48, 0.95, Vector2(1.4, 1.56), Vector2(1.16, roof), 0.06, cam, Vector2i(3, 2), 0.05)
 		_xy_bin(k, m, s, 2.6, 1.1, Vector2(1.4, 1.56), Vector2(1.16, roof), 0.14, cam)
+		# the butt weld where the flank's two side plates meet, up the side
+		# and over the crease between the forward vision block and the bin,
+		# so the 7 m side reads as welded plate, not one moulded slab (a
+		# wreck stays as it was)
+		if not k.wreck:
+			_weld(k, m, [Vector3(s * 1.4, 1.27, -0.62), Vector3(s * 1.4, 1.56, -0.62), Vector3(s * 1.177, 2.1, -0.62)], cam, 0.014)
 		for z in [-0.9, 1.5]:
 			VehicleMaterials.glaze(k, _xy(k, m, s, z, 0.22, Vector2(1.36, 1.64), Vector2(1.26, 1.86), 0.05, 0.02, "glass", null, false), "armor_glass", VehicleMounts.BLOCK)
 			# the armoured brow welded over the block, so it sits in the side
@@ -852,6 +859,10 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.panel_hatch(k, m, Vector3(s * 0.48, roof + 0.03, 2.55), Vector3(0.72, 0.06, 0.95), cam)
 		for z in [1.75, 3.4]:
 			VehicleFittings.periscope(k, m, Vector3(s * 0.95, roof + 0.05, z), Vector3(0.14, 0.1, 0.12), Vector3(0, -s * PI / 2, 0))
+	# the section's kit on the roof's left edge outboard of the troop hatch,
+	# between its periscopes, where it doesn't foul the hatch's swing (a
+	# 6 m roof with kit only on the turret read as bare plate from above)
+	VmCore.roof_kit(k, m, Vector3(-0.99, roof, 2.55), 0.0, Vector2(0.26, 0.9), 2, BAG)
 	# an air-recognition panel, folded, on the rear walkway
 	VehicleEquipment.recognition_panel(k, m, Vector3(0, roof + 0.006, 3.38), Vector3.ZERO, true)
 	# the rear: ramp with its door and the door's lever handle, hinges, lights
@@ -957,6 +968,11 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 		# big stowage bins along the leaning sides, the engine deck louvres
 		_xy_bin(k, m, s, -0.6, 1.5, Vector2(1.42, 1.45), Vector2(1.12, roof), 0.16, cam)
 		_xy_bin(k, m, s, 1.25, 1.2, Vector2(1.42, 1.45), Vector2(1.12, roof), 0.16, cam)
+		# the butt weld between the side's two plates, up the gap between
+		# the bins (one plate nose to tail read as a moulded slab; a wreck
+		# stays as it was)
+		if not k.wreck:
+			_weld(k, m, [Vector3(s * 1.42, 1.22, 0.4), Vector3(s * 1.42, 1.45, 0.4), Vector3(s * 1.144, 1.92, 0.4)], cam, 0.014)
 		# (the grab rail along the side, painted with the hull it's welded to)
 		k._box(m, Vector3(0.06, 0.06, 2.8), Vector3(s * 1.44, 1.32, 0.3), cam)
 		# the engine's exhaust outlets on the hull's rear flanks, a louvred
@@ -1338,9 +1354,10 @@ static func _slammer(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	var cam := _cam(team)
 	_mk_hull(k, team, cam, up)
 	_mk_turret(k, team, cam, up, seed)
-	# an air-recognition panel folded on the bustle's roof, right of the
-	# remote station and behind the commander's cupola
-	VehicleEquipment.recognition_panel(k, k.turret, Vector3(0.66, 0.802, 1.75), Vector3.ZERO, true)
+	# (no air-recognition panel: on the bustle's roof it was the loudest
+	# patch on the tank from the battle camera, and the hull has no deck it
+	# lies flat on: the bustle and its chains sweep the roof aft, the
+	# glacis carries the intakes and the driver's hatch)
 	# the crew's kit on the bustle's roof, either side of the wind sensor's
 	# mast and ahead of the antennas
 	VmCore.roof_kit(k, k.turret, Vector3(-0.55, 0.8, 2.4), PI / 2, Vector2(0.4, 0.7), 0, BAG)
@@ -1859,6 +1876,10 @@ static func _hemtt_cab_detail(k: VehicleModels, paint: Color) -> void:
 	else:
 		# or, in its place, an air-recognition panel folded beside the hatch
 		VehicleEquipment.recognition_panel(k, m, Vector3(-0.5, 2.905, -3.62), Vector3.ZERO, true)
+	# the crew's own kit along the roof's right edge beside the hatch, where
+	# the man in it can reach down for it (a cab roof with one hatch on it
+	# read as a bare plate from the battle camera)
+	VmCore.roof_kit(k, m, Vector3(0.88, 2.9, -3.55), 0.0, Vector2(0.3, 0.9), 3, paint.lerp(BAG, 0.6))
 	k._box(m, Vector3(1.88, 0.035, 0.30), Vector3(0, 1.98, -4.67), "paint", paint.darkened(0.15), Vector3(0.12, 0, 0))
 	for s in [-1.0, 1.0]:
 		# Door recess, raised inner pressing, hinges and a grab handle.

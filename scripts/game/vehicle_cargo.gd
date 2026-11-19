@@ -14,6 +14,11 @@ const KIT_CLOTH: Array[Color] = [Color(0.30, 0.32, 0.22), Color(0.23, 0.26, 0.19
 const KIT_PAINT: Array[Color] = [Color(0.30, 0.32, 0.22), Color(0.21, 0.25, 0.17), Color(0.46, 0.40, 0.28), Color(0.33, 0.35, 0.30)]
 ## Tarpaulins thrown over a load: olive, faded green, khaki and dark green.
 const KIT_TARP: Array[Color] = [Color(0.30, 0.32, 0.23), Color(0.36, 0.38, 0.29), Color(0.44, 0.40, 0.30), Color(0.24, 0.27, 0.20)]
+## PVC-coated tarpaulins as they're issued for lashing over pallets: olive
+## drab, a darker olive, coyote tan and a brown khaki, each a little warmer
+## than the kit's canvas, since the coating's sheen greys a colour toward the
+## sky's.
+const TARP_DRAB: Array[Color] = [Color(0.31, 0.32, 0.20), Color(0.24, 0.25, 0.16), Color(0.45, 0.41, 0.30), Color(0.37, 0.33, 0.23)]
 ## Canvas covers from the depot: the tarpaulins' shades and the two desert
 ## khakis duck is issued in (a sand duck and a yellower one), which no hull
 ## paint quite matches.
@@ -604,8 +609,11 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 	# painted boxes against the rain and lashed it down, so a bed of pallets
 	# seen from above isn't rows of one lid (on the bed itself: the tarp is
 	# laid in the model's space).
+	# (It takes the boxes' shape, see VehicleCloth.load_cover's `boxes`, in
+	# one of the issue tarpaulin drabs, TARP_DRAB: the kit's faded greens go
+	# teal-grey under a PVC sheen.)
 	if rng != null and not k.wreck and not straps.is_empty() and is_same(parent, k.root) and VehicleMaterials.profile(mat, k.surface_family) != "wood" and rng.randf() < 0.2:
-		VehicleCloth.load_cover(k, base, size, kit_colour(rng, Color(0.3, 0.32, 0.23), KIT_TARP, 0.0), false, "coated")
+		VehicleCloth.load_cover(k, base, size, kit_colour(rng, TARP_DRAB[0], TARP_DRAB, 0.0), false, "coated", grid, straps)
 		return
 	var m := k._pivot(parent, base)
 	m.rotation.y = yaw
@@ -710,27 +718,39 @@ static func crate_stack(k: VehicleModels, parent: Node3D, base: Vector3, size: V
 					# The lot's stencil on the lid, toward one end (black on a
 					# wooden crate, pale on a painted box, a lot band in the
 					# filling's yellow), so from above a box reads as a box of
-					# stores: [across, along, width, length] as shares of the lid.
+					# stores: [across, along, width, length] as shares of the lid,
+					# and a fifth for a lot band's yellow.
+					# A crew's lots are stencilled as the depots do it: a lot
+					# band across one end with the lot's number beside it, the
+					# band alone, or two lines of text run in from one edge (the
+					# store's name in two words over its lot number), ragged
+					# where each line ends; never equal bars side by side, which
+					# read from the battle camera as a "II" painted on the lid.
 					var long_z := bd >= bw
 					var length := bd if long_z else bw
 					var across := bw if long_z else bd
 					var marks: Array = [[-0.12, 0.12, 0.07, 0.42], [0.08, 0.12, 0.07, 0.42]]
 					match style:
 						1:
-							marks = [[-0.07, 0.2, 0.045, 0.25], [0.05, 0.2, 0.045, 0.25]]
+							marks = [[0.0, 0.36, 0.86, 0.05, 1], [-0.2, 0.14, 0.04, 0.3]]
 						2:
 							marks = [[0.0, 0.32, 0.86, 0.06]]
 						3:
-							marks = [[-0.09, 0.22, 0.035, 0.2], [0.0, 0.22, 0.035, 0.26], [0.09, 0.22, 0.035, 0.14]]
+							marks = [[-0.04, 0.12, 0.035, 0.2], [-0.04, 0.345, 0.035, 0.13], [0.04, 0.16, 0.035, 0.28]]
 					var flip := -1.0 if style > 0 and rng != null and rng.randf() < 0.5 else 1.0
 					var ink: Variant = null if wood else (Color(0.6, 0.5, 0.2) if style == 2 else Color(0.72, 0.69, 0.58))
+					# (a crew's lot text a duller white than the builders' bars:
+					# small stencilled lettering, worn, not a painted sign)
+					if not wood and (style == 1 or style == 3):
+						ink = Color(0.6, 0.58, 0.5)
 					for q: Array in marks:
 						var o := Vector3(across * float(q[0]), ph * 0.5 - 0.001, length * float(q[1]) * flip)
 						var mark := Vector3(across * float(q[2]), 0.002, length * float(q[3]))
 						if not long_z:
 							o = Vector3(o.z, o.y, o.x)
 							mark = Vector3(mark.z, mark.y, mark.x)
-						k._box(m, mark, at + o, "plain_dark" if wood else mat, ink, Vector3.ZERO, false)
+						var mark_ink: Variant = Color(0.6, 0.5, 0.2) if q.size() > 4 and not wood else ink
+						k._box(m, mark, at + o, "plain_dark" if wood else mat, mark_ink, Vector3.ZERO, false)
 				if wood:
 					for e: float in [-1.0, 1.0]:
 						k._box(m, Vector3(bw + 0.016, band, bd + 0.016), at + Vector3(0, e * (ph * 0.5 - band * 0.5 - minf(0.04, ph * 0.1)), 0), "wood_dark")

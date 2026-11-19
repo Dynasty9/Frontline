@@ -23,7 +23,8 @@ const Z90 := Vector3(0, 0, PI / 2)  # a cylinder lying along X (axles, wheels)
 const GUN := Color(0.3, 0.32, 0.24)  # painted gun barrels, thermal sleeves
 const OD := Color(0.3, 0.32, 0.22)  # olive drab: ammo cans, jerrycans
 const BAG := Color(0.38, 0.37, 0.27)  # canvas bags and covers
-const TAN_BAG := Color(0.47, 0.42, 0.31)  # sand-coloured kit
+const TAN_BAG := Color(0.45, 0.42, 0.35)  # coyote kit: a greyish tan, which the warm sun would turn orange were it any yellower
+const TAN_BAG_WRECK := Color(0.47, 0.42, 0.31)  # (the old sand a wreck keeps: its roll's straps take the tint)
 
 
 ## Builds the model for `key` into k; false if this file doesn't know it.
@@ -459,6 +460,11 @@ static func roof_kit(k: VehicleModels, p: Node3D, at: Vector3, yaw: float, room:
 	var r := rng.randf()
 	if r < 0.2:
 		return
+	# (on a patch too narrow for two cans side by side their share goes to
+	# the bundle, not to a coil a hand across, which read as nothing from
+	# above)
+	if r >= 0.5 and r < 0.75 and room.x < 0.36 and room.y >= 0.5:
+		r = 0.45
 	if r < 0.5 and room.y >= 0.5 and _on_turret(k, p) and rng.randf() < 0.5:
 		# (a tarp rolled a hand and a half across, its length on a 5 cm
 		# step so a few cached rolls serve every turret, in a tarpaulin's
@@ -469,9 +475,13 @@ static func roof_kit(k: VehicleModels, p: Node3D, at: Vector3, yaw: float, room:
 		VehicleCloth.tarp_roll(k, p, at + Vector3.UP * radius, radius, length, Vector3(PI / 2, yaw + rng.randf_range(-0.06, 0.06), 0), tint)
 	elif r < 0.5 and room.y >= 0.5:
 		# (sizes on a 5 cm step, so a few cached shapes serve every roof; the
-		# bundle's length lies along the patch)
-		var size := Vector3(snappedf(minf(room.y * 0.85, 0.7), 0.05), 0.2, snappedf(minf(room.x * 0.85, 0.4), 0.05))
-		k._bag(p, size, at + Vector3.UP * size.y * 0.5, "canvas", col, Vector3(0, yaw - PI / 2 + rng.randf_range(-0.08, 0.08), 0))
+		# bundle's length lies along the patch) A crew's bundle is a long
+		# roll of bedding and a kit bag lashed together, most of a metre: a
+		# 70 cm brick in a shade under the crew's canvas read from the battle
+		# camera as a briefcase on a bare roof. It goes in the canvas a little
+		# sun-faded, as kit that lives on a roof does.
+		var size := Vector3(snappedf(minf(room.y * 0.9, 0.9), 0.05), 0.24, snappedf(minf(room.x * 0.9, 0.45), 0.05))
+		k._bag(p, size, at + Vector3.UP * size.y * 0.5, "canvas", col.lightened(0.1), Vector3(0, yaw - PI / 2 + rng.randf_range(-0.08, 0.08), 0))
 	elif r < 0.75 and room.x >= 0.36:
 		# side by side, lids up, each set down a little askew
 		for i in 2:
@@ -2312,7 +2322,7 @@ static func _bradley(k: VehicleModels, team: int, seed := 0) -> void:
 	# the stowage basket round the back, bags and a bedroll in it
 	VehicleMounts.basket(k, t, Vector3(0, 0.3, 1.42), Vector3(1.8, 0.4, 0.44))
 	k._bag(t, Vector3(0.6, 0.34, 0.36), Vector3(-0.45, 0.5, 1.42), "canvas", BAG)
-	VehicleCloth.roll(k, t, Vector3(0.38, 0.47, 1.42), 0.15, 0.7, Z90, TAN_BAG)
+	VehicleCloth.roll(k, t, Vector3(0.38, 0.47, 1.42), 0.15, 0.7, Z90, TAN_BAG_WRECK if k.wreck else TAN_BAG)
 	_antenna(k, t, Vector3(0.75, tr, 1.0), 1.6)
 	if team >= 0:
 		# the bumper code on the band across the nose and low on the ramp

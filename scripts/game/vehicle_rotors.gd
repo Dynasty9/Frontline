@@ -7,8 +7,8 @@ extends RefCounted
 ## mesh the size of the rotor (UV 0..1 across it) that turns with the hub:
 ## VehicleModels._blur_mat for rotors, VehiclePropellers.disc_material for
 ## propellers and fans. What a commander looks for from 30-60 m above, as
-## the RTS games draw it: a faint translucent haze barely lighter than the
-## blades' paint, never so dense the airframe under it is lost, with a soft
+## the RTS games draw it: a faint translucent haze a shade darker than the
+## ground under it, never so dense the airframe under it is lost, with a soft
 ## band of the paint where the tips sweep, its edge fading out (the tips cover least
 ## of their circle, so a photograph's disc fades there rather than ending on
 ## a line: a crisp ring read as a selection circle), thinner still close to
@@ -42,12 +42,15 @@ void fragment() {
 	// tips sweep the most circle with the least blade, and the blades flex
 	// and flap, so the tip path is never one line: no outline)
 	float body = smoothstep(hub * 0.6, hub + 0.1, r) * (1.0 - smoothstep(0.8, 1.0, r));
-	// how much of each circle the blades cover: a little more than the 5-10%
-	// a real rotor's solidity gives, which over grass from 40 m reads as
-	// nothing, but no more (at a fifth it paved the cabin under it over like
-	// frosted glass); a little less over the cabin (the blade roots are
-	// narrow there), so the airframe under it still reads
-	float cover = 0.15 * mix(0.8, 1.0, smoothstep(hub, 0.45, r));
+	// how much of each circle the blades cover: over the outer half, where
+	// the blades are widest against the circle they sweep and the camera
+	// sees the disc round the fuselage, about a fifth, more than a real
+	// rotor's 5-10% solidity (at that, or at 0.15, a helicopter over grass
+	// from 40 m showed its hub and nothing else: it read as a fuselage
+	// sliding over the ground, not as flying); over the cabin, where the
+	// blade roots are narrow, about an eighth, so the airframe under it
+	// still reads (a fifth there paved it over like frosted glass)
+	float cover = mix(0.12, 0.22, smoothstep(0.35, 0.7, r));
 	// the tip path: the tips move fastest and smear the most, a soft band
 	// just inside the edge a little denser than the disc, in the blades' own
 	// paint (a pale band there, however faint and soft, still read from the
@@ -71,13 +74,16 @@ void fragment() {
 	// a layer of blades seen at a slant: they overlap, the disc thickens
 	float mu = clamp(abs(dot(NORMAL, VIEW)), 0.35, 1.0);
 	float seen = 1.0 - pow(1.0 - alpha, 1.0 / mu);
-	// The swept blades' upper faces catch a little sky, so the disc is a haze
-	// barely lighter than their paint: it shades what's under it a touch, as
-	// a photograph's disc does, rather than paving it pale; each ghost
-	// blade's leading edge is the paint's own dark. Lit, so it still goes
-	// dark with the scene at dusk and at night.
+	// The disc is a shade darker than the ground under it, as a photograph's
+	// and the RTS games' discs are: the blades are dark paint and the disc
+	// shades what's under it, never lifts it (a haze even a touch lighter
+	// than the paint matched sunlit grass's value and vanished into it, and a
+	// pale one read as a dish); about value 0.12 on the usual near-black
+	// blades, a touch darker in the tip band, each ghost blade's leading edge
+	// darker still. Lit, so it still goes dark with the scene at dusk and at
+	// night.
 	float dark = clamp(ghost * 1.6, 0.0, 1.0);
-	vec3 haze = mix(mix(blade_tint.rgb, vec3(0.55), 0.05), blade_tint.rgb, tip * 0.35);
+	vec3 haze = blade_tint.rgb * mix(0.62, 0.5, tip * 0.35);
 	ALBEDO = mix(haze, blade_tint.rgb * 0.35, dark);
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	// (blended after tonemapping, in display space, a layer darker than the
@@ -87,8 +93,11 @@ void fragment() {
 	seen = 1.0 - pow(1.0 - seen, mix(0.75, 0.4545, dark));
 #endif
 	ALPHA = clamp(seen, 0.0, 0.75);
-	ROUGHNESS = 0.7;
-	SPECULAR = 0.2;
+	// (matte: a swept disc is no smooth sheet to mirror the sky, and at the
+	// paint's sheen the noon sky it took lifted the disc back to the grass's
+	// own value, half its darkening gone)
+	ROUGHNESS = 0.85;
+	SPECULAR = 0.05;
 }
 """
 

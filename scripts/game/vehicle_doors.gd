@@ -43,9 +43,11 @@ static func hinge(k: VehicleModels, parent: Node3D, at: Vector3, normal: Vector3
 	for side: float in [-1.0, 1.0]:
 		var end := pin + axis * side * radius * 2.8
 		VehicleBody.rod(k, parent, end - axis * side * radius * 0.18, end + axis * side * radius * 0.18, radius * 0.76, "steel", null, 6, false, -1.0, false, true)
+	# A knuckle's end faces the next knuckle a few millimetres away across a
+	# slot the pin fills, so only the outer two knuckles' outer ends are closed.
 	for i in 3:
 		var middle := pin + axis * (i - 1) * radius * 1.7
-		VehicleBody.rod(k, parent, middle - axis * radius * 0.72, middle + axis * radius * 0.72, radius, mat, col, 8, false)
+		VehicleBody.rod(k, parent, middle - axis * radius * 0.72, middle + axis * radius * 0.72, radius, mat, col, 8, false, -1.0, i == 0, i == 2)
 		var foot := middle + tangent * radius * (2.2 if i == 1 else -2.2) - normal * radius
 		VehicleFrames.beam(k, parent, middle - normal * radius * 0.6, foot, radius * 1.3, radius * 0.65, mat, col)
 		VehicleBody.fastener(k, parent, foot, normal, radius * 0.38)

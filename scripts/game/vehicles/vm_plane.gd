@@ -700,28 +700,46 @@ static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, _x: 
 	# rows down the chord, each a quad from the inboard edge (notched at mid
 	# chord for the chevron) to the outboard one
 	var rows := 8
-	var edge := func(i: int) -> Array:
-		var f := lerpf(0.06, 0.9, float(i) / float(rows))
-		var u := notch * (1.0 - absf(float(i) / float(rows) * 2.0 - 1.0))
-		var xa := lerpf(x0, x1, u)
+	# (`e` grows the outline by that much all round: the edge line under it,
+	# in `n` rows)
+	var edge := func(i: int, e: float, n: int) -> Array:
+		var t := float(i) / float(n)
+		var u := notch * (1.0 - absf(t * 2.0 - 1.0))
+		var xa := lerpf(x0, x1, u) - e
 		var wa := surf_at(secs, xa)
-		var a := Vector3(xa, 0.0, (wa[0] as Vector3).z + float(wa[1]) * f)
-		var b := Vector3(x1, 0.0, le1.z + float(w1[1]) * f)
+		var wb := w1 if e == 0.0 else surf_at(secs, x1 + e)
+		var fa := lerpf(0.06 - e / float(wa[1]), 0.9 + e / float(wa[1]), t)
+		var fb := lerpf(0.06 - e / float(wb[1]), 0.9 + e / float(wb[1]), t)
+		var a := Vector3(xa, 0.0, (wa[0] as Vector3).z + float(wa[1]) * fa)
+		var b := Vector3(x1 + e, 0.0, (wb[0] as Vector3).z + float(wb[1]) * fb)
 		return [a, b]
 	var at := Vector3(x0, le0.y, le0.z)
+	# Identification bands are masked and sprayed: where the band meets the
+	# camouflage the overspray and the masking tape's line leave a thin dark
+	# edge, which frames the band from above as a painted mark and keeps a
+	# light band from reading as a lit strip on the wing: a line 2.5 cm wide
+	# all round it in the band's colour darkened, under the band (in half the
+	# rows: only its rim shows, and the paint's subdivision keeps it on the
+	# skin's curve).
+	var col := VehicleModels._mark_col(team, true)
+	var line := col.darkened(0.55)
 	for sd: float in [-1.0, 1.0]:
-		var tris := PackedVector2Array()
-		var prev: Array = edge.call(0)
-		for i in range(1, rows + 1):
-			var cur: Array = edge.call(i)
-			var q := []
-			for v: Vector3 in [prev[0], prev[1], cur[1], cur[0]]:
-				# (the face's x runs to the right and its y forward: the left
-				# wing's band is the right's mirrored)
-				q.append(Vector2((v.x - at.x) * sd, at.z - v.z))
-			tris.append_array([q[0], q[1], q[2], q[0], q[2], q[3]])
-			prev = cur
-		VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(sd * at.x, at.y, at.z), Vector3.UP, Vector3.RIGHT, wing_skin(secs, 1.0)), [[tris, VehicleModels._mark_col(team, true)]], "aircraft", 1)
+		var layers := []
+		for e: float in [0.025, 0.0]:
+			var n := rows >> 1 if e > 0.0 else rows
+			var tris := PackedVector2Array()
+			var prev: Array = edge.call(0, e, n)
+			for i in range(1, n + 1):
+				var cur: Array = edge.call(i, e, n)
+				var q := []
+				for v: Vector3 in [prev[0], prev[1], cur[1], cur[0]]:
+					# (the face's x runs to the right and its y forward: the left
+					# wing's band is the right's mirrored)
+					q.append(Vector2((v.x - at.x) * sd, at.z - v.z))
+				tris.append_array([q[0], q[1], q[2], q[0], q[2], q[3]])
+				prev = cur
+			layers.append([tris, line if e > 0.0 else col])
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(sd * at.x, at.y, at.z), Vector3.UP, Vector3.RIGHT, wing_skin(secs, 1.0)), layers, "aircraft", 1)
 
 
 # --- paint: insignia, numbers, panel lines, soot ------------------------------------
