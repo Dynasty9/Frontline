@@ -183,6 +183,9 @@ func copy() -> VehicleModels:
 	c.engine_vent = engine_vent
 	c.turret = _same_in(c.root, turret)
 	c.gun_mount = _same_in(c.root, gun_mount)
+	c.gun_tip = _same_in(c.root, gun_tip)
+	for whip: Node3D in antennas:
+		c.antennas.append(_same_in(c.root, whip))
 	c.rotor = _same_in(c.root, rotor)
 	return c
 

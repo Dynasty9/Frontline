@@ -1184,6 +1184,14 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	if barn:
 		# (the weatherboarded material, in one of its three colours)
 		color = BuildingMaterials.HOUSE.size() - 1 + BuildingMaterials.HOUSE.size() * (color % 3)
+	else:
+		# which of its material's three colours (BuildingMaterials.house_color),
+		# from a stream of its own seeded from where the house is, so the map's
+		# random numbers stay as they were
+		var paint := RandomNumberGenerator.new()
+		paint.seed = int(absf(c.x) * 13.0) * 7919 + int(absf(c.z) * 13.0) * 31 + 7
+		color += BuildingMaterials.HOUSE.size() * (paint.randi() % 3)
+	plan["color"] = color  # (for what dresses the house from outside: a shop's fascia)
 	var ruined := rng.randf() < ruin_p
 	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it;
 	# a barn's, so it's bare and strewn with straw)
@@ -1203,6 +1211,11 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 	var door_side := 0 if street_side > 0 else 1
 	if rng.randf() < 0.3:
 		door_side = 2 + rng.randi() % 2
+	# a shop's front is its windows and its door, all on the street (decided
+	# after the draws above, so the map's random numbers stay as they were)
+	var shopfront: bool = plan.get("shop", false) and street_side > 0.0 and not barn
+	if shopfront:
+		door_side = 0
 	# every wall stands at the house's own level (its middle's ground, as the
 	# floor and roof do), so on a slope none pokes up through the roof; the
 	# foundation under each (Structure) fills the downhill side
@@ -1232,6 +1245,9 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 				entrances.append(wp)
 			elif seg_len > 2.0 and rng.randf() < 0.5:
 				variant = 1
+			if shopfront and si == 0 and variant != 2:
+				variant = 3  # (a display window: see Structure)
+				world.stat("shop_window")
 			if si == 1 and wk > 0 and k == wk0 + (wk >> 1):
 				# the wing's back door, out to the garden (a way in for whoever
 				# clears it, as the front door is for the house)
