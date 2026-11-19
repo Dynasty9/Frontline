@@ -1,0 +1,173 @@
+{
+  "before_ref": "7398848b27e0af9191263c405f4da152d2b6f244",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    13500
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 76. The before column rendered from a checkout of before_ref (round 12's code), the after column from the same checkout with this change's files copied in (rounds 13 to 15).",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> [--surface-flight] [--surface-rear] --surface-seed=<seed> [--surface-focus=<focus> --surface-size=<size>] --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "hummingbird",
+      "focus": "0,1.6,-1.2",
+      "size": 2.2,
+      "label": "Little Bird: two pilots behind the bubble"
+    },
+    {
+      "model": "ghosthawk",
+      "focus": "0,1.8,-3.0",
+      "size": 3.0,
+      "label": "Ghost Hawk: the crew behind the windscreen"
+    },
+    {
+      "model": "huron",
+      "focus": "0,2.0,-5.5",
+      "size": 3.5,
+      "label": "Huron: a manned cockpit"
+    },
+    {
+      "model": "buzzard",
+      "flight": true,
+      "label": "Buzzard from above: team bands on the wingtips, clear of the roundels"
+    },
+    {
+      "model": "marshall",
+      "label": "Marshall: wheels in wheel wells, not under a flat side"
+    },
+    {
+      "model": "btr",
+      "label": "BTR: wheel wells cut in the lower plate"
+    },
+    {
+      "model": "kuma",
+      "flight": true,
+      "label": "Leopard 2 from above: crew kit on the turret roof"
+    },
+    {
+      "model": "strider",
+      "flight": true,
+      "label": "Strider from above: fine louvres instead of black slots"
+    },
+    {
+      "model": "kuma",
+      "rear": true,
+      "focus": "0,1.9,2.6",
+      "size": 5.5,
+      "label": "Leopard 2: dense flat-bar slat cages"
+    },
+    {
+      "model": "suv",
+      "rear": true,
+      "label": "SUV: a fastback tailgate"
+    },
+    {
+      "model": "tractor",
+      "label": "Tractor: a cab that reads as glazed"
+    },
+    {
+      "model": "technical",
+      "label": "Technical: a ragged crescent of rust"
+    },
+    {
+      "model": "hemtt",
+      "flight": true,
+      "label": "HEMTT from above: bows and widths on the tilt"
+    },
+    {
+      "model": "zamak",
+      "flight": true,
+      "focus": "-0.4,2.75,-1.3",
+      "size": 2.4,
+      "seed": 12,
+      "label": "Zamak, seed 12: the net rolled and strapped on the cab"
+    },
+    {
+      "model": "prowler",
+      "flight": true,
+      "label": "Prowler from above: bucket seats"
+    },
+    {
+      "model": "hemtt_cargo",
+      "focus": "0.6,2.4,1.5",
+      "size": 3.0,
+      "label": "HEMTT load: wooden crates with plank joints and cleats"
+    },
+    {
+      "model": "rhib",
+      "label": "RHIB: two-tone tubes, saddle seats"
+    },
+    {
+      "model": "xian",
+      "focus": "0,2.4,-5.6",
+      "size": 5.0,
+      "label": "Xi'an: clear, stepped cockpits with two crew"
+    },
+    {
+      "model": "marshall",
+      "flight": true,
+      "label": "Marshall from above: a rolled tarp and kit on the turret"
+    },
+    {
+      "model": "prowler",
+      "flight": true,
+      "focus": "0,1.4,0",
+      "size": 2.4,
+      "label": "Prowler: harness belts in the seats"
+    },
+    {
+      "model": "offroad",
+      "label": "Pickup: tinted glass you can see the cab through, moulded flares"
+    },
+    {
+      "model": "bobcat",
+      "flight": true,
+      "label": "Bobcat from above: an oily winch rope, real-sized tools"
+    },
+    {
+      "model": "kamysh",
+      "flight": true,
+      "label": "Kamysh from above: painted stowage bins on the tail"
+    },
+    {
+      "model": "old_tank",
+      "label": "T-55: dark IR filters on its searchlights"
+    },
+    {
+      "model": "ghosthawk",
+      "flight": true,
+      "label": "Ghost Hawk from above: a faint dark rotor disc in flight"
+    },
+    {
+      "model": "tempest_ammo",
+      "flight": true,
+      "label": "Tempest ammunition: tarps over boxes, lettered crates"
+    },
+    {
+      "model": "suv",
+      "label": "SUV: taller on its wheels, dark cladding, wraparound lights"
+    },
+    {
+      "model": "panther",
+      "flight": true,
+      "label": "Namer from above: a perforated engine-deck cover, roof kit"
+    },
+    {
+      "model": "hemtt",
+      "focus": "0,2.5,-3.6",
+      "size": 3.0,
+      "label": "HEMTT: crew kit on the cab roof"
+    },
+    {
+      "model": "quadbike",
+      "label": "Quad bike: moulded fenders and a saddle"
+    }
+  ]
+}

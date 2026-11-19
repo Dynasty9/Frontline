@@ -1746,6 +1746,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   thick, tilts open on their benches, rotors shimmer, vans, tractors and the Blackfoot show their crews, and boats
   fly slack ensigns. Two critics ranked the roster's worst-looking parts to steer these passes. See "Fifteenth
   pass" to "Seventeenth pass" in [the component guide](vehicle-components.md).
+- **Helicopter crews, wheel arches and tarps over boxes** (eighteenth to twentieth passes): helicopters show their
+  crews through clear cockpits and a faint dark rotor disc in flight, wheeled carriers turn their wheels in proper
+  arches, roofs and cabs carry crew kit and rolled tarps, tarps take the shape of the boxes under them, engine decks
+  are louvred, perforated or meshed by army, and the SUV, MB 4WD, quad bike and kart are remodelled. A cost pass
+  left the roster 3% lighter than before the eighteenth pass. A third critic steered the last two passes. See
+  "Eighteenth pass" to "Twentieth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
