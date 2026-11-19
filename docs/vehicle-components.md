@@ -1145,6 +1145,30 @@ before the thirteenth pass despite everything since.
   `smoke_tube`'s lip matches its 12 sides; `VehicleDoors.hinge` drops the knuckle caps facing each other across
   the slot. 1.17 million vertices in all, with nothing changed from the battle camera.
 
+### Twenty-first pass: a fourth critic, fabrics and leftovers
+
+A fourth critic judged the twentieth pass from the battle camera and found two of its changes worse: tarps over
+boxes read as hard satin crates, and NATO's perforated engine decks as two rows of polka dots. This short pass
+fixed both, then took the fabrics and the leftovers. Nodes and meshes are unchanged, and so is the roster's vertex
+count (-0.02%): the plainer spares pay for the perforated decks (up to +3.1% on a NATO tank).
+
+- **Tarps**: `VehicleCloth._box_tarp_mesh` and the new `_tarp_shape` (shared by the sheet and its straps) dip the
+  sheet 3.5 cm into the gaps between boxes, belly its sides out between the joints, hang the hem loose and flare
+  the corner ears; straps are a third darker and follow the bellies. A crate stack's coated tarp is matt canvas.
+  A loose load (`lean > 0`) is draped soft instead, with rolled shoulders and a crowned lid.
+- **Buckles**: `VehicleCloth._bag`, `_lid`, `_roll` and `harness` make their buckles black acetal or anodised
+  cam-locks in the webbing finish (`BUCKLE`), so stowed kit and buggy seats no longer carry a pale steel tag
+  that mirrored the sky. A tilt's own rolls keep their steel roller buckles.
+- **Perforated decks**: `VehicleFittings._perforated` punches the cover all over, 6.5 cm apart in staggered rows
+  along the plate's edges, all the holes in one mesh: from the battle camera a finely darkened plate.
+- **Spares**: `VehicleWheels.spare(..., against)` takes a point on the panel the spare is carried against (its
+  carrier's `mount`) and builds the face toward it as a running wheel's inner face (`pneumatic(..., hidden)`,
+  `_faces`; `_car_wheel` and `_atv_wheel` close a hidden face with a dark disc). The HEMTT, M35, Zamak, Ifrit,
+  Qilin and Hunter pass it: about 3.5k vertices less a spare. A cradle's spare, seen from both sides, keeps both.
+- **Trucks**: the floor under a tilt is darkened by family (the HEMTT's and M35's toward boot-dirt brown, since
+  their paint mirrors the sky); `VmNato._hemtt_cab_detail(..., salt)` and `VmCsat._typhoon(..., salt)` salt the cab
+  roof's recognition panel by body, as the Zamak's are; the M35's pressed-steel wheels are painted with the truck.
+
 ### Gun mounts: laying, recoil and the guns themselves
 
 The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of

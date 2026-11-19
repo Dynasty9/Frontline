@@ -14,14 +14,20 @@ const TYRE := Color(0.11, 0.115, 0.11)
 const TYRE_TREAD := Color(0.13, 0.135, 0.125)
 const TYRE_LETTERS := Color(0.14, 0.145, 0.135)
 
-static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunmetal_w", hub_col = null, profile := "offroad", register := true) -> Node3D:
+## `hidden` is a spare's (`register` false) face that nobody sees, by its
+## side along the axle (-1.0 or 1.0; 0.0 shows both): the one against the
+## door, cab or panel that carries it. It gets what a running wheel's inner
+## face gets: no letters, no stud or hand holes and the coarse lip.
+static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunmetal_w", hub_col = null, profile := "offroad", register := true, hidden := 0.0) -> Node3D:
+	if register:
+		hidden = 0.0
 	# A car's road wheel is a car wheel, not a truck's: see _car_wheel. Trucks
 	# and tractors pass painted rims, quad bikes' tyres are fatter than a
 	# car's, and military vehicles keep their steel and beadlock rims.
 	if profile == "road" and k.surface_family == "automotive" and hub_kind in ["steel", "gunmetal_w"] and r >= 0.3 and r < 0.42 and w <= r * 0.75:
-		return _car_wheel(k, parent, pos, r, w, hub_kind, hub_col, register)
+		return _car_wheel(k, parent, pos, r, w, hub_kind, hub_col, register, hidden)
 	if profile == "atv" and not k.wreck:
-		return _atv_wheel(k, parent, pos, r, w, hub_kind, hub_col, register)
+		return _atv_wheel(k, parent, pos, r, w, hub_kind, hub_col, register, hidden)
 	var pv := k._pivot(parent, pos)
 	# (a painted rim only: a bare steel one from stores looks like the rest)
 	var swapped: Variant = _swapped(k, parent, pos, 37, hub_col) if register and profile == "offroad" and hub_kind == "paint" else null
@@ -45,7 +51,7 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 		if r >= 0.3 and profile != "aircraft":
 			# The maker's name and the size moulded into the outer sidewall
 			# (inboard too on a spare, which shows both).
-			var faces: Array[float] = [1.0, -1.0]
+			var faces: Array[float] = _faces(hidden)
 			if register:
 				faces = [signf(pos.x) if pos.x != 0.0 else 1.0]
 			for f: float in faces:
@@ -59,8 +65,9 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	# A running wheel's inner face looks at the axle and the arch's shadow:
 	# the nuts are on the outer face only, as on the real wheel (the studs
 	# come through from the hub), and the inner flange is the small wheel's
-	# coarser lip. A wheel on its parent's centre line, and a spare, show both.
-	var inner := -signf(pos.x) if register and pos.x != 0.0 else 0.0
+	# coarser lip. A wheel on its parent's centre line, and a spare, show both
+	# (but a spare's `hidden` face, against what carries it).
+	var inner := -signf(pos.x) if register and pos.x != 0.0 else hidden
 	for side: float in [-1.0, 1.0]:
 		k._add(pv, _lip(fine and side != inner), hub_kind, hub_col, Vector3(side * w * 0.37, 0, 0), AXLE, Vector3.ONE * r, false)
 		if side == inner:
@@ -85,7 +92,7 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 		# hose and the brake's air), so from the battle camera the wheel
 		# reads as a pressed steel wheel with the dark of the hub behind it,
 		# not a plain painted plate. Outer face only on a running wheel.
-		var faces: Array[float] = [1.0, -1.0]
+		var faces: Array[float] = _faces(hidden)
 		if register:
 			faces = [signf(pos.x) if pos.x != 0.0 else 1.0]
 		# (each hole is the dark of the hub seen through the disc: a flat dark
@@ -122,18 +129,26 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	return pv
 
 
+## The faces of a spare that are seen: both, or the one away from `hidden`.
+static func _faces(hidden: float) -> Array[float]:
+	var faces: Array[float] = [1.0, -1.0]
+	if hidden != 0.0:
+		faces = [-hidden]
+	return faces
+
+
 ## An ATV's road wheel (`pneumatic`'s "atv" profile): the knobbly
 ## low-pressure tyre a pneumatic wheel has, on a 12-inch pressed rim whose
 ## centre is dished in deep behind its flange, a small hub boss in the middle
 ## and four lug nuts on it (a Grizzly's 4/110 pattern). The truck wheel's
 ## broad hub and eight nuts on both faces read as a lorry's at the battle
 ## camera. Its detail is on the outer face (both on a spare).
-static func _atv_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind: String, hub_col, register: bool) -> Node3D:
+static func _atv_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind: String, hub_col, register: bool, hidden := 0.0) -> Node3D:
 	var pv := k._pivot(parent, pos)
 	var rim: Color = hub_col if hub_col is Color else Color(0.45, 0.46, 0.45)
 	k._add(pv, _carcass(), "rubber", TYRE, Vector3.ZERO, AXLE, Vector3(r, w / 0.50, r))
 	k._add(pv, _tread(r, w, true), "rubber", TYRE_TREAD, Vector3.ZERO)
-	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else [1.0, -1.0]
+	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else ([1.0, -1.0] if hidden == 0.0 else [-hidden])
 	if r >= 0.3:
 		for f: float in faces:
 			k._add(pv, _sidewall(r, w), "rubber", TYRE_LETTERS, Vector3.ZERO, Vector3(0, PI, 0) if f < 0.0 else Vector3.ZERO, Vector3.ONE, false)
@@ -171,7 +186,7 @@ static func _atv_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float,
 ## outer face only (the inner one faces the chassis); a spare details both,
 ## and a carrier's stud runs through its centre to either face of the old hub.
 ## About half the vertices of the truck wheel it replaces.
-static func _car_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind: String, hub_col, register: bool) -> Node3D:
+static func _car_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind: String, hub_col, register: bool, hidden := 0.0) -> Node3D:
 	var pv := k._pivot(parent, pos)
 	var dark := hub_kind != "steel"
 	var trim := not dark and r < 0.36
@@ -182,7 +197,7 @@ static func _car_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float,
 	elif not k.wreck:
 		k._add(pv, _car_tyre(r, w, rr), "rubber", TYRE, Vector3.ZERO)
 	# (a wreck's tyres burn away and its hull sits down on the rims: Structure._ruin)
-	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else [-1.0, 1.0]
+	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else ([-1.0, 1.0] if hidden == 0.0 else [-hidden])
 	for side: float in faces:
 		var turn := Vector3(0, PI, 0) if side < 0.0 else Vector3.ZERO
 		var out := Vector3(0, 0, -side * PI / 2)  # a drum's +Y (its cap) facing out
@@ -207,11 +222,12 @@ static func _car_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float,
 		for i in spokes:
 			var a := TAU * (i + 0.5) / float(spokes)
 			k._add(pv, nut, "steel", Color(0.52, 0.53, 0.52), Vector3(side * w * 0.37, cos(a) * rr * 0.23, sin(a) * rr * 0.23), out, Vector3.ONE, false)
-	if register:
-		# The tyre's inner opening closed in the dark of the wheel arch.
+	if register or hidden != 0.0:
+		# The tyre's inner opening closed in the dark of the wheel arch (or,
+		# on a spare, of the door or panel it's carried against).
 		var back: float = -float(faces[0])
 		k._add(pv, drum(rr * 1.04, rr * 1.04, 0.01, 16, false), "rubber", Color(0.04, 0.04, 0.04), Vector3(back * w * 0.3, 0, 0), Vector3(0, 0, -back * PI / 2), Vector3.ONE, false)
-	else:
+	if not register:
 		# A spare's carrier stud, through the centre to either face of the old hub.
 		k._add(pv, drum(rr * 0.12, rr * 0.12, w * 0.89, 8), hub_kind, hub_col, Vector3.ZERO, AXLE, Vector3.ONE, false)
 		k._fold(pv)
@@ -806,10 +822,20 @@ static func roller(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: 
 
 ## A spare shares the running tyre's construction but never a rotating pivot.
 ## Rotation follows CylinderMesh convention: its unrotated axle points up.
-static func spare(k: VehicleModels, parent: Node3D, pos: Vector3, radius: float, width: float, rot := Vector3.ZERO, mat := "gunmetal_w", col = null, profile := "offroad") -> void:
+## `against` is a point (in `parent`'s frame) on the cab, door or panel the
+## spare's back is carried against: a hub or swing carrier's `mount`. The face
+## toward it is the one nobody sees, so it is built as a running wheel's inner
+## face is (see pneumatic's `hidden`), about 3.5k vertices fewer on a truck's
+## spare. Vector3.INF, or a point in the wheel's own plane (a cradle's), keeps
+## both faces finished, for a spare seen from either side.
+static func spare(k: VehicleModels, parent: Node3D, pos: Vector3, radius: float, width: float, rot := Vector3.ZERO, mat := "gunmetal_w", col = null, profile := "offroad", against := Vector3.INF) -> void:
 	var mount := k._pivot(parent, pos)
 	mount.basis = Basis.from_euler(rot) * Basis.from_euler(AXLE).inverse()
-	pneumatic(k, mount, Vector3.ZERO, radius, width, mat, col, profile, false)
+	var hidden := 0.0
+	if against.is_finite():
+		var off := (mount.basis.inverse() * (against - pos)).x
+		hidden = signf(off) if absf(off) >= 0.01 else 0.0
+	pneumatic(k, mount, Vector3.ZERO, radius, width, mat, col, profile, false, hidden)
 	k._fold(mount)
 
 

@@ -946,7 +946,7 @@ static func _zamak(k: VehicleModels, team: int, kind: String, seed: int) -> void
 	_zamak_cab(k, team, cam, col, kind)
 	match kind:
 		"zamak":
-			_zamak_bed(k, cam, col, 0.55)
+			_zamak_bed(k, cam, col, 0.55, true)
 			_zamak_tilt(k, VehicleCargo.tilt_colour(k, k.root, tarp))
 		"zamak_cargo":
 			_zamak_bed(k, cam, col, 0.55)
@@ -1045,7 +1045,8 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col, kind := ""
 		VehicleEquipment.recognition_panel(k, m, Vector3(-0.42, 2.765, -1.3), Vector3.ZERO, true, 0.2, 0 if kind == "" else hash(kind) & 0xffff)
 	# behind the cab: the spare wheel upright in its frame, the air intake,
 	# the fuel tank on the left and the battery box on the right
-	VehicleWheels.spare(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, cam, col)
+	# (its face against the cab's back plain, as nobody sees it)
+	VehicleWheels.spare(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, cam, col, "offroad", Vector3(0, 1.74, -0.71))
 	VehicleWheels.carrier(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, "cradle", Vector3(0, 1.11, -0.5))
 	# the air cleaner canister strapped to the cab's back, its pre-cleaner on top
 	VehicleFittings.air_cleaner(k, m, Vector3(0.95, 1.85, -0.52), 0.17, 0.9, cam, col, Vector2(0.2, 0.08), Vector3.FORWARD)
@@ -1068,9 +1069,15 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col, kind := ""
 ## The flatbed on the chassis, on its runners; `sides` > 0 gives it dropsides
 ## that high on five stake posts a side, a headboard and a tailgate (a flat
 ## deck keeps the posts' pockets). Tail lights, bumper and pintle under the back.
-static func _zamak_bed(k: VehicleModels, cam: String, col, sides: float) -> void:
+## `tilted`: the deck is under a canvas tilt, in its shade (see below).
+static func _zamak_bed(k: VehicleModels, cam: String, col, sides: float, tilted := false) -> void:
 	var m := k.root
-	VehicleCargo.flatbed(k, m, -0.25, 3.8, 2.5, 1.44, cam, col, sides, 5, sides + 0.25 if sides > 0.0 else 0.0, 0.0, 0.12, "", null, Vector3(0.48, 0.14, 0.16))
+	# (under a tilt the deck has the sky's light shut out as well as the
+	# sun's, which the renderer doesn't know: lit like an open deck it read
+	# bright past the rolled flap, so it's taken down as the tilt's liner is;
+	# a wreck's stays as it was)
+	var deck: Variant = ((col if col is Color else Color(0.46, 0.42, 0.32)) as Color).darkened(0.45) if tilted and not k.wreck else null
+	VehicleCargo.flatbed(k, m, -0.25, 3.8, 2.5, 1.44, cam, col, sides, 5, sides + 0.25 if sides > 0.0 else 0.0, 0.0, 0.12, cam if deck != null else "", deck, Vector3(0.48, 0.14, 0.16))
 	# under the back: tail lights on their brackets, the bumper bar, pintle, plate
 	for s: float in [-1.0, 1.0]:
 		_light(k, m, Vector3(s * 0.98, 1.16, 3.74), 0.24, 0.1, 1.0, false, true)

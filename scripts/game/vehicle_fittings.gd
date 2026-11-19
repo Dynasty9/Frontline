@@ -189,31 +189,45 @@ static func vent(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outl
 
 ## The perforated armour cover a Merkava- or Namer-pattern hull bolts over its
 ## engine's intakes on the glacis: one plate in the hull's paint over the whole
-## panel, cut with two rows of round holes along its length that show the dark
-## radiator under them, and bolted down round its rim every 28 cm. From above
-## it reads as a plate with a double row of dots, not a bank of louvres.
+## panel, punched all over with small round holes that show the dark radiator
+## under them, and bolted down round its rim every 28 cm. A punch press lays
+## the holes in rows along the plate's edges, every other row stepped half a
+## pitch, 6.5 cm apart: from the battle camera the panel reads as a finely
+## darkened plate, close up as a field of holes. (Two rows of big holes read
+## as polka dots.) All the holes are one mesh.
 static func _perforated(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, inset: PackedVector2Array, bounds: Rect2, material: String, col, core: Color) -> void:
 	k._add(parent, surface.patch(inset, 0.014, 0.014), material, col, Vector3.ZERO)
 	var long := 0 if bounds.size.x >= bounds.size.y else 1
 	var short := 1 - long
-	var r := clampf(bounds.size[short] * 0.13, 0.025, 0.05)
-	var holes := maxi(2, floori((bounds.size[long] - r * 2.0) / (r * 3.0)))
+	var pitch := 0.065
+	var row_pitch := pitch * 0.866
+	var r := 0.019
 	var center := bounds.get_center()
-	var start := bounds.position[long] + (bounds.size[long] - (holes - 1) * r * 3.0) * 0.5
+	var inner: Array[PackedVector2Array] = Geometry2D.offset_polygon(inset, -r * 1.8)
+	var field: PackedVector2Array = inner[0] if not inner.is_empty() else inset
+	var rows := floori(bounds.size[short] / row_pitch)
+	var cols := floori(bounds.size[long] / pitch)
 	# (a hole looks into the dark under the plate, matt: in the core's glossy
 	# finish the sky's sheen turned the holes the grey of the camouflage's
 	# own blots)
 	var dark := core.darkened(0.6)
-	for row: float in [-1.0, 1.0]:
-		for i in holes:
+	var data := [[], [], []]
+	for row in rows + 1:
+		var stagger := pitch * 0.5 if (row & 1) == 1 else 0.0
+		for i in cols + 1:
 			var c := center
-			c[long] = start + i * r * 3.0
-			c[short] = center[short] + row * bounds.size[short] * 0.22
-			var disc := PackedVector2Array()
-			for j in 8:
-				var turn := TAU * (j + 0.5) / 8.0
-				disc.append(c + Vector2(cos(turn), sin(turn)) * r)
-			k._add(parent, surface.patch(disc, 0.0145), "rubber", dark, Vector3.ZERO)
+			c[long] = center[long] + (i - cols * 0.5) * pitch + stagger - pitch * 0.25
+			c[short] = center[short] + (row - rows * 0.5) * row_pitch
+			if not Geometry2D.is_point_in_polygon(c, field):
+				continue
+			var ring: Array[Vector2] = []
+			for j in 6:
+				var turn := TAU * j / 6.0
+				ring.append(c + Vector2(cos(turn), sin(turn)) * r)
+			for j in range(1, 5):
+				surface._triangle(data, ring[0], ring[j], ring[j + 1], 0.0145, 0, false)
+	if not (data[0] as Array).is_empty():
+		k._add(parent, VehicleSurface._mesh(data), "rubber", dark, Vector3.ZERO)
 	for i in outline.size():
 		var a: Vector2 = outline[i]
 		var b: Vector2 = outline[i + 1] if i + 1 < outline.size() else outline[0]

@@ -2584,12 +2584,17 @@ static func _truck(k: VehicleModels, team: int) -> void:
 	var axles := [-2.15, 1.05, 2.4]
 	# the chassis: the ladder frame's two channel rails and their cross
 	# members (one slab here read as a grey beam under the bed from a
-	# quarter), the axles and their diffs, the wheels
+	# quarter), the axles and their diffs, the wheels. The deuce's pressed
+	# steel wheels are painted with the truck, a shade darker for the road's
+	# dirt on them (bare gunmetal read as alloy rims on a 1960s lorry); a
+	# wreck's stay as they were.
+	var rim := "gunmetal_w" if k.wreck else "paint"
+	var rim_col: Variant = null if k.wreck else col.darkened(0.15)
 	VehicleRunningGear.frame(k, m, Vector3(0, 0.84, 0.15), 0.43, 6.2, Vector2(0.1, 0.24), [-2.85, -0.9, 0.35, 1.72, 3.15])
 	for z: float in axles:
 		VehicleRunningGear.axle(k, m, Vector3(0, wr, z), 1.7, 0.07)
 		for s: float in [-1.0, 1.0]:
-			k._wheel(m, Vector3(s * 0.95, wr, z), wr, 0.38)
+			k._wheel(m, Vector3(s * 0.95, wr, z), wr, 0.38, rim, rim_col)
 	# the bonnet with the radiator grille in its nose, the flat wings over the
 	# front wheels with the headlights on them, the brush guard, the bumper
 	# and its tow hooks (the grilles lean with the bonnet's faces)
@@ -2638,8 +2643,9 @@ static func _truck(k: VehicleModels, team: int) -> void:
 			_bar(k, m, Vector3(s * 0.86, 0.71, z), Vector3(s * 0.86, 1.12, z), 0.04, 0.012, "gunmetal_w", null, false)
 		k._team_mark(m, team, Vector3(s * 1.09, 1.55, -1.35), Vector3(0.02, 0.24, 0.5))
 	# behind the cab: the spare wheel standing up, the fuel tank, a tool box
-	VmNato._spare(k, m, Vector3(0.45, 1.75, -0.45), 0.48, 0.3, Vector3(PI / 2, 0, 0))
-	# bolted through its hub to a carrier on the cab's back
+	# bolted through its hub to a carrier on the cab's back (its face against
+	# the cab plain, as nobody sees it)
+	VehicleWheels.spare(k, m, Vector3(0.45, 1.75, -0.45), 0.48, 0.3, Vector3(PI / 2, 0, 0), rim, rim_col, "offroad", Vector3(0.45, 1.75, -0.638))
 	VehicleWheels.carrier(k, m, Vector3(0.45, 1.75, -0.45), 0.48, 0.3, Vector3(PI / 2, 0, 0), "hub", Vector3(0.45, 1.75, -0.638))
 	VehicleRunningGear.fuel_tank(k, m, Vector3(-1.0, 0.92, 0.1), Vector3(0.44, 0.44, 0.9), -1.0, "paint", col.darkened(0.1))
 	VehicleEquipment.storage(k, m, Vector3(1.0, 0.95, 0.1), Vector3(0.36, 0.34, 0.6), "paint", col.darkened(0.1))
@@ -2652,8 +2658,13 @@ static func _truck(k: VehicleModels, team: int) -> void:
 	# pintle. The M35's cargo body is all steel, its floor plate welded in
 	# sections and painted with the rest, scuffed darker by boots and loads
 	# (only the troop seats are wooden slats); in planks of dark wood under
-	# the tilt it read as a tiled floor. (A wreck's floor stays as it was.)
-	VehicleCargo.flatbed(k, m, -0.35, 3.05, 2.3, 1.37, "paint", col, 0.48, 0, 0.0, 0.0, 0.14, "wood_dark" if k.wreck else "paint", null if k.wreck else col.darkened(0.16), Vector3.ZERO, 0.06)
+	# the tilt it read as a tiled floor. Under the tilt it is in the cover's
+	# shade, the sky's light shut out as well as the sun's, which the renderer
+	# doesn't know: lit like an open deck it read bright past the rolled
+	# flap, so it's taken down as the tilt's liner is, toward the brown of the
+	# dirt boots carry in (darkened alone, the paint went the slate of the sky
+	# it reflects). (A wreck's floor stays as it was.)
+	VehicleCargo.flatbed(k, m, -0.35, 3.05, 2.3, 1.37, "paint", col, 0.48, 0, 0.0, 0.0, 0.14, "wood_dark" if k.wreck else "paint", null if k.wreck else col.darkened(0.4).lerp(Color(0.2, 0.18, 0.1), 0.3), Vector3.ZERO, 0.06)
 	for s: float in [-1.0, 1.0]:
 		VehicleFittings.mudflap(k, m, Vector3(s * 0.95, 0.5, 3.15), Vector2(0.36, 0.4))
 		_taillight(k, m, Vector3(s * 0.9, 1.1, 3.08))

@@ -409,7 +409,7 @@ static func _ifrit(k: VehicleModels, team: int, arm: String) -> void:
 	for hy in [1.25, 2.05]:
 		VehicleDoors.hinge(k, m, Vector3(0.78, hy, 3.19), Vector3.BACK, Vector3.UP, 0.02, "gunmetal_w")
 	VehicleDoors.pull(k, m, Vector3(0.05, 1.6, 3.19), Vector3.BACK, Vector3.UP, 0.16)
-	VehicleWheels.spare(k, m, Vector3(-0.5, 1.62, 3.38), 0.52, 0.36, Vector3(PI / 2, 0, 0))
+	VehicleWheels.spare(k, m, Vector3(-0.5, 1.62, 3.38), 0.52, 0.36, Vector3(PI / 2, 0, 0), "gunmetal_w", null, "offroad", Vector3(-0.5, 1.62, 3.16))
 	VehicleWheels.carrier(k, m, Vector3(-0.5, 1.62, 3.38), 0.52, 0.36, Vector3(PI / 2, 0, 0), "hub", Vector3(-0.5, 1.62, 3.16))
 	VehicleFrames.step(k, m, Vector3(0, 0.66, 3.2), Vector2(1.7, 0.3), Vector3.ZERO, "steel", Color(0.3, 0.29, 0.25))
 	_tow(k, m, Vector3(0, 0.75, 3.18), 1.0)
@@ -535,7 +535,7 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 	for s in [-1.0, 1.0]:
 		_tow(k, m, Vector3(s * 0.4, 0.45, -2.42), -1.0)
 	# the spare wheel upright on the tail, jerrycans beside it
-	VehicleWheels.spare(k, m, Vector3(0, 0.98, 2.56), 0.4, 0.28, Vector3(PI / 2, 0, 0))
+	VehicleWheels.spare(k, m, Vector3(0, 0.98, 2.56), 0.4, 0.28, Vector3(PI / 2, 0, 0), "gunmetal_w", null, "offroad", Vector3(0, 0.84, 2.376))
 	# its carrier bolted to the tail below the hub, rising from the deck's edge
 	VehicleWheels.carrier(k, m, Vector3(0, 0.98, 2.56), 0.4, 0.28, Vector3(PI / 2, 0, 0), "hub", Vector3(0, 0.84, 2.376))
 	for s in [-1.0, 1.0]:
@@ -1461,7 +1461,8 @@ const CANVAS_TAN := Color(0.47, 0.42, 0.31)  # on canvas_white: tints above the 
 ## headlights, a ladder of steps, mirrors on long arms; the frame, the fuel
 ## tank and the exhaust stack behind the cab, six wheels (one axle at the
 ## front, two at the back). The mission module goes on from z = -2.1.
-static func _typhoon(k: VehicleModels, team: int) -> void:
+## `salt` draws the roof's recognition panel apart for each mission module.
+static func _typhoon(k: VehicleModels, team: int, salt := 0) -> void:
 	var m := k.root
 	var c := CAM
 	k._box(m, Vector3(0.95, 0.28, 8.4), Vector3(0, 0.96, 0.05), "gunmetal_w")
@@ -1519,7 +1520,16 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 	# antenna, clear of the hatch and the recognition panel, on a truck whose
 	# crew camouflages it (VehicleCloth.camouflage): the roof is the first
 	# thing the battle camera sees of a cab-over
-	_roof_net(k, m, Vector3(-0.6, 3.12, -3.1), Vector2(0.58, 0.68))
+	var net_at := Vector3(-0.6, 3.12, -3.1)
+	var net := VehicleCargo.kit(k, m, net_at, 17)
+	var camo := VehicleCloth.camouflage(k)
+	if net != null and camo > 0.0 and net.randf() < camo + 0.2:
+		_roof_net(k, m, net_at, Vector2(0.58, 0.68))
+	else:
+		# or, in its place, an air-recognition panel folded on the roof's
+		# crown, drawn apart for each module: the five Tempests share this
+		# cab, and a column of them in one kit wore one panel each, alike
+		VehicleEquipment.recognition_panel(k, m, Vector3(-0.55, 3.165, -3.1), Vector3.ZERO, true, 0.2, salt)
 	# the crew's own kit beside the hatch on the roof's right, where the man
 	# in it can reach down for it (one hatch on a bare plate read as nothing
 	# from above)
@@ -1545,7 +1555,7 @@ static func _roof_net(k: VehicleModels, p: Node3D, foot: Vector3, size: Vector2)
 static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 	var m := k.root
 	var c := CAM
-	_typhoon(k, team)
+	_typhoon(k, team, 0 if kind == "" else hash(kind) & 0xffff)
 	match kind:
 		"ammo":
 			_tempest_flatbed(k, 0.4)
@@ -1622,7 +1632,7 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 				k._box(m, Vector3(0.4, 0.3, 0.02), Vector3(0, 2.75, 3.77), "paint", Color(0.55, 0.36, 0.1), Vector3.ZERO, false)
 		_:
 			# troops: armoured sides, the canvas cover on its bows
-			_tempest_flatbed(k, 0.62)
+			_tempest_flatbed(k, 0.62, true, true)
 			var tilt := VehicleCargo.tilt_colour(k, m, CANVAS_TAN)
 			VehicleCloth.canopy(k, m, [Vector2(-1.25, 2.1), Vector2(-1.12, 3.2), Vector2(-0.95, 3.3), Vector2(0.95, 3.3), Vector2(1.12, 3.2), Vector2(1.25, 2.1)], [-2.0, -1.6, -0.42, 0.76, 1.94, 3.12, 4.30, 4.38], tilt)
 			var strap := tilt.darkened(0.25)
@@ -1664,9 +1674,14 @@ static func _tempest(k: VehicleModels, team: int, kind: String) -> void:
 
 ## The Tempest's load bed from behind the cab to the tail on its subframe,
 ## with low armoured sides `h` tall and four stake posts a side (none when 0)
-## and the headboard.
-static func _tempest_flatbed(k: VehicleModels, h: float, head := true) -> void:
-	VehicleCargo.flatbed(k, k.root, -2.105, 4.445, 2.5, 1.5, CAM, null, h, 4 if h > 0.0 else 0, 1.1 if head else 0.0, 0.0, 0.14, "", null, Vector3(1.1, 0.08, 0.2), 0.07)
+## and the headboard. `tilted`: the bed is under the troop body's canvas
+## cover, its deck in the cover's shade: the sky's light is shut out as well as
+## the sun's, which the renderer doesn't know, so lit like an open deck it read
+## bright past the half-let-down flap; it's taken down as the tilt's liner is
+## (a wreck's stays as it was).
+static func _tempest_flatbed(k: VehicleModels, h: float, head := true, tilted := false) -> void:
+	var deck: Variant = Color(0.46, 0.42, 0.32).darkened(0.45) if tilted and not k.wreck else null
+	VehicleCargo.flatbed(k, k.root, -2.105, 4.445, 2.5, 1.5, CAM, null, h, 4 if h > 0.0 else 0, 1.1 if head else 0.0, 0.0, 0.14, CAM if deck != null else "", deck, Vector3(1.1, 0.08, 0.2), 0.07)
 
 
 ## A closed armoured box body on the bed from z0 to z1, its roof at `top`, the
