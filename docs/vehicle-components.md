@@ -1159,6 +1159,9 @@ count (-0.02%): the plainer spares pay for the perforated decks (up to +3.1% on 
 - **Buckles**: `VehicleCloth._bag`, `_lid`, `_roll` and `harness` make their buckles black acetal or anodised
   cam-locks in the webbing finish (`BUCKLE`), so stowed kit and buggy seats no longer carry a pale steel tag
   that mirrored the sky. A tilt's own rolls keep their steel roller buckles.
+- **Sandbags**: `VehicleCloth._sack`'s top is pressed flat with square shoulders, not a loaf's dome; every sack is
+  matt `canvas` (woven polypropylene included), and the poly lot's white and sand are dirtied to a mid grey and
+  a duller sand, so a wall of them is no longer the brightest thing on a cab.
 - **Perforated decks**: `VehicleFittings._perforated` punches the cover all over, 6.5 cm apart in staggered rows
   along the plate's edges, all the holes in one mesh: from the battle camera a finely darkened plate.
 - **Spares**: `VehicleWheels.spare(..., against)` takes a point on the panel the spare is carried against (its

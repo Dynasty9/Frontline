@@ -1287,11 +1287,14 @@ static func rope(k: VehicleModels, parent: Node3D, points: Array, radius: float,
 const SACK := Vector3(0.5, 0.14, 0.28)
 ## Sacks as irregulars find them: hessian (jute, the old issue: brown, hairy,
 ## dead matte) and woven polypropylene (the builders' merchant's plastic sack:
-## off-white, olive or sand, finer, with a faint sheen). (Jute is a greyish
-## brown: any more chroma and the game's warm sun turns a wall of them into
-## orange loaves, the warmest thing on the vehicle.)
+## off-white, olive or sand, finer). Both are woven and read matt at any
+## distance. (Jute is a greyish brown: any more chroma and the game's warm sun
+## turns a wall of them into orange loaves, the warmest thing on the vehicle.
+## A white sack is grey with the earth it was filled with and the hands that
+## carried it: at the clean white of a new one, a wall of them was the
+## brightest thing on a truck's cab.)
 const SACK_HESSIAN: Array[Color] = [Color(0.44, 0.38, 0.28), Color(0.39, 0.34, 0.25), Color(0.50, 0.44, 0.33)]
-const SACK_POLY: Array[Color] = [Color(0.66, 0.64, 0.57), Color(0.36, 0.37, 0.27), Color(0.56, 0.52, 0.42), Color(0.31, 0.33, 0.25)]
+const SACK_POLY: Array[Color] = [Color(0.52, 0.5, 0.45), Color(0.36, 0.37, 0.27), Color(0.5, 0.47, 0.38), Color(0.31, 0.33, 0.25)]
 ## Earth rubbed into a sack that has been filled, carried and sat on.
 const SACK_EARTH := Color(0.34, 0.29, 0.21)
 
@@ -1328,14 +1331,14 @@ static func sandbag(k: VehicleModels, parent: Node3D, foot: Vector3, along: Vect
 		col = palette[rng.randi_range(0, palette.size() - 1)]
 	var shade := rng.randf_range(-0.06, 0.06)
 	col = col.lightened(shade) if shade > 0.0 else col.darkened(-shade)
-	col = col.lerp(SACK_EARTH, rng.randf_range(0.05, 0.3) if not poly else rng.randf_range(0.0, 0.2))
+	col = col.lerp(SACK_EARTH, rng.randf_range(0.05, 0.3) if not poly else rng.randf_range(0.08, 0.25))
 	var variant := rng.randi_range(0, 3) + (4 if drape else 0)
 	var flat := Vector3(along.x, 0.0, along.z).normalized()
 	var yaw := atan2(-flat.z, flat.x) + rng.randf_range(-0.12, 0.12)
 	var fill := snappedf(rng.randf_range(0.88, 1.06), 0.06)
 	var scale := Vector3(snappedf(length, 0.05), fill, snappedf(rng.randf_range(0.92, 1.04), 0.06))
 	var tilt := Vector3(rng.randf_range(-0.05, 0.05), yaw, rng.randf_range(-0.03, 0.03))
-	k._add(parent, _sack(variant), "nylon" if poly else "canvas", col, foot, tilt, scale)
+	k._add(parent, _sack(variant), "canvas", col, foot, tilt, scale)
 
 
 ## A wall of sandbags along a line of support from `a` to `b` (each a point
@@ -1412,7 +1415,9 @@ static func _sack(variant: int) -> ArrayMesh:
 			var w := PI * arc[j]
 			var s := sin(w)
 			var c := cos(w)
-			var y := signf(s) * pow(absf(s), 0.3 if s < 0.0 else 0.62)
+			# (the top pressed flat under the course above or the fill's own
+			# weight: square shoulders, not a loaf's dome)
+			var y := signf(s) * pow(absf(s), 0.3 if s < 0.0 else 0.4)
 			var z := signf(c) * pow(absf(c), 0.6)
 			var p := Vector3(ring.x * h.x, 0.0, z * h.z * ring.y)
 			if y >= 0.0:

@@ -1762,9 +1762,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   left the roster 3% lighter than before the eighteenth pass. A third critic steered the last two passes. See
   "Eighteenth pass" to "Twentieth pass" in [the component guide](vehicle-components.md).
 - **Canvas over loads, dark buckles and perforated decks** (twenty-first pass): a fourth critic's two regressions
-  fixed (tarps over boxes now read as canvas, NATO engine decks as finely perforated plate), dark buckles on kit
-  and harnesses, shaded floors under truck tilts, cab panels varied by body, painted M35 wheels, and spare wheels
-  that skip the face nobody sees. See "Twenty-first pass" in [the component guide](vehicle-components.md).
+  fixed (tarps over boxes now read as canvas, NATO engine decks as finely perforated plate), dark buckles on kit and
+  harnesses, flatter matt sandbags, shaded floors under truck tilts, cab panels varied by body, painted M35 wheels,
+  and spare wheels that skip the face nobody sees. See "Twenty-first pass" in [the component
+  guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
