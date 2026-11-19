@@ -13,6 +13,7 @@ uniform float duration = 5.0;
 uniform float span = 18.0;
 uniform float center_height = 2.7;
 uniform float shape_bias = 0.0;
+uniform float heading = 0.0;
 uniform float mirror = 1.0;
 uniform float opacity = 1.0;
 uniform float fuel = 0.0;
@@ -73,10 +74,16 @@ void vertex() {
 	// rising columns remain in contact with the same patch of ground.
 	float stretch = 1.0 + 0.19 * shape_bias;
 	VERTEX.xy *= vec2(1.0 - 0.15 * shape_bias, stretch);
+	// Looking down, each burst can open in a different direction. At ground
+	// level keep the base upright and let the upper billows lean off centre.
+	float angle = heading * elevation;
+	mat2 turn = mat2(vec2(cos(angle), sin(angle)), vec2(-sin(angle), cos(angle)));
+	VERTEX.xy = turn * VERTEX.xy;
 	vec3 center = MODEL_MATRIX[3].xyz + vec3(0.0, center_height * stretch * world_scale, 0.0);
 	// Looser dust aloft travels with the wind while the foot stays near the impact.
 	float height_above_base = max(0.0, center_height * stretch + VERTEX.y * span * INV_VIEW_MATRIX[1].y);
 	float entrained = smoothstep(0.0, span * 0.55, height_above_base);
+	center.xz += vec2(cos(heading), sin(heading)) * entrained * span * world_scale * 0.16 * (1.0 - elevation) * smoothstep(0.0, 0.35, age);
 	center += wind * age * smoothstep(0.0, 0.65, age) * (0.12 + 0.85 * entrained);
 	mat4 billboard = mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], vec4(center, 1.0));
 	MODELVIEW_MATRIX = VIEW_MATRIX * billboard;
@@ -84,8 +91,10 @@ void vertex() {
 	relative_pos = (billboard * vec4(VERTEX, 1.0)).xyz - MODEL_MATRIX[3].xyz;
 	MODELVIEW_NORMAL_MATRIX = mat3(MODELVIEW_MATRIX);
 	light_local = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
+	light_local.xy = light_local.xy * turn;
 	light_local.x *= mirror;
 	vec3 sky_local = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	sky_local.xy = sky_local.xy * turn;
 	sky_local.x *= mirror;
 	// Sky and ground stay in world space. Their weights are constant across
 	// the billboard, so resolve them here instead of at every smoke pixel.
