@@ -711,6 +711,13 @@ static func _nyx(k: VehicleModels, team: int, kind: String, seed := 0) -> void:
 	VehicleMounts.hitch(k, m, Vector3(0, 0.55, 1.8), Vector3(0.12, 0.1, 0.14))
 	_jerrycan(k, m, Vector3(0.52, 0.6, 1.9), Color(0.3, 0.33, 0.23), PI / 2)
 	_antenna(k, m, Vector3(0.72, 1.2, 1.55), 1.7)
+	# the crew's kit on the deck behind the weapon mount's sweep, clear of the
+	# antenna and the recon mast (a two-man tankette carries its kit outside:
+	# the bare deck read from above as a plain lid round the mount); the patch
+	# is kept under the width an ammunition-can pair needs (the two cans cost
+	# the little hull a twentieth of its vertices), so its crews carry a
+	# bundle or the coiled tow cable
+	VmCore.roof_kit(k, m, Vector3(0.22, 1.2, 1.35), PI / 2, Vector2(0.34, 0.6), 0, Color(0.33, 0.35, 0.24))
 	k._team_mark(m, team, Vector3(0.915, 0.95, 0.3), Vector3(0.03, 0.18, 0.5))
 	k._team_mark(m, team, Vector3(-0.915, 0.95, 0.3), Vector3(0.03, 0.18, 0.5))
 	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.17, Vector3(0.91, 0.7, 1.7), Vector3(0.91, 0.7, -0.9), Vector3(0.88, 1.18, -0.9), Vector3(0.88, 1.18, 1.7), Vector2(0.75, 0.48), VehicleMarkings.STENCIL_AAF)

@@ -17,6 +17,12 @@ const NATO_BLACK := Color(0.2, 0.21, 0.22)
 const NATO_GREY := Color(0.42, 0.45, 0.48)
 const CSAT_SAND := Color(0.47, 0.44, 0.38)
 const AAF_GREEN := Color(0.36, 0.39, 0.28)
+## The sheen of a helicopter's clear cockpit glass (VmPlane.clear_glass):
+## a dark grey, so the cockpit behind it reads near black with the crew's
+## helmets the light shapes in it, as real glazing over a dark cockpit does
+## (the jets' grey-blue laid a pale haze over everything seen through the
+## flat panes from the side).
+const PIT_GLASS := Color(0.17, 0.19, 0.21)
 
 
 ## Builds the model for `key` into k; false if this file doesn't know it.
@@ -274,24 +280,6 @@ static func _sunk(h: Hull, z0: float, z1: float, keep: float, round := false) ->
 	return Hull.new(st, h.n, h.p, h.ph)
 
 
-## A second crewman beside the pilot VmPlane.cockpit seats, his helmet's
-## centre at `at`: as that pilot is drawn (the same parts, so the two read
-## alike through the glass), his seat's bucket behind him, his shoulders and
-## torso in his flight suit, the helmet with its visor down and the oxygen
-## mask, but none of the seat's rails, headbox, harness or consoles, which
-## the glass and the cockpit's shadow hide at a helicopter's few metres, and
-## which cost as much again. Casts no shadow; wrecks have none.
-static func _crewman(k: VehicleModels, p: Node3D, at: Vector3, helmet: Color, suit: Color) -> void:
-	if k.wreck or k.burnt:
-		return
-	k._add(p, VehicleCab._rolled(Vector3(0.48, 0.6, 0.1), 0.025), "plain_dark", Color(0.11, 0.115, 0.12), at + Vector3(0, -0.2, 0.25), Vector3(0.3, 0, 0), Vector3.ONE, false)
-	k._add(p, Res.sphere(0.22, 6), "fabric", suit, at + Vector3(0, -0.3, 0.02), Vector3.ZERO, Vector3(1.0, 0.85, 0.72), false)
-	k._add(p, Res.sphere(0.2, 6), "fabric", suit, at + Vector3(0, -0.2, 0.03), Vector3.ZERO, Vector3(1.15, 0.38, 0.4), false)
-	k._add(p, Res.sphere(0.135, 8), "plain", helmet, at + Vector3(0, 0, -0.03), Vector3.ZERO, Vector3.ONE, false)
-	k._add(p, Res.sphere(0.128, 6), "glass", null, at + Vector3(0, -0.015, -0.08), Vector3.ZERO, Vector3(0.98, 0.6, 0.8), false)
-	k._add(p, Res.sphere(0.05, 4), "rubber", Color(0.2, 0.21, 0.19), at + Vector3(0, -0.1, -0.15), Vector3(-0.4, 0, 0), Vector3(0.95, 1.1, 0.9), false)
-
-
 ## A two-pilot flight deck under the clear windscreen `ws`, the pilots side
 ## by side as a utility helicopter's sit: VmPlane.cockpit for the right seat
 ## through the stations `cst` (their x the right seat's) and for the left
@@ -304,7 +292,33 @@ static func _pilots(k: VehicleModels, p: Node3D, key: String, ws: Variant, cst: 
 			var o := q.duplicate()
 			o[7] = float(o[7]) * s
 			st.append(o)
-		VmPlane.cockpit(k, p, key + ("r" if s > 0.0 else "l"), st, ws, [seat], Color(0.33, 0.37, 0.41), 0.4)
+		VmPlane.cockpit(k, p, key + ("r" if s > 0.0 else "l"), st, ws, [seat], PIT_GLASS, 0.4, Color(0.3, 0.31, 0.28), Color(0.4, 0.42, 0.33), false, false)
+	_pedestal(k, p, cst, seat)
+
+
+## The middle of a flight deck whose two pilots VmPlane.cockpit seats side
+## by side (the right seat's stations `cst`, his seat at z `seat`, the tub's
+## `floor` as cockpit's): the instrument panel's centre under the
+## glareshield, which runs on across from one pilot's coaming to the
+## other's, and the centre console (radios, navigation, engine controls)
+## standing between their knees back to their seats, as every two-pilot
+## helicopter's is; without them the two sat at two separate desks. Both are
+## dark mouldings seen only through the glass, so they cast no shadow, and
+## their sizes are snapped so few new meshes are cut. Wrecks have neither.
+static func _pedestal(k: VehicleModels, p: Node3D, cst: Array, seat: float, floor := 0.4) -> void:
+	if k.wreck or k.burnt:
+		return
+	var zc := maxf(seat - 0.62, float(cst[0][0]) + 0.22)
+	var qc: Array = VmPlane.st_at(cst, zc)
+	var hh := float(qc[3])
+	var yt := float(qc[1]) + clampf(hh * 0.55, hh * floor + 0.04, hh - 0.1)
+	var gap := maxf(float(qc[7]) - float(qc[2]) * 0.55, 0.05)
+	k._add(p, VehicleCab._rolled(Vector3(snappedf(gap * 2.0 + 0.04, 0.05), 0.09, 0.28), 0.03), "plain_dark", Color(0.06, 0.065, 0.07), Vector3(0, yt - 0.045, zc), Vector3.ZERO, Vector3.ONE, false)
+	var qs: Array = VmPlane.st_at(cst, seat - 0.2)
+	var y_t := float(qs[1]) + float(qs[3]) * floor
+	var z0 := zc + 0.1
+	var z1 := seat + 0.05
+	k._add(p, VehicleEquipment._plate(Vector3(0.24, 0.16, snappedf(z1 - z0, 0.05))), "plain_dark", Color(0.13, 0.135, 0.14), Vector3(0, y_t - 0.02, (z0 + z1) * 0.5), Vector3.ZERO, Vector3.ONE, false)
 
 
 ## The hull's skin between z0..z1 and t0..t1 as a surface (q.x along z, q.y
@@ -838,7 +852,11 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 	# the old single sheet.
 	var crew := not (k.wreck or k.burnt)
 	if crew:
-		_hull(k, m, _sunk(h, -1.98, -0.97, 0.22, true), "heli_lb_pit_body", mat, col, 0.0, [-0.95, 0.35])
+		var pit: Hull = _sunk(h, -1.98, -0.97, 0.22, true)
+		_hull(k, m, pit, "heli_lb_pit_body", mat, col, 0.0, [-0.95, 0.35])
+		# (the cockpit's floor under the bubble in the dark of the cockpit,
+		# not the hull's paint lit as if outside)
+		_patch(k, m, pit, "heli_lb_floor", -1.97, -0.98, 0.0, 8.0, "plain_dark", Color(0.12, 0.125, 0.13), 0.004, 0.02, 1.0)
 		var upper: Variant = _pane(k, m, h, "heli_lb_wtop", -2.2, -0.97, 0.0, 8.0, null, 0.012, 0.05, 1.0)
 		for t: Array in [[-1.55, 0.0, "heli_lb_wchr"], [8.0, 9.55, "heli_lb_wchl"]]:
 			# (plain tinted glass on the skin: the upper panes' seal frames
@@ -850,11 +868,16 @@ static func _little_bird(k: VehicleModels, team: int, seed: int, v: int) -> void
 		var suit := Color(0.22, 0.25, 0.31) if v == 2 else Color(0.4, 0.42, 0.33)
 		var helmet := Color(0.13, 0.135, 0.14) if v == 2 else Color(0.3, 0.31, 0.28)
 		# (the pilot's station runs in toward the nose as the bubble narrows,
-		# so the tub stays inside it)
-		VmPlane.cockpit(k, m, "heli_lb_pit", [[-1.95, 1.19, 0.16, 0.36, 0.24, 2.0, 2.0, 0.14],
-			[-1.5, 1.23, 0.24, 0.56, 0.36, 2.0, 2.0, 0.27], [-0.98, 1.26, 0.26, 0.64, 0.4, 2.0, 2.0, 0.31]],
-			upper, [-1.12], Color(0.33, 0.37, 0.41), 0.4, helmet, suit)
-		_crewman(k, m, Vector3(-0.31, 1.67, -1.12), helmet, suit)
+		# so the tub stays inside it; the left seat's is its mirror, so the
+		# second crewman sits as the pilot does, in his harness, his own
+		# consoles by his elbows and the glareshield ahead of him, where a bare
+		# crewman read as a dummy propped beside a fitted-out seat)
+		for s: float in [1.0, -1.0]:
+			VmPlane.cockpit(k, m, "heli_lb_pit" + ("" if s > 0.0 else "l"), [[-1.95, 1.19, 0.16, 0.36, 0.24, 2.0, 2.0, s * 0.14],
+				[-1.5, 1.23, 0.24, 0.56, 0.36, 2.0, 2.0, s * 0.27], [-0.98, 1.26, 0.26, 0.64, 0.4, 2.0, 2.0, s * 0.31]],
+				upper, [-1.12], PIT_GLASS, 0.4, helmet, suit, false, false)
+		_pedestal(k, m, [[-1.95, 1.19, 0.16, 0.36, 0.24, 2.0, 2.0, 0.14], [-1.5, 1.23, 0.24, 0.56, 0.36, 2.0, 2.0, 0.27],
+			[-0.98, 1.26, 0.26, 0.64, 0.4, 2.0, 2.0, 0.31]], -1.12)
 	else:
 		_hull(k, m, h, "heli_lb_body", mat, col)
 		# the bubble: windscreen and chin windows, one framed sheet
@@ -1007,16 +1030,22 @@ static func _ghost_hawk(k: VehicleModels, team: int, stub: bool) -> void:
 	# under those panes and they are clear; the door windows stay tinted.
 	# Wrecks keep the solid hull and the old glass.
 	var crew := not (k.wreck or k.burnt)
-	_hull(k, m, _sunk(h, -6.45, -4.5, 0.3, true) if crew else h, "heli_gh_body" + ("_pit" if crew else ""), mat, col)
+	var pit: Hull = _sunk(h, -6.45, -4.5, 0.3, true) if crew else h
+	_hull(k, m, pit, "heli_gh_body" + ("_pit" if crew else ""), mat, col)
 	if crew:
+		# (the sunk sill under the windscreen in the cockpit's dark, not a
+		# pale ledge of hull paint)
+		_patch(k, m, pit, "heli_gh_floor", -6.44, -4.51, 0.06, 2.94, "plain_dark", Color(0.12, 0.125, 0.13), 0.004, 0.02, 1.0)
 		var ws: Variant = _pane(k, m, h, "heli_gh_wind", -6.5, -5.28, 0.06, 2.94, null, 0.012, 0.05, 1.0)
 		var brow: Variant = _pane(k, m, h, "heli_gh_eyeb", -5.25, -4.55, 1.08, 1.92, null, 0.012, 0.05, 1.0)
-		k._restyle(brow, VmPlane.clear_glass(Color(0.33, 0.37, 0.41)))
+		k._restyle(brow, VmPlane.clear_glass(PIT_GLASS))
 		k._unshadow(brow)
 		for s: float in [1.0, -1.0]:
 			VmPlane.cockpit(k, m, "heli_gh_pit%s" % ("r" if s > 0.0 else "l"), [[-6.4, 1.3, 0.18, 0.5, 0.3, 2.0, 2.0, s * 0.22],
 				[-5.6, 1.48, 0.3, 0.75, 0.4, 2.0, 2.0, s * 0.4], [-4.55, 1.55, 0.32, 0.76, 0.4, 2.0, 2.0, s * 0.45]],
-				ws, [-4.85], Color(0.33, 0.37, 0.41), 0.4)
+				ws, [-4.85], PIT_GLASS, 0.4, Color(0.3, 0.31, 0.28), Color(0.4, 0.42, 0.33), false, false)
+		_pedestal(k, m, [[-6.4, 1.3, 0.18, 0.5, 0.3, 2.0, 2.0, 0.22], [-5.6, 1.48, 0.3, 0.75, 0.4, 2.0, 2.0, 0.4],
+			[-4.55, 1.55, 0.32, 0.76, 0.4, 2.0, 2.0, 0.45]], -4.85)
 	else:
 		_patch(k, m, h, "heli_gh_wind", -6.5, -5.28, 0.06, 2.94, "glass", null, 0.012, 0.05, 1.0)
 	_wipers(k, m, h, -6.5, -5.28, 0.06, 2.94)
@@ -1309,8 +1338,8 @@ static func _blackfoot(k: VehicleModels, team: int) -> void:
 	var can2: Variant = _pane(k, m, h, "heli_bf_can2", -3.2, -2.05, 0.22, 2.78, null, 0.012, 0.05)
 	# (the gunner in front, the pilot behind and higher; olive suits, grey
 	# helmets, as the Kajman's)
-	VmPlane.cockpit(k, m, "heli_bf1", [[-5.2, 1.3, 0.5, 0.36, 0.02], [-4.6, 1.37, 0.58, 0.5, 0.02], [-3.6, 1.45, 0.64, 0.56, 0.02]], can1, [-4.3], Color(0.33, 0.37, 0.41), 0.4, Color(0.48, 0.49, 0.47))
-	VmPlane.cockpit(k, m, "heli_bf2", [[-3.15, 1.52, 0.66, 0.62, 0.02], [-2.6, 1.54, 0.68, 0.74, 0.02], [-2.1, 1.55, 0.68, 0.72, 0.02]], can2, [-2.62], Color(0.33, 0.37, 0.41), 0.4, Color(0.48, 0.49, 0.47))
+	VmPlane.cockpit(k, m, "heli_bf1", [[-5.2, 1.3, 0.5, 0.36, 0.02], [-4.6, 1.37, 0.58, 0.5, 0.02], [-3.6, 1.45, 0.64, 0.56, 0.02]], can1, [-4.3], PIT_GLASS, 0.4, Color(0.48, 0.49, 0.47), Color(0.4, 0.42, 0.33), false, false)
+	VmPlane.cockpit(k, m, "heli_bf2", [[-3.15, 1.52, 0.66, 0.62, 0.02], [-2.6, 1.54, 0.68, 0.74, 0.02], [-2.1, 1.55, 0.68, 0.72, 0.02]], can2, [-2.62], PIT_GLASS, 0.4, Color(0.48, 0.49, 0.47), Color(0.4, 0.42, 0.33), false, false)
 	_patch(k, m, h, "heli_bf_bow", -3.56, -3.2, 0.1, 2.9, mat, col, 0.026, 0.03, 1.0)
 	for t in [1.0, 2.0]:
 		_patch(k, m, h, "heli_bf_rail%d" % int(t), -5.25, -2.05, t - 0.05, t + 0.05, mat, col, 0.022, 0.02, 1.0)
@@ -1723,8 +1752,10 @@ static func _kajman(k: VehicleModels, team: int) -> void:
 	# the crew under the flat panes, as a Mi-28's are seen from above: the
 	# gunner (sight on his coaming) low in front, the pilot high behind (the
 	# rows are the panes' outlines as ellipses inside them, for the tubs)
-	VmPlane.cockpit(k, m, "heli_kj1", [[-7.15, 1.95, 0.6, 0.12, 0.02], [-6.75, 1.95, 0.62, 0.6, 0.02], [-5.55, 1.95, 0.69, 0.6, 0.02]], can1, [-6.3], Color(0.33, 0.37, 0.41), 0.4, Color(0.52, 0.53, 0.5))
-	VmPlane.cockpit(k, m, "heli_kj2", [[-5.45, 2.3, 0.72, 0.15, 0.02], [-5.1, 2.3, 0.75, 0.75, 0.02], [-3.85, 2.3, 0.83, 0.75, 0.02]], can2, [-4.4], Color(0.33, 0.37, 0.41), 0.4, Color(0.52, 0.53, 0.5))
+	# (armoured seats, not ejection seats; the gunner's sight is the one
+	# combiner glass aboard, the pilot reading his off the helmet)
+	VmPlane.cockpit(k, m, "heli_kj1", [[-7.15, 1.95, 0.6, 0.12, 0.02], [-6.75, 1.95, 0.62, 0.6, 0.02], [-5.55, 1.95, 0.69, 0.6, 0.02]], can1, [-6.3], PIT_GLASS, 0.4, Color(0.52, 0.53, 0.5), Color(0.4, 0.42, 0.33), true, false)
+	VmPlane.cockpit(k, m, "heli_kj2", [[-5.45, 2.3, 0.72, 0.15, 0.02], [-5.1, 2.3, 0.75, 0.75, 0.02], [-3.85, 2.3, 0.83, 0.75, 0.02]], can2, [-4.4], PIT_GLASS, 0.4, Color(0.52, 0.53, 0.5), Color(0.4, 0.42, 0.33), false, false)
 	k._add(m, VehicleModels.loft("heli_kj_spine", [-0.84, -3.8, 0.84, -3.8, 0.75, -2.9, -0.75, -2.9], [-0.5, -3.8, 0.5, -3.8, 0.45, -3.0, -0.45, -3.0], 2.5, 3.05, 0.06), mat, col, Vector3.ZERO)
 	# the cabin: split doors with a window in the upper half, side windows
 	for z in [-3.25, -1.95]:

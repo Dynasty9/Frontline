@@ -975,6 +975,43 @@ static func strap(k: VehicleModels, parent: Node3D, points: Array, width: float,
 		k._add(parent, VehicleEquipment._plate(size), material, col, (a + b) * 0.5, Basis(x, y, x.cross(y)).get_euler(), Vector3.ONE, false)
 
 
+## A light vehicle's harness webbing: black, as the issue four-point belts are.
+const HARNESS := Color(0.07, 0.07, 0.065)
+
+## The four-point harness of an open light vehicle's crew seat (a Prowler's,
+## a Qilin's), left lying in the empty seat as the crew climbed out of it:
+## two shoulder belts out of their slots in the seat back, down its face and
+## across the cushion, and the two halves of the lap belt in from the
+## cushion's sides, all four meeting in the buckle's pressed steel plate at
+## the cushion's front. From above, an open buggy's seats are the most visible
+## thing in it, and the belts and their buckle read them as seats a crew
+## is strapped into over rough ground, not as padded boards. `center`, `size`
+## and `rotation` are the seat's own, as VehicleCab.seat takes them (its
+## cushion centre, width, back height and depth; its front is local -Z).
+## Wrecks and burnt hulks keep their bare seats.
+static func harness(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, rotation: Vector3, col := HARNESS) -> void:
+	if k.wreck or k.burnt:
+		return
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	# (the seat's cushion and leaning back as VehicleCab.seat builds them,
+	# each belt laid 3 mm proud of the cloth it lies on)
+	var pad := minf(0.12, size.z * 0.24)
+	var back := Vector3(0, size.y * 0.5, size.z * 0.46)
+	var lean := Basis(Vector3.RIGHT, 0.12)
+	var face := -(pad * 0.4 + 0.003)
+	var top := pad * 0.5 + 0.003
+	var buckle := Vector3(0, top + 0.002, -size.z * 0.12)
+	for side: float in [-1.0, 1.0]:
+		var shoulder := [back + lean * Vector3(side * 0.075, size.y * 0.36, face), back + lean * Vector3(side * 0.065, -size.y * 0.3, face), Vector3(side * 0.055, top, size.z * 0.2), buckle + Vector3(side * 0.02, 0, 0.03)]
+		strap(k, mount, shoulder, 0.045, col, Vector3.RIGHT)
+		strap(k, mount, [Vector3(side * size.x * 0.34, top, size.z * 0.24), buckle + Vector3(side * 0.03, 0, 0)], 0.045, col, Vector3.BACK)
+	# (the buckle's plate blackened steel, as a roll's buckles are: bright
+	# steel glared from above as a lamp)
+	k._box(mount, Vector3(0.05, 0.008, 0.06), buckle + Vector3(0, 0.003, 0), "gunmetal", Color(0.22, 0.23, 0.21), Vector3.ZERO, false)
+	k._fold(mount)
+
+
 ## A ratchet tensioner on a load strap: `at` its middle on the strap's face,
 ## `out` the way it faces (off the load), `up` along the strap toward the
 ## load's top. Its pressed steel frame straddles the webbing, the handle folded
@@ -1713,9 +1750,26 @@ static func roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: floa
 			branch(k, parent, top - lay * reach, top + lay * reach, dress, clampf(radius * 1.9, 0.18, 0.3))
 
 
+## A tarpaulin rolled up tight on a roof, as a crew carries the vehicle's own
+## cover across a turret's rear plate: roll's shape at a roof kit's price.
+## Its two ties are knotted webbing, not buckled straps (a tarp is lashed down
+## where it lies and seldom undone), and its wound ends show a turn and a half
+## of the cloth's edge, not two and a half: a roll a hand across is a few
+## pixels from the battle camera, where it reads by its round top, its dark
+## ends and the two ties pinching it. Eight sides instead of twelve, for the
+## same reason. Built once per size (cached as roll's are); wrecks carry none.
+static func tarp_roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, rotation: Vector3, col: Color, material := "canvas") -> void:
+	if k.wreck:
+		return
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	_roll(k, mount, radius, length, col, material, Vector2(-0.3, 0.3), true)
+
+
 ## One roll on its mount, along its Y: `straps` the two straps' places as
-## fractions of its length from its middle.
-static func _roll(k: VehicleModels, mount: Node3D, radius: float, length: float, col: Color, material: String, straps: Vector2) -> void:
+## fractions of its length from its middle. `cheap` builds tarp_roll's: no
+## buckles, fewer sides and wound turns.
+static func _roll(k: VehicleModels, mount: Node3D, radius: float, length: float, col: Color, material: String, straps: Vector2, cheap := false) -> void:
 	if k.wreck:
 		# (a wreck's rolls, and the webbing left of them, as they always were)
 		var end := minf(0.03, length * 0.04)
@@ -1744,13 +1798,16 @@ static func _roll(k: VehicleModels, mount: Node3D, radius: float, length: float,
 	# centimetres, and scaled to the exact size.
 	var ratio := maxf(1.5, snappedf(length / radius, 0.25))
 	var at := Vector2(snappedf(straps.x, 0.04), snappedf(straps.y, 0.04))
-	var meshes := _roll_meshes(ratio, at)
+	var meshes := _roll_meshes(ratio, at, cheap)
 	var scale := Vector3(radius, length / ratio, radius)
 	var rot := Vector3(0, yaw, 0)
 	k._add(mount, meshes[0], material, col, Vector3.ZERO, rot, scale)
 	# The wound layers on the end faces read as a darker spiral.
 	k._add(mount, meshes[1], material, col.darkened(0.25), Vector3.ZERO, rot, scale, false)
 	k._add(mount, meshes[2], "webbing", col.darkened(0.35), Vector3.ZERO, rot, scale, false)
+	if cheap:
+		k._fold(mount)
+		return
 	# Each buckle on its strap at the mount's +X, where the family put it, on
 	# the strap's flattened section there.
 	var c := up.x / flat.length() if flat.length() > 0.3 else 0.0
@@ -1772,20 +1829,27 @@ static var _rolls := {}
 ## its middle: [the cloth, the spiral on its ends, the straps]. The cloth is
 ## wound, so its outer lap ends in a step along its length, and lumpy with
 ## the folds rolled in; it pinches in under each strap; its ends turn in and
-## dish a little where the layers are wound tighter at the core.
-static func _roll_meshes(ratio: float, straps: Vector2) -> Array:
-	var key := Vector3(ratio, straps.x, straps.y)
+## dish a little where the layers are wound tighter at the core. `cheap` is
+## tarp_roll's: eight sides, one ring fewer at each end, a turn and a half of
+## spiral in ten steps.
+static func _roll_meshes(ratio: float, straps: Vector2, cheap := false) -> Array:
+	var key := Vector4(ratio, straps.x, straps.y, 1.0 if cheap else 0.0)
 	if _rolls.has(key):
 		return _rolls[key]
 	var half := ratio * 0.5
-	var sides := 12
+	var sides := 8 if cheap else 12
 	var lap := 0.6
-	var stations: Array[float] = [-half, -half + 0.1, -half + 0.28]
+	var stations: Array[float] = [-half, -half + 0.16]
+	if not cheap:
+		stations = [-half, -half + 0.1, -half + 0.28]
 	for s: float in [straps.x * ratio, straps.y * ratio]:
 		for d: float in [-0.24, 0.0, 0.24]:
 			stations.append(s + d)
 	stations.append(0.0)
-	stations.append_array([half - 0.28, half - 0.1, half])
+	var ends: Array[float] = [half - 0.16, half]
+	if not cheap:
+		ends = [half - 0.28, half - 0.1, half]
+	stations.append_array(ends)
 	stations.sort()
 	var ys: Array[float] = []
 	for y in stations:
@@ -1840,10 +1904,11 @@ static func _roll_meshes(ratio: float, straps: Vector2) -> Array:
 		# Two and a half turns of the wound cloth's edge, a couple of
 		# millimetres proud of the dished face so it never fights it.
 		var rim_r := 0.87
-		var turns := 26
+		var turns := 10 if cheap else 26
+		var winds := 1.5 if cheap else 2.5
 		for t in turns + 1:
 			var f := float(t) / turns
-			var a := lap + f * TAU * 2.5 * side
+			var a := lap + f * TAU * winds * side
 			var rad := lerpf(0.12, 0.78, f)
 			for w: float in [-0.035, 0.035]:
 				var p := _roll_point(a, rad + w, 0.0)

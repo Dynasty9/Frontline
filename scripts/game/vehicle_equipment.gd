@@ -796,7 +796,14 @@ const SHADES: Array[Color] = [Color(0.74, 0.75, 0.74), Color(0.66, 0.67, 0.66), 
 ## from. A silver one shows through the glass from the battle camera as a
 ## pale panel, so a street of parked cars stops looking alike inside.
 ## Built once per car (its own mesh, cached by the stock with the car).
-static func sunshade(k: VehicleModels, parent: Node3D, corners: Array, inside: Vector3, col: Color, pleats := 12) -> void:
+## The shades sold are folded in eight or nine panels a hand and a half wide,
+## not a dozen narrow ones: each panel tilted a little off the next, so in
+## sun every other one flashes and the rest stand darker, the
+## zigzag a pale shade shows through the glass. A silver one's face is a
+## bright metallised print on the cloth, paler than any car's grey trim, so
+## it reads through the tinted windscreen as the pale panel it is and not as
+## another grey seat back.
+static func sunshade(k: VehicleModels, parent: Node3D, corners: Array, inside: Vector3, col: Color, pleats := 8) -> void:
 	if k.wreck or k.burnt or corners.size() < 4:
 		return
 	var c0: Vector3 = corners[0]
@@ -809,20 +816,25 @@ static func sunshade(k: VehicleModels, parent: Node3D, corners: Array, inside: V
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var idx := PackedInt32Array()
-	# (a little short of the frame all round, resting on the dash)
+	# (a little short of the frame all round, resting on the dash: its foot
+	# is pressed flat against the glass's foot, the folds opening above it,
+	# so no crease reaches back into the dash and shows a dark notch of it
+	# through the glass)
 	var v0 := 0.05
 	var v1 := 0.92
 	for i in pleats:
 		var ua := lerpf(0.05, 0.95, float(i) / pleats)
 		var ub := lerpf(0.05, 0.95, float(i + 1) / pleats)
-		var da := 0.03 + 0.016 * float(i & 1)
-		var db := 0.03 + 0.016 * float((i + 1) & 1)
-		var pa := c0.lerp(c1, ua).lerp(c3.lerp(c2, ua), v0) - out * da
-		var pb := c0.lerp(c1, ub).lerp(c3.lerp(c2, ub), v0) - out * db
+		# (wider panels fold deeper: their creases stand 2.4 cm apart)
+		var da := 0.028 + 0.024 * float(i & 1)
+		var db := 0.028 + 0.024 * float((i + 1) & 1)
+		var pa := c0.lerp(c1, ua).lerp(c3.lerp(c2, ua), v0) - out * 0.026
+		var pb := c0.lerp(c1, ub).lerp(c3.lerp(c2, ub), v0) - out * 0.026
 		var pc := c0.lerp(c1, ub).lerp(c3.lerp(c2, ub), v1) - out * db
 		var pd := c0.lerp(c1, ua).lerp(c3.lerp(c2, ua), v1) - out * da
 		VehicleWheels._quad_toward(verts, norms, idx, out, pa, pb, pc, pd)
-	k._add(parent, VehicleWheels._mesh(verts, norms, idx), "nylon", col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+	var silver := col.s < 0.1 and col.v > 0.5
+	k._add(parent, VehicleWheels._mesh(verts, norms, idx), "nylon", col.lightened(0.3) if silver else col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 
 
 ## A soft tonneau cover snapped over a pickup's bed: vinyl stretched across

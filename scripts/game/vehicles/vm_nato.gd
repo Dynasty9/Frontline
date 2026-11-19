@@ -445,9 +445,12 @@ static func _team_mark(k: VehicleModels, p: Node3D, team: int, pos: Vector3, s: 
 
 ## A seat: pan and back, facing f (-1 forward). A light vehicle's crew seats
 ## are covered in Cordura nylon, finer and with more sheen than the canvas of
-## its benches (a wreck's stay the canvas that burns away).
+## its benches (a wreck's stay the canvas that burns away), each with its
+## four-point harness lying in it (VehicleCloth.harness).
 static func _seat(k: VehicleModels, p: Node3D, pos: Vector3, f := -1.0, yaw := 0.0) -> void:
-	VehicleCab.seat(k, p, pos, Vector3(0.46, 0.5, 0.46), Vector3(0, yaw + (PI if f > 0.0 else 0.0), 0), Color(0.20, 0.21, 0.17), "canvas" if k.wreck else "nylon")
+	var rot := Vector3(0, yaw + (PI if f > 0.0 else 0.0), 0)
+	VehicleCab.seat(k, p, pos, Vector3(0.46, 0.5, 0.46), rot, Color(0.20, 0.21, 0.17), "canvas" if k.wreck else "nylon")
+	VehicleCloth.harness(k, p, pos, Vector3(0.46, 0.5, 0.46), rot)
 
 
 # --- weapons -----------------------------------------------------------------------
@@ -1383,6 +1386,11 @@ static func _scorcher(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleFittings.panel_hatch(k, t, Vector3(-0.6, 1.31, 0.9), Vector3(0.7, 0.06, 0.6), cam)
 	# the non-skid roof behind the hatches, where the crew work on top
 	_walkway(k, t, Vector3(0, 1.28, 1.8), Vector2(1.7, 0.7))
+	# the crew's kit on the roof's front corners, ahead of the hatch and the
+	# remote gun's base (a self-propelled gun's crew stows on its roof what
+	# the turret has no room for: bare, the big lid read as an empty box)
+	VmCore.roof_kit(k, t, Vector3(-0.7, 1.28, -0.5), 0.0, Vector2(0.55, 0.6), 0, BAG)
+	VmCore.roof_kit(k, t, Vector3(0.65, 1.28, -0.55), 0.0, Vector2(0.5, 0.55), 1, BAG)
 	_bustle_basket(k, t, Vector3(0, 0.5, 2.8), Vector3(2.8, 0.42, 0.48), 2.55, cam)
 	for i in 3:
 		k._bag(t, Vector3(0.7, 0.36, 0.4), Vector3(-0.9 + i * 0.9, 0.7, 2.8), "canvas", BAG if i != 1 else STOW)
@@ -1648,12 +1656,27 @@ static func _bobcat(k: VehicleModels, team: int, seed := 0) -> void:
 	# drum cased whole in dark metal read from above as a black can)
 	for fx: float in [-0.93, -0.07]:
 		k._cyl(m, 0.2, 0.2, 0.04, Vector3(fx, 2.55, 2.75), Vector3(0, 0, PI / 2), "gunmetal_w", null, 12)
-	k._cyl(m, 0.17, 0.17, 0.84, Vector3(-0.5, 2.55, 2.75), Vector3(0, 0, PI / 2), "steel", Color(0.27, 0.26, 0.23), 12)
+	# (the rope dark and greasy as a recovery winch's is: bare polished steel,
+	# the drum read from above as a white can; a wreck keeps its old drum)
+	if k.wreck:
+		k._cyl(m, 0.17, 0.17, 0.84, Vector3(-0.5, 2.55, 2.75), Vector3(0, 0, PI / 2), "steel", Color(0.27, 0.26, 0.23), 12)
+	else:
+		k._cyl(m, 0.17, 0.17, 0.84, Vector3(-0.5, 2.55, 2.75), Vector3(0, 0, PI / 2), "track", Color(0.2, 0.2, 0.18), 12)
 	for x in [-0.98, -0.02]:
 		k._box(m, Vector3(0.06, 0.32, 0.36), Vector3(x, 2.48, 2.75), "gunmetal_w")
-	# the pinch bar and the pick's handle lying on the roof
-	k._box(m, Vector3(0.1, 0.1, 2.0), Vector3(-1.5, 2.37, 0.9), "gunmetal_w")
-	k._box(m, Vector3(0.08, 0.08, 1.4), Vector3(-1.38, 2.37, 1.0), "wood")
+	# the pinch bar and the pick lying on the roof in their clips: a 3 cm
+	# steel bar 1.8 m long, and an ash helve with its iron head across it
+	# (a wreck keeps its old pair: a 10 cm beam and a plank, which read from
+	# the battle camera as girders on the roof)
+	if k.wreck:
+		k._box(m, Vector3(0.1, 0.1, 2.0), Vector3(-1.5, 2.37, 0.9), "gunmetal_w")
+		k._box(m, Vector3(0.08, 0.08, 1.4), Vector3(-1.38, 2.37, 1.0), "wood")
+	else:
+		k._cyl(m, 0.016, 0.016, 1.8, Vector3(-1.5, 2.338, 0.9), Vector3(PI / 2, 0, 0), "metal_dark", null, 6, false)
+		k._cyl(m, 0.019, 0.023, 0.9, Vector3(-1.34, 2.343, 1.15), Vector3(PI / 2, 0, 0), "wood", null, 6, false)
+		k._box(m, Vector3(0.44, 0.045, 0.05), Vector3(-1.34, 2.345, 1.62), "metal_dark", null, Vector3.ZERO, false)
+		for z: float in [0.35, 1.45]:
+			k._box(m, Vector3(0.26, 0.035, 0.04), Vector3(-1.42, 2.338, z), "gunmetal_w", null, Vector3.ZERO, false)
 	_rcws(k, m, Vector3(-0.5, 2.32, -0.05), "hmg", cam)
 
 

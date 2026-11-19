@@ -1342,35 +1342,6 @@ static func _van_services(k: VehicleModels) -> void:
 		k._box(m, Vector3(0.16, 0.6, 0.012), Vector3(x, 1.0, 2.956), "paint", cc, Vector3(0, 0, 0.7 if x < 0.0 else -0.7), false)
 
 
-## An ATV's road wheel: the knobbly low-pressure tyre VehicleWheels gives a
-## pneumatic wheel, on a 12-inch pressed rim whose centre is dished in deep
-## behind its flange, a small hub boss in the middle and four lug nuts on it
-## (a Grizzly's 4/110 pattern). The truck wheel's broad hub and eight nuts on
-## both faces read as a lorry's at the battle camera. A running wheel, its
-## detail on the outer face; registered as the vehicle's wheel.
-static func _atv_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, rim: Color) -> Node3D:
-	var pv := k._pivot(parent, pos)
-	var axle := VehicleWheels.AXLE
-	k._add(pv, VehicleWheels._carcass(), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, axle, Vector3(r, w / 0.50, r))
-	k._add(pv, VehicleWheels._tread(r, w, true), "rubber", Color(0.20, 0.21, 0.19), Vector3.ZERO)
-	var f := signf(pos.x) if pos.x != 0.0 else 1.0
-	if r >= 0.3:
-		k._add(pv, VehicleWheels._sidewall(r, w), "rubber", Color(0.25, 0.26, 0.24), Vector3.ZERO, Vector3(0, PI, 0) if f < 0.0 else Vector3.ZERO, Vector3.ONE, false)
-	k._add(pv, VehicleWheels.drum(r * 0.54, r * 0.54, w * 0.67, 32), "steel", rim, Vector3.ZERO, axle, Vector3.ONE, false)
-	for side: float in [-1.0, 1.0]:
-		k._add(pv, VehicleWheels._lip(true), "steel", rim, Vector3(side * w * 0.37, 0, 0), axle, Vector3.ONE * r, false)
-	# the dish: the rim's centre in its own shadow, inside the bright flange
-	k._add(pv, VehicleWheels.drum(r * 0.45, r * 0.45, 0.006, 24, false), "gunmetal_w", rim.darkened(0.55), Vector3(f * (w * 0.335 + 0.002), 0, 0), Vector3(0, 0, -f * PI / 2), Vector3.ONE, false)
-	# the hub boss through it, and its four nuts
-	k._add(pv, VehicleWheels.drum(r * 0.19, r * 0.21, w * 0.74, 12), "steel", rim, Vector3.ZERO, axle, Vector3.ONE, false)
-	var nut := VehicleWheels.drum(r * 0.028, r * 0.028, w * 0.07, 6, false)
-	for i in 4:
-		var a := TAU * (i + 0.5) / 4.0
-		k._add(pv, nut, "steel", Color(0.35, 0.36, 0.33), Vector3(f * w * 0.39, sin(a) * r * 0.14, cos(a) * r * 0.14), Vector3(0, 0, -f * PI / 2), Vector3.ONE, false)
-	k.wheels.append(pv)
-	return pv
-
-
 # --- Quadbike ---------------------------------------------------------------------
 
 ## Quadbike: a Yamaha Grizzly 450 ATV - balloon tyres, the moulded front and
@@ -1433,8 +1404,9 @@ static func _quad(k: VehicleModels, seed: int) -> void:
 			VehicleWheels.pneumatic(k, m, Vector3(s * 0.47, 0.29, zf), 0.29, 0.2, "steel", Color(0.45, 0.46, 0.45), tread)
 			VehicleWheels.pneumatic(k, m, Vector3(s * 0.455, 0.3, zr), 0.3, 0.25, "steel", Color(0.45, 0.46, 0.45), tread)
 		else:
-			_atv_wheel(k, m, Vector3(s * 0.47, 0.29, zf), 0.29, 0.2, Color(0.45, 0.46, 0.45))
-			_atv_wheel(k, m, Vector3(s * 0.455, 0.3, zr), 0.3, 0.25, Color(0.45, 0.46, 0.45))
+			# (an ATV's own rim: see VehicleWheels._atv_wheel)
+			VehicleWheels.pneumatic(k, m, Vector3(s * 0.47, 0.29, zf), 0.29, 0.2, "steel", Color(0.45, 0.46, 0.45), "atv")
+			VehicleWheels.pneumatic(k, m, Vector3(s * 0.455, 0.3, zr), 0.3, 0.25, "steel", Color(0.45, 0.46, 0.45), "atv")
 	# tubular racks front and back (powder-coated steel tube: matte, worn
 	# bright where loads are strapped down)
 	var tube := "plain" if k.wreck else "paint"
@@ -1512,12 +1484,10 @@ static func _hatch(k: VehicleModels, seed: int, sport: bool) -> void:
 	# tip, where the curve is tightest). A wreck keeps the old body.
 	var arches := [[zf, wr, 0.37], [zr, wr, 0.37]]
 	if not k.wreck:
+		# (one only: two more, over the nose's tip and the tail's corners,
+		# cut strips so narrow at the body's rounded ends that each dropped a
+		# spike under its corner)
 		arches.append([-2.17 + 0.275, -5.0, 0.275])
-		# (and as many again over the nose's tip, where the plan turns
-		# tightest, and over the tail's rounded corners, which showed their
-		# facets from the RTS camera behind)
-		arches.append([-2.17 + 0.12, -5.0, 0.12])
-		arches.append([2.18 - 0.225, -5.0, 0.225])
 	_xbody(k, m, key + ("_body" if k.wreck else "_body_nose"), prof, -hw, hw, 0.06, arches, "car_paint", col, 8, [0.55, 0.2, 0.45, 0.16], ROLL)
 	# glasshouse
 	var lo := PackedVector3Array([Vector3(-0.8, 0.965 + dy, -0.75), Vector3(0.8, 0.965 + dy, -0.75), Vector3(0.76, 1.035 + dy, 1.98), Vector3(-0.76, 1.035 + dy, 1.98)])

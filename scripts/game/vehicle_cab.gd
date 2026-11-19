@@ -223,16 +223,21 @@ static func window(k: VehicleModels, size: Vector2, pos: Vector3, rot: Vector3) 
 ## missing, wherever the sky was bright.
 static func _materials() -> void:
 	if glass_near == null:
+		# Laminated and toughened vehicle glass is faintly grey-green (the
+		# iron in the float glass, and the tint most windscreens carry), so a
+		# clear pane reads as glazed by a pale green-grey film over what's
+		# behind it and the sky's sheen on its face, where a near-black one
+		# over a dark cab read as an empty frame or a black plate.
 		glass_near = StandardMaterial3D.new()
 		glass_near.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		glass_near.albedo_color = Color(0.03, 0.045, 0.05, 0.62)
-		glass_near.roughness = 0.03
-		glass_near.metallic_specular = 0.5
+		glass_near.albedo_color = Color(0.1, 0.13, 0.115, 0.5)
+		glass_near.roughness = 0.05
+		glass_near.metallic_specular = 0.62
 		glass_near.cull_mode = BaseMaterial3D.CULL_DISABLED
 		# (the opaque pane past 100 m is what the tinted pane over a dark cab
 		# averages to, so the hand-over doesn't brighten the windows)
 		glass_far = StandardMaterial3D.new()
-		glass_far.albedo_color = Color(0.055, 0.07, 0.075)
+		glass_far.albedo_color = Color(0.065, 0.082, 0.074)
 		glass_far.roughness = 0.06
 		glass_far.cull_mode = BaseMaterial3D.CULL_DISABLED
 

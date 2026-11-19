@@ -444,8 +444,11 @@ static func _eye(k: VehicleModels, p: Node3D, pos: Vector3, yaw := 0.0) -> void:
 ## the guns' sweep; `col` the canvas. One crew in five keeps the patch clear.
 ## Only on a vehicle with a load of its own (VehicleCargo.kit, salted by
 ## `salt`): wrecks, burnt hulks and scenery stay as the builders made them.
-## (A rolled tarpaulin, VehicleCloth.roll, costs several bundles' vertices
-## for its wound ends and buckles: too dear for a roof's worth of kit.)
+## On a turret's roof, half the crews who'd carry a bundle carry the tarpaulin
+## rolled instead (VehicleCloth.tarp_roll: VehicleCloth.roll's shape without
+## its buckles, cheap enough for a roof's worth of kit), lying along the patch
+## where the turret's bulk keeps it out of the hatches' way; a hull roof the
+## troops climb out over keeps its flat bundles.
 static func roof_kit(k: VehicleModels, p: Node3D, at: Vector3, yaw: float, room: Vector2, salt: int, col := BAG) -> void:
 	if k.wreck:
 		return
@@ -456,7 +459,15 @@ static func roof_kit(k: VehicleModels, p: Node3D, at: Vector3, yaw: float, room:
 	var r := rng.randf()
 	if r < 0.2:
 		return
-	if r < 0.5 and room.y >= 0.5:
+	if r < 0.5 and room.y >= 0.5 and _on_turret(k, p) and rng.randf() < 0.5:
+		# (a tarp rolled a hand and a half across, its length on a 5 cm
+		# step so a few cached rolls serve every turret, in a tarpaulin's
+		# shade of the crew's canvas)
+		var radius := 0.085
+		var length := snappedf(minf(room.y * 0.9, 0.85), 0.05)
+		var tint := VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_TARP, 0.4)
+		VehicleCloth.tarp_roll(k, p, at + Vector3.UP * radius, radius, length, Vector3(PI / 2, yaw + rng.randf_range(-0.06, 0.06), 0), tint)
+	elif r < 0.5 and room.y >= 0.5:
 		# (sizes on a 5 cm step, so a few cached shapes serve every roof; the
 		# bundle's length lies along the patch)
 		var size := Vector3(snappedf(minf(room.y * 0.85, 0.7), 0.05), 0.2, snappedf(minf(room.x * 0.85, 0.4), 0.05))
@@ -467,6 +478,16 @@ static func roof_kit(k: VehicleModels, p: Node3D, at: Vector3, yaw: float, room:
 			VehicleFittings.ammo_can(k, p, at + across * (i - 0.5) * 0.18 + Vector3.UP * 0.1, OD, Vector3(0, yaw + rng.randf_range(-0.07, 0.07), 0))
 	else:
 		_cable_coil(k, p, at, minf(minf(room.x, room.y) * 0.45, 0.3), rng)
+
+
+## Whether `p` rides the turret (roof_kit's tarp goes only there).
+static func _on_turret(k: VehicleModels, p: Node3D) -> bool:
+	var n := p
+	while n != null and n != k.root:
+		if n == k.turret:
+			return true
+		n = n.get_parent() as Node3D
+	return false
 
 
 ## A steel tow cable coiled flat on a deck as a crew lays it down to keep it
@@ -497,14 +518,16 @@ static func _cable_coil(k: VehicleModels, p: Node3D, at: Vector3, radius: float,
 ## side from `z0` to `z1`, `y0` to `y1` high (its top tucked into the hull
 ## over it), `x_in` to `x_out` from the centre line, arches of radius `r` about
 ## each of `axles` at `axle_y`, each well lined dark from the plate in to
-## `liner_in` (inside the tyre's inner wall). Each arch is cut in four
-## chords, as an armoured hull's arch is flame-cut and folded from flat plate
-## (and every chord is a strip of the plate's mesh, so a rounder arch costs a
-## carrier several per cent of its vertices); `chords` cuts it in fewer on a
-## hull whose thin plate shows little of its arch. `liner_in` zero leaves the
-## lining out, where the hull already has its own dark well over the tyres.
-## A wreck stays as it was.
-static func wheel_wells(k: VehicleModels, p: Node3D, key: String, x_in: float, x_out: float, y0: float, y1: float, z0: float, z1: float, axles: Array, axle_y: float, r: float, liner_in: float, mat: String, col = null, chords := 4) -> void:
+## `liner_in` (inside the tyre's inner wall). Each arch is cut in six
+## chords, as an armoured hull's arch is flame-cut and folded from flat plate:
+## four read as a polygon round a round tyre from the battle camera, the
+## plate's edge standing 5 cm in from the tyre's path mid-chord. (The plate
+## is one outline now, VehicleWheelArches._plate, so each chord costs two
+## edges, not a strip: six cost less than four did.) `chords` cuts it in
+## fewer on a hull whose thin plate shows little of its arch. `liner_in` zero
+## leaves the lining out, where the hull already has its own dark well over
+## the tyres. A wreck stays as it was.
+static func wheel_wells(k: VehicleModels, p: Node3D, key: String, x_in: float, x_out: float, y0: float, y1: float, z0: float, z1: float, axles: Array, axle_y: float, r: float, liner_in: float, mat: String, col = null, chords := 6) -> void:
 	if k.wreck:
 		return
 	var arches := []
@@ -526,7 +549,9 @@ static func wheel_wells(k: VehicleModels, p: Node3D, key: String, x_in: float, x
 			var a0 := maxf(low, acos(clampf((z1 - z) / r, -1.0, 1.0)))
 			var a1 := minf(PI - low, acos(clampf((z0 - z) / r, -1.0, 1.0)))
 			if a1 > a0 + 0.1:
-				VehicleWheelArches.liner(k, p, z, axle_y, r, minf(xi, xl), maxf(xi, xl), a0, a1, 4)
+				# (in as many segments as the plate's arch has chords, so it
+				# shows round behind it, not as a polygon of its own)
+				VehicleWheelArches.liner(k, p, z, axle_y, r, minf(xi, xl), maxf(xi, xl), a0, a1, chords)
 
 
 
@@ -1050,6 +1075,11 @@ static func _beam_fittings(k: VehicleModels, p: Node3D, center: Vector3, half: f
 		k._cyl(p, r, r, 0.01, center + Vector3(e * (half + 0.002), 0, 0), Z90, "wood", END_GRAIN, 10, false)
 
 
+## An infrared searchlight's filter glass: the deep violet-black a Soviet
+## IR lamp's face shows by day.
+const IR_FILTER := Color(0.07, 0.055, 0.09)
+
+
 ## T-55A (the Rebels' old tank, full scale): the low hull with its 60-degree
 ## glacis and the V of the splash board across it, five big "starfish" road
 ## wheels a side with the gap after the first and the track sagging straight
@@ -1239,6 +1269,11 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 	# the L-2 IR searchlight on its bracket to the right of the gun, braced
 	# to the mantlet
 	VehicleFittings.searchlight(k, t, Vector3(0.5, 0.82, -1.02), Vector3.FORWARD, 0.17, 0.34, "bracket", Vector3(0.5, 0.52, -0.98), cam)
+	# its IR filter over the face, the near-black violet glass a Luna lamp
+	# shows by day (a clear white-light reflector glared off the turret as a
+	# second headlight); a wreck keeps its old face
+	if not k.wreck:
+		k._cyl(t, 0.153, 0.153, 0.008, Vector3(0.5, 0.82, -1.178), Vector3(PI / 2, 0, 0), "glass", IR_FILTER, 16, false)
 	_bar(k, t, Vector3(0.38, 0.5, -1.1), Vector3(0.42, 0.74, -1.04), 0.03, 0.03, "gunmetal_w", null, false)
 	# the gunner's sight port front left, the ventilator dome front right
 	k.periscope = Vector3(-0.45, 0.73, -0.89)
@@ -1253,6 +1288,8 @@ static func _t55(k: VehicleModels, team: int, seed: int) -> void:
 	VehicleMounts.cupola(k, t, cp + Vector3(0, 0.08, 0), 0.34, 0.37, 0.16, 5, -1.0, 0.5, cam, null, Vector3(0.11, 0.06, 0.05))
 	_hatch(k, t, cp + Vector3(0, 0.14, 0.02), 0.27, cam)
 	VehicleFittings.searchlight(k, t, cp + Vector3(0, 0.3, -0.34), Vector3.FORWARD, 0.08, 0.14, "bracket", cp + Vector3(0, 0.17, -0.3))
+	if not k.wreck:
+		k._cyl(t, 0.072, 0.072, 0.006, cp + Vector3(0, 0.3, -0.404), Vector3(PI / 2, 0, 0), "glass", IR_FILTER, 16, false)
 	var lp := Vector3(0.46, 0.7, 0.28)
 	k._cyl(t, 0.36, 0.38, 0.08, lp + Vector3(0, 0.04, 0), Vector3.ZERO, cam, null, 16)
 	# the ring's race round the open hatch, painted with the turret, the
@@ -1975,7 +2012,7 @@ static func _btr80(k: VehicleModels, team: int, seed := 0) -> void:
 	# arch (the BTR's tyres stand almost flush with the side, so the plate is
 	# a thin one under the belt's overhang, its arches in three chords, and
 	# the wells' liners above already dark the tyres' tops)
-	wheel_wells(k, m, "core_btr_wells", 1.395, 1.43, 0.72, 1.12, -3.0, 3.4, axles, wr, wr + 0.1, 0.0, cam, null, 3)
+	wheel_wells(k, m, "core_btr_wells", 1.395, 1.43, 0.72, 1.12, -3.0, 3.4, axles, wr, wr + 0.1, 0.0, cam, null)
 	# the bow: the trim vane folded against the lower bow plate, tow hooks,
 	# a splash rail across the stem
 	var ba := Vector2(-2.95, 0.42)

@@ -1177,9 +1177,16 @@ static func _mark_outline(team: int, size: Vector2) -> PackedVector2Array:
 ## service blue or a pale brick at about value 0.6, light enough to stand off
 ## dark camouflage and dark enough not to glow like a sticker on sand (sunk to
 ## the hull's grey and darkened, it was as dark as olive camouflage, and the
-## sides could not be told apart from the battle camera).
-static func _mark_col(team: int) -> Color:
+## sides could not be told apart from the battle camera). On a wing's tip
+## band (`band`), laid flat to the sun across a wide airfoil, those pale
+## tints read as lit strips, the palest things on the airframe (a sky blue,
+## a salmon pink): there each side's is a duller service shade, the blue side
+## a mid service blue and the red a brick near the insignia's red, of about
+## the same lightness, as identification bands are painted.
+static func _mark_col(team: int, band := false) -> Color:
 	var tc: Color = Defs.TEAM_COLORS[team]
+	if band:
+		return tc.lerp(Color(0.27, 0.3, 0.33), 0.6) if team == 0 else tc.lerp(Color(0.4, 0.36, 0.33), 0.53)
 	return tc.lerp(Color(0.74, 0.74, 0.7), 0.4)
 
 

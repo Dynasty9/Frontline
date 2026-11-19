@@ -872,11 +872,15 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	if not k.wreck and not k.burnt:
 		var rm := VmBoat._scale_xz(roof, 0.9, -2.2)
 		k._add(m, VehicleModels.solid([VmBoat._ry(rm, y2 + 0.1), VmBoat._ry(rm, y2 + 0.112)], "ship_pb_roofmat"), "nonslip", dkc, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+	# (the visor's brim runs out level with the roof's edge, as the house's
+	# own: drooped 13 degrees toward the bow quarters, the corner ones caught
+	# the sun square on and glared pure white over the panes)
+	var droop := 0.1 if k.wreck or k.burnt else 0.02
 	for f in [[5, 0], [0, 1], [1, 2]]:
 		var a := VmBoat._pt(rc, f[0], y2 + 0.06)
 		var b := VmBoat._pt(rc, f[1], y2 + 0.06)
 		var o := Vector3((b - a).z, 0, -(b - a).x).normalized() * 0.42
-		VmBoat._panel(k, m, a, b, b + o + Vector3(0, -0.1, 0), a + o + Vector3(0, -0.1, 0), Vector3(0, 0, -2.0), 0.0, 0.04, "plain", sup, 0.0)
+		VmBoat._panel(k, m, a, b, b + o + Vector3(0, -droop, 0), a + o + Vector3(0, -droop, 0), Vector3(0, 0, -2.0), 0.0, 0.04, "plain", sup, 0.0)
 	# the pilothouse's after wall above the after house: two small windows, a door to the roof
 	for sx in [-1.0, 1.0]:
 		VehicleGlazing.rectangle(k, m, Vector2(0.6, 0.32), Vector3(sx * 1.1, 4.82, -0.44), Vector3.ZERO, false, Color(0.12, 0.15, 0.18), 0.03)

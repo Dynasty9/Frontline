@@ -505,10 +505,11 @@ static func _qilin(k: VehicleModels, team: int, arm: String) -> void:
 	VehicleCab.dashboard(k, m, Vector3(1.3, 0.22, 0.3), Vector3(0, 0.98, -0.82), "plain_dark")
 	_tube(k, m, Vector3(-0.36, 0.85, -0.72), Vector3(-0.36, 1.02, -0.58), 0.025, "gunmetal_w", null, 6, false)
 	VehicleCab.steering_wheel(k, m, Vector3(-0.36, 1.04, -0.56), 0.17, Vector3(-1.0, 0, 0), "plain_dark")
-	# (crew seats in a light vehicle's Cordura nylon covers; a wreck's stay
-	# the canvas that burns away)
+	# (crew seats in a light vehicle's Cordura nylon covers, each with its
+	# four-point harness; a wreck's stay the canvas that burns away)
 	for sx in [-0.36, 0.36]:
 		VehicleCab.seat(k, m, Vector3(sx, 0.7, -0.15), Vector3(0.44, 0.52, 0.44), Vector3.ZERO, Color(0.24, 0.24, 0.2), "canvas" if k.wreck else "nylon")
+		VehicleCloth.harness(k, m, Vector3(sx, 0.7, -0.15), Vector3(0.44, 0.52, 0.44), Vector3.ZERO)
 	# the passengers' benches over the engine, back to back, facing out, their
 	# backs meeting on the centre line
 	for s in [-1.0, 1.0]:
@@ -896,8 +897,14 @@ static func _stalker(k: VehicleModels, team: int, seed := 0) -> Vector3:
 	for s in [-1.0, 1.0]:
 		_taillight(k, m, Vector3(s * 1.25, 1.35, 3.76))
 		_tow(k, m, Vector3(s * 0.75, 0.75, 3.86), 1.0)
-		# a stowage bin either side of the door, its catches on the outside
-		VehicleEquipment.storage(k, m, Vector3(s * 1.0, 1.25, 3.95), Vector3(0.55, 0.5, 0.3), "steel", Color(0.32, 0.31, 0.25), Vector3(0, PI, 0))
+		# a stowage bin either side of the door, its catches on the outside,
+		# sprayed with the hull's camouflage as the factory fits it (bare
+		# steel, the pair read from the battle camera as two cream tiles on
+		# the tail); a wreck keeps its old bins
+		if k.wreck:
+			VehicleEquipment.storage(k, m, Vector3(s * 1.0, 1.25, 3.95), Vector3(0.55, 0.5, 0.3), "steel", Color(0.32, 0.31, 0.25), Vector3(0, PI, 0))
+		else:
+			VehicleEquipment.storage(k, m, Vector3(s * 1.0, 1.25, 3.95), Vector3(0.55, 0.5, 0.3), c, null, Vector3(0, PI, 0))
 		_antenna(k, m, Vector3(s * 0.95, 1.72, 3.3), 2.2 if s < 0 else 1.6)
 	# roof: the troop compartment's hatches behind the turret
 	for s in [-1.0, 1.0]:
@@ -1067,7 +1074,10 @@ static func _t100(k: VehicleModels, team: int, lock := false) -> Vector3:
 			var tanks := 1 if roll < 0.1 else (2 if roll < 0.25 else 3)
 			for i in 3:
 				if i < tanks:
-					VehicleRunningGear.fuel_tank(k, m, Vector3(s * 1.66, 1.25, 1.6 + i * 0.68), Vector3(0.4, 0.4, 0.6), s, "steel", Color(0.33, 0.32, 0.25))
+					# (painted with the hull as a T-72's or T-90's fender tanks
+					# are: bare steel, the row read from above as three cream
+					# drums on a camouflaged hull; a wreck keeps its bare ones)
+					VehicleRunningGear.fuel_tank(k, m, Vector3(s * 1.66, 1.25, 1.6 + i * 0.68), Vector3(0.4, 0.4, 0.6), s, "steel" if k.wreck else c, Color(0.33, 0.32, 0.25) if k.wreck else null)
 				else:
 					# the empty cradle: its two strap brackets on the guard
 					for dz: float in [-0.18, 0.18]:
@@ -1266,6 +1276,12 @@ static func _sochor(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleMounts.sight(k, t, Vector3(-0.85, 1.42, -0.85), Vector3(0.36, 0.3, 0.44), [Rect2(Vector2(0, 0.03), Vector2(0.24, 0.14))], c)
 	_rcws(k, t, Vector3(-0.65, 1.28, 0.6), "hmg")
 	k._team_mark(t, team, Vector3(0.5, 1.285, 2.0), Vector3(0.7, 0.02, 0.5))
+	# the crew's kit on the roof's free plate aft of the hatches, each side,
+	# clear of the mark, the rolled tarpaulin and the remote gun's base (a
+	# howitzer's crew lives on its turret roof: from above, 7 m² of bare plate
+	# read as a box lid)
+	VmCore.roof_kit(k, t, Vector3(1.0, 1.28, 1.3), 0.0, Vector2(0.44, 0.55), 0, Color(0.36, 0.35, 0.26))
+	VmCore.roof_kit(k, t, Vector3(-1.0, 1.28, 1.45), 0.0, Vector2(0.42, 0.5), 1, Color(0.36, 0.35, 0.26))
 	# the barrel on its trunnions: mantlet, recoil cylinders, fume extractor,
 	# the long tube ending inside the double-baffle muzzle brake's sleeve
 	var e := k._pivot(t, Vector3(0, 0.72, -1.5))

@@ -5,6 +5,14 @@ extends RefCounted
 static var _rings := {}
 static var _meshes := {}  # carcasses, tread bands, rim lips and drums, shared by size
 const AXLE := Vector3(0, 0, PI / 2)
+## Tyre rubber: the carcass, the tread band a shade lighter where it scrubs,
+## and the moulded letters on the wall paler again. Tyres are carbon black,
+## among the darkest things on a vehicle; lighter, under a dry map's dust
+## they took the hull's tan and the wheels read as moulded with the body.
+## (Wrecks have no tyres: these reach only running vehicles.)
+const TYRE := Color(0.11, 0.115, 0.11)
+const TYRE_TREAD := Color(0.13, 0.135, 0.125)
+const TYRE_LETTERS := Color(0.14, 0.145, 0.135)
 
 static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunmetal_w", hub_col = null, profile := "offroad", register := true) -> Node3D:
 	# A car's road wheel is a car wheel, not a truck's: see _car_wheel. Trucks
@@ -12,6 +20,8 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	# car's, and military vehicles keep their steel and beadlock rims.
 	if profile == "road" and k.surface_family == "automotive" and hub_kind in ["steel", "gunmetal_w"] and r >= 0.3 and r < 0.42 and w <= r * 0.75:
 		return _car_wheel(k, parent, pos, r, w, hub_kind, hub_col, register)
+	if profile == "atv" and not k.wreck:
+		return _atv_wheel(k, parent, pos, r, w, hub_kind, hub_col, register)
 	var pv := k._pivot(parent, pos)
 	# (a painted rim only: a bare steel one from stores looks like the rest)
 	var swapped: Variant = _swapped(k, parent, pos, 37, hub_col) if register and profile == "offroad" and hub_kind == "paint" else null
@@ -25,13 +35,13 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	elif r < 0.18 and r >= 0.04 and w <= r * 1.6 and profile == "road":
 		# A kart's slick or a robot's road wheel is still a tyre, its
 		# shoulders rounded over onto the walls (see _small_tyre).
-		k._add(pv, _small_tyre(r, w), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO)
+		k._add(pv, _small_tyre(r, w), "rubber", TYRE, Vector3.ZERO)
 	elif r < 0.18 or w > r * 1.2:
 		k._add(pv, drum(r, r, w, 24), "rubber", null, Vector3.ZERO, AXLE)
 	else:
-		k._add(pv, _carcass(), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, AXLE, Vector3(r, w / 0.50, r))
+		k._add(pv, _carcass(), "rubber", TYRE, Vector3.ZERO, AXLE, Vector3(r, w / 0.50, r))
 		if profile != "aircraft":
-			k._add(pv, _tread(r, w, profile == "offroad"), "rubber", Color(0.20, 0.21, 0.19), Vector3.ZERO)
+			k._add(pv, _tread(r, w, profile == "offroad"), "rubber", TYRE_TREAD, Vector3.ZERO)
 		if r >= 0.3 and profile != "aircraft":
 			# The maker's name and the size moulded into the outer sidewall
 			# (inboard too on a spare, which shows both).
@@ -41,7 +51,7 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 			for f: float in faces:
 				# (the letters' faces scuffed a shade paler than the wall, as
 				# kerbs and brush rub them)
-				k._add(pv, _sidewall(r, w), "rubber", Color(0.25, 0.26, 0.24), Vector3.ZERO, Vector3(0, PI, 0) if f < 0.0 else Vector3.ZERO, Vector3.ONE, false)
+				k._add(pv, _sidewall(r, w), "rubber", TYRE_LETTERS, Vector3.ZERO, Vector3(0, PI, 0) if f < 0.0 else Vector3.ZERO, Vector3.ONE, false)
 	# The rim: its disc (the drum's edge runs on inside the tyre), the rolled
 	# lip at each face, eight wheel nuts a face and the hub. Small wheels need
 	# half the segments to look as round.
@@ -95,6 +105,40 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	return pv
 
 
+## An ATV's road wheel (`pneumatic`'s "atv" profile): the knobbly
+## low-pressure tyre a pneumatic wheel has, on a 12-inch pressed rim whose
+## centre is dished in deep behind its flange, a small hub boss in the middle
+## and four lug nuts on it (a Grizzly's 4/110 pattern). The truck wheel's
+## broad hub and eight nuts on both faces read as a lorry's at the battle
+## camera. Its detail is on the outer face (both on a spare).
+static func _atv_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, hub_kind: String, hub_col, register: bool) -> Node3D:
+	var pv := k._pivot(parent, pos)
+	var rim: Color = hub_col if hub_col is Color else Color(0.45, 0.46, 0.45)
+	k._add(pv, _carcass(), "rubber", TYRE, Vector3.ZERO, AXLE, Vector3(r, w / 0.50, r))
+	k._add(pv, _tread(r, w, true), "rubber", TYRE_TREAD, Vector3.ZERO)
+	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else [1.0, -1.0]
+	if r >= 0.3:
+		for f: float in faces:
+			k._add(pv, _sidewall(r, w), "rubber", TYRE_LETTERS, Vector3.ZERO, Vector3(0, PI, 0) if f < 0.0 else Vector3.ZERO, Vector3.ONE, false)
+	k._add(pv, drum(r * 0.54, r * 0.54, w * 0.67, 32), hub_kind, rim, Vector3.ZERO, AXLE, Vector3.ONE, false)
+	for side: float in [-1.0, 1.0]:
+		k._add(pv, _lip(true), hub_kind, rim, Vector3(side * w * 0.37, 0, 0), AXLE, Vector3.ONE * r, false)
+	var nut := drum(r * 0.028, r * 0.028, w * 0.07, 6, false)
+	for f: float in faces:
+		# the dish: the rim's centre in its own shadow, inside the bright flange
+		k._add(pv, drum(r * 0.45, r * 0.45, 0.006, 24, false), "gunmetal_w", rim.darkened(0.55), Vector3(f * (w * 0.335 + 0.002), 0, 0), Vector3(0, 0, -f * PI / 2), Vector3.ONE, false)
+		# the four nuts round the hub boss
+		for i in 4:
+			var a := TAU * (i + 0.5) / 4.0
+			k._add(pv, nut, "steel", Color(0.35, 0.36, 0.33), Vector3(f * w * 0.39, sin(a) * r * 0.14, cos(a) * r * 0.14), Vector3(0, 0, -f * PI / 2), Vector3.ONE, false)
+	k._add(pv, drum(r * 0.19, r * 0.21, w * 0.74, 12), hub_kind, rim, Vector3.ZERO, AXLE, Vector3.ONE, false)
+	if not register:
+		k._fold(pv)
+		return parent
+	k.wheels.append(pv)
+	return pv
+
+
 ## A car's wheel: a low-profile tyre with two grooves round its crown, on a
 ## rim two thirds of its radius (a truck's is half), the polished flange
 ## standing just inside the sidewall's bulge. What fills the rim is what a
@@ -119,7 +163,7 @@ static func _car_wheel(k: VehicleModels, parent: Node3D, pos: Vector3, r: float,
 		# a gutted car stands on what its tyres left (see _belt)
 		k._add(pv, _belt(r, w), "steel", null, Vector3(0, -r * 0.05, 0))
 	elif not k.wreck:
-		k._add(pv, _car_tyre(r, w, rr), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO)
+		k._add(pv, _car_tyre(r, w, rr), "rubber", TYRE, Vector3.ZERO)
 	# (a wreck's tyres burn away and its hull sits down on the rims: Structure._ruin)
 	var faces: Array = [signf(pos.x) if pos.x != 0.0 else 1.0] if register else [-1.0, 1.0]
 	for side: float in faces:
