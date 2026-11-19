@@ -587,6 +587,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (tier
   1) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
   Selecting a drone or recon vehicle shows its sight ring.
+- Jets and reconnaissance planes bank into curved approaches and departures. The A-10 eases into its climb.
 - **Every aircraft spots.** A jet on a bomb run sees 70 m round it as it flies, a gun run 55 m, and an orbiting
   gunship or armed drone the 70 m circle its sensor turret is watching (and the ground beneath it). So an air strike
   also shows you what's around the target, and the minimap draws each aircraft with the ground it can see.
