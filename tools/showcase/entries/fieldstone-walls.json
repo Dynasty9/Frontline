@@ -1,0 +1,51 @@
+{
+  "entry": "changelog/unreleased/fieldstone-walls.md",
+  "summary": "Stone garden and field walls built of field stone and topped with stones on edge.",
+  "medium": "motion",
+  "stage": "tests/fixtures/environment-views.gd (FL_ONLY_VIEW); tools/showcase/building-surfaces.tscn (low_wall_stone)",
+  "rationale": "Appearance change: walls in the map at the game's camera, and one up close in the studio, from the same cameras. The wall's top is what a battle camera sees most of, so wall-top.jpg shows it before and after at 14 m, 32 m and up close; a native wall sweep exposes distance filtering and the stones' skyline under grazing light.",
+  "source_ref": "9e2157dd3e1a7885e39ea6c0b8b153f28a93c1c3",
+  "before_ref": "e914aa86562b3ff43062d0c1856967fcf017bffa",
+  "sources": [
+    {
+      "file": "changelog/unreleased/fieldstone-walls/comparison.jpg",
+      "sha256": "38a7a80fa5544c6f728accc58de30cbd847e428213054ec1f420bf363ac0aa93"
+    },
+    {
+      "file": "changelog/unreleased/fieldstone-walls/wall-top.jpg",
+      "sha256": "3571c7b04b8e80659615fe3eda847666e288f40c1c9b9699986d362ab5d1c318"
+    },
+    {
+      "file": "changelog/unreleased/fieldstone-walls/capture.json",
+      "sha256": "8494952e8358fdc3478b9b3e3474329423f1a8728bfef911efc932dc731d8840"
+    },
+    {
+      "file": "changelog/unreleased/fieldstone-walls/fieldstone-sweep.webm",
+      "sha256": "7f8e4bceed82cd12185a2fb8907896e55444f0c20cb73c2b52b298a67af43865"
+    },
+    {
+      "file": "changelog/unreleased/fieldstone-walls/fieldstone-sweep.jpg",
+      "sha256": "7ccfe8c8e3ba1dab2db8daf837cb2571f5740a620d65a059b88ff4b5c83f224e"
+    }
+  ],
+  "output": null,
+  "followup_capture": {
+    "source_ref": "9e2157dd3e1a7885e39ea6c0b8b153f28a93c1c3",
+    "renderer": "Godot 4.7.2 Compatibility (OpenGL 3.3, NVIDIA)",
+    "command": "godot --path . --rendering-method gl_compatibility --fixed-fps 12 --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-single --building-kinds=low_wall_stone --building-motion --building-out=OUT",
+    "frames": 48,
+    "duration_seconds": 4,
+    "size_bytes": 189028,
+    "viewport": "1600x900 uncropped scaled 960x540 with 40 px caption",
+    "camera": "native low_wall orthographic fixture, fitted size 1x to 3.5x and back",
+    "lighting": "12 degree sun elevation, azimuth -38 to 142 and back, fixed exposure",
+    "validation": [
+      "Clean import; building-components passed (field-stone top: one cached part, field-stone surface, ragged skyline, kept to the wall's length, at most 1,500 vertices)",
+      "Matched before/after at 14 m and 32 m on aivai seed 3 and up close on the stage, Forward+; stage close-up under gl_compatibility"
+    ],
+    "limits": [
+      "Fixture, not gameplay or imported LOD validation",
+      "No hardware performance claim; the top is one cached mesh of about 1,100 vertices per 4 m wall"
+    ]
+  }
+}
