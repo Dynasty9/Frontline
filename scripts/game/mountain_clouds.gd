@@ -45,4 +45,4 @@ func apply_settings(atmo: Atmosphere) -> void:
 ## How brightly the light catches the banks (moonlight barely), and how much
 ## of the sky they cover, by mood.
 const LIT := {"night": 0.11}
-const COVERAGE := {"rain": 0.47, "overcast": 0.47}
+const COVERAGE := {"rain": 0.47, "overcast": 0.47, "snow": 0.47}

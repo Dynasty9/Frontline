@@ -19,12 +19,22 @@ static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Co
 		k._box(k.root, Vector3(size.x - 0.06, 0.12, size.z - 0.06), base + Vector3(0, 0.06, 0), "wood")
 	var rings: Array[PackedVector3Array] = []
 	for i in 25:
-		var z := (float(i) / 24.0 - 0.5) * (size.z - 0.08)
+		var t := float(i) / 24.0
+		var z := (t - 0.5) * (size.z - 0.08)
 		var ripple := sin(float(i) * 0.45 + fold * 1.7) * 0.014 + sin(float(i) * 0.9 + fold * 2.3) * 0.004
-		var w := size.x * 0.5 - 0.05
-		var h := size.y
-		rings.append(PackedVector3Array([Vector3(-w, 0.14, z), Vector3(-w + ripple, h * 0.72, z), Vector3(-w * 0.75, h - 0.035 + ripple, z), Vector3(0, h + ripple * 0.35, z), Vector3(w * 0.75, h - 0.035 - ripple, z), Vector3(w - ripple, h * 0.72, z), Vector3(w, 0.14, z)]))
-	var shell := VehicleModels.solid(rings, "shared_tarp_%s" % str(size) + ("_%d" % fold if fold > 0 else ""))
+		# A lashing cinched over the load pulls the tarp down into a waist
+		# under it, so the cover bellies up between its straps; and the tarp
+		# folds down over the load's ends instead of stopping square.
+		var pinch := 0.0
+		for lashing in lashings:
+			pinch = maxf(pinch, exp(-pow((float(i) - float(lashing)) / 1.7, 2.0)))
+		# (the hem stays where it's tied down along the bed)
+		var end := pow(absf(t - 0.5) * 2.0, 6.0)
+		var hem := size.x * 0.5 - 0.05
+		var w := hem * (1.0 - 0.03 * pinch - 0.025 * end)
+		var h := size.y * (1.0 - 0.065 * pinch - 0.07 * end)
+		rings.append(PackedVector3Array([Vector3(-hem, 0.14, z), Vector3(-w + ripple, h * 0.72, z), Vector3(-w * 0.75, h - 0.035 + ripple, z), Vector3(0, h + ripple * 0.35, z), Vector3(w * 0.75, h - 0.035 - ripple, z), Vector3(w - ripple, h * 0.72, z), Vector3(hem, 0.14, z)]))
+	var shell := VehicleModels.solid(rings, "shared_tarp_%s_%d_%d" % [str(size), lashings[0], lashings[1]] + ("_%d" % fold if fold > 0 else ""))
 	var arrays := shell.surface_get_arrays(0)
 	var smooth := SurfaceTool.new()
 	smooth.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -132,10 +142,7 @@ static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array
 ## each in its owner's colour, packed full or slumped part empty with its foot
 ## where it was, a little smaller than the place and turned no further than
 ## keeps it inside it, its strap where it was pulled. Nothing leaves the
-## place's box but the strap and buckle, as before. A crew that camouflages
-## its vehicle (camouflage) may have stuffed its net in one of the places
-## instead, heaped up to a third over the place's top, and laid a cut branch
-## along the load's top (see branch).
+## place's box but the strap and buckle, as before.
 static func bag(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, material: String, col = null, rotation := Vector3.ZERO, shadow := true) -> Variant:
 	var rng := VehicleCargo.kit(k, parent, center, 1)
 	if rng == null:
@@ -157,11 +164,6 @@ static func bag(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3
 	var count := cuts.size() - 1
 	var gone := rng.randi_range(0, count - 1) if count > 1 and rng.randf() < 0.25 else -1
 	var first: Variant = null
-	# A crew that camouflages its vehicle (camouflage) stuffs its net in a
-	# basket in place of a bag and lays cut branches over the load, where the
-	# place is out in the open and level.
-	var camo := camouflage(k) if shadow and (basis * Vector3.UP).y > 0.9 else 0.0
-	var dress := VehicleCargo.kit(k, parent, center, 12) if camo > 0.0 else null
 	for i in count:
 		var a := cuts[i] * long + (0.015 if i > 0 else 0.0)
 		var b := cuts[i + 1] * long - (0.015 if i < count - 1 else 0.0)
@@ -178,12 +180,6 @@ static func bag(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3
 		var place := Vector3(b - a, size.y, size.z) if long_x else Vector3(size.x, size.y, b - a)
 		var mid := (a + b) * 0.5 - long * 0.5
 		var across := minf(size.y, size.z if long_x else size.x)
-		if dress != null and dress.randf() < 0.35 * camo and minf(place.x, place.z) >= 0.2 and size.y >= 0.15:
-			# The net stuffed into the place, heaped up to its top or bulging a
-			# third over it (a place in a basket or on a deck is open above).
-			var foot := center + basis * Vector3(mid if long_x else 0.0, -size.y * 0.5, 0.0 if long_x else mid)
-			net(k, parent, foot, Vector3(place.x, size.y * dress.randf_range(0.9, 1.3), place.z), rotation, dress)
-			continue
 		if rolled and shadow and col is Color and b - a >= across * 1.6 and absf((basis * Vector3.UP).y) > 0.9:
 			# A bedroll or sleeping mat rolled up in the place instead, along
 			# its length on its floor, resting on its straps (3.5% proud),
@@ -211,16 +207,6 @@ static func bag(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3
 		var part: Variant = _bag(k, mount, Vector3(body, place.y, place.z), scale, material, tint, shadow, strap, Vector3(pocket * depth, 0, 0))
 		if first == null:
 			first = part
-	if dress != null and dress.randf() < 0.8 * camo and long >= 0.4:
-		# A branch laid along the load's top, off its middle, its tip either way,
-		# cut longer than the load so its leaves hang past both ends and break
-		# the load's square outline (what a branch is cut for).
-		var lay := basis * (Vector3.RIGHT if long_x else Vector3.BACK) * (1.0 if dress.randf() < 0.5 else -1.0)
-		var off := basis * (Vector3.BACK if long_x else Vector3.RIGHT) * dress.randf_range(-0.25, 0.25) * minf(size.x, size.z)
-		# (its stem pressed a little into the bags' tops)
-		var top := center + basis * Vector3(0, size.y * 0.42, 0) + off
-		var reach := long * dress.randf_range(0.55, 0.7)
-		branch(k, parent, top - lay * reach, top + lay * reach, dress, clampf(minf(size.x, size.z) * 0.75, 0.2, 0.32))
 	return first
 
 
@@ -259,262 +245,6 @@ static func _bag(k: VehicleModels, mount: Node3D, place: Vector3, scale: Vector3
 	return part
 
 
-## How heavily a crew has camouflaged its vehicle, from 0 to 1. A military
-## vehicle (the armour family's: tanks, carriers, trucks) with a load of its
-## own (VehicleCargo.kit) is netted and dressed with cut branches as its crew
-## sees fit: some heavily, some a little, a third not at all, as a column in
-## the field looks. Never a wreck's (the net and the leaves went up with it),
-## nor scenery's or a burnt hulk's, which share one look per kind.
-static func camouflage(k: VehicleModels) -> float:
-	if k.kit_seed < 0 or k.wreck or k.surface_family != "armor":
-		return 0.0
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([k.kit_seed, 21])
-	var r := rng.randf()
-	return 0.0 if r < 0.3 else (0.6 if r < 0.7 else 1.0)
-
-
-## Camouflage nets as armies issue them, each [the net, its pale scrim, its
-## dark scrim]: woodland green over khaki and black-brown, and a desert net of
-## sand over pale stone and brown for a vehicle painted sand.
-const NET_WOODLAND: Array[Color] = [Color(0.2, 0.24, 0.14), Color(0.4, 0.39, 0.25), Color(0.13, 0.11, 0.07)]
-const NET_DESERT: Array[Color] = [Color(0.50, 0.44, 0.31), Color(0.66, 0.60, 0.46), Color(0.30, 0.24, 0.16)]
-## Cut leaves: fresh, in shade, and a day or two on, drying out. Living leaves
-## are a yellower, more saturated green than any olive or green paint, and
-## a branch is cut to be seen as bush from above, so these keep that: a fresh
-## spray stands off the paint under it at 50 m, a drying one goes olive-gold.
-const LEAVES: Array[Color] = [Color(0.25, 0.38, 0.10), Color(0.18, 0.29, 0.08), Color(0.36, 0.38, 0.13), Color(0.47, 0.40, 0.16)]
-## A cut branch's bark.
-const STEM := Color(0.27, 0.21, 0.15)
-
-
-## The net a crew carries goes with its paint: a sand net on a vehicle painted
-## sand, a woodland one on anything greener. The paint is the hull's, the
-## first part the family put on the model in its own finish.
-static func _net_colours(k: VehicleModels) -> Array[Color]:
-	for pt: Array in k._parts.get(k.root, []):
-		var mat := pt[1] as ShaderMaterial
-		if mat == null or VehicleMaterials.profile(mat.resource_name.get_file(), k.surface_family) != k.surface_family:
-			continue
-		var a: Variant = mat.get_shader_parameter("col_a")
-		if a is Color:
-			var c: Color = (a as Color) * (pt[2] as Color)
-			return NET_DESERT if c.r > c.g * 0.98 and c.get_luminance() > 0.36 else NET_WOODLAND
-		break
-	return NET_WOODLAND
-
-
-## A camouflage net bundled up where the crew threw it: an uneven mound over
-## `size` (x by z its footprint, y its crown), the middle of its foot at `foot`
-## and turned by `rotation`, in the net's shade, and its garnish (the scrim cut
-## into leaves that hides the net's square shape) standing out of it in a pale
-## shade and a dark one. `rng` picks which of a few ways it lies and the
-## shades. Stays within its footprint and 5 cm over its crown.
-static func net(k: VehicleModels, parent: Node3D, foot: Vector3, size: Vector3, rotation: Vector3, rng: RandomNumberGenerator) -> void:
-	var cols := _net_colours(k)
-	var q := Vector3(maxf(0.15, snappedf(size.x, 0.05)), maxf(0.04, snappedf(size.y, 0.02)), maxf(0.15, snappedf(size.z, 0.05)))
-	var meshes := _net_meshes(q, rng.randi_range(0, 2))
-	var mount := k._pivot(parent, foot)
-	mount.basis = Basis.from_euler(rotation) * Basis(Vector3.UP, PI if rng.randf() < 0.5 else 0.0)
-	var scale := size / q
-	for i in 3:
-		var shade := rng.randf_range(-0.07, 0.07)
-		var c: Color = cols[i].lightened(shade) if shade > 0.0 else cols[i].darkened(-shade)
-		k._add(mount, meshes[i], "canvas", c, Vector3.ZERO, Vector3.ZERO, scale, i == 0)
-	k._fold(mount)
-
-
-static var _nets := {}
-
-## The net's meshes `size` big as `variant` lies: [the heap, the pale scrim,
-## the dark scrim]. Cached by both.
-static func _net_meshes(size: Vector3, variant: int) -> Array:
-	var key := "%s_%d" % [str(size), variant]
-	if _nets.has(key):
-		return _nets[key]
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(["net", key])
-	# A bundled net heaps up in a few folds: bumps of their own size here and
-	# there over a low dome, the whole scaled to the crown.
-	var folds: Array[Vector4] = []
-	for i in 4:
-		folds.append(Vector4(rng.randf_range(-0.55, 0.55), rng.randf_range(-0.5, 0.5), rng.randf_range(0.3, 0.6), rng.randf_range(0.5, 1.0)))
-	var ragged := rng.randf_range(0.0, TAU)
-	var nx := clampi(ceili(size.x / 0.07), 4, 18)
-	var nz := clampi(ceili(size.z / 0.07), 4, 18)
-	var verts := PackedVector3Array()
-	var idx := PackedInt32Array()
-	var top := 0.0
-	for j in nz + 1:
-		for i in nx + 1:
-			var p := _net_point(float(i) / nx * 2.0 - 1.0, float(j) / nz * 2.0 - 1.0, size, folds, ragged)
-			top = maxf(top, p.y)
-			verts.append(p)
-	var lift := size.y / maxf(top, 0.001)
-	for i in verts.size():
-		verts[i].y *= lift
-	for j in nz:
-		for i in nx:
-			var a := j * (nx + 1) + i
-			idx.append_array([a, a + 1, a + nx + 2, a, a + nx + 2, a + nx + 1])
-	var heap := _smooth(verts, idx)
-	var parts: Array = [heap]
-	# The garnish: the scrim's leaves lying on the heap, most flat to it and some
-	# turned up out of it, so many that little plain net shows between them,
-	# kept in from the edge far enough that none hangs past it. Each is shaded
-	# as the heap under it, so the heap reads as one soft lumpy mass.
-	var count := clampi(roundi(size.x * size.z * 130.0), 8, 64)
-	var hx := size.x * 0.5
-	var hz := size.z * 0.5
-	var ru := maxf(0.2, 1.0 - 0.09 / hx)
-	var rv := maxf(0.2, 1.0 - 0.09 / hz)
-	for tint in 2:
-		var lv := PackedVector3Array()
-		var ln := PackedVector3Array()
-		var li := PackedInt32Array()
-		for n in count:
-			var u := rng.randf_range(-ru, ru)
-			var v := rng.randf_range(-rv, rv)
-			var e := 0.03
-			var p := _net_point(u, v, size, folds, ragged) * Vector3(1, lift, 1)
-			var du := (_net_point(u + e, v, size, folds, ragged) - _net_point(u - e, v, size, folds, ragged)) * Vector3(1, lift, 1)
-			var dv := (_net_point(u, v + e, size, folds, ragged) - _net_point(u, v - e, size, folds, ragged)) * Vector3(1, lift, 1)
-			var up := dv.cross(du).normalized()
-			if up.y < 0.0:
-				up = -up
-			var a := rng.randf_range(0.0, TAU)
-			var t := (du.normalized() * cos(a) + dv.normalized() * sin(a)).normalized()
-			var tilt := rng.randf_range(0.05, 0.75)
-			var b := (up.cross(t).normalized() * cos(tilt) + up * sin(tilt)).normalized()
-			# (cut a hand long: from a few tens of metres the scrim's tufts, not
-			# the net, are what break up the bundle's shape)
-			var w := rng.randf_range(0.06, 0.09)
-			_leaf(lv, ln, li, p + up * 0.006 + b * w * 0.5 * sin(tilt), t, b, rng.randf_range(0.11, 0.17), w, up)
-		parts.append(VehicleWheels._mesh(lv, ln, li))
-	_nets[key] = parts
-	return parts
-
-
-## A point on the net's heap over (u, v), each -1..1 across its footprint,
-## before it is scaled to its crown: a low dome and the folds (u, v, reach,
-## height) heaped on it, falling to nothing at its foot, and its edge ragged
-## where the scrim hangs.
-static func _net_point(u: float, v: float, size: Vector3, folds: Array[Vector4], ragged: float) -> Vector3:
-	var cu := clampf(u, -1.0, 1.0)
-	var cv := clampf(v, -1.0, 1.0)
-	var h := 0.35 * (1.0 - cu * cu) * (1.0 - cv * cv)
-	for f: Vector4 in folds:
-		h += f.w * exp(-((cu - f.x) * (cu - f.x) + (cv - f.y) * (cv - f.y)) / (f.z * f.z))
-	h *= maxf(0.0, (1.0 - pow(absf(cu), 4.0)) * (1.0 - pow(absf(cv), 4.0)))
-	var edge := pow(maxf(absf(cu), absf(cv)), 4.0)
-	var pull := 1.0 - 0.1 * (0.5 + 0.5 * sin(cu * 9.0 + cv * 7.0 + ragged)) * edge
-	return Vector3(cu * size.x * 0.5 * pull, size.y * h, cv * size.z * 0.5 * pull)
-
-
-## A mesh from shared vertices, its normals smoothed over the faces round
-## each and every face turned up (a heap seen from above).
-static func _smooth(verts: PackedVector3Array, idx: PackedInt32Array) -> ArrayMesh:
-	var norms := PackedVector3Array()
-	norms.resize(verts.size())
-	var out := PackedInt32Array()
-	for f in range(0, idx.size(), 3):
-		var a := idx[f]
-		var b := idx[f + 1]
-		var c := idx[f + 2]
-		var n := (verts[b] - verts[a]).cross(verts[c] - verts[a])
-		if n.y < 0.0:
-			n = -n
-		for i: int in [a, b, c]:
-			norms[i] += n
-		VehicleWheels._tri(out, verts, n, a, b, c)
-	for i in norms.size():
-		norms[i] = norms[i].normalized() if norms[i].length_squared() > 0.0 else Vector3.UP
-	return VehicleWheels._mesh(verts, norms, out)
-
-
-## One leaf, of scrim or off a branch: a diamond `length` along `t` and
-## `width` along `b`, centred on `c`, its widest a little toward its tip, seen
-## from both sides (a leaf has no back face to hide). Both faces are shaded
-## as `shade` faces (the heap's or the spray's outside where the leaf is), so
-## a mass of leaves lights as one soft shape instead of a glitter of facets.
-static func _leaf(verts: PackedVector3Array, norms: PackedVector3Array, idx: PackedInt32Array, c: Vector3, t: Vector3, b: Vector3, length: float, width: float, shade: Vector3) -> void:
-	var corners := [c - t * length * 0.5, c + b * width * 0.5 + t * length * 0.08, c + t * length * 0.5, c - b * width * 0.5 + t * length * 0.08]
-	var face := t.cross(b)
-	var n := (shade + face * (0.35 if face.dot(shade) >= 0.0 else -0.35)).normalized()
-	for side: float in [1.0, -1.0]:
-		var base := verts.size()
-		verts.append_array(corners)
-		norms.append_array([n, n, n, n])
-		VehicleWheels._tri(idx, verts, face * side, base, base + 1, base + 2)
-		VehicleWheels._tri(idx, verts, face * side, base, base + 2, base + 3)
-
-
-static var _sprays := {}
-
-## A spray of leaves at the end of a twig, about a unit across (scaled to its
-## branch), longer along x than across and flatter still: leaves crowding out
-## from its middle at all angles. Cached by `variant`.
-static func _spray(variant: int) -> ArrayMesh:
-	if _sprays.has(variant):
-		return _sprays[variant]
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(["spray", variant])
-	var verts := PackedVector3Array()
-	var norms := PackedVector3Array()
-	var idx := PackedInt32Array()
-	for n in 42:
-		var d := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)).normalized()
-		var r := pow(rng.randf(), 0.5) * 0.9
-		var c := Vector3(d.x * r * 1.25, d.y * r * 0.55 + 0.12, d.z * r)
-		var out := Vector3(c.x / 1.25, (c.y - 0.12) / 0.55, c.z).normalized()
-		var t := (out + Vector3(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.3, 0.3), rng.randf_range(-0.6, 0.6))).normalized()
-		var b := t.cross(Vector3(rng.randf_range(-0.7, 0.7), 1.0, rng.randf_range(-0.7, 0.7)).normalized()).normalized()
-		_leaf(verts, norms, idx, c, t, b, rng.randf_range(0.46, 0.62), rng.randf_range(0.22, 0.3), (out + Vector3.UP * 0.3).normalized())
-	_sprays[variant] = VehicleWheels._mesh(verts, norms, idx)
-	return _sprays[variant]
-
-
-## A branch cut for camouflage and laid on the vehicle, from its cut end `a` to
-## its tip `b` in the parent's space: a stem, and sprays of leaves crowding its
-## outer two thirds, each about three times `spread` long and twice it across,
-## leaning up off what it lies on, all the one cutting's shade (fresh, or
-## drying out a day or two on).
-static func branch(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, rng: RandomNumberGenerator, spread := 0.2) -> void:
-	var along := b - a
-	var length := along.length()
-	if length < 0.2:
-		return
-	var dir := along / length
-	var side := dir.cross(Vector3.UP)
-	side = side.normalized() if side.length() > 0.1 else Vector3.RIGHT
-	var up := side.cross(dir).normalized()
-	VehicleEquipment._rod(k, parent, a, b, 0.013, "canvas", STEM, 5, false, 3, 0.005)
-	var age := rng.randi_range(0, LEAVES.size() - 1) if rng.randf() < 0.35 else rng.randi_range(0, 1)
-	var sprays := clampi(roundi(length / 0.26), 3, 6)
-	for i in sprays:
-		var f := lerpf(0.3, 1.0, float(i) / (sprays - 1))
-		var s := spread * rng.randf_range(0.9, 1.1) * (0.8 + 0.2 * f)
-		var lean := (1.0 if i % 2 == 0 else -1.0) * rng.randf_range(0.15, 0.4)
-		var at := a + along * f + side * lean * s + up * s * 0.3
-		var basis := Basis(dir, up, dir.cross(up)).rotated(dir, rng.randf_range(-0.4, 0.4)) * Basis(Vector3.UP, rng.randf_range(-0.5, 0.5))
-		var shade := rng.randf_range(-0.05, 0.05)
-		var c := LEAVES[age].lightened(shade) if shade > 0.0 else LEAVES[age].darkened(-shade)
-		# (spread wider than tall, along and across what it lies on: a spray
-		# pressed down by its own weight covers ground, it doesn't stand up)
-		k._add(parent, _spray(rng.randi_range(0, 3)), "canvas", c, at, basis.get_euler(), Vector3(1.2, 0.75, 1.2) * s)
-
-
-## Whether `node` stands upright on the model (its +Y within 25 degrees of
-## the model's up): a net or a branch rests only on what's level.
-static func _upright(k: VehicleModels, node: Node3D) -> bool:
-	var basis := Basis.IDENTITY
-	var n := node
-	while n != null and n != k.root:
-		basis = n.basis * basis
-		n = n.get_parent() as Node3D
-	return (basis * Vector3.UP).normalized().y > 0.9
-
-
 ## A bag's softened shell that size (cached by size).
 static func _shell(size: Vector3) -> ArrayMesh:
 	if not _bags.has(size):
@@ -533,8 +263,7 @@ static var _bags := {}
 ## sleeping mat), each in its own colour, rolled tighter or looser (a thinner
 ## roll lies in the old one's bottom, so it still rests where the old one did
 ## and stays inside it), its straps where they were cinched and turned about
-## its axis no further than keeps the buckles off what it lies on, and now and
-## then a cut branch tucked along its top (camouflage). A roll of the
+## its axis no further than keeps the buckles off what it lies on. A roll of the
 ## vehicle's own canvas (canvas_white: a tilt's back flap rolled up) or
 ## longer than kit comes (an awning) stays as the family made it.
 static func roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, rotation: Vector3, col: Color, material := "canvas") -> void:
@@ -570,16 +299,6 @@ static func roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: floa
 		var mount := k._pivot(parent, at)
 		mount.basis = basis * Basis(Vector3.UP, turn)
 		_roll(k, mount, r, b - a, tint, material, straps)
-	# A crew that camouflages its vehicle (camouflage) tucks a cut branch under
-	# a lying roll's straps, along its top.
-	var camo := camouflage(k) if level and length >= 0.5 else 0.0
-	if camo > 0.0 and _upright(k, parent):
-		var dress := VehicleCargo.kit(k, parent, center, 14)
-		if dress.randf() < 0.75 * camo:
-			var lay := axis * (1.0 if dress.randf() < 0.5 else -1.0)
-			var top := center - down * radius * 0.85
-			var reach := length * dress.randf_range(0.5, 0.62)
-			branch(k, parent, top - lay * reach, top + lay * reach, dress, clampf(radius * 1.9, 0.18, 0.3))
 
 
 ## One roll on its mount, along its Y: `straps` the two straps' places as

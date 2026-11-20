@@ -611,18 +611,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			Res.mi(h, Res.cyl(0.92, 0.92, 0.03, 20), water, Vector3(0, 1.88, 0), Vector3.ZERO, false)
 			Res.mi(h, Res.cyl(0.46, 0.46, 0.03, 16), water, Vector3(0, 2.68, 0), Vector3.ZERO, false)
 		"statue":
-			_m(Res.box(Vector3(1.8, 1.0, 1.8)), "stone", Vector3(0, 0.5, 0))
-			if ex == 1:
-				_m(Res.cyl(0.18, 0.45, 4.2, 4), "stone", Vector3(0, 3.1, 0), Color(0.62, 0.6, 0.56), Vector3(0, PI * 0.25, 0))
-			else:
-				var bronze := Color(0.22, 0.32, 0.27)
-				_m(Res.box(Vector3(1.2, 1.4, 1.2)), "stone", Vector3(0, 1.7, 0))
-				_m(Res.box(Vector3(0.36, 0.9, 0.24)), "metal_dark", Vector3(0, 2.85, 0), bronze)
-				_m(Res.box(Vector3(0.52, 0.72, 0.32)), "metal_dark", Vector3(0, 3.66, 0), bronze)
-				_m(Res.sphere(0.17, 10), "metal_dark", Vector3(0, 4.18, 0), bronze)
-				_m(Res.box(Vector3(0.12, 0.72, 0.12)), "metal_dark", Vector3(0.36, 4.1, 0), bronze, Vector3(0, 0, -0.45))
-				_m(Res.box(Vector3(0.12, 0.6, 0.12)), "metal_dark", Vector3(-0.33, 3.5, 0), bronze, Vector3(0, 0, 0.2))
-				_m(Res.box(Vector3(0.6, 0.35, 0.02)), "metal_dark", Vector3(0, 1.6, -0.61), Color(0.45, 0.35, 0.18), Vector3.ZERO, false)
+			# the war memorial (BuildingSquare): a bronze soldier on his
+			# pedestal, or (1) an obelisk
+			BuildingSquare.memorial(BuildingKit.baked(_bake, rng, _at), ex == 1, rng)
 		"flagpole":
 			_m(Res.cyl(0.045, 0.07, 8.0, 8), "steel", Vector3(0, 4.0, 0))
 			# the town's own colours
@@ -630,19 +621,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.box(Vector3(0.5, 1.0, 0.03)), "fabric", Vector3(0.29, 7.25, 0), Color(0.2, 0.42, 0.3))
 			_m(Res.box(Vector3(1.1, 0.16, 0.03)), "fabric", Vector3(1.09, 7.25, 0), Color(0.62, 0.16, 0.12))
 		"stall":
-			var ci := int(ex) if ex != null else 0
-			_m(Res.box(Vector3(2.2, 0.06, 1.0)), "wood", Vector3(0, 0.9, 0))
-			for x in [-1.0, 1.0]:
-				for z in [-0.42, 0.42]:
-					_m(Res.box(Vector3(0.06, 0.9, 0.06)), "wood_dark", Vector3(x, 0.45, z))
-				_m(Res.cyl(0.03, 0.03, 2.35, 6), "wood_dark", Vector3(x * 1.15, 1.17, 0.5))
-				_m(Res.cyl(0.03, 0.03, 2.0, 6), "wood_dark", Vector3(x * 1.15, 1.0, -0.55))
-			_m(Res.box(Vector3(2.6, 0.05, 1.5)), "fabric", Vector3(0, 2.2, 0.0), CANVAS[ci % CANVAS.size()], Vector3(-0.15, 0, 0))
-			_m(Res.box(Vector3(2.6, 0.25, 0.02)), "fabric", Vector3(0, 2.0, -0.75), CANVAS[ci % CANVAS.size()])
-			for i in 4:
-				var gx := -0.8 + i * 0.53
-				_m(Res.box(Vector3(0.42, 0.14, 0.32)), "wood", Vector3(gx, 1.0, 0.0), null, Vector3.ZERO, false)
-				_m(Res.box(Vector3(0.36, 0.06, 0.26)), "paint", Vector3(gx, 1.09, 0.0), [Color(0.75, 0.15, 0.1), Color(0.9, 0.55, 0.12), Color(0.35, 0.6, 0.2), Color(0.85, 0.75, 0.25)][(i + ci) % 4], Vector3.ZERO, false)
+			# a market stall (BuildingSquare): its striped canopy, the produce
+			BuildingSquare.stall(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 0, rng)
 		"transformer":
 			_m(Res.box(Vector3(1.1, 1.4, 0.6)), "paint", Vector3(0, 0.7, 0), Color(0.3, 0.4, 0.3))
 			_m(Res.box(Vector3(1.2, 0.06, 0.7)), "paint", Vector3(0, 1.43, 0), Color(0.26, 0.34, 0.26))

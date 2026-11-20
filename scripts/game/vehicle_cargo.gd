@@ -16,6 +16,10 @@ const KIT_PAINT: Array[Color] = [Color(0.30, 0.32, 0.22), Color(0.21, 0.25, 0.17
 const KIT_TARP: Array[Color] = [Color(0.30, 0.32, 0.23), Color(0.36, 0.38, 0.29), Color(0.44, 0.40, 0.30), Color(0.24, 0.27, 0.20)]
 ## Ratchet-strap webbing: olive, tan and black.
 const KIT_STRAP: Array[Color] = [Color(0.28, 0.26, 0.2), Color(0.47, 0.41, 0.29), Color(0.1, 0.1, 0.09)]
+## 200-litre drums as a depot refills and swaps them: olive, a darker green,
+## black, a lubricant blue and red oxide primer. A load of drums is never one
+## paint.
+const KIT_DRUM: Array[Color] = [Color(0.28, 0.31, 0.22), Color(0.18, 0.22, 0.16), Color(0.11, 0.11, 0.105), Color(0.19, 0.23, 0.29), Color(0.38, 0.20, 0.14)]
 
 
 ## The crew's own load. Every crew stows its kit its own way: whose rucksack
