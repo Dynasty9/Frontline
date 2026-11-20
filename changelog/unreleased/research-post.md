@@ -6,6 +6,10 @@ kind = "improved"
 [[screenshots]]
 file = "comparison.jpg"
 caption = "A research post from the front and the back, before and after"
+[[videos]]
+file = "research-motion.webm"
+poster = "research-motion.jpg"
+caption = "Native research-post fixture: matched main/PR views at command distance and close angles, followed by the original-PR/cosmetic-fix conduit detail. Fixed appearance seed and 35-degree cameras; Forward+ software rendering. The decorative conduit now clears the ribbon window. This is not gameplay or performance footage."
 +++
 
 - **On the roof:** a parapet with its coping, a hatch, vents, and a cable tray on posts from the mast and the dish to the hatch.
