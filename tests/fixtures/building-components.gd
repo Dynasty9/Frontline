@@ -292,7 +292,8 @@ func _ready() -> void:
 			BuildingYards.bicycle(k.at_point(Vector3(0, 0, -3)), BuildingYards.BIKE_COLS[0])
 			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng)
 			BuildingYards.shed(k.at_point(Vector3(-4, 0, 3)), BuildingYards.SHEDS[0], k.rng)
-			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0]),
+			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0])
+			BuildingYards.graves(k.at_point(Vector3(-6, 0, -4)), 5, k.rng),
 		"storey": func(k: BuildingKit):
 			BuildingStoreys.upper(k, 9.0, 7.6, 3.0, 5.8, "brick", BuildingMaterials.color("brick"), Color(0.86, 0.85, 0.8), k.rng),
 		"fixtures": func(k: BuildingKit):
@@ -546,18 +547,31 @@ func _ready() -> void:
 	# Its chimney stands on the roof slab in the strip beside the north
 	# lights, out of them and inside the eaves, its kerb and its guys'
 	# blocks bedded on the slab, its mouth where the smoke is put.
-	var chk := kit()
-	var chm := BuildingFactory.chimney(chk, shed, chk.rng)
-	var chb := _bounds(chk.sink.root, Transform3D.IDENTITY)
-	check(chb.position.y >= BuildingFactory.SLAB - 0.05 and chb.end.y <= BuildingFactory.FLUE_TOP + 0.6 and absf(chb.end.x) <= shed.x * 0.5 + 0.2
-		and chb.position.z >= -shed.z * 0.5 and chb.end.z <= shed.z * 0.5 + 0.2, "the factory's chimney keeps to its roof slab (%s)" % chb)
-	check(is_equal_approx(chm.y, BuildingFactory.FLUE_TOP) and occupied(chk.sink.root, Vector3(chm.x, BuildingFactory.SLAB + 0.05, chm.z)), "the chimney stands on its kerb on the slab under its mouth (%s)" % chm)
-	check(occupied(chk.sink.root, Vector3(chm.x, BuildingFactory.FLUE_TOP - 1.0, chm.z)), "the chimney's stack rises to its mouth")
+	var fck := kit()
+	var fcm := BuildingFactory.chimney(fck, shed, fck.rng)
+	var fcb := _bounds(fck.sink.root, Transform3D.IDENTITY)
+	check(fcb.position.y >= BuildingFactory.SLAB - 0.05 and fcb.end.y <= BuildingFactory.FLUE_TOP + 0.6 and absf(fcb.end.x) <= shed.x * 0.5 + 0.2
+		and fcb.position.z >= -shed.z * 0.5 and fcb.end.z <= shed.z * 0.5 + 0.2, "the factory's chimney keeps to its roof slab (%s)" % fcb)
+	check(is_equal_approx(fcm.y, BuildingFactory.FLUE_TOP) and occupied(fck.sink.root, Vector3(fcm.x, BuildingFactory.SLAB + 0.05, fcm.z)), "the chimney stands on its kerb on the slab under its mouth (%s)" % fcm)
+	check(occupied(fck.sink.root, Vector3(fcm.x, BuildingFactory.FLUE_TOP - 1.0, fcm.z)), "the chimney's stack rises to its mouth")
 	for x: float in [2.0, 3.0, 4.0]:
 		for z: float in [1.5, 3.0, 3.8]:
 			var under := BuildingFactory.SLAB + BuildingRoofs.sawtooth_rise(shed.x * 0.9, 3, 0.9, x) - 0.1
-			check(not occupied(chk.sink.root, Vector3(x, under, z)), "the chimney keeps out of the north lights at (%.1f, %.1f)" % [x, z])
-	chk.sink.root.free()
+			check(not occupied(fck.sink.root, Vector3(x, under, z)), "the chimney keeps out of the north lights at (%.1f, %.1f)" % [x, z])
+	fck.sink.root.free()
+	# The FOB's command post: its HESCO square keeps to the post's footprint
+	# (the baffle of bags a step outside its way in) and under the net, and
+	# its roof carries a burst layer of bags.
+	var cp_root := Node3D.new()
+	add_child(cp_root)
+	var cp_rng := RandomNumberGenerator.new()
+	cp_rng.seed = 11
+	var cp_bags: Array = []
+	WorksModels.command_post(cp_root, cp_rng, cp_bags)
+	var cpb := _bounds(cp_root, Transform3D.IDENTITY)
+	check(cpb.position.x >= -2.6 and cpb.end.x <= 2.6 and cpb.position.z >= -2.6 and cpb.end.z <= 2.6 and cpb.end.y <= 2.45, "a FOB's command post keeps to its footprint (%s)" % cpb)
+	check(cp_bags.size() == 8, "a FOB's command post has its roof of bags and its baffle (%d rows)" % cp_bags.size())
+	cp_root.free()
 	# Cover crates: the stores stand on the ground inside the boxes their parts
 	# give for cover, and one stack is loaded differently from the next.
 	var loads := {}
@@ -606,8 +620,10 @@ func _ready() -> void:
 
 	# A farm's barn: weatherboarded walls, a steeper sheet roof with no
 	# chimney, straw on a bare floor, in each of its three colours.
-	check(BuildingMaterials.house(5) == "timber" and BuildingMaterials.house(11) == "timber", "a barn is weatherboarded")
-	for ci in [5, 11, 17]:
+	var timber := BuildingMaterials.HOUSE.find("timber")
+	var n_mat := BuildingMaterials.HOUSE.size()
+	check(BuildingMaterials.house(timber) == "timber" and BuildingMaterials.house(timber + n_mat) == "timber", "a barn is weatherboarded")
+	for ci in [timber, timber + n_mat, timber + n_mat * 2]:
 		for v in 3:
 			var bw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), v == 2, 50 + v)
 			check(bw.get_child_count() > 0, "a barn's wall builds (%d/%d)" % [ci, v])
@@ -725,6 +741,70 @@ func _ready() -> void:
 		ds.free()
 	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
 
+	# The parish church: its tower, the cross on its spire the top of it, its
+	# ground stage open to the west (a doorway men pass, solid above); its nave
+	# and chancel house walls (the west and south doors, lancets), floors (pews,
+	# the pulpit, the altar) and roofs that build, the roof's gable no higher
+	# than its pitch; the south porch in front of the south door.
+	var church := Structure.preview_model("church", -1, BuildingMaterials.HOUSE.find("church"), Vector3(Structure.CHURCH_TOWER, Structure.CHURCH_TOWER_H, Structure.CHURCH_TOWER), false, 1)
+	var chb := _bounds(church, Transform3D.IDENTITY)
+	check(church.get_child_count() > 0 and chb.end.y > 24.0 and chb.end.y < 27.5 and chb.size.x < 6.0 and chb.size.z < 6.0 and chb.position.y > -1.2, "the church tower builds, its spire the top of it (%s)" % chb)
+	church.free()
+	var tower_parts: Array = Structure.preview_parts("church", Vector3(Structure.CHURCH_TOWER, Structure.CHURCH_TOWER_H, Structure.CHURCH_TOWER))
+	var solid_low := 0
+	var doorway_free := true
+	for tp: Dictionary in tower_parts:
+		var lo: float = tp.p.y - tp.s.y * 0.5
+		if int(tp.nav) == Nav.SOLID:
+			solid_low += 1
+			# nothing solid across the doorway's line through the west wall
+			if absf(tp.p.x) < Structure.CHURCH_WEST_DOOR * 0.5 + tp.s.x * 0.5 - 0.01 and tp.p.z < 0.0 and lo < 2.0:
+				doorway_free = false
+		elif lo < 2.0:
+			doorway_free = false
+	check(solid_low >= 4 and doorway_free, "the tower's ground stage has walls round it and a doorway through its west wall (%d)" % solid_low)
+	var cci := BuildingMaterials.HOUSE.find("church")
+	check(BuildingMaterials.house(cci) == "church" and BuildingMaterials.house(cci + BuildingMaterials.HOUSE.size()) == "church", "a church is rendered in its own limewash")
+	for body: Array in [[8.0, 14.0, 6.2, false], [5.6, 4.4, 5.0, true]]:
+		var plan := Structure.church_walls(body[0], body[1], body[3])
+		var doors := 0
+		for e: Array in plan:
+			var cw := Structure.preview_model("house_wall", -1, e[3], Vector3(e[2], float(cci), 0.4), int(e[3]) == 2, 60 + doors)
+			check(cw.get_child_count() > 0, "a church wall builds (%s)" % [e])
+			cw.free()
+			if int(e[3]) == 2:
+				doors += 1
+		check(doors == (0 if body[3] else 2), "a church's nave has its west and south doors, its chancel none (%d)" % doors)
+		var porches := 0
+		for e: Array in plan:
+			if not Structure.church_porch(e).is_empty():
+				porches += 1
+		check(porches == (0 if body[3] else 1), "the south door has its porch (%d)" % porches)
+		var cr2 := Structure.preview_model("roof", -1, cci * 2, Vector3(body[0], body[2], body[1]), false, 5)
+		var crb := _bounds(cr2, Transform3D.IDENTITY)
+		check(cr2.get_child_count() > 0 and crb.end.y < body[2] + body[0] * 0.5 * tan(deg_to_rad(50.0)) + 1.4 and crb.position.y > -0.1, "a church roof builds over its walls (%s)" % crb)
+		cr2.free()
+		var cf := Structure.preview_model("floor", -1, 3, Vector3(body[0], 0.06, body[1]), false, 5)
+		var cfb := _bounds(cf, Transform3D.IDENTITY)
+		check(cf.get_child_count() > 0 and cfb.end.y < 3.05 and cfb.size.x <= body[0] + 0.5, "a church floor builds: its fittings, and its corners' quoins no higher than the ground floor's walls (%s)" % cfb)
+		cf.free()
+
+	# What a ruined or shelled house sheds lies flat on the ground in front of
+	# the wall it came off, within its length and a metre and a half of it;
+	# and a dark wall carries it while a lit one doesn't.
+	for s in 10:
+		var spk := kit()
+		spk.rng.seed = s
+		BuildingWeathering.spill(spk, 2.8, Color(0.8, 0.75, 0.7), spk.rng)
+		BuildingWeathering.shards(spk, 0.0, 1.3, spk.rng)
+		var spb := _bounds(spk.sink.root, Transform3D.IDENTITY)
+		check(spb.position.y >= -0.04 and spb.end.y <= 0.2 and spb.position.x >= -1.55 and spb.end.x <= 1.55 and spb.position.z >= 0.0 and spb.end.z <= 1.85, "debris lies flat by its wall (%s)" % spb)
+		spk.sink.root.free()
+	var lit_wall := Structure.preview_model("house_wall", -1, 0, Vector3(2.8, 1.0, 0.4), false, 31)
+	var dark_wall := Structure.preview_model("house_wall", -1, 0, Vector3(2.8, 1.0, 0.4), false, 31, true)
+	check(_bounds(dark_wall, Transform3D.IDENTITY).end.z > _bounds(lit_wall, Transform3D.IDENTITY).end.z + 0.5, "a dark house's wall has its debris in front of it")
+	lit_wall.free()
+	dark_wall.free()
 	# What stands against a wall keeps its reach out from it and in from its
 	# ends (so two walls meeting in a corner never put things in each other's
 	# way), on the floor and under the ceiling; the table and chairs keep to
@@ -825,13 +905,13 @@ func _ready() -> void:
 		bnk.sink.root.free()
 	for s7 in 30:
 		var L7: float = [2.6, 3.2, 2.33][s7 % 3]
-		var wtk := kit()
-		wtk.rng.seed = s7
-		BuildingFarm.wall_tools(wtk, L7, wtk.rng)
-		var wtb := _bounds(wtk.sink.root, Transform3D.IDENTITY)
-		check(wtb.position.y >= BuildingFarm.TOOLS - 0.01 and wtb.end.y <= 2.6 and wtb.position.z >= -0.01 and wtb.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, wtb])
-		check(wtb.position.x >= -L7 * 0.5 + 0.63 and wtb.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, wtb])
-		wtk.sink.root.free()
+		var wall_tk := kit()
+		wall_tk.rng.seed = s7
+		BuildingFarm.wall_tools(wall_tk, L7, wall_tk.rng)
+		var wall_tb := _bounds(wall_tk.sink.root, Transform3D.IDENTITY)
+		check(wall_tb.position.y >= BuildingFarm.TOOLS - 0.01 and wall_tb.end.y <= 2.6 and wall_tb.position.z >= -0.01 and wall_tb.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, wall_tb])
+		check(wall_tb.position.x >= -L7 * 0.5 + 0.63 and wall_tb.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, wall_tb])
+		wall_tk.sink.root.free()
 	# The farmyard's kit stands on the ground inside the box a vehicle or a
 	# blast knocks it down as.
 	var farm_kits := {
