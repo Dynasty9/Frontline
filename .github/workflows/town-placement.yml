@@ -1,0 +1,15 @@
+name: Town placement
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  bench-clearance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check square benches against supply-dump stays
+        run: python3 -m unittest discover -s tools -p 'test_town_bench_clearance.py' -v

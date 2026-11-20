@@ -837,10 +837,6 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	k._bag(m, Vector3(0.7, 0.26, 0.5), Vector3(-0.3, 2.37, 2.95), "canvas", Color(0.33, 0.33, 0.24), Vector3(0, 0.1, 0))
 	k._box(m, Vector3(0.45, 0.22, 0.4), Vector3(0.35, 2.35, 3.0), "paint", OLIVE)
 	k._team_mark(m, team, Vector3(0, 2.235, 0.85), Vector3(0.7, 0.02, 0.5))
-	# a camouflage net heaped on the roof beside the recognition panel, aft
-	# of the weapon stations' sweep (left or right as the crew threw it)
-	var net_side := -1.0 if posmod(seed, 2) == 0 else 1.0
-	_roof_net(k, m, Vector3(net_side * 0.72, 2.2, 0.8), Vector2(0.56, 0.8))
 	# the tactical number low on each upper side, between the exhaust and the
 	# first firing port
 	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.18, Vector3(1.45, 1.42, 3.3), Vector3(1.45, 1.42, -2.0), Vector3(1.15, 2.2, -2.0), Vector3(1.15, 2.2, 3.3), Vector2(0.585, 0.23))
@@ -1071,8 +1067,6 @@ static func _t100(k: VehicleModels, team: int) -> Vector3:
 		# a tow cable stowed along each guard beside the hull, its eyes flat on
 		# the guard over their pegs: Soviet-lineage tanks carry one a side
 		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.71, 1.077, -2.6), Vector3(s * 1.71, 1.077, 1.15)], 0.022, 0.0, -1, Vector3.UP)
-		# cut branches laid on the guard over the cable, ahead of the stowage
-		VehicleBody.cut_branches(k, m, Vector3(s * 1.71, 1.112, -2.45), Vector3(s * 1.71, 1.112, 0.55), Vector3(s, 0, 0), 31)
 	_onface(k, m, g0 + gu * 1.45, gn, gu, Vector3(0.7, 0.24, 0.05), c)
 	_hatch(k, m, Vector3(0, 1.5, -2.02), 0.27)
 	_periscope(k, m, Vector3(0, 1.5, -2.36))
@@ -1358,8 +1352,6 @@ static func _t14(k: VehicleModels, team: int) -> Vector3:
 		VehicleBody.track_guard(k, m, Vector3(s * 1.72, 1.12, 0.05), Vector3(0.24, 0.05, 8.3), s, c, null, 7, 0.0, Vector2(0.4, 0.3))
 		# the tow cable along each guard, ahead of the slat cages
 		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.76, 1.165, -3.3), Vector3(s * 1.76, 1.165, 1.0)], 0.02, 0.0, -1, Vector3.UP)
-		# cut branches laid on the guard over the cable, ahead of the cages
-		VehicleBody.cut_branches(k, m, Vector3(s * 1.76, 1.198, -3.1), Vector3(s * 1.76, 1.198, 0.2), Vector3(s, 0, 0), 31)
 		# spare track links on the hull's flank above the guard, behind the
 		# crew capsule (the plate leans in 4 cm up its height)
 		VehicleTracks.spare_links(k, m, Vector3(s * 1.659, 1.5, -1.0), Vector3.BACK, Vector3(s, 0.053, 0), 4, Vector3(0.17, 0.5, 0.045), 0.19)
@@ -1531,23 +1523,6 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 	_antenna(k, m, Vector3(-0.85, 3.12, -2.5), 2.0)
 	VehicleFittings.light_bar(k, m, Vector3(-0.6, 3.18, -3.95), Vector3(0.3, 0.12, 0.12), [Color.WHITE, Color.WHITE], "work", Vector3.ZERO, -1.0, "gunmetal_w", null)
 	k._team_mark(m, team, Vector3(0.0, 3.145, -3.7), Vector3(0.6, 0.02, 0.4))
-	# a camouflage net bundled on the cab roof between the work light and the
-	# antenna, clear of the hatch and the recognition panel, on a truck whose
-	# crew camouflages it (VehicleCloth.camouflage): the roof is the first
-	# thing the battle camera sees of a cab-over
-	_roof_net(k, m, Vector3(-0.6, 3.12, -3.1), Vector2(0.58, 0.68))
-
-
-## A camouflage net thrown in a heap on a roof at `foot` (`size` its x and z
-## reach), turned a little as it landed, by a crew that camouflages its
-## vehicle (VehicleCloth.camouflage: always if heavily, often if a little,
-## never on scenery or a wreck), so neighbouring trucks and carriers differ
-## from above.
-static func _roof_net(k: VehicleModels, p: Node3D, foot: Vector3, size: Vector2) -> void:
-	var rng := VehicleCargo.kit(k, p, foot, 17)
-	var camo := VehicleCloth.camouflage(k)
-	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
-		VehicleCloth.net(k, p, foot, Vector3(size.x, rng.randf_range(0.1, 0.17), size.y), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
 
 
 ## Tempest: the Typhoon-K with its mission module. `kind`: "" (troops under a
