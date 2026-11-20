@@ -1,14 +1,66 @@
 {
-  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
-  "source_ref": "88d4d17863be238f55f6f0265fe262f607df7fcb",
+  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
+  "source_ref": "60855f918e3557d69322cddcbaca7cc280e8f858",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
-  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=house_ruin",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=house_ruin_plaster,house_ruin_brick,house_ruin --building-match=CAMERAS",
+  "cameras": {
+    "studio": {
+      "house_ruin": [
+        0.0339,
+        1.25,
+        -0.0485,
+        9.5636,
+        43.4546
+      ],
+      "house_ruin_brick": [
+        -0.0049,
+        1.25,
+        0.0846,
+        9.6074,
+        43.7555
+      ],
+      "house_ruin_plaster": [
+        0.0195,
+        1.25,
+        0.0644,
+        9.5984,
+        43.6671
+      ]
+    },
+    "close": {
+      "house_ruin_plaster": [
+        3.4724,
+        1.8407,
+        2.9283,
+        3.4,
+        43.6671
+      ],
+      "house_ruin_brick": [
+        -3.9257,
+        1.8412,
+        -2.5132,
+        3.4,
+        43.7555
+      ],
+      "house_ruin": [
+        3.3764,
+        1.5443,
+        2.58,
+        3.4,
+        43.4546
+      ]
+    }
+  },
   "comparisons": [
     {
+      "file": "comparison.jpg",
       "subjects": [
+        "house_ruin_plaster",
+        "house_ruin_brick",
         "house_ruin"
       ],
+      "cameras": "studio",
       "crop": [
         100,
         40,
@@ -17,19 +69,51 @@
       ]
     },
     {
+      "file": "comparison.jpg",
       "subjects": [
         "town"
       ],
-      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
-      "view": "town",
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town --capture-views=ruin,ruin-command",
+      "view": "ruin",
       "crop": [
-        1130,
-        400,
-        1430,
-        640
+        280,
+        110,
+        1280,
+        710
       ]
+    },
+    {
+      "file": "close-up.jpg",
+      "subjects": [
+        "house_ruin_plaster",
+        "house_ruin_brick",
+        "house_ruin"
+      ],
+      "cameras": "close",
+      "crop": [
+        100,
+        60,
+        1500,
+        900
+      ],
+      "after_only": true
+    },
+    {
+      "file": "close-up.jpg",
+      "subjects": [
+        "town"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town --capture-views=ruin,ruin-command",
+      "view": "ruin-command",
+      "crop": [
+        500,
+        260,
+        1100,
+        620
+      ],
+      "after_only": true
     }
   ],
-  "notes": "The studio ruin from the same camera on both; the town overview's ruin (right of the crossroads) cropped.",
-  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+  "notes": "Before is main at before_ref with this change's studio subjects (house_ruin_plaster, house_ruin_brick) and town views (ruin, ruin-command) patched in, since both are new here; the studio cameras are matched by --building-match. The town ruin is the ruined house nearest the town's middle on seed 3.",
+  "composition": "PIL: matched rows of 792 px halves under Bahnschrift titles, JPEG quality 80 (comparison) and 82 (close-up 2x2)"
 }
