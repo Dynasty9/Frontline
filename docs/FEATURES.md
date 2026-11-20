@@ -1907,15 +1907,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   burnt to the wire), not black shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
   seed, so a column of one kind isn't stamped from one mould. Bonnets, roofs, consoles and deckhouses have
   chamfered edges that catch the light. See "Ninth pass" in [the component guide](vehicle-components.md).
-- **Nets, bolted armour and weather** (tenth pass): crews camouflage about half the armour and trucks with nets
-  and cut branches; armour edges are chamfered and welded, with bolted modules, stowage baskets, walkways and
+- **Bolted armour and weather** (tenth pass): armour edges are chamfered and welded, with bolted modules, stowage baskets, walkways and
   gun covers; paint varies plate to plate and gathers dust and grime at a size the battle camera sees; car
   roofs show their paint; helicopter tails are aerofoils and cowlings carry panels; boats are wet at the
   waterline. See "Tenth pass" in [the component guide](vehicle-components.md).
-- **Gun boots, foliage and matte steel** (eleventh pass): tank guns wear canvas boots, camouflaged crews'
-  branches read from the battle camera along fenders and hull sides, truck cabs have rounded roofs with
-  gutters, helicopter fairings sit on the hull, the Merkava has its arrowhead turret, dark steel and
+- **Gun boots and matte steel** (eleventh pass): tank guns wear canvas boots, crews no longer heap cut
+  branches and camouflage nets on their vehicles (a vehicle carries the kit it's issued), truck cabs have
+  rounded roofs with gutters, helicopter fairings sit on the hull, the Merkava has its arrowhead turret, dark steel and
   ID panels are matte, and boats have moulded motors. See "Eleventh pass" in
+  [the component guide](vehicle-components.md).
+- **Cockpits, bellows and cab interiors** (twelfth pass): jets and the Kajman show their pilots under clear
+  canopies, aircraft carry position lights and red beacons, gun boots are strapped bellows, military wheels
+  are pierced steel, tracks show their pins, bolts and hatches stop glinting, soot fades into the paint, and
+  the M35 and FIA truck have cabs you can see into. See "Twelfth pass" in
   [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that

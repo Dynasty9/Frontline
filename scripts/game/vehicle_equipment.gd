@@ -26,21 +26,6 @@ static func storage(k: VehicleModels, parent: Node3D, center: Vector3, size: Vec
 		VehicleDoors.hinge(k, mount, Vector3(x * size.x, size.y * 0.5, size.z * 0.43), Vector3.UP, Vector3.RIGHT, pin, mat, col)
 	for side: float in [-1.0, 1.0]:
 		k._add(mount, _plate(Vector3(minf(0.04, size.x * 0.18), lip * 2, 0.015)), "metal_dark", null, Vector3(side * size.x * 0.3, size.y * 0.5 - lip, -size.z * 0.51))
-	# A crew that camouflages its vehicle (VehicleCloth.camouflage) throws its
-	# net on a bin's lid, bundled, or lays a cut branch along it.
-	var camo := VehicleCloth.camouflage(k)
-	if camo > 0.0 and minf(size.x, size.z) >= 0.12 and maxf(size.x, size.z) >= 0.4 and VehicleCloth._upright(k, mount):
-		var rng := VehicleCargo.kit(k, parent, center, 13)
-		var lid := size.y * 0.5 + lip * 0.4
-		if rng.randf() < 0.45 * camo:
-			VehicleCloth.net(k, mount, Vector3(0, lid, 0), Vector3(size.x * 0.94, rng.randf_range(0.09, 0.17), size.z * 0.92), Vector3.ZERO, rng)
-		elif rng.randf() < 0.7 * camo and maxf(size.x, size.z) >= 0.55:
-			# A cut branch is longer than the bin it's laid on and lies low
-			# along it, its leaves hanging past both ends: on a short lid, or
-			# heaped as tall as it is wide, it would read as a planter.
-			var lay := (Vector3.RIGHT if size.x >= size.z else Vector3.BACK) * (1.0 if rng.randf() < 0.5 else -1.0)
-			var reach := maxf(size.x, size.z) * rng.randf_range(0.65, 0.85)
-			VehicleCloth.branch(k, mount, Vector3(0, lid + 0.012, 0) - lay * reach, Vector3(0, lid + 0.012, 0) + lay * reach, rng, clampf(minf(size.x, size.z) * 0.45, 0.14, 0.22))
 	k._fold(mount)
 
 
@@ -558,6 +543,13 @@ static func _bottle(radius: float, height: float) -> ArrayMesh:
 ## and 4 cm of strap lug.
 static func drum(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, axis := Vector3.UP, mat := "paint", col := Color(0.28, 0.31, 0.22), bung := Vector3.ZERO, hoop := 0.0, straps: Array = [], segments := 12) -> void:
 	var up := axis.normalized() if not axis.is_zero_approx() else Vector3.UP
+	# On a vehicle with a load of its own (VehicleCargo.kit) each drum came
+	# back from the depot in its own paint, a shade newer or faded: the issue
+	# colour on about half, else a darker green, black, blue or red oxide, so
+	# a bed of drums doesn't read as one stamped row from above.
+	var rng := VehicleCargo.kit(k, parent, center, 14)
+	if rng != null and mat == "paint":
+		col = VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_DRUM, 0.5)
 	var m := k._pivot(parent, center)
 	m.basis = VehicleFrames.aim(up)
 	var r := radius
