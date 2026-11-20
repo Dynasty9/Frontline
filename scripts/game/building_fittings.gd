@@ -479,7 +479,8 @@ static func pallet(k: BuildingKit, base: Vector3, size := Vector2(1.15, 1.0), co
 ## headlights, a domed cap with a knob on it. Painted black, worn back to the
 ## iron on the collar where kerbing wheels and boots have scuffed it.
 static func bollard(k: BuildingKit, base: Vector3, col := Color(0.07, 0.07, 0.07)) -> void:
-	k.cyl(0.125, 0.135, 0.1, base + Vector3(0, 0.05, 0), "metal_dark", Color(0.24, 0.22, 0.2), Vector3.ZERO, 12)
+	# Square paving reaches 0.1 m above this anchor; leave the collar visible.
+	k.cyl(0.125, 0.135, 0.18, base + Vector3(0, 0.09, 0), "metal_dark", Color(0.24, 0.22, 0.2), Vector3.ZERO, 12)
 	k.cyl(0.074, 0.092, 0.66, base + Vector3(0, 0.43, 0), "paint", col, Vector3.ZERO, 12)
 	k.cyl(0.092, 0.092, 0.05, base + Vector3(0, 0.66, 0), "paint", col, Vector3.ZERO, 12)
 	k.cyl(0.078, 0.078, 0.06, base + Vector3(0, 0.74, 0), "paint", Color(0.88, 0.88, 0.84), Vector3.ZERO, 12)

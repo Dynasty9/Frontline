@@ -283,7 +283,8 @@ func _subject(kind: String) -> Node3D:
 			# a row of the square's cast-iron bollards on the paving
 			var brow := Node3D.new()
 			var bk := BuildingKit.nodes(brow)
-			bk.box(Vector3(6.0, 0.12, 2.0), Vector3(0, -0.06, 0), "pavement", Color(0.62, 0.6, 0.56))
+			# Match the generated square: its paving top is 0.1 m above the post anchor.
+			bk.box(Vector3(6.0, 0.1, 2.0), Vector3(0, 0.05, 0), "square_paving", Color(0.56, 0.535, 0.49))
 			for i in 4:
 				BuildingFittings.bollard(bk, Vector3(-2.4 + i * 1.6, 0, 0))
 			return brow

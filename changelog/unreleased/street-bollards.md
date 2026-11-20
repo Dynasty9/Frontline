@@ -9,3 +9,4 @@ caption = "The square's bollards, before and after"
 +++
 
 - **Each bollard** stands in a collar set into the paving, scuffed back to the iron. It tapers up to a raised band and has a white reflective band below its domed, knobbed cap.
+- **At the paving edge**, the collar remains visible above the square's surface without moving the post or widening its base.
