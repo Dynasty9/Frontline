@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/field-hospital.md",
+  "summary": "The medic tent as a field hospital.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (medic_tent:0, medic_tent:1)",
+  "rationale": "Appearance change: both sides' tents in the studio from the same cameras, from the side and from the door end.",
+  "source_ref": "c916a601fa3a39ed44229add69a3f8ff647f4983",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/field-hospital/comparison.jpg",
+      "sha256": "088ca5898046cfc50dd4dec6f330c9b7a077caa2dece935f4893475b4a806b6c"
+    },
+    {
+      "file": "changelog/unreleased/field-hospital/capture.json",
+      "sha256": "b22b73d69926a27d115709fd036f27fe34a42697bc3bb4aca9bed6219825db22"
+    }
+  ],
+  "output": null
+}

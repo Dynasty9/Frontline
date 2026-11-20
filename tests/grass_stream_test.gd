@@ -132,6 +132,30 @@ func _ready() -> void:
 			check(packed_biome.get_pixel(x, y).r == biome.get_pixel(x, y).r, "Packing woodland preserves every biome noise texel")
 			check(packed_biome.get_pixel(x, y).g == 1.0, "Woodland coverage occupies the existing texture's green channel")
 	check(biome.get_data() == biome_before, "Woodland packing does not mutate shared terrain noise")
+	# The road map the ground draws the tracks from: 1 on a road's line, fading
+	# to 0 at Grass.ROAD_REACH, in the packed biome's blue.
+	var road := [PackedVector3Array([Vector3(-12, 0, 0.5), Vector3(12, 0, 0.5)])]
+	var near := Grass.road_field(road, 4)
+	check(near.size() == 32, "The road map covers the grid it is packed into, two bytes a texel")
+	var field := Grass.road_field(road, MapDims.N)
+	var mid := MapDims.N >> 1
+	var at := (mid * MapDims.N + mid) << 1
+	var across_2 := ((mid + 2) * MapDims.N + mid) << 1
+	check(field[at] > 250, "A road's own line is fully worn")
+	check(field[across_2] > 0 and field[across_2] < field[at], "Wear fades across the road")
+	check(field[((mid + 6) * MapDims.N + mid) << 1] == 0, "The meadow is untouched past the road's reach")
+	check(field[at + 1] == 0, "A supply route is bare earth")
+	var gravelled := Grass.road_field([], MapDims.N, road)
+	check(gravelled[at] > 250 and gravelled[at + 1] == 255, "A gravel road says so")
+	var lane := PackedByteArray()
+	lane.resize(32)
+	for x in 4:
+		lane[(2 * 4 + x) << 1] = 255
+	lane[((2 * 4 + 3) << 1) + 1] = 255
+	var with_roads := Grass.pack_biome(biome, canopy, lane)
+	check(with_roads.get_format() == Image.FORMAT_RGBA8 and with_roads.get_pixel(1, 2).b == 1.0 and with_roads.get_pixel(1, 0).b == 0.0, "Roads ride in the packed biome's blue")
+	check(with_roads.get_pixel(3, 2).a == 1.0 and with_roads.get_pixel(1, 2).a == 0.0, "Gravel rides in its alpha")
+	check(with_roads.get_pixel(3, 1).r == biome.get_pixel(3, 1).r and with_roads.get_pixel(3, 1).g == 1.0, "Packing roads keeps the noise and the woodland")
 	var generated_biome := FastNoiseLite.new().get_seamless_image(16, 16, false, false, 0.1, true)
 	var packed_generated := Grass.pack_biome(generated_biome, canopy)
 	for y in 16:

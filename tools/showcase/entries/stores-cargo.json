@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/stores-cargo.md",
+  "summary": "The town supply dumps and the FOBs' stores now use the same framed crates and olive ammunition boxes as the crate stacks.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (town, fob:0 --building-rear, --building-match)",
+  "rationale": "Appearance change of stores at two structures: matched studio stills of the supply dump and of the FOB's stores.",
+  "source_ref": "88026dfeece1f98d6f06a0a5be988e83f84aeb47",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/stores-cargo/comparison.jpg",
+      "sha256": "4e1b1c743444458ed238025e2a6d132904833f7626d0fbff2fdc79ae1ea36dc3"
+    }
+  ],
+  "output": null
+}

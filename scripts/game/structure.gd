@@ -103,6 +103,12 @@ var bent_skirts := 0
 ## (a roof over a house's wing) the roof whose looks it shares, so its
 ## covering, tint and pitch match the house's: that roof's eid (0: its own)
 var look := 0
+## (a furnished floor) which of its walls the door is in: 0 the front (-z), 1
+## the back, 2 the -x end, 3 the +x end; -1 not known. It's laid out from it.
+var entry := -1
+## (a shop's walls) fitted out inside as a shop's, not a house's: shelving
+## where a house has its wardrobe, a blind or nothing at its windows.
+var shop := false
 var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
 var _door_kicked := false
 var _door_leaves: Array = []  # (view) the door leaves: [hinge pivot, how far it swings open]
@@ -207,6 +213,10 @@ func apply_props(d: Dictionary) -> void:
 		door_shut = d.door
 	if d.has("look"):
 		look = d.look
+	if d.has("entry"):
+		entry = d.entry
+	if d.has("shop"):
+		shop = d.shop
 	if d.has("zc"):
 		zone_c = d.zc
 		zone_r = d.zr
@@ -254,6 +264,10 @@ func get_props() -> Dictionary:
 		d["zr"] = zone_r
 	if look > 0:
 		d["look"] = look
+	if entry >= 0:
+		d["entry"] = entry
+	if shop:
+		d["shop"] = true
 	if is_finite(wreck_turret_yaw):
 		d["wreck_turret_yaw"] = wreck_turret_yaw
 		d["bent_skirts"] = bent_skirts
@@ -953,10 +967,14 @@ func take_damage(amount: float, _source = null) -> void:
 
 
 func smash(_by) -> void:
-	if not smashable or gone:
+	if indestructible or not smashable or gone:
 		return
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 0.8, 0), _main_color(), 8])
 	world.fx_event([Fx.SOUND, "thud", position])
+	if skind == "house_wall":
+		house_dark()
+		_bring_down_floors(true)
+		world.call_deferred("spawn", "structure", {"skind": "rubble", "pos": position, "yaw": yaw, "size": Vector3(size.x * 0.8, 0.0, 1.2)})
 	if skind == "tree":
 		world.fx_event([Fx.TREE_FALL, position, Defs.yaw_of(Defs.flat(position - _by.position)), eid, variant])
 	world.despawn(self)
@@ -1065,10 +1083,19 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				# pictures and a shelf over it, unless it's tall
 				var home := RandomNumberGenerator.new()
 				home.seed = rng.seed ^ 0x40e5c1
-				if home.randf() >= 0.8 or not BuildingInteriors.against_wall(room, L, home):
+				if shop:
+					# (a shop's: its shelving, a cooler, a rack of fruit)
+					BuildingInteriors.shop_wall(room, L, home)
+				elif home.randf() >= 0.8 or not BuildingInteriors.against_wall(room, L, home):
 					BuildingFurnishings.wall_things(room, L)
 			1:
 				BuildingFurnishings.radiator(room, 0.0, 1.0)
+	elif variant == 0:
+		# (a barn's: the tools hung up over what's stood against it, from a
+		# stream of their own)
+		var tools := RandomNumberGenerator.new()
+		tools.seed = rng.seed ^ 0x6a2b07
+		BuildingFarm.wall_tools(room, L, tools)
 	match variant:
 		3:
 			# a shop's window, in the shop's own paint (the fascia's colours),
@@ -1102,6 +1129,8 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				opts["glazing"] = 0.85
 			if barn:
 				opts["curtains"] = ""
+			elif shop and opts["curtains"] != "blind":
+				opts["curtains"] = ""  # (a shop's window: a blind, or nothing)
 			if rng.randf() < 0.45:
 				opts["shutters"] = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
 				opts["shutter"] = "louvred" if rng.randf() < 0.5 else "boarded"
@@ -1340,10 +1369,11 @@ func _swing_leaves(kicked: bool) -> void:
 
 ## A building's model on its own, without a world (the field manual's preview).
 ## `id` stands in for the entity id its look is seeded from.
-static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0, dark := false) -> Node3D:
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0, dark := false, shop := false) -> Node3D:
 	var st := Structure.new()
 	st.eid = id
 	st.dark = dark
+	st.shop = shop
 	st.skind = kind
 	st.team = side
 	st.variant = v
@@ -2069,22 +2099,25 @@ func _destroyed(quiet := false) -> void:
 
 ## A house wall knocked out brings down the storey drawn over it, and the
 ## roof that carries it, rather than leave them standing on air.
-func _bring_down_floors() -> void:
+func _bring_down_floors(rammed := false) -> void:
 	for st: Structure in world.structures_near(position, 16.0):
-		if st.gone or st.skind != "roof" or st.size.y <= BuildingStoreys.GROUND + 0.5:
+		if st.gone or st.skind != "roof" or (not rammed and st.size.y <= BuildingStoreys.GROUND + 0.5):
 			continue
 		var half := Vector2(st.size.x * 0.5 + 0.3, st.size.z * 0.5 + 0.3)
 		if Defs.point_in_obb(Vector2(position.x, position.z), Vector2(st.position.x, st.position.z), half, st.yaw):
-			st.call_deferred("_fall_in")
+			st.call_deferred("_fall_in", rammed)
 
 
 ## A roof (and the storey under it) falling in: the debris, and it's gone.
-func _fall_in() -> void:
+func _fall_in(rammed := false) -> void:
 	if gone:
 		return
 	world.stat("storey_fell")
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, size.y * 0.5, 0), _main_color(), 18])
-	world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 0.8])
+	if rammed:
+		world.fx_event([Fx.SOUND, "thud", position])
+	else:
+		world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 0.8])
 	world.despawn(self)
 
 
@@ -3125,7 +3158,7 @@ func _mk(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, 
 ## their models that end up merged straight into the merged meshes (see
 ## Mats.Bake), with the surfaces _skin would have given them. The rest are made
 ## as nodes as ever: the door leaves (they swing), anything glassy or glowing.
-const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof"]
+const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof", "medic_tent"]
 var _bake: Mats.Bake = null
 
 
@@ -3182,7 +3215,7 @@ func _build_model() -> void:
 	var bags: Array = []
 	var works_keep: Array = []
 	for p in parts:
-		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town"] or skind in WorksModels.OWN_KINDS:
+		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town", "crates"] or skind in WorksModels.OWN_KINDS:
 			break
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
@@ -3192,10 +3225,12 @@ func _build_model() -> void:
 		var col: Color = p.color
 		if skind == "house_wall":
 			col = BuildingMaterials.house_color(int(size.y), col)
-		if skind in ["house_wall", "rubble", "crates"]:
+		if skind in ["house_wall", "rubble"]:
 			col = Res.vary(col, 0.05, rng)
 		if skind == "rubble":
 			continue  # (drawn as a heap, below)
+		if skind == "medic_tent":
+			continue  # (its tent stands where its part is, below)
 		if skind == "house_wall":
 			# (what it was tinted, for stains to fade into: see _tone)
 			var drawn := Res.mat(col).albedo_color
@@ -3252,7 +3287,7 @@ func _build_model() -> void:
 			BuildingWeathering.heap(_kit(rng), size.x, maxf(1.0, size.z), rng)
 		"floor":
 			# a rug in most houses' main room, lying flat
-			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2:
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2 and variant != 3:
 				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
 					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
 			# a ruin: its roof burned and fell in on the floor
@@ -3267,6 +3302,13 @@ func _build_model() -> void:
 			home.seed = rng.seed ^ 0x7ab1e5
 			if variant == 0 and size.x > 4.5 and size.z > 4.5 and home.randf() < 0.75:
 				BuildingInteriors.table(_kit(home), size, BuildingInteriors.WOODS[home.randi() % BuildingInteriors.WOODS.size()], home)
+			# a shop's: its shelving, its counter, its stock
+			if variant == 3:
+				BuildingInteriors.shop(_kit(home), size, home, entry)
+			# a barn's: the hay, the stalls, the cart, the bench (clear of the
+			# wall its door is in)
+			if variant == 2:
+				BuildingFarm.barn(_kit(home), size, entry, home)
 		"bridge":
 			_bridge_model(rng)
 		"dock":
@@ -3276,11 +3318,13 @@ func _build_model() -> void:
 				_storey_model(rng)
 			_roof_model(rng)
 		"crates":
-			for p in parts:
-				_bx(p.p + Vector3(0, p.s.y * 0.5 + 0.01, 0), Vector3(p.s.x * 0.9, 0.04, p.s.z * 0.9), C_WOOD.darkened(0.3), p.r)
+			# stores stacked as they came off the lorry: framed crates and ammunition
+			# boxes, each load on its pallet, inside the boxes the parts give for cover
+			BuildingCargo.stack(_kit(rng), variant, rng)
 		"car":
 			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
-			var civ_key: String = ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
+			# (variant 5: a farm's tractor, parked in its yard; 6 on, burnt out)
+			var civ_key: String = "tractor" if variant % 6 == 5 else ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
 			if civ_key in VmCiv.KEYS:
 				_vehicle_model(civ_key, -1, eid, variant >= 6)
 			else:
@@ -3315,9 +3359,7 @@ func _build_model() -> void:
 			BuildingFittings.mast(fk, Vector3(-1.8, 0, -1.8), 9.0, 3, PI * 0.25, Color(0.25, 0.26, 0.27), 0.42, 2.4)
 			_flag = _box(Vector3(-1.1, 7.6, -1.8), Vector3(1.4, 0.8, 0.04), tc)
 			BuildingFittings.whip(fk, Vector3(1.8, 2.4, 1.6), 3.6)
-			for i in 4:
-				BuildingFittings.crate(fk, Vector3(-4.5 + i * 0.9, 0, 3.8), Vector3(0.8, 0.5, 0.5), Color(0.3, 0.33, 0.2), rng.randf_range(-0.1, 0.1), "paint")
-				BuildingFittings.crate(fk, Vector3(-4.5 + i * 0.9 + 0.1, 0.5, 3.8), Vector3(0.8, 0.4, 0.5), Color(0.28, 0.31, 0.19), rng.randf_range(-0.15, 0.15), "paint")
+			BuildingCargo.ammo_row(fk, Vector3(-4.6, 0, 3.8), 4, 3, rng)
 			for i in 3:
 				BuildingFittings.drum(fk, Vector3(3.6 + i * 0.65, 0, -3.9), Color(0.3, 0.33, 0.24), false, i * 0.7)
 			_mk(Res.box(Vector3(1.2, 0.9, 0.8)), "paint", Vector3(4.0, 0.45, 3.6), Vector3(0, 0.3, 0), Color(0.33, 0.35, 0.28))
@@ -3327,16 +3369,13 @@ func _build_model() -> void:
 			# tarp, fuel drums, and a flagpole flying the colours of whoever holds
 			# the place (the town's own while nobody does)
 			var tk := _kit(rng)
+			# (two pallet loads as BuildingCargo stacks them: boxes of rounds, and
+			# a crate with boxes on it or a tall crate; the rest under the tarp)
+			var top := INF
 			for ix in 2:
-				BuildingFittings.pallet(tk, Vector3(0.55 + (ix - 0.5) * 1.2, 0, 0.35), Vector2(1.18, 1.5))
-			for ix in 2:
-				for iz in 2:
-					for iy in 2:
-						var cp := Vector3(0.55 + (ix - 0.5) * 1.14, 0.13 + iy * 0.55, 0.35 + (iz - 0.5) * 0.69)
-						var cyaw := rng.randf_range(-0.05, 0.05)
-						BuildingFittings.crate(tk, cp, Vector3(1.08, 0.53, 0.64), Res.vary(C_WOOD, 0.06, rng), cyaw, "wood", iz == 0 or ix == 1, iy == 1)
-			_mk(Res.box(Vector3(1.32, 0.86, 1.12)), "canvas", Vector3(0.85, 1.67, 0.4), Vector3(0, 0.06, 0), Color(0.33, 0.36, 0.25))
-			_mk(Res.prism(Vector3(1.12, 0.18, 1.34)), "canvas", Vector3(0.85, 2.19, 0.4), Vector3(0, PI * 0.5 + 0.06, 0), Color(0.31, 0.34, 0.23))
+				top = minf(top, BuildingCargo.pallet_load(tk, Vector3(0.55 + (ix - 0.5) * 1.2, 0, 0.35), 1 if ix == 0 else (0 if rng.randf() < 0.5 else 2), rng))
+			_mk(Res.box(Vector3(1.32, 0.86, 1.12)), "canvas", Vector3(0.85, top + 0.43, 0.4), Vector3(0, 0.06, 0), Color(0.33, 0.36, 0.25))
+			_mk(Res.prism(Vector3(1.12, 0.18, 1.34)), "canvas", Vector3(0.85, top + 0.95, 0.4), Vector3(0, PI * 0.5 + 0.06, 0), Color(0.31, 0.34, 0.23))
 			var drum_cols := [Color(0.45, 0.17, 0.12), Color(0.2, 0.3, 0.42), Color(0.3, 0.33, 0.2), Color(0.62, 0.5, 0.18)]
 			for ix in 2:
 				for iz in 3:
@@ -3430,37 +3469,9 @@ func _build_model() -> void:
 			BuildingFittings.flagpole(fk, Vector3(-size.x * 0.4 - 0.66, 5.3, 0), 1.5, Color(0.6, 0.6, 0.58), false)
 			_flag = _box(Vector3(-size.x * 0.4, 6.4, 0), Vector3(1.2, 0.7, 0.04), tc)
 		"medic_tent":
-			# (the placeholder block goes now: a deferred free would still be
-			# baked into the merged model below)
-			for c in model.get_children():
-				model.remove_child(c)
-				c.queue_free()
-			var hz := size.z * 0.5
-			# an olive-drab ward tent with the red cross on white panels
-			_mk(Res.prism(Vector3(size.z, 2.8, size.x)), "canvas", Vector3(0, 1.4, 0), Vector3(0, PI / 2, 0), Color(0.4, 0.41, 0.31))
-			for sx in [-1.0, 1.0]:
-				_mk(Res.box(Vector3(0.05, 2.75, 0.05)), "wood_dark", Vector3(sx * (size.x * 0.5 - 0.1), 1.375, 0))
-			var ang := atan2(2.8, hz)
-			for sd in [-1.0, 1.0]:
-				var nrm := Vector3(0, hz, sd * 2.8).normalized()
-				var cpos := Vector3(0, 1.4, sd * hz * 0.5) + nrm * 0.03
-				var rot := Vector3(sd * (PI * 0.5 - ang), 0, 0)
-				_mk(Res.box(Vector3(1.9, 0.02, 1.9)), "paint", cpos, rot, Color(0.9, 0.9, 0.88), false)
-				_mk(Res.box(Vector3(1.4, 0.03, 0.42)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
-				_mk(Res.box(Vector3(0.42, 0.03, 1.4)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
-				for x in [-size.x * 0.4, 0.0, size.x * 0.4]:
-					BuildingWire.guy(_kit(rng), Vector3(x, 1.4, sd * hz * 0.5), Vector3(x, 0.0, sd * (hz + 1.4)), true, "peg")
-			_mk(Res.box(Vector3(0.06, 2.0, 1.5)), "canvas", Vector3(-size.x * 0.5 - 0.02, 1.0, 0), Vector3.ZERO, Color(0.25, 0.25, 0.22))
-			_mk(Res.box(Vector3(size.x + 0.6, 0.06, size.z + 0.6)), "canvas", Vector3(0, 0.03, 0), Vector3.ZERO, Color(0.3, 0.28, 0.24), false)
-			for i in 2:
-				var sp := Vector3(-size.x * 0.5 - 1.6, 0.35, -1.0 + i * 1.6)
-				_mk(Res.box(Vector3(2.0, 0.05, 0.6)), "canvas", sp, Vector3(0, 0.1, 0), Color(0.35, 0.38, 0.28))
-				_mk(Res.box(Vector3(2.4, 0.05, 0.05)), "wood", sp + Vector3(0, -0.02, 0.32), Vector3(0, 0.1, 0))
-				_mk(Res.box(Vector3(2.4, 0.05, 0.05)), "wood", sp + Vector3(0, -0.02, -0.32), Vector3(0, 0.1, 0))
-			_mk(Res.cyl(0.03, 0.03, 4.2, 4), "steel", Vector3(size.x * 0.5 + 0.8, 2.1, hz + 0.5))
-			_mk(Res.box(Vector3(1.0, 0.65, 0.03)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.92, 0.92, 0.9), false)
-			_mk(Res.box(Vector3(0.6, 0.16, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
-			_mk(Res.box(Vector3(0.16, 0.5, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
+			# a field hospital: a frame tent with the red cross, stretchers and
+			# stores at its door (BuildingTents; it stands where its part is)
+			BuildingTents.field_hospital(_kit(rng), size, team, rng)
 		"research":
 			# a precast block under a slab: ribbon glazing round it, a steel
 			# door, a dish, a guyed mast with the flag, plant on the roof and
@@ -3602,14 +3613,9 @@ func _build_model() -> void:
 			_box(Vector3(5.3, 2.85, -4.8), Vector3(1.0, 0.35, 0.3), Color(1.0, 0.5, 0.1))
 			_flag = _box(Vector3(-4.8, 0.5, 4.8), Vector3(0.6, 0.6, 0.6), tc)
 		"tunnel":
-			Res.mi(model, Res.cyl(1.0, 1.0, 0.04, 14), Res.mat(Color(0.03, 0.03, 0.03)), Vector3(0, 0.04, 0), Vector3.ZERO, false)
-			Res.mi(model, Res.torus(1.0, 1.6), Res.mat(C_DIRT), Vector3(0, 0.08, 0))
-			_box(Vector3(0, 0.25, -1.05), Vector3(2.0, 0.2, 0.2), C_WOOD)
-			_box(Vector3(0, 0.25, 1.05), Vector3(2.0, 0.2, 0.2), C_WOOD)
-			_box(Vector3(-0.9, 0.7, 0), Vector3(0.15, 1.4, 0.15), C_WOOD)
-			_box(Vector3(0.9, 0.7, 0), Vector3(0.15, 1.4, 0.15), C_WOOD)
-			_box(Vector3(0, 1.4, 0), Vector3(2.0, 0.15, 0.15), C_WOOD)
-			_flag = _box(Vector3(0, 1.75, 0), Vector3(0.5, 0.3, 0.03), tc)
+			# a dug shaft, shored, sandbagged, a sheet propped over it (WorksModels)
+			var hang := WorksModels.tunnel_mouth(model, rng)
+			_flag = _box(hang, Vector3(0.5, 0.3, 0.03), tc)
 	if not bags.is_empty():
 		_bag_walls(bags, rng)
 	_skin(model)
