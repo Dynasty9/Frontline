@@ -110,7 +110,7 @@ const MOVING_LOW := 4  # (Low's coarse grid can't carry the shortest of them)
 const STEEP := 0.75  # how far the crests bunch up in the roughest sea (at 1 they'd fold over)
 ## The sea in each weather: how big the (swell, wind sea) run.
 const SEA_STATE := {"day": Vector2(0.85, 0.6), "hazy": Vector2(0.7, 0.4), "golden": Vector2(0.55, 0.3), "dawn": Vector2(0.45, 0.2),
-	"dusk": Vector2(0.5, 0.25), "night": Vector2(0.75, 0.5), "overcast": Vector2(1.0, 0.85), "rain": Vector2(1.15, 1.1)}
+	"dusk": Vector2(0.5, 0.25), "night": Vector2(0.75, 0.5), "overcast": Vector2(1.0, 0.85), "rain": Vector2(1.15, 1.1), "snow": Vector2(0.8, 0.55)}
 const SEA_MAX := 1.25
 ## The waves build over the first OFFSHORE metres out from the beach (in
 ## nearer, the surf takes over), which also keeps a dock's jetty dry.
@@ -536,7 +536,7 @@ func apply_mood(d: Dictionary, mood: String) -> void:
 func apply_light(d: Dictionary, weights: Dictionary) -> void:
 	if mat == null:
 		return
-	var cloudy := _by(weights, {"overcast": 1.0, "rain": 1.0}, 0.55)
+	var cloudy := _by(weights, {"overcast": 1.0, "rain": 1.0, "snow": 1.0}, 0.55)
 	for m in [mat, wake_mat]:
 		m.set_shader_parameter("zenith", d.zenith)
 		m.set_shader_parameter("horizon", d.horizon)
@@ -545,15 +545,15 @@ func apply_light(d: Dictionary, weights: Dictionary) -> void:
 	var night := _by(weights, {"night": 1.0}, 0.0)
 	mat.set_shader_parameter("cloud_color", Color.WHITE.lerp(Color(0.06, 0.06, 0.06).linear_to_srgb(), night) if night < 1.0 else Color(0.06, 0.06, 0.06).linear_to_srgb())
 	# (under cloud there's no glitter, only a sheen)
-	mat.set_shader_parameter("sun_k", _by(weights, {"overcast": 0.1, "rain": 0.06, "hazy": 0.55}, 1.0))
+	mat.set_shader_parameter("sun_k", _by(weights, {"overcast": 0.1, "rain": 0.06, "snow": 0.08, "hazy": 0.55}, 1.0))
 	mat.set_shader_parameter("rain", _by(weights, {"rain": 1.0}, 0.0))
 	# the caustics need a sun to throw: none under cloud, a faint web by moonlight
-	_caustic_k = _by(weights, {"overcast": 0.0, "rain": 0.0, "hazy": 0.5, "night": 0.12, "dawn": 0.7, "dusk": 0.7}, 1.0)
+	_caustic_k = _by(weights, {"overcast": 0.0, "rain": 0.0, "snow": 0.0, "hazy": 0.5, "night": 0.12, "dawn": 0.7, "dusk": 0.7}, 1.0)
 	mat.set_shader_parameter("caustic_k", _caustic_k)
 	if caustics:
 		caustics.set_strength(_caustic_k * THROWN)
 	# rain and a grey sky: a darker, duller sea
-	var dull := _by(weights, {"overcast": 1.0, "rain": 1.0, "night": 1.0}, 0.0)
+	var dull := _by(weights, {"overcast": 1.0, "rain": 1.0, "snow": 1.0, "night": 1.0}, 0.0)
 	mat.set_shader_parameter("sea_tint", Color(0.025, 0.14, 0.21).lerp(Color(0.08, 0.15, 0.17), dull))
 	# the sea the weather brings: glassy at dawn, a storm sea in the rain (and
 	# the breeze getting up through the morning while time passes)

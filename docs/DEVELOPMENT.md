@@ -459,7 +459,11 @@ main menu (nothing a test drives needs it, and leaving it out saves a second or 
 
 The tests live in `tests/` (Node, no dependencies): `tests/lib/game.mjs` starts a headless game, connects and
 wraps the commands, and each `*.test.mjs` is a `node:test` file. Run them with `npm test` in `tests/`, with
-`GODOT` set to your Godot executable (`FL_TEST_VERBOSE=1` echoes the games' output). A test looks like this:
+`GODOT` set to your Godot executable (`FL_TEST_VERBOSE=1` echoes the games' output). On Windows or Linux, build
+the native extension first, as CI does (`python tools/build_native.py`, then `--import`): without it the game runs
+its GDScript fallbacks (as on macOS and in a browser), which keep the rules but can tip a close fight the other way,
+so a scenario's counters can fall short of what CI saw. The first game each file starts warns when it isn't loaded.
+A test looks like this:
 
 ```js
 const game = await Game.start();
@@ -488,7 +492,7 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 
 | command | fields | answers |
 | --- | --- | --- |
-| `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless` |
+| `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless`, `native` (the native extension is loaded) |
 | `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI), `skirmish: true` (Play vs AI: you, with `play`, against the AI commander); `seed`, `play`, `ai_allies` (with `play`: an AI commander on your side too), `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
 | `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
 | `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |

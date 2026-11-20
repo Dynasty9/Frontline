@@ -459,8 +459,10 @@ static func craft_number(seed: int, letters := 2, digits := 4, salt := 0) -> Str
 	return out
 
 
-## Embossed characters as raised bars (their top and four sides) standing up
-## from z = 0, one merged mesh per registration and height.
+## Embossed characters as raised bars standing up from z = 0, one merged mesh
+## per registration and height: only their tops, since a bar stands a
+## millimetre or so proud and its sides (four fifths of the triangles, on
+## every parked car's two plates) never show past arm's length.
 static func _emboss(text: String, height: float) -> ArrayMesh:
 	var key := "%s|%.4f" % [text, height]
 	if _embossed.has(key):
@@ -471,12 +473,6 @@ static func _emboss(text: String, height: float) -> ArrayMesh:
 		var a := r.position
 		var b := r.end
 		VehicleSurface._quad(data, Vector3(a.x, a.y, raise), Vector3(b.x, a.y, raise), Vector3(b.x, b.y, raise), Vector3(a.x, b.y, raise), Vector3.BACK)
-		# The four sides, each [from, to, outward].
-		for side: Array in [[Vector2(a.x, a.y), Vector2(b.x, a.y), Vector3.DOWN], [Vector2(b.x, a.y), Vector2(b.x, b.y), Vector3.RIGHT],
-				[Vector2(b.x, b.y), Vector2(a.x, b.y), Vector3.UP], [Vector2(a.x, b.y), Vector2(a.x, a.y), Vector3.LEFT]]:
-			var p: Vector2 = side[0]
-			var q: Vector2 = side[1]
-			VehicleSurface._quad(data, Vector3(p.x, p.y, raise), Vector3(q.x, q.y, raise), Vector3(q.x, q.y, 0), Vector3(p.x, p.y, 0), side[2])
 	var mesh := VehicleSurface._mesh(data)
 	_embossed[key] = mesh
 	return mesh

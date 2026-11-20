@@ -8,8 +8,8 @@ extends PanelContainer
 
 signal closed
 
-const MOODS := ["random", "day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
-const MOOD_NAMES := ["Random each battle", "Midday", "Golden hour", "Dawn", "Dusk", "Overcast", "Hazy", "Night", "Rain & thunder"]
+const MOODS := ["random", "day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain", "snow"]
+const MOOD_NAMES := ["Random each battle", "Midday", "Golden hour", "Dawn", "Dusk", "Overcast", "Hazy", "Night", "Rain & thunder", "Snow"]
 const RES_NAMES := ["1280 x 720", "1600 x 900", "1920 x 1080", "2560 x 1440", "3840 x 2160"]
 
 var _rows := {}  # key -> control

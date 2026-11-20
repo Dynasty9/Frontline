@@ -1,0 +1,23 @@
+{
+  "entry": "changelog/unreleased/vehicle-works.md",
+  "summary": "The factory has a brick dado under its sheeting, glazing high along its sides and back, gutters and downpipes, bollards either side of the shutter, a personnel door with a canopy, and gas bottles and drums against its walls. Its chimney is now a guyed steel boiler stack.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (factory:0, --building-single, front and --building-rear, --building-match)",
+  "rationale": "Appearance change of the factory's walls and chimney: matched studio stills from the front and the back show the dado, glazing, rainwater goods and clutter; a close-up sheet cut from the same renders shows the brick stack replaced by the guyed steel stack.",
+  "source_ref": "86697f6d1888d3c0242d68c383c12d06e6c1e825",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-works/comparison.jpg",
+      "sha256": "027ab9ce9479ce6649276a0a4ceaa406563d3120eb9f9b3e51833e0281bbc98a",
+      "capture": "BEFORE row kept from the earlier sheet (before_ref); AFTER row cut from 1600x900 renders at source_ref, boxes front (326,156) and rear (344,148), 930 wide, scaled to 700x500"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-works/chimney.jpg",
+      "sha256": "26e2ead8cead19838c6036fea58bec9299ae4fe6785daaf9a08b03aeb80300d8",
+      "capture": "1600x900 renders at chimney_before_ref (before) and source_ref (after), matched cameras; boxes front (330,150) and rear (930,170), 420 wide, scaled to 700x500"
+    }
+  ],
+  "output": null,
+  "chimney_before_ref": "2e6ed598f7efac78b540d436ff55afb41a2d4bb7"
+}
