@@ -1,0 +1,490 @@
+{
+  "entry": "changelog/unreleased/snow.md",
+  "summary": "A snow weather: falling flakes, a white battlefield with wind-scoured drifts and churned mud, patchy snow on roofs, trees and the flat tops of vehicles, and thaws round fires and idling engines.",
+  "medium": "motion",
+  "stage": "Actual tank movement, engine thaw and untouched powder controls; retained bank comparison",
+  "rationale": "A compact labeled sequence demonstrates genuine tread generation, 96 seconds of engine thaw, and the wet patch remaining after departure. Matched parked controls distinguish thaw from a vehicle shadow. Previous bank comparison and historical evidence are retained.",
+  "source_ref": "56add8938c4407b0a110286338f1f14ad20d748c",
+  "before_ref": "7d5e10404d65ebf2bf6b54c3c84f7d319c45c570",
+  "capture": {
+    "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window, the user's settings",
+    "town": "--aivai --seed=3 --mood=overcast / --mood=snow --nohud --focus-struct=town --shot-at=20; overcast from bd4f1b598ae80c6543cd4816e3f49a6ead730876, snow from this branch",
+    "battle": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=overcast / --mood=snow --nohud --focus=-84,24 --zoom=34 --shot-at=10",
+    "note": "Each capture scaled to 798x448 and laid out 2x2 with OVERCAST / SNOW labels. The battle can differ slightly run to run. Compatibility renderer checked separately (--rendering-method gl_compatibility with forced vertex shading, the town and the tank close-up); not in the sheet.",
+    "wide": "--aivai --seed=3 --mood=snow --nohud --focus-struct=town --zoom=220 --pitch=-22 --shot-at=15",
+    "tank": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=snow --nohud --focus=-84,24 --focus-vehicle=tank --focus-vehicle-at=9 --zoom=12 --pitch=-34 --shot-at=10",
+    "melt": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=9,-6 --zoom=15 --pitch=-36 --shot-at=90, from a scratch copy whose fire scenario adds a burning wreck (variant 6 at 4,-6, given 600 s of fuel) and a stopped tank (13,-5); rendered on 51dfff0e plus the melt commit; the before/after for the pull request is the same setup from c0043fca. Compatibility checked with --rendering-method gl_compatibility (OpenGL 3.3). Superseded 2026-11-19 by engine_deck_thaw_2026_11_19.melt_still (the engine thaw moved onto the deck).",
+    "drifts": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=2,15 --zoom=26 --pitch=-48 --shot-at=20, from a scratch copy whose fire scenario adds a hedgerow (4 low_wall variant 1) and a stone wall (3 low_wall variant 0) at yaw 1.178, across Fires.WIND; the pull request also shows a burning town house (--aivai --seed=3, roof at 2.6,30 lit at once) before/after",
+    "cloud_review_2026_11_18": {
+      "source_ref": "85169252e97c1934a77dfc514020e6940f79d081",
+      "main_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+      "renderer": "Godot 4.7.2, Compatibility, Mesa llvmpipe software rendering, Medium, 960x540, fixed 24 fps; not a performance measurement",
+      "dry_command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x540 --fixed-fps 24 -- --scenario=fire --seed=3 --mood=day --nohud --preset=medium --set=perf:0 --focus=15,15 --zoom=15 --pitch=-30 --screenshot=OUT.png --shot-at=2",
+      "dry_comparison": "Same command on both refs. Full uncropped frames, stacked with revision labels. Lower 420 rows of the two raw 960x540 captures are pixel-identical; upper background fire effects differ.",
+      "validation": [
+        "Full project import; lighting/terrain/visibility checks; grass stream failures=0; 19 of 20 affected integration tests pass. Breach leaves one defender fighting at 60 seconds on both this revision and untouched main.",
+        "The new drift removal test fails against the original snow_drift.gd and passes against this revision. This negative control is a regression diagnostic, not full-build validation.",
+        "Compatibility normal camera and dry close view render without SCRIPT ERROR or SHADER ERROR. Resource/RID leaks on shutdown also occur on untouched main.",
+        "Beginning, middle and end frames inspected; complete VP9 decode verified by ffmpeg and 96 frames counted by ffprobe. Exact code-commit CI 8516925: Check, Website and Changelog passed."
+      ],
+      "limitations": [
+        "No hardware GPU is exposed in the cloud workspace. High-preset software attempts and Medium Forward+ did not complete usable captures.",
+        "GPU performance, full engine-thaw/tracked-slush sequences, weather/camera transitions and broader High-preset art review remain unverified. Retained older stills are historical evidence.",
+        "The bank reads as a sharp pale band in the close Compatibility view. Snowfall is subtle against the white ground. Edge treatment and readability need further art review on Forward+ hardware."
+      ],
+      "motion_command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x540 --fixed-fps 24 -- --scenario=fire --seed=3 --mood=snow --nohud --preset=medium --set=perf:0 --focus=4,-18 --zoom=18 --pitch=-35 --screenshot=OUT/fire.png --shot-at=2 --shots=96 --shot-every=0.041666667",
+      "encode": "ffmpeg -framerate 24 -i fire_%d.png -an -c:v libvpx-vp9 -crf 31 -b:v 0 -pix_fmt yuv420p -row-mt 1 hedge-motion.webm",
+      "media": {
+        "duration_seconds": 4,
+        "frames": 96,
+        "fps": 24,
+        "width": 960,
+        "height": 540,
+        "audio": "none",
+        "bytes": 1087309
+      }
+    },
+    "historical_inventory_refs": {
+      "source_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+      "before_ref": "bd4f1b598ae80c6543cd4816e3f49a6ead730876",
+      "note": "The existing town, tank, melt, drifts and overcast comparison stills predate the cloud review. Their original capture notes above are retained."
+    },
+    "bank_edge_followup": {
+      "source_ref": "8c7f9fa4db4df5f35e811fe5cea3e023a815e2e3",
+      "before_ref": "1b8bfc985e18027c83e603d7ca76ce526117b350",
+      "renderer": "Godot 4.7.2, Compatibility, Mesa llvmpipe software rendering, Medium, 960x540 per pane, fixed 24 fps. Capture is not a performance measurement.",
+      "command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x540 --fixed-fps 24 --script tests/fixtures/environment-views.gd -- --scenario=fire --seed=3 --mood=snow --nohud --preset=medium --set=perf:0 --capture-set=snow-bank --capture-prefix=OUT",
+      "baseline_fixture": "The camera-only environment-views.gd fixture from the source ref was copied into the isolated before checkout; all game code is the original before ref. Both sides use identical camera, preset/exposure, seed and simulation timing. Fire and particle variation is cosmetic.",
+      "views": [
+        {
+          "name": "normal",
+          "focus": [
+            4,
+            0,
+            -18
+          ],
+          "zoom": 30,
+          "pitch": -35,
+          "yaw": 0,
+          "simulation_start": 2.5,
+          "simulation_end": 4.5
+        },
+        {
+          "name": "low",
+          "focus": [
+            4,
+            0,
+            -18
+          ],
+          "zoom": 18,
+          "pitch": -12,
+          "yaw": 0,
+          "simulation_start": 5,
+          "simulation_end": 7
+        }
+      ],
+      "change": "Remove the raised alpha-cut lip by burying the thin skirt. Full crest remains 0.48m. Wind stamp, ground, road, grass and snowfall shaders unchanged; drift declares the same five samplers and removes one fragment lookup. No GPU speedup claim.",
+      "validation": [
+        "Full project import and three focused lighting/material checks pass.",
+        "Dry foreground lower 420 rows remains pixel-identical to the prior branch dry render, previously matched against main.",
+        "Changelog validation and presentation audit pass.",
+        "Identical captured camera matrices, simulation times and fixture hashes verified. Both captures exit 0, without script/shader errors. Existing shutdown resource leaks remain. Full VP9 decode passed; 96 frames verified; representative encoded frames inspected."
+      ],
+      "limitations": [
+        "The broad pale band persists. Ground uses probe lighting and the bank does not; this is a likely contributor, not a fully isolated shading diagnosis. The shared probe helper adds three sampler declarations, so it was not added.",
+        "No hardware GPU is exposed (/dev/dri and /dev/nvidia0 absent); available Forward+ is llvmpipe software. Earlier Medium Forward+ runs did not finish usable frames. No hardware performance validation.",
+        "Long engine thaw, dark track breakthrough, wide melt context and weather transitions were not newly captured. Historical stills retain their original provenance.",
+        "Prior local breach scenario failure (one surviving defender at 60 seconds) and shutdown leaks reproduce on untouched main."
+      ],
+      "capture_records": {
+        "before": {
+          "drift_sha256": "fa1a6c46c8fcd38d91e93ba6790884e7331b2e60173eab665e13f1e45272da21",
+          "fixture_sha256": "824895e423c391be48a01187c0b37dcbecdd739e5a6ec0ad5cb196bcc888e855",
+          "fps": 24,
+          "mood": "snow",
+          "renderer": "gl_compatibility",
+          "seed": 3,
+          "views": [
+            {
+              "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.819152, -0.573576), Z: (0.0, 0.573576, 0.819152), O: (4.0, 17.20729, 6.574562)]",
+              "end": 4.49999999999999,
+              "pitch": -35.0,
+              "start": 2.5,
+              "view": "normal",
+              "zoom": 30.0
+            },
+            {
+              "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.978148, -0.207912), Z: (0.0, 0.207912, 0.978148), O: (4.0, 6.5, -0.393343)]",
+              "end": 6.99999999999998,
+              "pitch": -12.0,
+              "start": 4.99999999999999,
+              "view": "low",
+              "zoom": 18.0
+            }
+          ]
+        },
+        "after": {
+          "drift_sha256": "c77911accc579e4fe716bc52d62dcb6b9f1f56509c552dbf1f2c5cbdcb199a8d",
+          "fixture_sha256": "824895e423c391be48a01187c0b37dcbecdd739e5a6ec0ad5cb196bcc888e855",
+          "fps": 24,
+          "mood": "snow",
+          "renderer": "gl_compatibility",
+          "seed": 3,
+          "views": [
+            {
+              "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.819152, -0.573576), Z: (0.0, 0.573576, 0.819152), O: (4.0, 17.20729, 6.574562)]",
+              "end": 4.49999999999999,
+              "pitch": -35.0,
+              "start": 2.5,
+              "view": "normal",
+              "zoom": 30.0
+            },
+            {
+              "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.978148, -0.207912), Z: (0.0, 0.207912, 0.978148), O: (4.0, 6.5, -0.393343)]",
+              "end": 6.99999999999998,
+              "pitch": -12.0,
+              "start": 4.99999999999999,
+              "view": "low",
+              "zoom": 18.0
+            }
+          ]
+        }
+      },
+      "media": {
+        "duration_seconds": 3.958,
+        "frames": 96,
+        "fps": 24,
+        "width": 1920,
+        "height": 580,
+        "audio": "none",
+        "bytes": 2327297,
+        "layout": "Before left, after right; normal then low camera, 48 frames per view. Poster at 2.5 seconds."
+      },
+      "encode": "ffmpeg: four 24fps PNG sequences, trim 48 frames each, add 40px labels, hstack before/after, concat normal then low; libvpx-vp9 -crf 31 -b:v 0 -pix_fmt yuv420p -row-mt 1"
+    },
+    "track_engine_thaw_followup": {
+      "source_ref": "56add8938c4407b0a110286338f1f14ad20d748c",
+      "game_fix_ref": "5aace3b80a924a8979c0ef2222735a094d4e55bd",
+      "integrated_author_ref": "7d5e10404d65ebf2bf6b54c3c84f7d319c45c570",
+      "renderer": "Godot 4.7.2, Compatibility, Mesa llvmpipe software rendering, Medium; 960x540 uncropped source plus 60px labels. Appearance only, not performance.",
+      "command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x540 --fixed-fps 24 --script tests/fixtures/snow-sequence.gd -- --scenario=fire --seed=3 --mood=snow --nohud --preset=medium --set=perf:0 --focus=400,399 --zoom=26 --pitch=-38 --capture-prefix=OUT",
+      "staging": "The fixture adds three quiet hedge sections and one actual tank away from combat. It issues order_move/order_stop and lets normal 24 Hz game and view updates produce tracks and heat. It does not paint marks, assign thaw spots, change snow colours or move the tank by teleport. The camera stays fixed.",
+      "render_sampling": "Main render samples are sparse; the initial probe atlas is fully rebuilt and its tile/brick/relight queues verified empty. Probe updates are drawn at each sample. This is time-lapse appearance evidence, not a frame-time benchmark.",
+      "timing": {
+        "fixed_fps": 24,
+        "playback_fps": 12,
+        "rolling_speed": 2,
+        "idle_speed": 36,
+        "reveal_speed": 2,
+        "idle_elapsed_seconds": 96.03333333333,
+        "still_holds": "1s control, 0.5s parked-start, 0.5s parked-end, 1s final result"
+      },
+      "camera": "[X: (1.0, 0.0, 0.0), Y: (0.0, 0.788011, -0.615662), Z: (0.0, 0.615662, 0.788011), O: (400.0, 16.0072, 419.4883)]",
+      "controls": [
+        {
+          "engine_run": 42.0551069876294,
+          "frame": 0,
+          "phase": "control",
+          "spots": [],
+          "tank": [
+            387.0,
+            0.0,
+            400.0
+          ],
+          "time": 4.03333333333333,
+          "tread_instances": 0
+        },
+        {
+          "engine_run": 50.055106987629,
+          "frame": 47,
+          "phase": "rolling",
+          "spots": [],
+          "tank": [
+            404.008148193359,
+            0.0,
+            400.180389404297
+          ],
+          "time": 12.0333333333333,
+          "tread_instances": 204
+        },
+        {
+          "engine_run": 51.0967736542956,
+          "frame": 0,
+          "phase": "parked-start",
+          "spots": [],
+          "tank": [
+            404.008148193359,
+            0.0,
+            400.180389404297
+          ],
+          "time": 13.0666666666666,
+          "tread_instances": 204
+        },
+        {
+          "engine_run": 147.138440320964,
+          "frame": 0,
+          "phase": "parked-end",
+          "spots": [
+            [
+              400.913146972656,
+              399.882263183594,
+              3.52000005245209,
+              0.55,
+              -52
+            ]
+          ],
+          "tank": [
+            404.008148193359,
+            0.0,
+            400.180389404297
+          ],
+          "time": 109.099999999996,
+          "tread_instances": 204
+        },
+        {
+          "engine_run": 151.138440320964,
+          "frame": 23,
+          "phase": "reveal",
+          "spots": [
+            [
+              400.913146972656,
+              399.882263183594,
+              3.52000005245209,
+              0.546666666666666,
+              -52
+            ]
+          ],
+          "tank": [
+            413.470275878906,
+            0.0,
+            399.844909667969
+          ],
+          "time": 113.099999999996,
+          "tread_instances": 316
+        }
+      ],
+      "luma_controls": {
+        "engine_ground": {
+          "rectangle": [
+            440,
+            260,
+            475,
+            310
+          ],
+          "before_luma": 194.42342857142856,
+          "after_luma": 127.92
+        },
+        "powder_control": {
+          "rectangle": [
+            580,
+            350,
+            680,
+            410
+          ],
+          "before_luma": 205.03916666666666,
+          "after_luma": 205.01433333333333
+        }
+      },
+      "media": {
+        "duration_seconds": 11.666,
+        "frames": 140,
+        "fps": 12,
+        "width": 960,
+        "height": 600,
+        "audio": "none",
+        "bytes": 854298
+      },
+      "encode": "12 fps labeled JPEG sequence; ffmpeg libvpx-vp9 -crf 29 -b:v 0 -pix_fmt yuv420p -row-mt 1. Gameplay is not interpolated. Poster is matched parked-start/end.",
+      "validation": [
+        "Full project import and three focused cinematic-lighting/terrain-material tests pass on the integrated author head plus fix.",
+        "Warm-up-fire regression fails on the untouched original Vfx implementation; that implementation is identical at 0f4c8c1 and 7d5e104. This is a targeted negative control, not a full baseline build.",
+        "Complete sequence exits 0 without script/shader errors; known shutdown resource leaks persist.",
+        "Control has zero thaw spots and zero treads. Parking starts with zero thaw spots; 96 seconds later real engine melt reaches 0.55 and radius 3.52m. Final drive-away has 316 tread instances and leaves melt 0.5467.",
+        "Full VP9 decode and 140-frame count passed; representative encoded beginning/action/result frames inspected."
+      ],
+      "limitations": [
+        "Software Vulkan Forward+ completed the same current-game control at 640x360 with an empty probe queue. Extended relighting diagnostics were stopped because of software rendering cost. No hardware GPU is exposed; hardware quality and performance gates remain unavailable.",
+        "No snow shader change is made by this follow-up. Sunny/border robustness of any further seam fix is not established.",
+        "Earlier local breach failure and shutdown leaks reproduce on untouched main; those earlier findings are retained rather than presented as new full-suite validation."
+      ],
+      "source_hashes": {
+        "scripts/game/vfx.gd": "889a25d965c3a23ff25ac100620fd6c34c3244736478e7beb1597dff69515a41",
+        "scripts/game/snow_melt.gd": "2bcc1c338a087a2a8bac7ce47219f5cba39c4a91044add12d7bc4e0cc72f557c",
+        "scripts/game/snow_drift.gd": "7425b790653af2216d534aff6a323c342366f615cd43fd605ae6ead6f87ac74d",
+        "scripts/game/atmosphere.gd": "e84c2db47ecabbc7b1dcd2259f1eeaccb73ce2e1ffdab0f9f25b93f05356b950",
+        "tests/fixtures/snow-sequence.gd": "f1d4a217e6e4de22426ff5d3f6882e33463ddbefdfff4c016e9e19c8f71aac71"
+      },
+      "overcast_diagnostic": {
+        "renderer": "Compatibility / Medium / llvmpipe, 640x360; frozen game time 4.0333s; focus400,394 zoom18 pitch-20",
+        "treatments": [
+          "untouched native control",
+          "rebuilt baseline with original uniform bindings",
+          "probe AO/bounce strengths zero",
+          "flat terrain and bank normals",
+          "equal linear albedo 0.5",
+          "flat normals plus equal albedo"
+        ],
+        "controls": "World/camera fixed, all probe queues empty. Rebuilt baseline preserves texture bindings; foreground RGB mean absolute difference from native control is about 1.9/255 (remaining rendered particle/temporal variation). Diagnostic material overrides are not included in gameplay footage.",
+        "measurements": {
+          "baseline": {
+            "bank": 217.14333333333335,
+            "ground": 205.09555555555556,
+            "bank_minus_ground": 12.047777777777782
+          },
+          "probes-off": {
+            "bank": 217.115,
+            "ground": 205.25222222222223,
+            "bank_minus_ground": 11.86277777777778
+          },
+          "flat-normals": {
+            "bank": 207.41333333333333,
+            "ground": 201.9127777777778,
+            "bank_minus_ground": 5.500555555555536
+          },
+          "equal-albedo": {
+            "bank": 199.85333333333332,
+            "ground": 182.74833333333333,
+            "bank_minus_ground": 17.10499999999999
+          },
+          "flat-equal": {
+            "bank": 194.34166666666667,
+            "ground": 178.77666666666667,
+            "bank_minus_ground": 15.564999999999998
+          }
+        },
+        "measurement_rectangles": {
+          "bank": [
+            250,
+            190,
+            430,
+            200
+          ],
+          "ground": [
+            250,
+            220,
+            430,
+            230
+          ]
+        },
+        "finding": "In this overcast scene, disabling probe strengths barely changes the bank/ground contrast. Equal albedo still leaves a strong boundary, including with flat normals: the remaining discrepancy is not explained by texture colour or normals alone. The separate lighting/AO paths need further isolation. No shader fix is proposed from this limited diagnostic. Sunny conditions and border robustness remain unverified."
+      },
+      "superseded_by": "engine_deck_thaw_2026_11_19"
+    },
+    "natural_snow_pass": {
+      "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window; Compatibility (--rendering-method gl_compatibility) checked for the street, roof and drift views, no script or shader errors",
+      "code": "the final head of the overnight pass (town, drifts and tank from ca8efe2f; street and roof from the next commit, which only ribs ordinary roofs' snow)",
+      "before": "the same views from today's code with this pass's snow commit reversed (scratch copy), for the PR's before/after sheet",
+      "town": "--fixed-fps 30 -- --aivai --seed=3 --mood=snow --nohud --focus=0,0 --focus-struct=town --zoom=220 --pitch=-22 --shot-at=40",
+      "street": "--fixed-fps 30 -- --aivai --seed=3 --mood=snow --nohud --focus=0,0 --focus-struct=town --zoom=44 --pitch=-40 --shot-at=40",
+      "roofs": "--fixed-fps 30 -- --aivai --seed=3 --mood=snow --nohud --focus=2.6,30 --zoom=13 --pitch=-32 --shot-at=20",
+      "drifts": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=2,15 --zoom=26 --pitch=-48 --shot-at=20, from a scratch copy whose fire scenario adds a hedgerow (4 low_wall variant 1) and a stone wall (3 low_wall variant 0) across Fires.WIND",
+      "tank": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=snow --nohud --focus=-84,24 --focus-vehicle=tank --focus-vehicle-at=9 --zoom=12 --pitch=-34 --shot-at=10",
+      "note": "(--focus=0,0 stops the battle director before --focus-struct applies, so the town views repeat run to run)"
+    },
+    "engine_deck_thaw_2026_11_19": {
+      "reason": "Review on the pull request: the clip had black flecks, and the engine thaw belongs on the tank, not on the ground.",
+      "flecks": "The black flecks were the tank's sub-pixel bolt heads and small dark fittings, aliased to single pixels: the earlier clip came from Mesa llvmpipe, which offers MSAA 4x or none, so Medium's MSAA 2x drew with no anti-aliasing. They hold still on the hull from frame to frame (not falling flakes), and a NaN detector in the surface shader (any NaN or Inf in ALBEDO, NORMAL, ROUGHNESS, METALLIC, SPECULAR or EMISSION painted bright green) found none on a software Vulkan renderer (SwiftShader, Mobile renderer), which shows the same specks. On the GPU at Medium (MSAA 2x) neither renderer shows them. hedge-motion.webm has no black flakes (its flakes are white) and only a few one-pixel specks at car door handles, so it is kept.",
+      "change": "SnowMelt: an idling engine no longer thaws a disc of ground under the hull (reach ~0.55 of the hull's length); its exhaust leaves a patch of EXHAUST_REACH 0.9 m just beyond the outlet (engine_vent), none on a model without one. Mats.SURFACE_SHADER: the deck's warm patch runs from the engine end forward (snow_k.zw = the deck's middle on the hull's line), back to the rear plate, wider and further forward with engine run, the bare metal dark and glossy (thaw_wet) behind a rim of grey slush.",
+      "source_ref": "this commit's parent tree plus the change (see the pull request)",
+      "renderer": "Godot 4.7.2 on an NVIDIA GeForce RTX 3090: Forward+ (Vulkan) and Compatibility (OpenGL), Medium (MSAA 2x), 960x540 each, scaled to 800x450 side by side. Appearance only, not performance.",
+      "command": "godot [--rendering-method gl_compatibility] --path . --resolution 960x540 --fixed-fps 24 --script tests/fixtures/snow-sequence.gd -- --scenario=fire --seed=3 --mood=snow --nohud --preset=medium --set=perf:0 --focus=400,399 --zoom=26 --pitch=-38 --offscreen --capture-prefix=OUT",
+      "staging": "As before: three quiet hedge sections and one tank away from combat, driven by order_move/order_stop; nothing painted. Wide camera while it drives in; then from behind over its engine deck (focus 0.5 m behind the tank, zoom 11, pitch -55, yaw -PI/2) while it idles 200 s (48 shots of 100 ticks), and while it drives off.",
+      "timing": {
+        "fixed_fps": 24,
+        "playback_fps": 12,
+        "rolling_speed": 2,
+        "idle_speed": 50,
+        "reveal_speed": 2,
+        "idle_elapsed_seconds": 202,
+        "engine_run_at_end": 253.1,
+        "holds": "1 s control, 0.5 s parked-start, 0.5 s parked-end, 1 s final"
+      },
+      "records": {
+        "parked_end_spot": [
+          400.01,
+          401.05,
+          0.9,
+          0.55
+        ],
+        "tank": [
+          404.01,
+          400.18
+        ],
+        "note": "the exhaust's spot: x, z, reach (m), melt; 4 m behind the tank's centre, out of its rear plate"
+      },
+      "encode": "Labelled 12 fps JPEG sequence (PIL, Segoe UI) piped to ffmpeg 7.1 libvpx-vp9 -crf 33 -b:v 0 -pix_fmt yuv420p -row-mt 1 -g 48; poster: parked-start above parked-end, both renderers.",
+      "media": {
+        "duration_seconds": 13.5,
+        "frames": 162,
+        "fps": 12,
+        "width": 1600,
+        "height": 514,
+        "audio": "none",
+        "bytes": 1672901
+      },
+      "melt_still": "Forward+, 1600x900: --fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=9,-6 --zoom=15 --pitch=-36 --shot-at=90 --offscreen --perf=0, from a scratch copy whose fire scenario adds a burning wreck (variant 6 at 4,-6, fuel 600) and a stopped tank (13,-5, yaw 0.35), as the earlier still was staged.",
+      "validation": [
+        "Both captures exit 0 with no script or shader errors; the fixture asserts the exhaust patch's reach <= EXHAUST_REACH, that it lies behind the hull, that it reaches slush, and that the idle outlasts ENGINE_WARM. Complete VP9 decode by ffmpeg; opening, driving, idling and final frames inspected."
+      ]
+    }
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/snow/town-in-snow.jpg",
+      "sha256": "462f4c4588b8deb675446e78a8e9da9151d0e4781c892a211247806f6b9efbed"
+    },
+    {
+      "file": "changelog/unreleased/snow/roofs-in-snow.jpg",
+      "sha256": "55e7d49d0ec36e4833b3d23fa98fbf8604a7193cf95aece6dd83bbd3569fd799"
+    },
+    {
+      "file": "changelog/unreleased/snow/street-in-snow.jpg",
+      "sha256": "ebc029102cab191eefd0a11ea693bd036ab8a322bd027e66bd15e185bfdcc95f"
+    },
+    {
+      "file": "changelog/unreleased/snow/tank-in-snow.jpg",
+      "sha256": "9f6b1f6d5f7ddae96f9c42f8f2ca1fa6f8de64d6f69623931922a9df9414309c"
+    },
+    {
+      "file": "changelog/unreleased/snow/melt-in-snow.jpg",
+      "sha256": "e61b0ea47d77412f4e048685b0e792ddb4401b46424a9949750907552cafb13c"
+    },
+    {
+      "file": "changelog/unreleased/snow/drifts-in-snow.jpg",
+      "sha256": "f87c060b29b53934f6af03992f668be1dd1aa1f4d0cc43c74c7d5ec799b0deef"
+    },
+    {
+      "file": "changelog/unreleased/snow/comparison.jpg",
+      "sha256": "b41b4c6e7a2511e78385987333b9e5efd0ec779534d140f04bf807b98268e1d5"
+    },
+    {
+      "file": "changelog/unreleased/snow/dry-grass-comparison.jpg",
+      "sha256": "8749b219e7913e70db7221af21b775f44f812eec9bd9e62de697d4ddd31ce9de"
+    },
+    {
+      "file": "changelog/unreleased/snow/hedge-motion.webm",
+      "sha256": "57fe3d11f8534e0d0809d867677d392aff4e510f24c037dd602e18c8747b9243"
+    },
+    {
+      "file": "changelog/unreleased/snow/hedge-motion.jpg",
+      "sha256": "9c6e52f8d5f2321a3c42357e2fd8aa6b3a571805a36c5ebf5524e7bf16db52b7"
+    },
+    {
+      "file": "changelog/unreleased/snow/bank-edge-comparison.webm",
+      "sha256": "339bd63b16badeb9a192d040f7b6080b7c9d6507f93684386f69e38d4ad19a5a"
+    },
+    {
+      "file": "changelog/unreleased/snow/bank-edge-comparison.jpg",
+      "sha256": "fb7feb663c8a00db2b4e0d2094b45f8ce8f9b3702735e7859a756ff9296b7262"
+    },
+    {
+      "file": "changelog/unreleased/snow/track-engine-thaw.webm",
+      "sha256": "2b150c754c5d05c37d19580d21903294ab7f63302ccd375e0b76680976a48717"
+    },
+    {
+      "file": "changelog/unreleased/snow/track-engine-thaw.jpg",
+      "sha256": "017685c4929f43c8fe87b64a3c601954a06d1c221829c4c15df5d99e1e0a1d97"
+    }
+  ],
+  "output": null
+}
