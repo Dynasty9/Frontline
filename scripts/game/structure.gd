@@ -2959,8 +2959,10 @@ func _ruin_profile(L: float, material: String, wall: Color, gaps: Array, rng: Ra
 		bases.append(base)
 	# masonry breaks back a course or a few at a time (brick racks back a
 	# half brick, stone a stone; unevenly, as it broke): no column stands
-	# higher than its neighbours let it, nor alone more than a course above
-	# them; and here and there a brick (a stone) is knocked out of the break
+	# higher than its neighbours let it, nor alone more than a brick above
+	# them (a stone, as deep as a course, never stands alone above both: it
+	# would be a battlement); and here and there a brick (a stone) is
+	# knocked out of the break
 	var rack := PackedInt32Array()
 	for i in at.size():
 		rack.append(crown.randi_range(1, 3) if finish != "boards" else 3)
@@ -2971,7 +2973,7 @@ func _ruin_profile(L: float, material: String, wall: Color, gaps: Array, rng: Ra
 	var racked := at.duplicate()
 	for i in at.size():
 		if at.size() > 1:
-			at[i] = mini(at[i], maxi(racked[i - 1] if i > 0 else 0, racked[i + 1] if i < at.size() - 1 else 0) + 1)
+			at[i] = mini(at[i], maxi(racked[i - 1] if i > 0 else 0, racked[i + 1] if i < at.size() - 1 else 0) + (0 if finish == "stone" else 1))
 		if crown.randf() < (0.3 if finish == "stone" else 0.2):
 			at[i] -= 1
 		at[i] = maxi(at[i], least[i])
