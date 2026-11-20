@@ -1484,12 +1484,10 @@ func _build_entries() -> Array:
 			st2.append(["Service", {"repair": "repairs vehicles within 13 m", "ammo": "rearms men and vehicles within 13 m", "medical": "treats the wounded within 11 m"}.get(String(v.service), String(v.service)), -1.0])
 		if v.has("sight"):
 			st2.append(["Sees", "%d m" % int(v.sight), -1.0])
-		if int(v.get("tier", 1)) > 1:
-			var tier_r := ""
-			for uk in Defs.UPGRADES:
-				if int(Defs.UPGRADES[uk].get("tier", 0)) == int(v.tier) and int(v.team) in Defs.UPGRADES[uk].teams:
-					tier_r = String(Defs.UPGRADES[uk].name)
-			st2.append(["Unlocked by", "%s (tier %d)" % [tier_r, int(v.tier)], -1.0])
+		var by := Defs.unlocked_by(int(v.team), k)
+		if by != "":
+			var br := String(Defs.UPGRADES[by].get("branch", "land"))
+			st2.append(["Unlocked by", "%s (%s doctrine)" % [String(Defs.UPGRADES[by].name), br], -1.0])
 		var vpage: String = "veh_air" if v.get("air", false) else {"light": "veh_light", "armour": "veh_armour", "support": "veh_support", "logistics": "veh_support", "air": "veh_air", "naval": "boats"}.get(
 			String(v.get("cat", "")), "veh_armour" if String(v.get("base", "")) in ["tank", "afv"] else ("veh_support" if String(v.get("base", "")) in ["spaa", "supply", "util", "arty"] else "veh_light"))
 		var rel := ["Built at " + where] if int(v.cost) > 0 else ["Drives supply from your depot to the FOBs"]

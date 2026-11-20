@@ -17,6 +17,7 @@ const CLOSE_Z := 22.0
 const FAR_Z := 42.0
 var _refresh_left := 0.0
 var _refresh_view := Transform3D.IDENTITY
+var _hits: Array = []  # [Rect2, "sq"/"veh", id] for each symbol drawn: what the cursor is over
 static var _contact_mesh: ArrayMesh
 
 
@@ -358,11 +359,10 @@ func _order_graphics(lt: int, a_far: float) -> void:
 		if g.is_empty() or int(g["n"]) == 0:
 			continue
 		var sel := _sel_sids.has(sid)
-		var a := maxf(a_far, 0.7) if sel else a_far
-		if not sel and hud.map_layer("orders") and (int(o[4]) == lt or lt < 0):
-			a = maxf(a, 0.6)
+		var a := order_alpha(int(sid), o, lt, sel)
 		if a <= 0.02:
 			continue
+		a = maxf(a_far, 0.75) * a
 		if o.size() > 6 and o[6] != null:
 			_plan_graphics(o[6], int(o[4]), a, sel)
 			continue
@@ -434,11 +434,11 @@ func _intent_graphics(lt: int, a_far: float) -> void:
 		var sel := false
 		for sid in sids:
 			_xo_sq[int(sid)] = kind
-			if _sel_sids.has(sid):
+			if _sel_sids.has(sid) or int(sid) == hud.focus_sid:
 				sel = true
 		for eid in it[5]:
 			var v := w.entity(int(eid))
-			if v and v.selected:
+			if v and (v.selected or v.eid == hud.focus_veh):
 				sel = true
 		if not hud.map_layer("orders") and not sel:
 			continue
@@ -723,6 +723,11 @@ func _leader_marks(men: Array, a: float) -> void:
 			if UiMotion.reduced() or since < 60 or since >= 120:
 				MapSymbols.glyph(self, "radio", sp + Vector2(13, -2), 6.5, Color(0.6, 1.0, 0.7), a)
 
+const TALK_RANK := {"medic": 0, "shout": 1, "radio": 2, "chat": 3}
+const TALK_CLOSE := 6  # speech bubbles at most, close up
+const TALK_MID := 3  # ...and further out
+
+
 static func _talk_kind(e: Entity, t: String) -> String:
 	var lo := t.to_lower()
 	if lo.contains("medic") or lo.contains("man down") or lo.contains(" is hit") or lo.contains("wounded"):
@@ -790,10 +795,25 @@ func _speech(cam: Camera3D, vs: Vector2, a_close: float, a_mid: float) -> void:
 		if age2 > 3.5:
 			continue
 		var g: Dictionary = _groups.get(sid, {})
-		if g.is_empty() or g["lead"] == null:
+		if g.is_empty() or g["lead"] == null or order_alpha(int(sid), o, hud.world.local_team, _sel_sids.has(sid)) <= 0.0:
 			continue
 		var hq := "Six" if int(o[4]) == 0 else "Command"
 		items.append([g["lead"], "%s: %s" % [hq, _order_words(o)], clampf((3.5 - age2) * 3.0, 0.0, 1.0) * clampf(age2 * 10.0, 0.0, 1.0), "radio", 9.0])
+	# Only a few voices at once, the ones that matter most: a man hit before
+	# a shout, a shout before the radio, the radio before banter; then the
+	# nearest the middle of the view. Further out, fewer still.
+	if items.size() > 1:
+		var mid := vs * 0.5
+		for it in items:
+			var e0: Entity = it[0]
+			var p0: Vector3 = e0.position + Vector3(0, _head_h(e0), 0)
+			var d0 := 1e9 if cam.is_position_behind(p0) else cam.unproject_position(p0).distance_to(mid)
+			var sel0: bool = e0 is Soldier and (_sel_sids.has((e0 as Soldier).sid) or (e0 as Soldier).sid == hud.focus_sid)
+			it.append(float(TALK_RANK.get(String(it[3]), 3)) * 2000.0 + d0 - (3000.0 if sel0 else 0.0))
+		items.sort_custom(func(x, y): return float(x[5]) < float(y[5]))
+		var cap := TALK_CLOSE if a_close > 0.0 else TALK_MID
+		if items.size() > cap:
+			items.resize(cap)
 	for it in items:
 		var e: Entity = it[0]
 		var kind: String = it[3]
@@ -948,6 +968,7 @@ func _status_icons(men: Array, a: float) -> void:
 ## pip per man, a burst when it's in contact and its callsign; a new order
 ## pulses the symbol and shows under it for a few seconds.
 func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
+	_hits.clear()
 	if a <= 0.0:
 		return
 	var w := hud.world
@@ -981,9 +1002,12 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var sel := _sel_sids.has(sid)
 		var sz := (30.0 if sel else 26.0) if hud.tactical else (26.0 if sel else 23.0)
 		var hw := sz * 0.5
+		_hits.append([Rect2(sp - Vector2(hw + 6.0, hw + 4.0), Vector2(sz + 12.0, sz + 18.0)), "sq", int(sid)])
 		var o: Array = hud.orders.get(sid, [])
 		var age := 1e9 if o.is_empty() or int(o[5]) < 0 else (now - int(o[5])) / 1000.0
-		if age < 1.6:
+		# its order only while the hand is on it, it's selected, or just given
+		var oa := 0.0 if o.is_empty() else order_alpha(int(sid), o, lt, sel)
+		if age < 1.6 and oa > 0.0:
 			var k := age / 1.6
 			draw_arc(sp, 16.0 + k * 28.0, 0.0, TAU, 32, Color(1, 1, 1, (1.0 - k) * 0.85 * a), 2.0, true)
 		var firing: int = g.firing
@@ -1004,10 +1028,10 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			_contact_burst(sp + Vector2(-hw - 3.0, -hw * 0.62), a)
 		if supp * 2 >= maxi(1, alive) and alive > 0:
 			MapSymbols.glyph(self, "supp", sp + Vector2(-hw - 5.0, hw * 0.5), 6.5, UiKit.WARN, a)
-		if not o.is_empty():
+		if oa > 0.0:
 			var og: String = MapSymbols.ORDER_GLYPH.get(String(o[0]), "")
 			if og != "":
-				MapSymbols.glyph(self, og, sp + Vector2(hw + 10.0, -1.0), 7.5, MapSymbols.ORDER_COLORS.get(String(o[0]), UiKit.TEXT), a)
+				MapSymbols.glyph(self, og, sp + Vector2(hw + 10.0, -1.0), 7.5, MapSymbols.ORDER_COLORS.get(String(o[0]), UiKit.TEXT), a * oa)
 		# strength: a pip per man (white standing, red down, grey lost)
 		var py := sp.y + hw * 0.68 + 4.0
 		var px := sp.x - mem.size() * 2.5
@@ -1019,9 +1043,9 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if mine:
 			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 11, UiKit.fa(UiKit.TEXT, 0.95 * a))
 			ty += 13.0
-		if age < 6.0:
+		if oa > 0.0 and (age < Hud.ACK_SECS or int(sid) == hud.focus_sid or sel):
 			var tag := _order_tag(o)
-			var ta := clampf((6.0 - age) * 1.5, 0.0, 1.0) * a
+			var ta := oa * a
 			var tcol := UiKit.ACCENT
 			_map_text(Vector2i(int(sid), 1), Vector2(sp.x, ty), tag, UiKit.mono(400), 10, Color(tcol.r, tcol.g, tcol.b, ta))
 	for v in w.vehicles:
@@ -1044,6 +1068,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 				vr.position += off
 				break
 		_place_rect(vr)
+		_hits.append([vr.grow(4.0), "veh", v.eid])
 		MapSymbols.nato(self, vp, 28.0 if hud.tactical else 24.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a, not hud.tactical)
 		if v.selected:
 			UiKit.ticks(self, Rect2(vp - Vector2(17, 13), Vector2(34, 26)), UiKit.fa(UiKit.ACCENT, a), 5.0, 2.0, 1.5)
@@ -1051,6 +1076,33 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		if vby != 0:
 			draw_arc(vp, 21.0, 0.0, TAU, 28, HudCoop._a(Net.player_color(vby), 0.55 * a), 1.3, true)
 			_owner_tab(vp + Vector2(6.0, -22.5), vby, a)
+
+## The squad or vehicle whose symbol is under `p` (screen), as ["sq", sid] or
+## ["veh", eid], or [] (see Hud.focus_sid).
+func marker_at(p: Vector2) -> Array:
+	for i in range(_hits.size() - 1, -1, -1):
+		if (_hits[i][0] as Rect2).has_point(p):
+			return [_hits[i][1], _hits[i][2]]
+	return []
+
+
+## Is this squad's order one the commander should see now? Its own side's
+## while it is selected or under the hand, for a moment after it is given
+## (the acknowledgement), or all of them with the Orders layer on. Returns
+## the strength to draw it at (0: not at all).
+func order_alpha(sid: int, o: Array, lt: int, sel: bool) -> float:
+	var mine := int(o[4]) == lt or lt < 0
+	if not mine:
+		return 0.0
+	if sel or sid == hud.focus_sid:
+		return 1.0
+	if hud.map_layer("orders"):
+		return 0.6
+	if int(o[5]) < 0:
+		return 0.0
+	var age := (Time.get_ticks_msec() - int(o[5])) / 1000.0
+	return clampf((Hud.ACK_SECS - age) / 0.6, 0.0, 1.0)
+
 
 func _marker_offset(sid: int, foot: Rect2) -> Vector2:
 	# Keep a clear placement as units move, avoiding jitter and repeated searches.

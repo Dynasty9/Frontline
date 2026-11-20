@@ -1205,10 +1205,46 @@ func _process(_dt: float) -> void:
 		set_meta("demoed", true)
 		var ddir := Defs.flat(world.cam.cam.global_transform.basis.x).normalized()
 		world.rules.demo_support(String(args["demo-support"]), world.cam.focus_pos, ddir)
+	# --research=KEY,KEY,...: those steps of the doctrine tree already done for
+	# the side the player is on (Coalition for observers), and --research-q=KEY
+	# under way at its first Research Post (pictures of the tree and the cards)
+	if args.has("research") and world.srv and world.time > 0.5 and not has_meta("researched"):
+		set_meta("researched", true)
+		var rt := maxi(world.local_team, 0)
+		for rk in String(args.research).split(","):
+			if rk != "" and Defs.UPGRADES.has(rk):
+				world.rules.apply_upgrade(rt, rk)
+		if args.has("research-q"):
+			for st in world.structures:
+				if st.skind == "research" and st.team == rt and st.built:
+					for rk in String(args["research-q"]).split(","):
+						st.queue_research(world.local_peer, rk)
+					break
 	if args.has("bot-cmds"):
 		_bot_cmds()
 	if args.has("bot-defense"):
 		_bot_defense()
+	# --hover=squad|vehicle: the cursor rests on the nearest of the player's
+	# own men (or vehicles) to the middle of the view (the hover cards)
+	if args.has("hover") and world.input and world.cam and world.time > 1.0:
+		var hv := String(args.hover)
+		var vsz2 := get_viewport().get_visible_rect().size
+		var best_d := INF
+		var best_p := Vector2(-1, -1)
+		for e in (world.vehicles if hv == "vehicle" else world.soldiers):
+			if e.team != world.local_team or not e.visible or e.gone:
+				continue
+			if hv != "vehicle" and (e.sid == 0 or e.life != 0):
+				continue
+			var hp3: Vector3 = e.position + Vector3(0, 0.9 if hv != "vehicle" else 1.2, 0)
+			if world.cam.cam.is_position_behind(hp3):
+				continue
+			var sp: Vector2 = world.cam.cam.unproject_position(hp3)
+			var d := sp.distance_to(vsz2 * Vector2(0.5, 0.45))
+			if d < best_d:
+				best_d = d
+				best_p = sp
+		world.input.debug_mouse = best_p
 	if args.has("cursor") and world.input:
 		var cv := String(args.cursor).split(",")
 		var vsz := get_viewport().get_visible_rect().size
@@ -1486,6 +1522,8 @@ func _process(_dt: float) -> void:
 		set_meta("hud_panel", true)
 		if String(args["hud-panel"]) == "over":
 			world.hud.show_game_over(maxi(world.local_team, 0))
+		elif String(args["hud-panel"]) == "doctrine":
+			world.hud.toggle_doctrine()
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
 		if hp == world.hud.menu_panel:
 			world.hud.toggle_menu()  # as Esc opens it, fitted to its rows

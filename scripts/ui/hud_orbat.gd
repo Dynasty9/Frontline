@@ -1,8 +1,11 @@
 class_name HudOrbat
 extends Control
-## Order of battle: every allied unit, grouped (infantry, support teams,
-## vehicles), a line each (docs/UI.md, Row): its symbol, callsign, what it's
-## doing as a code (MOV D8, PINNED · DEF E4) and its strength in pips. It sits
+## Order of battle: every allied unit, grouped by where it fights (infantry,
+## support teams, then land, air and sea vehicles), a line each (docs/UI.md,
+## Row): its symbol, callsign and strength in pips. What it was told to do
+## (MOV D8, DEF E4) shows only under the hand or while it's selected; a row
+## speaks up by itself only when the unit needs its commander (PINNED,
+## CONTACT, ROUTING, LOW AMMO, IMMOBILISED). It sits
 ## on the left scrim with no box: a header, then rows with a rule under each.
 ## Click a row to select the unit and look at it, Shift+click to add it to
 ## the selection, double-click to zoom in on it. Observers see both sides.
@@ -62,6 +65,13 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_MOUSE_EXIT and _hover != -1:
 		_hover = -1
 		queue_redraw()
+
+
+## The row under the cursor: ["sq", sid] or ["veh", eid], or [].
+func hovered() -> Array:
+	if _hover < 0 or _hover >= _rows.size() or not is_visible_in_tree():
+		return []
+	return [String(_rows[_hover][1]), int(_rows[_hover][2])]
 
 
 func content_h() -> float:
@@ -184,10 +194,10 @@ func _draw_content() -> void:
 				support.append(sid)
 			else:
 				mine_sqs.append(sid)
-		var tv := []
+		var by_dom := {"land": [], "air": [], "sea": []}
 		for v in vehs:
 			if v.team == t:
-				tv.append(v)
+				(by_dom[domain_of(String(v.vkind))] as Array).append(v)
 		if teams.size() > 1:
 			y = _team_header(y, t, top, bottom)
 		if not mine_sqs.is_empty():
@@ -198,9 +208,12 @@ func _draw_content() -> void:
 			y = _section(y, "Support", top, bottom)
 			for sid in support:
 				y = _squad_row(y, int(sid), by_sid[sid], top, bottom)
-		if not tv.is_empty():
-			y = _section(y, "Vehicles", top, bottom)
-			for v in tv:
+		for dom in DOMAINS:
+			var dv: Array = by_dom[dom[0]]
+			if dv.is_empty():
+				continue
+			y = _section(y, String(dom[1]), top, bottom)
+			for v in dv:
 				y = _vehicle_row(y, v, top, bottom)
 	_content_h = y + _scroll + 4.0
 	if _content_h > size.y:
@@ -209,6 +222,33 @@ func _draw_content() -> void:
 		var bh := maxf(24.0, (size.y - HEAD_H - 4.0) * frac)
 		var by := HEAD_H + 2.0 + (_scroll / maxf(1.0, _content_h - size.y)) * (size.y - HEAD_H - 4.0 - bh)
 		draw_rect(Rect2(W + 3, by, 2, bh), UiKit.RULE2)
+
+
+const DOMAINS := [["land", "Land"], ["air", "Air"], ["sea", "Sea"]]
+
+
+## Where a vehicle fights: "air" (it flies), "sea" (a boat) or "land".
+static func domain_of(vkind: String) -> String:
+	var d: Dictionary = Defs.VEHICLES.get(vkind, {})
+	if d.get("air", false):
+		return "air"
+	if String(d.get("base", "")) == "boat":
+		return "sea"
+	return "land"
+
+
+## What a squad's row says when nobody is looking at it: only what needs the
+## commander, else nothing.
+static func squad_alarm(st: Dictionary) -> String:
+	if int(st.get("mstate", 0)) >= 3 or String(st.code).contains("ROUTING"):
+		return "ROUTING"
+	if bool(st.pinned):
+		return "PINNED"
+	if bool(st.low_ammo):
+		return "LOW AMMO"
+	if bool(st.contact):
+		return "CONTACT"
+	return ""
 
 
 func _visible_row(y: float, h: float, top: float, bottom: float) -> bool:
@@ -283,15 +323,20 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 			alive += 1
 	var pw := mem.size() * 5.0 - 2.0
 	UiKit.pips(self, Vector2(W - pw - 2.0, y + 8), alive, hurt, mem.size() - alive - hurt)
-	# what it's doing, as a code, cut to fit
+	# what it's doing, as a code, cut to fit: the whole of it under the hand,
+	# else only an alarm
 	var cx := maxf(x + 12.0, 128.0)
-	var code := String(st.code)
-	if st.low_ammo:
+	var look: bool = sel or idx == _hover or sid == hud.focus_sid
+	var code := String(st.code) if look else squad_alarm(st)
+	if st.low_ammo and look:
 		code += " · LOW AMMO"
 	var maxw := W - pw - 12.0 - cx
 	while code.length() > 3 and UiKit.mono_w(code, 12) > maxw:
 		code = code.substr(0, code.length() - 2)
-	UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, _code_col(st, sel))
+	var cc := _code_col(st, sel)
+	if not look:
+		cc = {"ROUTING": UiKit.BAD, "PINNED": UiKit.WARN, "LOW AMMO": UiKit.WARN}.get(code, UiKit.TEXT)
+	UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, cc)
 	return y + ROW_H
 
 
@@ -313,7 +358,8 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), String(v.display_name()), 13, UiKit.ACCENT if sel else UiKit.TEXT)
 	var hf: float = v.health_frac()
 	UiKit.steps(self, Vector2(W - 40, y + 8), hf * 6.0, 6, UiKit.GOOD if hf > 0.6 else (UiKit.WARN if hf > 0.3 else UiKit.BAD), 5.0, 9.0)
-	var code := "HOLD"
+	var look: bool = sel or idx == _hover or v.eid == hud.focus_veh
+	var code := "HOLD" if look else ""
 	var col := UiKit.ACCENT if sel else UiKit.DIM
 	if (v.flags & Vehicle.F_TRACK) != 0:
 		code = "IMMOBILISED"
@@ -324,7 +370,7 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	elif hf < 0.4:
 		code = "BADLY DAMAGED"
 		col = UiKit.BAD
-	elif Defs.flat(v.position - v._last_pos).length() > 0.02:
+	elif Defs.flat(v.position - v._last_pos).length() > 0.02 and look:
 		code = "MOVING"
 	UiKit.mono_at(self, Vector2(maxf(x + 12.0, 128.0), y + 17), code, 12, col)
 	return y + ROW_H

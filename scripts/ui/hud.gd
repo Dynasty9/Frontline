@@ -83,6 +83,18 @@ var typing := false
 var tactical := false
 ## sid -> [order, where, facing, order number, team, msec the order came in (-1: already standing), attack plan or null]
 var orders := {}
+## What the commander's hand is over: a squad or a vehicle, under the cursor on
+## the battlefield, its symbol or its row in the order of battle. Its orders
+## show on the ground and its card by the cursor while the hand stays there;
+## everyone else's orders stay out of sight once they have been acknowledged.
+var focus_sid := 0
+var focus_veh := 0
+const ACK_SECS := 2.5  # how long a new order stays drawn after it is given
+## The left column (the order of battle, the fire missions) steps back while
+## the commander's attention is on the battlefield and comes up as his hand
+## goes to it, so the picture is the battle rather than the lists.
+var calm := 0.0
+const CALM_ALPHA := 0.5
 var orbat: HudOrbat
 var _slow_t := 0.0
 var layers_ui: HudLayers
@@ -99,6 +111,8 @@ var obs_faster: Button
 var _log_head: Label  # the log's header text
 var _log_key: Label  # and, after it, the key that closes it
 var toasts: HudToasts
+var radio: HudRadio  # the command net, low in the middle
+var _ack_t := 0  # (ms) when the last acknowledgement keyed the radio
 var objectives: HudObjectives
 var log_panel: PanelContainer
 var log_box: RichTextLabel
@@ -139,6 +153,7 @@ var _theme_rev := 0
 var menu_panel: PanelContainer
 var settings_panel: SettingsPanel
 var manual: FieldManual
+var doctrine: HudDoctrine  # the research tree (its key, or the Research Post)
 var stats_panel: StatsPanel  # the battle statistics (hold Tab, or Esc > Battle Statistics)
 var aar_panel: StatsPanel  # the after-action report on the end-of-battle screen
 var _stats_pinned := false  # opened from the menu (stays until closed), not just peeked at
@@ -244,6 +259,19 @@ func _ready() -> void:
 	toasts.offset_bottom = 290
 	toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(toasts)
+
+	radio = HudRadio.new()
+	radio.hud = self
+	radio.anchor_left = 0.5
+	radio.anchor_right = 0.5
+	radio.anchor_top = 1.0
+	radio.anchor_bottom = 1.0
+	radio.offset_left = -HudRadio.WIDTH * 0.5
+	radio.offset_right = HudRadio.WIDTH * 0.5
+	radio.offset_top = -300
+	radio.offset_bottom = -230
+	radio.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(radio)
 
 	# a mission's objectives, top right (the notifications move down under them)
 	objectives = HudObjectives.new()
@@ -438,6 +466,12 @@ func _ready() -> void:
 	root.add_child(stats_panel)
 	UiKit.fit_center(stats_panel, Vector2(1140, 780), 40.0)
 	world.report_updated.connect(_on_report)
+	doctrine = HudDoctrine.new()
+	doctrine.hud = self
+	doctrine.visible = false
+	doctrine.theme = root.theme
+	doctrine.closed.connect(func(): doctrine.visible = false)
+	root.add_child(doctrine)
 	# the field manual sits above everything (F2's hidden HUD included)
 	manual = FieldManual.new()
 	manual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -618,7 +652,7 @@ func _build_help() -> void:
 			[_kr("view_save_1", "view_save_4"), "Save a view"], [_kr("view_go_1", "view_go_4"), "Go to a view"], [_kk(["cycle_fob"]), "Cycle your FOBs"], [_kk(["jump_alert"]), "Last alert or ping"]]],
 		 ["Command", [[["LMB"], "Select · drag a box"], [["2× LMB"], "Every squad of that type"], [["RMB"], "Move · attack · build · enter"], [["SHIFT+RMB"], "Run there"],
 			[["ALT+LMB"], "Command one man"], [_kr("group_set_1", "group_set_9"), "Set a group"], [_kr("group_1", "group_9"), "Recall a group (twice: go there)"],
-			[_kk(["tactical"]), "Tactical map (hold: statistics)"], [_kk(["orbat"]), "Order of battle"]]]],
+			[_kk(["tactical"]), "Tactical map (hold: statistics)"], [_kk(["orbat"]), "Order of battle"], [_kk(["doctrine"]), "Doctrine tree (research)"]]]],
 		[["Orders", [[_kk(["attack_move"]), "Attack-move (Ctrl+RMB)"], [_kk(["defend"]), "Defend an area"], [_kk(["hold"]), "Hold"], [_kk(["retreat"]), "Retreat"],
 			[_kk(["grenade"]), "Grenade"], [_kk(["smoke"]), "Smoke"], [_kk(["fire_mission"]), "Mortar fire mission"], [_kk(["support"]), "First ready fire support"],
 			[_kk(["rotate_build"]), "Rotate a building (Shift+wheel: 45°)"]]],
@@ -818,7 +852,18 @@ func toggle_manual() -> void:
 	manual.visible = not manual.visible
 
 
+## The doctrine tree, open or shut (observers have none of their own).
+func toggle_doctrine() -> void:
+	if doctrine.visible:
+		doctrine.visible = false
+	elif world.local_team >= 0:
+		doctrine.open()
+
+
 func toggle_menu() -> void:
+	if doctrine.visible:
+		doctrine.visible = false
+		return
 	if stats_panel.visible:
 		close_stats()
 		return
@@ -888,10 +933,52 @@ func _track_orders() -> void:
 				came = int(prev[5])
 				if int(prev[3]) != int(o[3]):
 					came = now
+					# a squad you have selected answers on the net: a click of squelch
+					if t == world.local_team and world.input and id in world.input.sel_squads and now - _ack_t > 400:
+						_ack_t = now
+						Sfx.ui("squelch", -16.0, 1.08)
 			orders[id] = [String(o[0]), o[1], o[2], int(o[3]), t, came, o[4] if o.size() > 4 else null, int(o[5]) if o.size() > 5 else -1, String(o[6]) if o.size() > 6 else ""]
 	for id in orders.keys():
 		if not seen.has(id):
 			orders.erase(id)
+
+
+func _update_calm(rdt: float) -> void:
+	var mp: Vector2 = world.input._mouse() if world.input else root.get_global_mouse_position()
+	var reach := orbat.global_position.x + HudOrbat.W + 60.0
+	var awake := mp.x < reach and mp.y < minimap_panel.global_position.y - 4.0
+	awake = awake or (_fires_open and support_box.get_child_count() > 0) or not Settings.get_v("hud_calm")
+	var want := 0.0 if awake else 1.0
+	if calm != want:
+		calm = move_toward(calm, want, rdt * (6.0 if awake else 2.0))
+		var a := lerpf(1.0, CALM_ALPHA, calm)
+		orbat.modulate.a = a
+		support_box.modulate.a = a
+
+
+## Picks out what the cursor is over (see focus_sid): the order of battle's
+## row first (the hand is on the panel), then a man or vehicle on the ground,
+## then a squad's or vehicle's symbol on the map.
+func _update_focus() -> void:
+	focus_sid = 0
+	focus_veh = 0
+	var inp := world.input
+	if inp == null or world.cam == null:
+		return
+	var hit: Array = orbat.hovered()
+	if hit.is_empty() and inp.hover != null and is_instance_valid(inp.hover) and not inp.hover.gone:
+		if inp.hover is Soldier and (inp.hover as Soldier).sid != 0:
+			hit = ["sq", (inp.hover as Soldier).sid]
+		elif inp.hover is Vehicle:
+			hit = ["veh", inp.hover.eid]
+	if hit.is_empty() and not root.get_viewport().gui_get_hovered_control():
+		hit = overlay.marker_at(inp._mouse())
+	if hit.is_empty():
+		return
+	if String(hit[0]) == "sq":
+		focus_sid = int(hit[1])
+	else:
+		focus_veh = int(hit[1])
 
 
 ## The intent a squad (or with `veh`, a vehicle) of your side has been
@@ -1110,7 +1197,9 @@ func add_message(kind: String, text: String, toast := true) -> void:
 	if _msgs.size() > 120:
 		_msgs.pop_front()
 	log_box.append_text(line + "\n")
-	if toast:
+	if toast and kind == "radio":
+		radio.push(text)
+	elif toast:
 		toasts.push(kind, text)
 	if kind == "alert":
 		Sfx.ui("click")
@@ -1513,6 +1602,8 @@ func _view_process(dt: float) -> void:
 		obs_view.text = "VIEW: " + (["Both sides", Defs.TEAM_NAMES[0], Defs.TEAM_NAMES[1]][world.view_team + 1]).to_upper()
 		_place_obs_bar()
 	_track_orders()
+	_update_focus()
+	_update_calm(rdt)
 	_update_support()
 	_update_card()
 	_update_veil(rdt)
@@ -1616,6 +1707,15 @@ func _view_process(dt: float) -> void:
 			toasts.offset_top = ty
 			toasts.offset_bottom = tb
 	toasts.tick(rdt)
+	radio.tick(rdt)
+	# the command net sits just above whatever is along the bottom
+	var rb := -14.0
+	if sel_panel.visible:
+		rb = sel_panel.offset_top
+	rb = minf(rb, -170.0)
+	if radio.offset_bottom != rb - 8.0:
+		radio.offset_bottom = rb - 8.0
+		radio.offset_top = rb - 8.0 - 70.0
 	minimap.refresh_layers()
 	if world.cam:
 		overlay.refresh_for_view(rdt, world.cam.cam)
@@ -1944,10 +2044,7 @@ func _update_card() -> void:
 		var def: Dictionary = Defs.BUILDINGS.get(st.skind, {})
 		if def.has("produces"):
 			var items: Array = def.produces[lt]
-			var tier := 1
-			for k in world.team_info[lt].get("up", []):
-				if Defs.UPGRADES.has(k):
-					tier = maxi(tier, int(Defs.UPGRADES[k].get("tier", 1)))
+			var have: Array = world.team_info[lt].get("up", [])
 			var cats := []
 			for item in items:
 				var c := _prod_cat(item)
@@ -1973,23 +2070,26 @@ func _update_card() -> void:
 						continue
 					var d2: Dictionary = Defs.SQUADS[item] if Defs.SQUADS.has(item) else Defs.VEHICLES[item]
 					var sid := st.eid
-					var need_t := int(d2.get("tier", 1))
-					if need_t > tier:
-						var research := ""
-						for uk in Defs.UPGRADES:
-							if int(Defs.UPGRADES[uk].get("tier", 0)) == need_t and lt in Defs.UPGRADES[uk].teams:
-								research = String(Defs.UPGRADES[uk].name)
-						var lb := _button(d2.name, "tier %d" % need_t, "%s\nLocked: research %s at a Research Post." % [d2.desc, research], func(): pass)
+					var research := Defs.locked_by(lt, item, have)
+					if research != "":
+						var lb := _button(d2.name, "locked", "%s\nLocked: research %s in the doctrine tree (%s)." % [d2.desc, research, Keys.label("doctrine")], func(): toggle_doctrine())
 						lb.disabled = true
 					else:
 						_button(d2.name, str(d2.cost), "%s\nCost %d, %ds." % [d2.desc, d2.cost, int(d2.time)], func(): world.send_cmd({"t": "train", "building": sid, "item": item}))
 			_button("Cancel", "", "Cancel the last item in the queue (refunded).", func(): world.send_cmd({"t": "cancel", "building": st.eid}))
 		elif st.skind == "research":
-			card_title.text = "Research"
+			card_title.text = "Research · the doctrine tree"
+			_button("Doctrine", Keys.label("doctrine"), "The whole tree: land, air, sea and the infantry's kit, what each step needs and what it unlocks.", func(): toggle_doctrine())
 			var have: Array = world.team_info[lt].get("up", [])
 			for k in Defs.UPGRADES:
 				var u: Dictionary = Defs.UPGRADES[k]
 				if not lt in u.teams or k in have:
+					continue
+				var ready := true
+				for rq in Defs.requires_of(k):
+					if not rq in have:
+						ready = false
+				if not ready:
 					continue
 				var sid2 := st.eid
 				_button(u.name, str(u.cost), "%s\nCost %d, %ds." % [u.desc, u.cost, int(u.time)], func(): world.send_cmd({"t": "research", "building": sid2, "item": k}))
