@@ -15,6 +15,8 @@ class Blast:
 	var start := -1000.0
 	var life := 0.0
 	var generation := 0
+	var opacity := 1.0  # (for its shadow: SmokeShadow)
+	var fuel := false
 	# Source-facing cover faces in metres relative to this burst. Each finite
 	# face clips only its own span and height, leaving gaps and wall ends open.
 	const MAX_FACES := 8
@@ -212,7 +214,19 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 			density *= 0.65
 	b.material.set_shader_parameter("tint", tint)
 	b.material.set_shader_parameter("opacity", density)
+	b.opacity = density
+	b.fuel = key == "fuel"
 	return b
+
+## (view) The clouds hanging now, as [where, scale, age, life, opacity, fuel,
+## a seed]: the shade each throws (SmokeShadow).
+func clouds() -> Array:
+	var out := []
+	for key in CAPACITY:
+		for b: Blast in _pools[key]:
+			if b.mesh.visible and _clock - b.start < b.life:
+				out.append([b.mesh.global_position, b.mesh.scale.x, _clock - b.start, b.life, b.opacity, b.fuel, float(b.generation % 17) * 0.29])
+	return out
 
 func prewarm(at: Vector3) -> void:
 	for kind in ["he", "fuel"]:

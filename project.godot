@@ -94,6 +94,18 @@ cloud_sun_disc={
 "type": "vec4",
 "value": Vector4(0, 1, 0, 0)
 }
+smoke_shadow={
+"type": "sampler2D",
+"value": ""
+}
+smoke_shadow_map={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+smoke_shadow_sun={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
 water_time={
 "type": "float",
 "value": 0.0

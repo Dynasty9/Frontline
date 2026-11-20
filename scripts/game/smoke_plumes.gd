@@ -151,6 +151,27 @@ func tick(dt: float, on: bool) -> void:
 			m.set_shader_parameter("flash_at", _flash_at)
 
 
+## The shade each plume throws (SmokeShadow): the tube's body as a blob,
+## centred a third of the way down the wind, at a third of its height. The
+## fog's density is extinction a metre: through the tube's middle, about its
+## density times the rags' average.
+func shadow_casters(sh: SmokeShadow) -> void:
+	var theta := atan2(_wind.y, _wind.x)
+	var w3 := Vector3(_wind.x, 0.0, _wind.y)
+	for pl in _p:
+		var v: FogVolume = pl[0]
+		if not v.visible:
+			continue
+		var m: ShaderMaterial = pl[1]
+		var dens := float(m.get_shader_parameter("density")) / _debug_k
+		if dens < 0.005:
+			continue
+		var sz := v.size
+		var c := v.position - w3 * (sz.x * 0.15) + Vector3.UP * (sz.y * (0.35 - 0.5))
+		var sc := sz.y * 0.11
+		sh.puff(c, sz.x * 0.22, sz.z * 0.13, sc, theta, dens * 2.2 * 0.35 * sc * 2.5, float(_p.find(pl)) * 0.77)
+
+
 ## Whatever's alight keeps a plume over it while it burns.
 func _fires() -> void:
 	if world.fx == null or world.fx.vfx == null:

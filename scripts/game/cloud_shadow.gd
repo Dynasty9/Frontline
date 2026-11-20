@@ -167,10 +167,11 @@ static func tick(dt: float) -> void:
 
 ## The pattern and cloud_sun(): the share of sunlight that gets through at a
 ## world position. The noise is filtered linearly with no mipmaps, so it reads
-## the same in a vertex, fragment or light function. cloud_is_sun(): whether a
-## light() is lighting with the battle's sun, the one light the clouds stand in
-## front of (not the rim light opposite, the sky's fill, nor the Field Manual's
-## studio lights, opened mid-battle).
+## the same in a vertex, fragment or light function. The smoke's shade rides
+## along (SmokeShadow): cloud_sun() is both, cloud_only() the clouds' alone.
+## cloud_is_sun(): whether a light() is lighting with the battle's sun, the one
+## light the clouds stand in front of (not the rim light opposite, the sky's
+## fill, nor the Field Manual's studio lights, opened mid-battle).
 const PATTERN := """
 #define CLOUD_PATTERN
 global uniform sampler2D cloud_noise : filter_linear, repeat_enable;
@@ -181,12 +182,17 @@ bool cloud_is_sun(vec3 light, mat4 view) {
 	return dot(light, normalize((view * vec4(cloud_sun_disc.xyz, 0.0)).xyz)) > 0.9999;
 }
 
-float cloud_sun(vec3 p) {
+float cloud_only(vec3 p) {
 	if (cloud_shadow.x <= 0.0) {
 		return 1.0;
 	}
 	float c = textureLod(cloud_noise, p.xz * cloud_shadow.w + cloud_shadow.yz, 0.0).r;
 	return 1.0 - cloud_shadow.x * smoothstep(0.45, 0.75, c);
+}
+""" + SmokeShadow.PATTERN + """
+// (and the smoke's: SmokeShadow)
+float cloud_sun(vec3 p) {
+	return cloud_only(p) * smoke_sun(p);
 }
 """
 
