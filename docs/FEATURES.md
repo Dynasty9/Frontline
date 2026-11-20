@@ -1308,8 +1308,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   It holds fire when your own troops are within 8 m of the target. Select it to call 6-round HE or smoke fire missions.
   Rounds whistle on the way down, so soldiers shout "Incoming!" and hit the dirt, or dive if a shell is landing right on them.
 - **Mortar teams** (both sides) do the same on the move with limited rounds. Press F to call a fire mission.
-- **Bunker** (concrete pillbox, or a log-and-earth dugout for the Rebels): firing slits soldiers shoot through,
-  and a roof that stops shrapnel. Right-click it with a squad to garrison.
+- **Bunker** (a concrete pillbox cast in place, with splayed embrasures and a steel observation cupola, or a
+  log-and-earth dugout for the Rebels): firing slits soldiers shoot through, and a roof that stops shrapnel.
+  Right-click it with a squad to garrison.
 - **AT post**: a crewed guided missile (Coalition, top attack) or recoilless rifle (Rebels) that engages vehicles out to 130 m.
 - **Walls and obstacles** (`works_models.gd` builds them all, from the real thing):
   - *Sandbags*: filled bags laid the way they are in the field, stretcher courses along the wall and header

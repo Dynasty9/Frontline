@@ -3208,7 +3208,9 @@ func _skinned(mesh: Mesh, sm: StandardMaterial3D, p: Vector3, rot: Vector3, scl:
 func _build_model() -> void:
 	model = Node3D.new()
 	add_child(model)
-	_bake = Mats.Bake.new() if skind in BAKED else null
+	# (and the concrete bunker: its stains, which merge_static would leave as
+	# a draw call each, go into its merged meshes with the rest)
+	_bake = Mats.Bake.new() if skind in BAKED or (skind == "bunker" and team != 1) else null
 	_body = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = (look if look > 0 else eid) * 7919 + variant
@@ -3217,6 +3219,8 @@ func _build_model() -> void:
 	for p in parts:
 		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town", "crates"] or skind in WorksModels.OWN_KINDS:
 			break
+		if skind == "bunker" and team != 1:
+			break  # (the pillbox draws its walls from its parts itself, as one pour)
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
 			continue
@@ -3581,31 +3585,25 @@ func _build_model() -> void:
 					var y := 2.6 + WorksModels.roof_soil_height(Vector2(x, -2.2), soil_variant) + 0.08
 					bags.append({"p": Vector3(x, y, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": rng.randf_range(-0.09, 0.09)})
 			else:
-				# reinforced concrete, cast in place (BuildingPillbox): the roof
-				# slab stepped out over the walls with its parapet of bags, hatch,
-				# periscope and vent; a hood, sloped sill and splayed cheeks at
-				# every slit; earth banked up to the slits, a steel door, a whip
-				# aerial, and the rain's streaks under the spouts at the back
+				# reinforced concrete, cast in place (BuildingPillbox): the walls
+				# drawn from their parts as one pour with chamfered corners; the
+				# roof slab over them, its observation cupola, hatch and vent; a
+				# splayed embrasure at every slit; earth banked up to the slits,
+				# the steel doors open at the back, a whip aerial; the grime of a
+				# season and the bullet strikes round the slits
 				var bk := _kit(rng)
-				var wc: Color = parts[0].color
-				var soil_variant := posmod(eid, 4)
-				BuildingPillbox.roof(bk, C_CONCRETE.darkened(0.28), soil_variant, rng, bags)
-				var turf := _mk(WorksModels.roof_soil(soil_variant), "bank", Vector3(0, BuildingPillbox.SLAB_TOP, 0), Vector3.ZERO, Color(0.29, 0.27, 0.17))
-				turf.scale = BuildingPillbox.TURF
-				turf.material_override = TrenchNet.bank_material()
-				BuildingPillbox.embrasure(bk.on_face(Vector3(0, 0, -2.8), Vector3.FORWARD), 2.6, wc)
+				var wc := BuildingPillbox.CONCRETE
+				BuildingPillbox.walls(bk, parts, wc)
+				BuildingPillbox.roof(bk, BuildingPillbox.WEATHERED, rng)
+				BuildingPillbox.embrasure(bk.on_face(Vector3(0, 0, -BuildingPillbox.HALF), Vector3.FORWARD), 2.6, wc)
 				for sx: float in [-1.0, 1.0]:
-					BuildingPillbox.embrasure(bk.on_face(Vector3(sx * 2.8, 0, 0), Vector3(sx, 0, 0)), 1.8, wc)
+					BuildingPillbox.embrasure(bk.on_face(Vector3(sx * BuildingPillbox.HALF, 0, 0), Vector3(sx, 0, 0)), 1.8, wc)
 				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
-				BuildingOpenings.leaf(bk.at_point(Vector3(-0.5, 0, 2.6)), Vector2(1.0, 1.92), "steel", Color(0.3, 0.32, 0.25), 1.0)
-				BuildingFittings.whip(bk, Vector3(-2.3, BuildingPillbox.SLAB_TOP, 2.3), 2.4)
-				var drawn := Res.mat(wc).albedo_color
-				var tint := Mats.tint_for("precast", drawn)
-				var tone := func(_p: Vector2) -> Color: return tint
-				BuildingPillbox.streaks(bk.on_face(Vector3(0, 0, 2.8), Vector3.BACK), [-2.05, 2.05], Vector2(1.1, 1.6), Vector2(0.65, 0.9), tone, rng)
-				BuildingPillbox.streaks(bk.on_face(Vector3(0, 0, -2.8), Vector3.FORWARD), [-2.15, 2.15], Vector2(0.5, 1.0), Vector2(0.3, 0.55), tone, rng)
-				for sx: float in [-1.0, 1.0]:
-					BuildingPillbox.streaks(bk.on_face(Vector3(sx * 2.8, 0, 0), Vector3(sx, 0, 0)), [-1.95, 1.95], Vector2(0.5, 1.0), Vector2(0.3, 0.55), tone, rng)
+				var rear := bk.on_face(Vector3(0, 0, BuildingPillbox.HALF), Vector3.BACK)
+				BuildingPillbox.door(rear, 2.0, 1.9)
+				BuildingPillbox.step_irons(rear, 2.2)
+				BuildingFittings.whip(bk, Vector3(-1.2, BuildingPillbox.SLAB_TOP, 1.2), 2.4)
+				BuildingPillbox.weather(bk, parts, wc, rng)
 			_box(Vector3(0, 0.02, 0), Vector3(4.4, 0.04, 4.4), Color(0.3, 0.29, 0.27), 0.0, false)
 		"watchtower":
 			for p in parts:

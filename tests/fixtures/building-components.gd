@@ -530,22 +530,43 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
-	# The pillbox: its embrasure stands out of the wall no further than a hood
-	# and keeps round the slit; its roof keeps to the slab (the periscope's head
-	# alone looking over the parapet), and the turf never buries the hatch.
-	var ek := kit()
-	BuildingPillbox.embrasure(ek, 2.6, Color(0.5, 0.5, 0.48))
-	var eb := _bounds(ek.sink.root, Transform3D.IDENTITY)
-	check(eb.position.z >= -0.1 and eb.end.z <= 0.45 and eb.position.y >= 0.9 and eb.end.y <= 1.95 and eb.size.x <= 3.3, "a pillbox's embrasure keeps round its slit (%s)" % eb)
-	ek.sink.root.free()
-	for sv in 4:
-		var pk := kit()
-		var roof_bags: Array = []
-		BuildingPillbox.roof(pk, Color(0.5, 0.5, 0.48), sv, pk.rng, roof_bags)
-		var pb := _bounds(pk.sink.root, Transform3D.IDENTITY)
-		check(pb.position.x >= -3.15 and pb.end.x <= 3.15 and pb.position.z >= -3.15 and pb.end.z <= 3.4 and pb.end.y <= BuildingPillbox.SLAB_TOP + 0.9, "a pillbox's roof keeps to its slab (%s)" % pb)
-		check(BuildingPillbox.turf_depth(Vector2(1.35, 1.3), sv) < 0.35 and roof_bags.size() == 5, "the pillbox's turf leaves its hatch clear (variant %d)" % sv)
-		pk.sink.root.free()
+	# The pillbox: its walls, drawn from the bunker's parts, fill every part
+	# that stops a bullet, short of them only at the corners' chamfer; its
+	# embrasure stands out of the wall no further than its frame, round the
+	# slit and under the eave; its roof slab covers the parts' roof and reaches
+	# no further than its overhang, the cupola's periscope the highest thing on it.
+	var pbst := Structure.new()
+	pbst.skind = "bunker"
+	pbst.team = 0
+	pbst._define_parts()
+	var pbwk := kit()
+	BuildingPillbox.walls(pbwk, pbst.parts, BuildingPillbox.CONCRETE)
+	var pbwb := _bounds(pbwk.sink.root, Transform3D.IDENTITY)
+	check(pbwb.position.is_equal_approx(Vector3(-BuildingPillbox.HALF, 0, -BuildingPillbox.HALF)) and pbwb.end.is_equal_approx(Vector3(BuildingPillbox.HALF, 2.2, BuildingPillbox.HALF)), "a pillbox's walls stand on their parts (%s)" % pbwb)
+	for p: Dictionary in pbst.parts:
+		var pc: Vector3 = p.p
+		var ps: Vector3 = p.s
+		if pc.y - ps.y * 0.5 >= BuildingPillbox.EAVE - 0.1:
+			continue
+		for corner: Vector3 in [Vector3(-0.45, -0.45, -0.45), Vector3(0.45, 0.45, 0.45), Vector3(-0.45, 0.45, 0.45), Vector3(0.45, -0.45, -0.45), Vector3.ZERO]:
+			var at := pc + ps * corner
+			var chamfered := absf(at.x) + absf(at.z) > BuildingPillbox.HALF * 2.0 - BuildingPillbox.CHAMFER
+			check(chamfered or occupied(pbwk.sink.root, at), "a pillbox's walls fill the part at %s (%s)" % [pc, at])
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			check(not occupied(pbwk.sink.root, Vector3(sx * 2.74, 1.0, sz * 2.74)), "a pillbox's corner is chamfered (%d, %d)" % [sx, sz])
+	pbwk.sink.root.free()
+	pbst.free()
+	var pbek := kit()
+	BuildingPillbox.embrasure(pbek, 2.6, Color(0.5, 0.5, 0.48))
+	var pbeb := _bounds(pbek.sink.root, Transform3D.IDENTITY)
+	check(pbeb.position.z >= -0.1 and pbeb.end.z <= BuildingPillbox.EMBRASURE + 0.01 and pbeb.position.y >= 0.6 and pbeb.end.y < BuildingPillbox.EAVE and pbeb.size.x <= 2.6 + 1.0, "a pillbox's embrasure keeps round its slit (%s)" % pbeb)
+	pbek.sink.root.free()
+	var pbpk := kit()
+	BuildingPillbox.roof(pbpk, Color(0.5, 0.5, 0.48), pbpk.rng)
+	var pbpb := _bounds(pbpk.sink.root, Transform3D.IDENTITY)
+	check(pbpb.position.y <= 2.2 and pbpb.position.x >= -BuildingPillbox.SLAB_HALF - 0.01 and pbpb.end.x <= BuildingPillbox.SLAB_HALF + 0.01 and pbpb.position.z >= -BuildingPillbox.SLAB_HALF - 0.01 and pbpb.end.z <= BuildingPillbox.SLAB_HALF + 0.01 and pbpb.end.y <= BuildingPillbox.SLAB_TOP + 0.8, "a pillbox's roof keeps to its slab (%s)" % pbpb)
+	pbpk.sink.root.free()
 	# Cover crates: the stores stand on the ground inside the boxes their parts
 	# give for cover, and one stack is loaded differently from the next.
 	var loads := {}
