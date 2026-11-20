@@ -1,59 +1,37 @@
 {
-  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
-  "source_ref": "104f8e2f32801a991aac6ffd08395b32e7e76b47",
+  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
+  "first_build_ref": "cc6548d3b03b7c2d59981ce60c86b15a0d682d96",
+  "source_ref": "bd7bbccf81589ec35f9429cefda0b1b481f82ecb",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
-  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
-  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
-  "comparisons": [
-    {
-      "subjects": [
-        "town"
-      ],
-      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
-      "view": "hq",
-      "crop": [
-        200,
-        80,
-        1400,
-        820
+  "renderer": "Forward+ (Vulkan, NVIDIA GeForce RTX 3090)",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=hq",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=hq --capture-prefix=OUTPUT/s3",
+  "views": {
+    "command": "each side's HQ from its commander's opening view: the HQ's own yaw, 50 m, pitch -52",
+    "rear": "26 m, pitch -36, yaw + 0.55: the same side, closer",
+    "front": "26 m, pitch -36, yaw + PI + 0.55: the enemy's side"
+  },
+  "sheets": {
+    "comparison.jpg": {
+      "cells": "BEFORE: before_ref (the HQ's three solid parts as boxes); AFTER: source_ref",
+      "rows": [
+        ["hq0-command", [340, 160, 1240, 666]],
+        ["hq0-rear", [160, 60, 1600, 900]],
+        ["hq0-front", [200, 20, 1600, 870]],
+        ["hq1-rear", [160, 60, 1600, 900]]
       ]
     },
-    {
-      "subjects": [
-        "depot:0",
-        "depot:1"
+    "facing.jpg": {
+      "cells": "FIRST BUILD: first_build_ref (this pull request before it was turned); NOW: source_ref",
+      "rows": [
+        ["hq0-command", [340, 160, 1240, 666]],
+        ["hq0-rear", [160, 60, 1600, 900]],
+        ["hq1-command", [340, 160, 1240, 666]]
       ],
-      "flags": [
-        "--building-single",
-        "--building-kinds=depot:0,depot:1"
-      ],
-      "before_flags": [
-        "--building-match=AFTER/capture.json"
-      ],
-      "cameras": {
-        "depot:0": [
-          0.0600004196166992,
-          5.32310914993286,
-          -0.294007778167725,
-          19.8523998260498,
-          70.7946090698242
-        ],
-        "depot:1": [
-          0.0600004196166992,
-          5.32310914993286,
-          -0.294007778167725,
-          19.8523998260498,
-          70.7946090698242
-        ]
-      },
-      "crop": [
-        380,
-        160,
-        1300,
-        860
-      ]
+      "note": "Review evidence for the pull request (which way the first build faced); not shown in the changelog."
     }
-  ],
-  "notes": "The baseline is main at v2.0.2; its fixture is given the same hq view (the near side's HQ, from the battle's side). The studio's HQs are framed by the after run's cameras (the baseline's three boxes would frame tighter).",
-  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+  },
+  "baseline_patch": "Each baseline checkout runs this source_ref's tests/fixtures/environment-views.gd (it adds the hq capture set and changes nothing in the game).",
+  "studio": "Also reviewed, not composed: tools/showcase/building-surfaces.tscn -- --building-kinds=depot:0,depot:1 --building-single, with and without --building-rear.",
+  "composition": "PIL: matched rows of crops from the same cameras, JPEG quality 82"
 }
