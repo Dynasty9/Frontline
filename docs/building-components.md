@@ -154,6 +154,19 @@ a decor list of its own after the rest, so the town is as it was; vehicles and b
 other street furniture (`Decor.BREAKABLE`). Render the pieces with `--building-kinds=street_kit`; the town views
 include the crossroads and the square.
 
+The older pieces are `BuildingStreet`'s too:
+- **The square's fountain** (`fountain`): a basin of dressed stone in segments with a moulded lip, a pedestal to a
+  lower bowl, a stem to an upper bowl, the finial, weed at the foot. Decor draws the water in it, and in each bowl,
+  on its own.
+- **The bus shelter** (`bus_shelter`): a steel frame, glazed back and ends (the odd pane shot out), a curved roof
+  with its fascia, a bench of slats, a timetable case, the stop's flag.
+- **Litter bins** (`litter_bin`): a slatted drum on a post.
+- **Planters** (`planter`): a tapered concrete trough with bedding flowers round a clipped box ball.
+- **A town's name board** (`town_sign`): a yellow board with its name, a district board under it, enamelled faces
+  on bare galvanised backs.
+
+Render them with `--building-kinds=street_pieces`.
+
 ## Furniture
 
 A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it
