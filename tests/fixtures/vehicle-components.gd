@@ -217,7 +217,7 @@ func _gun_feed() -> void:
 		assert(covered != open, "A gun's can stands open, its mouth clear; a stowed one is shut" if open else "A stowed can keeps its lid on")
 		kit.root.free()
 	# (the .50's own can and tray, and the 7.62's: VehicleWeapons.hmg, mmg)
-	for feed: Array in [[Vector3(-0.18, -0.07, 0.08), Vector3(0.12, 0.19, 0.29), Vector3(-0.084, 0.072, 0.03), 0.011], [Vector3(0.08, -0.07, 0.02), Vector3(0.08, 0.13, 0.15), Vector3(0.042, 0.045, -0.02), 0.0062]]:
+	for feed: Array in [[Vector3(-0.155, -0.07, 0.08), Vector3(0.12, 0.19, 0.29), Vector3(-0.071, 0.072, 0.03), 0.011], [Vector3(0.073, -0.07, 0.02), Vector3(0.08, 0.13, 0.15), Vector3(0.035, 0.04, -0.02), 0.0062]]:
 		var can: Vector3 = feed[0]
 		var size: Vector3 = feed[1]
 		var tray: Vector3 = feed[2]
