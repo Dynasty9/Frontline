@@ -266,12 +266,17 @@ static func _digits(k: VehicleModels, m: Node3D, p: Dictionary, s: float, text: 
 		_decal(k, m, p, s, zc - s * c.x, yc + c.y, r.size.x, r.size.y, "paint", col, 0.008 if shade == null else 0.01)
 
 
-## How strongly each coat of a rust streak stains the paint under it, the
-## long pale tail first, the dark core under the weep last.
-const STREAK_STAIN := [0.5, 0.78, 1.0]
+## How strongly each coat of a rust streak stains the paint under it: two
+## faint fringes a little wider and longer than the rest first (where the
+## water ran thin, so the streak's edge fades into the paint in steps too
+## small to read as a line), the long pale tail, and the dark core under the
+## weep last. FRINGE counts the fringes, which are laid in the tail's finish.
+const STREAK_STAIN := [0.1, 0.26, 0.5, 0.78, 1.0]
+const FRINGE := 2
 
 ## A rust streak's coats (see _coat) on the trawler's steel topsides and on
-## her painted bulwarks and deckhouse.
+## her painted bulwarks and deckhouse, from the pale tail (the fringe is laid
+## in the tail's finish) to the crust.
 const ON_STEEL := ["steel", "steel", "rust_steel"]
 const ON_PAINT := ["plain", "plain", "rust_steel"]
 
@@ -315,7 +320,7 @@ static func _streak(k: VehicleModels, m: Node3D, p: Dictionary, s: float, z: flo
 		for q: Vector2 in coats[i]:
 			shape.append(q * 2.0 + Vector2(0, h))
 		var c := _stain(col, base, STREAK_STAIN[i])
-		_decal(k, m, p, s, z - s * run.x, top + run.y, w, h, _coat(c, kinds, i), c, t + i * 0.0012, tilt, shape, 0)
+		_decal(k, m, p, s, z - s * run.x, top + run.y, w, h, _coat(c, kinds, maxi(i - FRINGE, 0)), c, t + i * 0.0012, tilt, shape, 0)
 
 
 ## The same streak on a flat wall facing +-x (`s`) at x, from (z, top): a
@@ -327,25 +332,27 @@ static func _wall_streak(k: VehicleModels, m: Node3D, s: float, x: float, z: flo
 		var at := Vector3(s * 0.0012 * (i + 1), 0, 0)
 		var c := _stain(col, base, STREAK_STAIN[i])
 		VehicleMarkings.polygons(k, m, [coats[i]], func(q: Vector2) -> Vector3: return wall.sample.call(q) + at,
-			Vector3(s, 0, 0), c, _coat(c, kinds, i), false, 0)
+			Vector3(s, 0, 0), c, _coat(c, kinds, maxi(i - FRINGE, 0)), false, 0)
 
 
 ## Soot on the trawler's funnel (round, 0.3 m in radius at `top`, its upper
 ## end, swelling to 0.33 m 2.3 m below), under its black top band, whose foot
 ## is at `at` on its axis: the smoke curls down round the stack in the boat's
 ## own wake and leaves a grimy collar, its lower edge ragged, reaching `h`
-## down on the after side and a third of that forward, in two coats graded
-## from a grey film over `base` to soot black under the band.
+## down on the after side and a third of that forward, in four coats graded
+## from two faint fringes a little lower than the rest (so the collar fades
+## out down the stack instead of ending at a line) through a grey film over
+## `base` to soot black under the band.
 static func _funnel_soot(k: VehicleModels, m: Node3D, at: Vector3, top: float, h: float, base: Color) -> void:
-	for i in 2:
-		var depth := h * (1.0 if i == 0 else 0.4)
+	for i in 4:
+		var depth: float = h * float([1.32, 1.15, 1.0, 0.4][i])
 		var lift := 0.006 + i * 0.0012
-		var c := _stain(Color(0.06, 0.055, 0.05), base, 0.45 if i == 0 else 1.0)
+		var c := _stain(Color(0.06, 0.055, 0.05), base, float([0.1, 0.24, 0.45, 1.0][i]))
 		# (a strip of narrow panels round the stack, so none cuts a chord
 		# into it, in three sectors each laid facing its own middle; an
 		# outline's x is the angle round from aft)
 		var foot := func(a: float) -> float:
-			return -depth * (0.66 + 0.34 * cos(a) + 0.12 * sin(a * 5.0 + 1.3 + i) + 0.07 * sin(a * 9.0 + 0.4))
+			return -depth * (0.66 + 0.34 * cos(a) + 0.12 * sin(a * 5.0 + 1.3 + maxi(i - 2, 0)) + 0.07 * sin(a * 9.0 + 0.4))
 		for sector in 3:
 			var a0 := -PI + sector * TAU / 3.0
 			var strips := []
@@ -358,16 +365,17 @@ static func _funnel_soot(k: VehicleModels, m: Node3D, at: Vector3, top: float, h
 				var y := at.y + q.y
 				var r := 0.3 + 0.03 * (top - y) / 2.3 + lift
 				return Vector3(at.x + sin(q.x) * r, y, at.z + cos(q.x) * r),
-				Vector3(sin(mid), 0.0, cos(mid)), c, _coat(c, ["plain", "plain_dark"], i), false, 0)
+				Vector3(sin(mid), 0.0, cos(mid)), c, _coat(c, ["plain", "plain", "plain", "plain_dark"], i), false, 0)
 
 
 ## A rust streak's coats as outlines (metres, x across, y up, its top edge at
 ## y = 0), one inside the next: each a tongue `w` wide at the top narrowing to
-## a blunt end, the long pale tail running all `h` down, the core under the
-## source a third of it, each one's end drifting off to the side by `lean`.
+## a blunt end, the faint fringes a little past the long pale tail, which runs
+## all `h` down, the core under the source a third of it, each one's end
+## drifting off to the side by `lean`.
 static func _drip(w: float, h: float, lean: float) -> Array:
 	var out := []
-	for c: Vector2 in [Vector2(1.0, 1.0), Vector2(0.8, 0.62), Vector2(0.55, 0.3)]:
+	for c: Vector2 in [Vector2(1.3, 1.18), Vector2(1.14, 1.08), Vector2(1.0, 1.0), Vector2(0.8, 0.62), Vector2(0.55, 0.3)]:
 		var a := w * 0.5 * c.x
 		var l := h * c.y
 		var lx := lean * a * 0.8

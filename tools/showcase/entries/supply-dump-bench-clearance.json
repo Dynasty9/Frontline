@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/supply-dump-bench-clearance.md",
+  "summary": "Leave space between the square's bench and the supply-dump fence supports.",
+  "medium": "text",
+  "stage": "Static geometry regression; matched low-pan gameplay capture still pending.",
+  "rationale": "Draft evidence limitation: the original realistic-fences supply-dump still exposed the overlap. Four-orientation geometry checks cover the proposed placement, not a rendered after-state. No new screenshot or WebM is claimed; add a genuine low-pan before/after WebM and poster before visual sign-off.",
+  "source_ref": "codex/supply-dump-bench-clearance, based on main 99b8723de85d0f6e04c2ab5f2350377c15dfadb7",
+  "sources": [],
+  "output": null
+}
