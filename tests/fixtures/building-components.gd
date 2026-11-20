@@ -530,6 +530,19 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# The FOB's command post: its HESCO square keeps to the post's footprint
+	# (the baffle of bags a step outside its way in) and under the net, and
+	# its roof carries a burst layer of bags.
+	var cp_root := Node3D.new()
+	add_child(cp_root)
+	var cp_rng := RandomNumberGenerator.new()
+	cp_rng.seed = 11
+	var cp_bags: Array = []
+	WorksModels.command_post(cp_root, cp_rng, cp_bags)
+	var cpb := _bounds(cp_root, Transform3D.IDENTITY)
+	check(cpb.position.x >= -2.6 and cpb.end.x <= 2.6 and cpb.position.z >= -2.6 and cpb.end.z <= 2.6 and cpb.end.y <= 2.45, "a FOB's command post keeps to its footprint (%s)" % cpb)
+	check(cp_bags.size() == 8, "a FOB's command post has its roof of bags and its baffle (%d rows)" % cp_bags.size())
+	cp_root.free()
 	# Cover crates: the stores stand on the ground inside the boxes their parts
 	# give for cover, and one stack is loaded differently from the next.
 	var loads := {}
