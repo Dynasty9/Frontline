@@ -6,7 +6,7 @@
   "baseline": "Verified PR fork point; not a claim that the before take is current main. No merge or retarget.",
   "fixture": "tools/showcase/building-surfaces.tscn",
   "fixture_script_sha256": "560446d8b36ae675d181b75ae2131eed31f45eb31168f87ade4a6eb85ea4833f",
-  "fixture_note": "The identical camera-only orbit extension is applied to both isolated source revisions. Production models and materials are unmodified.",
+  "fixture_note": "Apply tools/showcase/roof-sheet-orbit.patch to the fixture at each recorded source revision for the identical camera-only orbit extension. This isolated capture patch preserves the shared fixture; production models and materials are unmodified.",
   "subject": "watchtower:0; preview id=0, variant=0, side=0 (deterministic model seed 0)",
   "camera": {
     "center": [
@@ -79,5 +79,7 @@
       0.18
     ],
     "matching_forward_samples": true
-  }
+  },
+  "capture_patch": "tools/showcase/roof-sheet-orbit.patch",
+  "validation": "Full WebM decode and local/remote browser playback at 1x passed; seek, reopen, reduced-motion paused state, still dialog and 640px release-card layout passed."
 }
