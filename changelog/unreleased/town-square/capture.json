@@ -1,6 +1,6 @@
 {
   "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
-  "source_ref": "9a0e4f4abe57cf78cc5aa4ea60f775522cdfc9db",
+  "source_ref": "514763c7d1b579cbf7305acd19d36d4264955f71",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
   "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
@@ -24,9 +24,59 @@
       ],
       "file": "memorial.jpg",
       "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=memorial,memorial_obelisk",
+      "crop": [
+        [
+          420,
+          110,
+          1392,
+          890
+        ],
+        [
+          568,
+          110,
+          1038,
+          890
+        ]
+      ],
       "after_only": true
+    },
+    {
+      "subjects": [
+        "memorial"
+      ],
+      "file": "memorial-review.jpg",
+      "before_ref": "15da106f4fb3f9258a3d701803e021240302c2be",
+      "panels": [
+        {
+          "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=memorial --building-match=closeup.json",
+          "framing": {
+            "memorial": [
+              0,
+              3.55,
+              0,
+              2.6,
+              30
+            ]
+          },
+          "crop": [
+            500,
+            0,
+            1100,
+            900
+          ]
+        },
+        {
+          "command": "FL_ONLY_VIEW=near,6.8,9.8,12,-28,3.5 godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town --capture-views=near",
+          "crop": [
+            612,
+            80,
+            1052,
+            740
+          ]
+        }
+      ]
     }
   ],
-  "notes": "The square view is the town capture set's own (main has it); the studio's memorial kinds exist only after.",
-  "composition": "PIL: one matched row, 792 px halves, JPEG quality 82; the studio pair cropped and scaled to 1600 px, JPEG quality 84"
+  "notes": "The square view is the town capture set's own (main has it); it sees the memorial from behind on seed 3, so the review sheet adds the game's closest camera (12 m) from its front. The studio's memorial kinds exist only after main. memorial-review.jpg is the pull request's review: the memorial as first proposed (before_ref) and as revised.",
+  "composition": "PIL: comparison.jpg keeps its BEFORE half and takes a new AFTER half (792 px, JPEG quality 82); memorial.jpg the studio pair side by side scaled to 1600 px (quality 84); memorial-review.jpg four 400x600 panels, before and after for each camera (quality 84)"
 }
