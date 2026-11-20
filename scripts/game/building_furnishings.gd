@@ -13,7 +13,7 @@ extends RefCounted
 ## height when they stand out from them) or lie flat on the floor.
 
 const FABRICS := [Color(0.55, 0.2, 0.16), Color(0.3, 0.42, 0.3), Color(0.75, 0.68, 0.5), Color(0.28, 0.33, 0.5),
-	Color(0.62, 0.45, 0.22), Color(0.48, 0.3, 0.42), Color(0.8, 0.78, 0.72)]
+	Color(0.62, 0.45, 0.22), Color(0.42, 0.31, 0.35), Color(0.8, 0.78, 0.72)]
 const NETS := Color(0.86, 0.85, 0.8)
 ## Inside walls: distemper and paint in the colours people chose.
 const INTERIORS := [Color(0.85, 0.8, 0.66), Color(0.72, 0.78, 0.68), Color(0.7, 0.76, 0.82), Color(0.84, 0.72, 0.66),
