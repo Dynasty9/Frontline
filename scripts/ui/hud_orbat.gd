@@ -20,6 +20,7 @@ var open := true
 var _scroll := 0.0
 var _content_h := 0.0
 var _rows: Array = []  # [Rect2, kind ("sq"/"veh"), id, commandable]
+var _sections: Array = []  # [Rect2, [[kind, id], ...]]: a heading selects everything under it
 var _head := Rect2()
 var _hover := -1
 
@@ -54,6 +55,11 @@ func _gui_input(ev: InputEvent) -> void:
 			toggle()
 			accept_event()
 			return
+		for sc in _sections:
+			if (sc[0] as Rect2).has_point(mb.position):
+				_pick_all(sc[1], mb.shift_pressed)
+				accept_event()
+				return
 		for r in _rows:
 			if (r[0] as Rect2).has_point(mb.position):
 				_pick(String(r[1]), int(r[2]), bool(r[3]), mb.shift_pressed, mb.double_click)
@@ -125,6 +131,23 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 			w.director.active = false
 
 
+## A heading clicked: every unit of yours under it (all the air, all the
+## boats), added to the selection with Shift.
+func _pick_all(units: Array, add: bool) -> void:
+	var inp = hud.world.input
+	if inp == null or units.is_empty():
+		return
+	if not add:
+		inp.clear_selection()
+	for u in units:
+		if String(u[0]) == "sq":
+			if not int(u[1]) in inp.sel_squads:
+				inp.sel_squads.append(int(u[1]))
+		elif not int(u[1]) in inp.sel_vehicles:
+			inp.sel_vehicles.append(int(u[1]))
+	Sfx.ui("click")
+
+
 # --- drawing ------------------------------------------------------------------------------
 
 func _draw() -> void:
@@ -139,6 +162,7 @@ func _draw_content() -> void:
 	if w == null or w.input == null:
 		return
 	_rows.clear()
+	_sections.clear()
 	var lt: int = w.local_team
 	var teams: Array = [lt] if lt >= 0 else [0, 1]
 	# gather: squads by sid, vehicles
@@ -201,10 +225,12 @@ func _draw_content() -> void:
 		if teams.size() > 1:
 			y = _team_header(y, t, top, bottom)
 		if not mine_sqs.is_empty():
+			_add_section(y, mine_sqs, [])
 			y = _section(y, "Infantry", top, bottom)
 			for sid in mine_sqs:
 				y = _squad_row(y, int(sid), by_sid[sid], top, bottom)
 		if not support.is_empty():
+			_add_section(y, support, [])
 			y = _section(y, "Support", top, bottom)
 			for sid in support:
 				y = _squad_row(y, int(sid), by_sid[sid], top, bottom)
@@ -212,6 +238,7 @@ func _draw_content() -> void:
 			var dv: Array = by_dom[dom[0]]
 			if dv.is_empty():
 				continue
+			_add_section(y, [], dv)
 			y = _section(y, String(dom[1]), top, bottom)
 			for v in dv:
 				y = _vehicle_row(y, v, top, bottom)
@@ -249,6 +276,23 @@ static func squad_alarm(st: Dictionary) -> String:
 	if bool(st.contact):
 		return "CONTACT"
 	return ""
+
+
+## A heading's hit box and the player's own units under it.
+func _add_section(y: float, sids: Array, vehs: Array) -> void:
+	var w := hud.world
+	var units := []
+	for sid in sids:
+		for s in w.soldiers:
+			if s.sid == int(sid):
+				if w.input.is_mine(s):
+					units.append(["sq", int(sid)])
+				break
+	for v in vehs:
+		if w.input.is_mine(v):
+			units.append(["veh", v.eid])
+	if not units.is_empty():
+		_sections.append([Rect2(0, y, W, SEC_H), units])
 
 
 func _visible_row(y: float, h: float, top: float, bottom: float) -> bool:

@@ -112,7 +112,6 @@ var _log_head: Label  # the log's header text
 var _log_key: Label  # and, after it, the key that closes it
 var toasts: HudToasts
 var radio: HudRadio  # the command net, low in the middle
-var _ack_t := 0  # (ms) when the last acknowledgement keyed the radio
 var objectives: HudObjectives
 var log_panel: PanelContainer
 var log_box: RichTextLabel
@@ -861,7 +860,7 @@ func toggle_doctrine() -> void:
 
 
 func toggle_menu() -> void:
-	if doctrine.visible:
+	if doctrine != null and doctrine.visible:
 		doctrine.visible = false
 		return
 	if stats_panel.visible:
@@ -933,10 +932,10 @@ func _track_orders() -> void:
 				came = int(prev[5])
 				if int(prev[3]) != int(o[3]):
 					came = now
-					# a squad you have selected answers on the net: a click of squelch
-					if t == world.local_team and world.input and id in world.input.sel_squads and now - _ack_t > 400:
-						_ack_t = now
-						Sfx.ui("squelch", -16.0, 1.08)
+					# a squad you have selected answers on the net
+					var aw := ack_words(String(o[0]), o[1])
+					if aw != "" and t == world.local_team and world.input and id in world.input.sel_squads:
+						radio.ack(Squad.callsign_of(t, id), aw)
 			orders[id] = [String(o[0]), o[1], o[2], int(o[3]), t, came, o[4] if o.size() > 4 else null, int(o[5]) if o.size() > 5 else -1, String(o[6]) if o.size() > 6 else ""]
 	for id in orders.keys():
 		if not seen.has(id):
@@ -954,6 +953,33 @@ func _update_calm(rdt: float) -> void:
 		var a := lerpf(1.0, CALM_ALPHA, calm)
 		orbat.modulate.a = a
 		support_box.modulate.a = a
+
+
+## How a squad answers an order on the net.
+static func ack_words(kind: String, at: Vector3) -> String:
+	var g := Defs.grid_ref(at)
+	match kind:
+		"move":
+			return "Moving to %s, out." % g
+		"bound":
+			return "Bounding to %s, out." % g
+		"assault":
+			return "Assaulting %s. Moving now." % g
+		"defend":
+			return "Digging in at %s." % g
+		"ambush":
+			return "Setting the ambush at %s." % g
+		"retreat":
+			return "Falling back, out."
+		"attack":
+			return "Engaging, out."
+		"build":
+			return "On our way to build at %s." % g
+		"tunnel":
+			return "Into the tunnels."
+		"hold":
+			return "Holding here."
+	return ""  # (contact, shellfire, routing: the squad's own doing, not an answer)
 
 
 ## Picks out what the cursor is over (see focus_sid): the order of battle's
@@ -2056,11 +2082,14 @@ func _update_card() -> void:
 				card_title.text = "Train · RMB sets the rally point"
 				for c in cats:
 					var n := 0
+					var open_n := 0
 					for item in items:
 						if _prod_cat(item) == c:
 							n += 1
+							if Defs.locked_by(lt, item, have) == "":
+								open_n += 1
 					var cc: String = c
-					_button(PROD_CATS[cc][0], "%d types" % n, PROD_CATS[cc][1], func(): _card_page = "prod:" + cc)
+					_button(PROD_CATS[cc][0], "%d/%d" % [open_n, n], "%s\n%d of %d unlocked; the doctrine tree (%s) opens the rest." % [PROD_CATS[cc][1], open_n, n, Keys.label("doctrine")], func(): _card_page = "prod:" + cc)
 			else:
 				card_title.text = ("Train %s · RMB sets the rally point" % String(PROD_CATS[page][0]).to_lower()) if page != "" else "Train · RMB sets the rally point"
 				if page != "":

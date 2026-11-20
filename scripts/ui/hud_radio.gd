@@ -19,6 +19,26 @@ var _queue: Array = []  # [from, text, priority]
 var _cur: Array = []
 var _age := 0.0
 var _hold := 0.0
+var _is_ack := false  # the line on now is a squad answering an order
+
+
+## A squad answering an order you've just given ("Bravo 1: Moving to D8,
+## out."). It never talks over real traffic and never waits for it: an answer
+## is only worth hearing at once. Squads given the same order together answer
+## as one.
+func ack(from: String, text: String) -> void:
+	if not _cur.is_empty() and not _is_ack:
+		return
+	if _is_ack and not _cur.is_empty() and _age < 0.5 and String(_cur[1]) == text:
+		if not String(_cur[0]).contains(from):
+			_cur[0] = String(_cur[0]) + ", " + from
+		return
+	_cur = [from, text]
+	_is_ack = true
+	_age = 0.0
+	_hold = 2.2
+	Sfx.ui("squelch", -15.0, 1.08)
+	queue_redraw()
 
 
 ## A message of kind "radio" (or anything else meant for the net): "Bravo 1:
@@ -42,6 +62,7 @@ func tick(dt: float) -> void:
 		if _queue.is_empty():
 			return
 		_cur = _queue.pop_front()
+		_is_ack = false
 		_age = 0.0
 		_hold = maxf(HOLD_MIN, String(_cur[1]).length() / READ_CPS)
 		# hurry along when there's more waiting
@@ -51,8 +72,9 @@ func tick(dt: float) -> void:
 		queue_redraw()
 		return
 	_age += dt
-	if _age > _hold + 0.25:
+	if _age > _hold + 0.25 or (_is_ack and not _queue.is_empty() and _age > 0.8):
 		_cur = []
+		_is_ack = false
 		queue_redraw()
 	elif _age < String(_cur[1]).length() / TYPE_CPS + 0.05 or _age > _hold - 0.05:
 		queue_redraw()
