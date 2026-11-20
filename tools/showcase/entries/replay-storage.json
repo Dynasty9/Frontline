@@ -1,0 +1,26 @@
+{
+  "entry": "changelog/unreleased/replay-storage.md",
+  "summary": "Reopen an authentic synthetic recording after a local storage-fixture restart.",
+  "medium": "motion",
+  "stage": "Real scenario recording and real replay player",
+  "rationale": "Visible playback after a separately asserted fixture restart makes the persistence outcome understandable. The video does not establish concurrency correctness or production availability.",
+  "source_ref": "5db6dfe1c3874d5a90adb481c8c76dba4da497ff",
+  "capture": {
+    "instructions": "docs/replay-storage-fixture.md",
+    "scenario": "attack, seed 3, 12.2 seconds, six emitted chunks",
+    "renderer": "Godot 4.7.2 standard Linux, Xvfb, Mesa llvmpipe, Compatibility",
+    "verification": "Recorder exit 0; new storage process compared all six payloads exactly; replay exit 0 at time 8.2, 39 entities; final VP9 decoded and representative source/playback frames inspected.",
+    "edit": "Source seconds 120-124 normal; playback seconds 90-150 at 4x, explicitly labeled accelerated footage, silent. No backend behavior or performance inferred from pixels."
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/replay-storage/restart.webm",
+      "sha256": "e759f7400bc4fc7836fc4727e45b7fffaabf9699eb28df34f0b6b2075858adf6"
+    },
+    {
+      "file": "changelog/unreleased/replay-storage/restart.jpg",
+      "sha256": "c1a2ca1f60175c3fa931d17d8b6b54e0bb2717be25f37bb96e22f3cb95ede236"
+    }
+  ],
+  "output": null
+}

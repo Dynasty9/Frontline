@@ -5,7 +5,7 @@
 //
 // No dependencies beyond Node itself (20 or newer).
 
-import { Replays, ReplayError, REPLAY_BODY } from './replays.js';
+import { createReplays, ReplayError, REPLAY_BODY } from './replays.js';
 import { timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
@@ -156,7 +156,7 @@ export function createServer({
 	release = loadRelease(),
 	log = console.log,
 	errors = new ErrorLog({ log }),
-	replays = new Replays({ dir: env.REPLAY_DIR }),
+	replays = createReplays(env, { log }),
 } = {}) {
 	const trustProxy = env.TRUST_PROXY ? env.TRUST_PROXY === '1' : !!(env.RAILWAY_ENVIRONMENT_NAME || env.RAILWAY_ENVIRONMENT);
 	const limits = new RateLimit();
@@ -181,15 +181,23 @@ export function createServer({
 	};
 
 	const routes = {
-		'GET /health': async () => ({ ok: true, accounts: auth ? auth.name : 'off', release: release?.version ?? null, ...lobbies.stats() }),
+		'GET /health': async () => ({
+			ok: true,
+			accounts: auth ? auth.name : 'off',
+			recordings: replays.kind,
+			release: release?.version ?? null,
+			...lobbies.stats(),
+		}),
 
-		'GET /replays': async () => ({ enabled: !!replays.dir, replays: replays.list() }),
+		'GET /replays': async () => ({ enabled: replays.enabled, replays: await replays.list() }),
 		'POST /replays': async ({ req, ip, body }) => {
 			limits.hit('replay-create', ip, 6);
 			return replays.create(lobbies.owned(String(body.lobby || ''), lobbyToken(req)), body);
 		},
-		'GET /replays/:id': async ({ params }) => replays.view(replays.get(params.id)),
-		'GET /replays/:id/chunks/:sequence': async ({ params }) => replays.chunk(params.id, params.sequence),
+		'GET /replays/:id': async ({ params }) => replays.view(await replays.get(params.id)),
+		// a chunk never changes once it's published: a viewer's browser keeps it (and doesn't ask the store again)
+		'GET /replays/:id/chunks/:sequence': async ({ res, params }) =>
+			send(res, 200, await replays.chunk(params.id, params.sequence), 'public, max-age=86400, immutable'),
 		'POST /replays/:id/chunks': async ({ req, params, body }) => replays.append(params.id, bearer(req), body),
 
 		'GET /release': async () => {
@@ -495,7 +503,11 @@ export function createServer({
 			limits.hit('all', ip, 240);
 			const body = await readJson(req, r.max);
 			const run = () => r.fn({ req, res, ip, url, body, params: r.params });
-			if (!r.public) return send(res, 200, await run());
+			if (!r.public) {
+				const data = await run();
+				// (a route that answered with headers of its own has sent its answer)
+				return res.headersSent ? undefined : send(res, 200, data);
+			}
 			limits.hit('public', ip, 120);
 			// a callsign is a callsign whatever its case
 			const key = `${req.method} ${url.pathname}?${[...url.searchParams].toSorted().join('&')}`.toLowerCase();

@@ -42,7 +42,7 @@ JSON in, JSON out. Errors are `{"error": "..."}` with a 4xx/5xx status.
 
 | Call | What it does |
 |---|---|
-| `GET /health` | `{ok, accounts: "off" \| "supabase" \| "memory", release, lobbies, players}` |
+| `GET /health` | `{ok, accounts: "off" \| "supabase" \| "memory", recordings: "off" \| "supabase" \| "folder", release, lobbies, players}` |
 | `GET /release` | The latest release of the game: `{version, tag, name, published, url, assets: {windows, linux}}`, each asset with its `url`, `size` and `sha256`. The release workflow writes it into `release.json` on the release's pull request, and merging that redeploys this service; the game's updater reads it. |
 | `GET /lobbies?version=N` | The battles being hosted, fullest first. No addresses. Each says what it is: `mode` (`coop`, `versus` or `mission`), `mission`, `side`, `teams` (players per side), `spectators` and `locked` (wants a password). A signed-in host's `icon` and `rank` (as they were when the battle was listed), `null` for a host who isn't. |
 | `POST /match` `{version, exclude: [ids]}` | Quick match: `{lobby}`, or `{lobby: null}` (then host one). Holds a seat for 20 s. Never offers a battle with a password. |
@@ -314,4 +314,4 @@ configuration error and the existing GitHub sign-in remains available.
 
 ## Battle recordings
 
-Mount a persistent volume and set `REPLAY_DIR` to enable delayed public broadcasts and seven-day replay storage. Without it, the service reports recording disabled. The recording HTTP API is independent of accounts; uploads require a public active lobby owner. See [REPLAYS.md](../docs/REPLAYS.md) for endpoints, capacity limits and deployment.
+Set `REPLAY_BUCKET=replays` (with Supabase configured and its secret key) to keep delayed public broadcasts and seven-day replays in the project's private `replays` bucket, which a migration creates; or mount a persistent volume and set `REPLAY_DIR`. Without either, the service reports recording disabled. The recording HTTP API is independent of accounts; uploads require a public active lobby owner. See [REPLAYS.md](../docs/REPLAYS.md) for endpoints, capacity limits and deployment.
