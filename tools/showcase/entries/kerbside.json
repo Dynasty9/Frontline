@@ -1,0 +1,42 @@
+{
+  "entry": "changelog/unreleased/kerbside.md",
+  "summary": "Street lamps, lanterns, hydrants, signs, mailboxes and the electricity cabinet rebuilt.",
+  "medium": "motion",
+  "stage": "tools/showcase/building-surfaces.tscn (kerbside); tests/fixtures/environment-views.gd (FL_ONLY_VIEW)",
+  "rationale": "Appearance change of small pieces: the studio shows each up close; a matched row by the square shows them at the game's camera. A matched fixed-light native camera orbit exposes lettering occlusion and the lamp socket before and after the decorative repair.",
+  "source_ref": "8318774b76c5aedc980f68c63ac7f987a35a4a6a",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/kerbside/pieces.jpg",
+      "sha256": "6c3006c5cc53c106f176bff09e5da2ada870f7daa811c6d7f7add73cd6bd7b7b"
+    },
+    {
+      "file": "changelog/unreleased/kerbside/comparison.jpg",
+      "sha256": "3c7c8ad3c75c753d6f29b778d9e5b9814cf7a7b4f0dc4ea9da917d98edbc9d73"
+    },
+    {
+      "file": "changelog/unreleased/kerbside/capture.json",
+      "sha256": "7152fd9b6df7c8a44a61f642dc5d3321c4d905c3a7cf44ab0dffa0a918bc9b82"
+    },
+    {
+      "file": "changelog/unreleased/kerbside/detail-motion.webm",
+      "sha256": "4038209526976d96ab98de366f9b327f8a6ba75162a35f8142378759f40b49b3"
+    },
+    {
+      "file": "changelog/unreleased/kerbside/detail-motion.jpg",
+      "sha256": "4626c98c03da76d97fb8b7f235781eb4b225377d5468ffc3db7560bb83b56686"
+    },
+    {
+      "file": "changelog/unreleased/kerbside/motion-capture.json",
+      "sha256": "91232ce870d7695b24ffc03637c3efd3166e1927eaf8d74b483ff0831b2dcc59"
+    }
+  ],
+  "output": null,
+  "motion_review": {
+    "before_ref": "a7739f7104173d6ab6e2f84599e85926246c6ad0",
+    "source_ref": "fcd95ba8eb6769fa2d2daeb2bcd3bf3a4eb61035",
+    "stage": "Native BuildingKerbside component fixture, not a battlefield or performance benchmark",
+    "capture": "changelog/unreleased/kerbside/motion-capture.json"
+  }
+}
