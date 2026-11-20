@@ -342,6 +342,10 @@ func _ready() -> void:
 			Net.lobby_updated.connect(_lobby_test_actions)
 
 
+## Scenarios that show something only one time of day shows (unless --mood says otherwise).
+const SCENARIO_MOODS := {"flares": "night"}
+
+
 ## A game on this machine alone, as tests run one: a --scenario, an AI-vs-AI
 ## battle (--aivai) or a mission (--mission; on its own it plays itself, --play
 ## to command it). `a` holds the switches without their dashes; the test port
@@ -378,6 +382,10 @@ func start_local(a: Dictionary) -> void:
 			else:
 				Net.set_setting("ai_difficulty", part.strip_edges())
 	Net.set_setting("ai_difficulty_teams", per)
+	# --mood=night (a test port's load takes it too): the battle's time of day,
+	# else a scenario's own (one shown best in it), else the player's setting
+	# (set every time, as the rest: one load after another in one process)
+	Net.set_setting("mood", String(a.get("mood", SCENARIO_MOODS.get(String(a.get("scenario", "")), Settings.get_v("mood")))))
 	if a.has("scenario"):
 		# --play: command the Coalition side yourself instead of watching
 		Net.set_setting("scenario", String(a.scenario))

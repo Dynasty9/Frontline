@@ -583,6 +583,21 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   battlefield (about 5 m to the pixel, fifteen times a second); a full-screen pass finds where each pixel lies on the
   ground from the depth buffer and darkens it there. Aircraft high overhead aren't darkened; at night the fog is
   lighter, because everything is dark already. The "Fog of war" map layer (the eye) turns it off.
+- **Night and illumination flares** (`flares.gd`, `vision.gd`, `rules.gd`). In a night battle men see only part of
+  their sight: the Coalition, with night sights and goggles, 60% (34 m), the Rebels 45% (25 m); vehicles 80% through
+  their thermal sights; aircraft, drones and recon photographs as by day. Anyone standing in a flare's light, or who
+  has just fired (his muzzle flash, for a second or so), is seen as far as by day, whichever side he's on. Buildings
+  are seen as by day. A **star shell** (mortar teams and pits: the **Illum** fire mission, two rounds 18 s apart; or the
+  off-map **M853A1 Illumination** / **82 mm Illumination** from the support panel, cheap and ready from the start) is
+  fuzed to burst about 70 m over the spot and hangs a magnesium flare under a small parachute. It burns 34-44 s with a
+  hard, flickering white light that lights the ground some 85 m round, falls about 1.5 m a second and drifts on the
+  wind, the charge swinging under its chute on its shroud lines, so the shadows below swing and lengthen as it
+  comes down. The host bursts each flare from the battle's seed and sends it once (burst point, time, burn and
+  swing); where it is at any moment is worked out from those alone, so every player, a replay and the host's rules
+  agree. Its light scatters in the volumetric haze (a halo round the charge, shafts past trees and houses), and the
+  nearest two cast shadows. The **AI commander** fights by flarelight at night: where its squads hear fire they can't
+  see, or have just lost sight of an enemy, and nothing is burning overhead, it has a mortar team (or a crewed pit,
+  or the battery behind the lines) put a star shell up, aimed a little upwind so it drifts over the spot.
 - **Watchtowers** see over the hedges and roofs: 85 m, and 115 m with a lookout up it (any idle soldier beside it
   climbs up). Placing one shows both rings; selecting one shows what it sees now.
 - **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (tier
@@ -1320,9 +1335,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **.50 cal nest** (M2HB on the M3 tripod / DShKM with a gun shield; also as a trench bay): 100 m range and crushing suppression. Its armour-piercing rounds shred trucks, technicals,
   helicopters and drones (they still bounce off tanks).
 - **Mortar pit**: crewed automatically and fires on enemies your side has spotted, behind cover too, at 30â€“160 m.
-  It holds fire when your own troops are within 8 m of the target. Select it to call 6-round HE or smoke fire missions.
+  It holds fire when your own troops are within 8 m of the target. Select it to call 6-round HE or smoke fire missions,
+  or two star shells (illumination: see "Night and illumination flares").
   Rounds whistle on the way down, so soldiers shout "Incoming!" and hit the dirt, or dive if a shell is landing right on them.
-- **Mortar teams** (both sides) do the same on the move with limited rounds. Press F to call a fire mission.
+- **Mortar teams** (both sides) do the same on the move with limited rounds. Press F to call a fire mission (HE, smoke
+  or illumination).
 - **Bunker** (a concrete pillbox cast in place, with splayed embrasures and a steel observation cupola, or a
   log-and-earth dugout for the Rebels): firing slits soldiers shoot through, and a roof that stops shrapnel.
   Right-click it with a squad to garrison.
@@ -1359,8 +1376,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 **Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `cloud_shadow.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
   procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
-  At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
-  moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
+  At night the sky fills with stars, and the illumination flares the mortars put up (see "Night and illumination
+  flares") drift down on parachutes over the fighting, throwing moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
   lightning flashes are followed by thunder.
 - **Cloud shadows fall on everything** (`cloud_shadow.gd`), not just the ground: soldiers, vehicles, buildings,
   trees, grass, roads and trenches darken in the same drifting shade, so a tank parked in it isn't lit up for the

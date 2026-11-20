@@ -914,9 +914,9 @@ func queue_fire(pos: Vector3, kind: String, peer: int) -> void:
 		world.rules.notify(peer, team, "Out of mortar range (30-160 m).")
 		return
 	fire_queue.clear()
-	for i in 6:
+	for i in 2 if kind == "illum" else 6:
 		fire_queue.append([pos, kind])
-	gunner.say("Fire mission, %s! Rounds out!" % ("smoke" if kind == "smoke" else "HE"), true)
+	gunner.say("Fire mission, %s! Rounds out!" % {"smoke": "smoke", "illum": "illum"}.get(kind, "HE"), true)
 
 
 func front_dir() -> Vector3:

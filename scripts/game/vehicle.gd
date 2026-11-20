@@ -1207,12 +1207,16 @@ func _scan() -> void:
 	var bs := -1e9
 	var eye := turret_pos()
 	var ex := get_exclude()
+	var night := 1.0 if is_air() else Vision.night_share(world, team, true)
+	var night_r := float(vdef.get("sight", 50.0)) * night
 	for e in world.units_near(position, maxf(72.0, float(vdef.get("sight", 50.0)) + 20.0)):
 		if e.team == team or e.team < 0:
 			continue
 		if e is Soldier and e.life != Soldier.Life.ALIVE:
 			continue
 		var d: float = Defs.flat(e.position - position).length()
+		if night < 1.0 and e is Soldier and d > night_r and not world.rules.seen_in_dark(e):
+			continue  # at night the thermal sight finds a man only so far, unless he's lit or firing
 		var sc := 0.0
 		if e is Vehicle and e.is_air():
 			if vdef.get("aa", false) or sam_left > 0:

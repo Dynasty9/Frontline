@@ -206,6 +206,17 @@ func _ai(w: World) -> Array:
 	return out
 
 
+## The illumination flares in the air: where each one's chute is and how bright it burns.
+func _flares(w: World) -> Array:
+	var out := []
+	for f in w.flares.list:
+		var age := w.time - float(f.t0)
+		var c := Flares.chute_at(f.p, age, float(f.ph))
+		out.append({"id": int(f.id), "team": int(f.team), "pos": _xz(c), "height": snappedf(c.y - w.ground_y(c), 0.1),
+			"age": snappedf(age, 0.1), "brightness": snappedf(Flares.brightness(age, float(f.life)), 0.01)})
+	return out
+
+
 ## A load request as start_local's switches: one of scenario, mission or
 ## battle (AI against AI), and seed, play, autoplay, static, verbose...
 func _load_args(req: Dictionary) -> Variant:
@@ -298,6 +309,7 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 			return {"t": w.time, "winner": w.winner, "seed": int(w.settings.get("seed", 0)), "scenario": String(w.settings.get("scenario", "")),
 				"mission": String(w.settings.get("mission", "")), "soldiers": w.soldiers.size(), "vehicles": w.vehicles.size(),
 				"structures": w.structures.size(), "squads": w.squads.size(), "supply": [w.rules.supply_total(0), w.rules.supply_total(1)],
+				"dark": w.dark, "flares": _flares(w),
 				"mission_info": _plain(w.mission_info), "ai": _ai(w)}
 		"squads":
 			for sq in w.squads.values():
@@ -312,7 +324,7 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 					out.append({"id": s.eid, "type": s.utype, "team": s.team, "squad": s.sid, "life": Soldier.Life.keys()[s.life],
 						"hp": snappedf(s.hp, 0.1), "pos": _xz(s.position), "posture": Soldier.Post.keys()[s.posture], "task": s.task,
 						"riding": s.riding.eid if is_instance_valid(s.riding) else 0, "stance": s.stance, "roe": s.roe,
-						"in_trench": w.in_trench(s.position)})
+						"in_trench": w.in_trench(s.position), "seen_by": [s.visible_to_team(0), s.visible_to_team(1)]})
 		"vehicles":
 			for v in w.vehicles:
 				if (team == -9 or v.team == team) and (kind == "" or v.vkind == kind) and (ids.is_empty() or ids.has(v.eid)):

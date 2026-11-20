@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/illumination-flares.md",
+  "title": "Illumination flares: fight by flarelight at night",
+  "version": "unreleased",
+  "kind": "new",
+  "summary": "At night men see only a short way. Mortars now fire star shells: magnesium flares that drift down under parachutes, light the ground and everyone on it, and throw shadows that swing as they fall. The AI lights up night attacks too.",
+  "medium": "motion",
+  "stage": "Native Godot 4.7.2 Forward+, --scenario=flares --seed=1 (night), High preset, --fixed-fps 30, 1280x720, command camera --focus=12,-30 --zoom=70 --pitch=-10 --nohud; 300 frames from t=50 s (--screenshot series, --shot-every=0.03333), the first flare's last ten seconds of burn.",
+  "rationale": "A flare's point is motion: the drift, the swing under the chute and the light and shadows moving with it. A short real-gameplay clip shows that; a still can't.",
+  "source_ref": "Branch dines/xenodochial-archimedes-b623aa on main 3c044b8a. Frame 288 was lost to a full disk during capture and replaced by frame 287. Encoded VP9 CRF 40 with Playwright's ffmpeg (JPEG on pipe:0).",
+  "sources": [
+    {
+      "file": "changelog/unreleased/illumination-flares/flare-night.webm",
+      "sha256": "0ef00a7f61b76890fcfda29945c3e06a07599767f17767575762c2be569576c9",
+      "caption": "A night attack (the flares scenario): a star shell's flare swings under its chute as it comes down over the field and gutters out; its light falls away to dark beyond the house, and the shadows shift with it. Real gameplay, fixed 30 Hz, High preset."
+    },
+    {
+      "file": "changelog/unreleased/illumination-flares/flare-night.jpg",
+      "sha256": "25f27c571d2312102bba2a382995c58dc24b60f9734582379783cadda59a3032",
+      "caption": "Poster: frame 150 (t=55 s), the flare low over the field."
+    }
+  ],
+  "output": null
+}

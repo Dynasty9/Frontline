@@ -930,9 +930,40 @@ func _make_model(e: Dictionary) -> Node3D:
 					return _on_the_ground(VehicleModels.build("ac130", 0, 3).root)
 				"mortars":
 					return Structure.preview_model("mortar_pit", 1)
+				"illum", "r_illum":
+					return _star_shell()
 				_:
 					return _shells(String(e.key))
 	return null
+
+
+## An illumination round's flare as it hangs in the air: the cloth chute, its
+## shroud lines and the magnesium charge burning white beneath, with the
+## round's empty body beside it.
+func _star_shell() -> Node3D:
+	var g := Node3D.new()
+	var chute := MeshInstance3D.new()
+	chute.mesh = Atmosphere._flare_canopy()
+	var cloth := StandardMaterial3D.new()
+	cloth.albedo_color = Color(0.70, 0.68, 0.61)
+	cloth.roughness = 0.95
+	cloth.cull_mode = BaseMaterial3D.CULL_DISABLED
+	cloth.vertex_color_use_as_albedo = true
+	chute.material_override = cloth
+	chute.position = Vector3(0, 1.9, 0)
+	g.add_child(chute)
+	var end := Vector3(0, 0.15, 0)
+	for i in 8:
+		var a := i * TAU / 8.0
+		var rim := Vector3(cos(a) * 0.9, 1.9, sin(a) * 0.9)
+		var seg := end - rim
+		var line := Res.mi(g, Res.cyl(0.004, 0.004, seg.length(), 4), Mats.get_mat("canvas_white"), rim + seg * 0.5)
+		line.quaternion = Quaternion(Vector3.UP, seg.normalized())
+	Res.mi(g, Res.cyl(0.045, 0.045, 0.22, 8), Res.mat(Color(1.0, 0.98, 0.95), 0.5, 6.0, true), end)
+	# the 81 mm round it came out of: a white-banded body and its tail fins
+	WeaponModels._tube(g, 0.042, -0.25, 0.22, 0.04, "paint", -1.0, 0.7, Color(0.42, 0.45, 0.3))
+	WeaponModels._tube(g, 0.042, 0.02, 0.07, 0.041, "paint", -1.0, 0.7, Color(0.92, 0.92, 0.88))
+	return g
 
 
 ## An aircraft on display: gear down if it has any, the exhaust glow off.

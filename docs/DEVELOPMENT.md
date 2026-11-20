@@ -361,6 +361,10 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --scenario=cache                                      an ammo cache filling an empty-handed squad, then blown up (cache_draw,
                                                       cache_cook_off); a Rebel cell half under a camouflage net, half in the open
 FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who's under the net and seen, who's filled up
+--scenario=flares                                     a night attack on a line of walls: the commander puts star shells up
+                                                      over it (ai_illum, flare_burst, seen_by_flare); played at night unless
+                                                      --mood says otherwise (--mood works for any test run and test-port load)
+FL_DEBUG_FLARES=1 (env)                               print each illumination flare as it bursts: where, when, how long
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=mounted                                    two halted IFVs drop only some of their men (Vehicle.dismount's n and squad)
