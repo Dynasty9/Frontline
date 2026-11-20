@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/helipad.md",
   "summary": "Helipads laid out as forward landing pads.",
-  "medium": "still",
-  "stage": "tools/showcase/building-surfaces.tscn (helipad:0, helipad:1)",
-  "rationale": "Appearance change: both sides' helipads in the studio from the same cameras.",
+  "medium": "motion",
+  "stage": "tools/showcase/building-surfaces.tscn (helipad:0, helipad:1); tools/showcase/helipad-world.gd (new in-world motion)",
+  "rationale": "Matched in-world normal and close views show both pad materials and markings; a final close view isolates the rotated-pad windsock correction. The existing studio comparison is retained.",
   "source_ref": "619a9b61b88c2e893a6872cd667518990a719d1d",
   "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
   "sources": [
@@ -14,7 +14,27 @@
     {
       "file": "changelog/unreleased/helipad/capture.json",
       "sha256": "37f48442c259665005f2dde516055a0496fa5f4821ec378318a82535ad22bdc1"
+    },
+    {
+      "file": "changelog/unreleased/helipad/pad-orbit.webm",
+      "sha256": "ce8f4e63f1d6574efea5040cccb5fd3801299cef38025655a932d82c1cae4268"
+    },
+    {
+      "file": "changelog/unreleased/helipad/pad-orbit.jpg",
+      "sha256": "d3356f410be939f54994d63de34fd2d1c8d3df6b8abffc73e200c71519d60b64"
+    },
+    {
+      "file": "changelog/unreleased/helipad/pad-orbit-capture.json",
+      "sha256": "f8d2d7bc505fc834e9675e2d037ed3b358d582351bc33abfee5e5dec6e231c72"
     }
   ],
-  "output": null
+  "output": null,
+  "in_world_motion": {
+    "source_ref": "41d28756fcc5c1fdaa463a9cc1b6694ebbeb3e75",
+    "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
+    "alignment_before_ref": "f8074b9700cdc732440dda402e7bcbaf4ccee673",
+    "stage": "tools/showcase/helipad-world.gd",
+    "capture": "changelog/unreleased/helipad/pad-orbit-capture.json",
+    "note": "The original top-level source_ref and before_ref describe the preserved studio still. The new motion is a real-engine idle fixture, not gameplay or hardware performance evidence."
+  }
 }

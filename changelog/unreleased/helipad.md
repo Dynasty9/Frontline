@@ -6,6 +6,11 @@ kind = "improved"
 [[screenshots]]
 file = "comparison.jpg"
 caption = "Both sides' helipads, before and after"
+
+[[videos]]
+file = "pad-orbit.webm"
+poster = "pad-orbit.jpg"
+caption = "Matched daylight and cameras in an idle two-pad world fixture. Normal and close views compare the old pad with the new materials and markings; the final view isolates windsock alignment on rotated pads. Camera motion only, no flight or gameplay demonstration."
 +++
 
 - **The Coalition's pad** is aluminium landing mat laid in a bond, with ramp panels round its edge. **The Rebels'** is concrete, cracked and patched.

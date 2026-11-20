@@ -1,0 +1,134 @@
+{
+  "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
+  "source_ref": "41d28756fcc5c1fdaa463a9cc1b6694ebbeb3e75",
+  "alignment_before_ref": "f8074b9700cdc732440dda402e7bcbaf4ccee673",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/helipad-world.gd",
+  "stage_sha256": "e7ded2d72ad2665f14c042d54e094bacaeeb53a5912e2119782e2fc0466df7b4",
+  "command": "GALLIVM_PERF=nopt LP_NUM_THREADS=4 godot --path CHECKOUT --rendering-method forward_plus --resolution 960x540 --fixed-fps 15 --script STAGE -- --output=OUTPUT",
+  "before_command_suffix": "--view=normal,mat-detail,concrete-detail",
+  "alignment_before_command_suffix": "--view=windsocks",
+  "compatibility_command_suffix": "--rendering-method gl_compatibility --smoke",
+  "matching": {
+    "seed": 4,
+    "mood": "day",
+    "preset": "high",
+    "world_time": 8,
+    "simulation": "frozen before capture; camera only",
+    "exposure": "same untouched preset; no grading",
+    "pads": [
+      {
+        "eid": 100,
+        "team": 0,
+        "position": [
+          -9,
+          0,
+          0
+        ],
+        "yaw": 0
+      },
+      {
+        "eid": 101,
+        "team": 1,
+        "position": [
+          9,
+          0,
+          0
+        ],
+        "yaw": 1.5707963267948966
+      }
+    ]
+  },
+  "views": [
+    {
+      "name": "normal",
+      "focus": [
+        0,
+        0,
+        0
+      ],
+      "distance": 55,
+      "pitch": -48,
+      "yaw": 0.45
+    },
+    {
+      "name": "mat-detail",
+      "focus": [
+        -9,
+        0,
+        0
+      ],
+      "distance": 19,
+      "pitch": -48,
+      "yaw": 0.45
+    },
+    {
+      "name": "concrete-detail",
+      "focus": [
+        9,
+        0,
+        0
+      ],
+      "distance": 19,
+      "pitch": -48,
+      "yaw": 0.45
+    },
+    {
+      "name": "windsocks",
+      "focus": [
+        0,
+        3,
+        -5.2
+      ],
+      "distance": 18,
+      "pitch": -28,
+      "yaw": 0.45
+    }
+  ],
+  "motion": "30 actual engine frames per view at 15 fps. Yaw = base + 0.12*sin(TAU*frame/29). First three phases compare main to candidate; last phase compares pre-fix PR head to candidate.",
+  "composition": "Uncropped 960x540 engine frames scaled to 800x450 and placed side by side, with labels outside the images; 1600x520 VP9 WebM, silent. No colour changes or generated frames.",
+  "renderer": "Vulkan 1.4.305 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 19.1.7, 256 bits)",
+  "display": "Workspace Xvfb :99 -screen 0 1280x720x24 -nolisten tcp; 960x540 Godot window; Dummy audio.",
+  "environment": {
+    "DISPLAY": ":99",
+    "VK_DRIVER_FILES": "/workspace/frontline-tools/runtime/usr/share/vulkan/icd.d/lvp_icd.json",
+    "LD_LIBRARY_PATH": "/workspace/frontline-tools/runtime/usr/lib/x86_64-linux-gnu",
+    "XDG_DATA_HOME": "/workspace/frontline-tools/data",
+    "XDG_CACHE_HOME": "/workspace/frontline-tools/cache",
+    "XDG_CONFIG_HOME": "/workspace/frontline-tools/config",
+    "GALLIVM_PERF": "nopt",
+    "LP_NUM_THREADS": "4"
+  },
+  "limits": "Two-pad idle fixture in the real World terrain and Atmosphere, using Structure and RtsCamera. Not a generated level, flight demonstration or gameplay test. Software rendering on a four-CPU, 16-GiB cloud executor; capture includes compilation and software rasterization and is not a hardware or realtime performance measurement.",
+  "baseline_stage": "Copy tools/showcase/helipad-world.gd from source_ref to an external path and run it against before_ref; the baseline checkout has no source edits.",
+  "alignment_before_stage_sha256": "079fd8e7f67b058465f21a25fe026320b19630ff7f33eaddb0f56f0e4e912190",
+  "alignment_before_stage_note": "Same capture logic before the stage was committed; only header comments and the unused default output path differ.",
+  "compatibility_renderer": "OpenGL API 4.5 (Core Profile) Mesa 25.0.7-2+deb13u1 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 19.1.7, 256 bits)",
+  "compatibility_limits": [
+    "Driver does not support changing V-Sync mode.",
+    "SSR, SSIL and volumetric fog are Forward+-only; Compatibility used its normal fallbacks."
+  ],
+  "encoded_media": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "vp9",
+        "width": 1600,
+        "height": 520,
+        "avg_frame_rate": "15/1"
+      }
+    ],
+    "format": {
+      "duration": "8.000000",
+      "size": "3391212"
+    }
+  },
+  "validation": {
+    "geometry": "tests/building-components.test.mjs passed, including both teams at four pad rotations",
+    "forward_plus": "All four candidate views rendered; matched main normal/close and pre-fix alignment views. Camera/world-phase records checked.",
+    "compatibility": "Four-view real-window smoke passed; pad materials, markings and aligned socks inspected. Expected renderer feature limitations are recorded above.",
+    "media": "Full decode and representative decoded frames passed. Native browser play/pause/seek passed on a range-capable server; actual release component reduced-motion, play/pause/seek, offscreen pause and 390px layout checks passed.",
+    "performance": "No hardware or realtime measurement."
+  }
+}
