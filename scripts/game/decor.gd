@@ -549,6 +549,16 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			for i in n:
 				var z := -wd * 0.5 + (i + 0.5) * wd / n
 				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "road_paint", Vector3(0, 0.044, z), Color(0.95, 0.95, 0.93), Vector3.ZERO, false, true)
+		"bays":
+			# A parking bay painted on the road at the kerb (TownGen.kerbside), two
+			# metres wide: the line along its outer side (`ex.y` says which side
+			# that is) and the one across its near end, and its far end too when
+			# it's the last of its run. (The paint is older than the zebras'.)
+			var bay: Vector3 = ex
+			var paint := Color(0.86, 0.86, 0.82)
+			_m(Res.box(Vector3(bay.x + 0.1, 0.01, 0.1)), "road_paint", Vector3(0, 0.044, bay.y * 0.95), paint, Vector3.ZERO, false, true)
+			for x: float in ([-0.5, 0.5] if bay.z > 0.5 else [-0.5]):
+				_m(Res.box(Vector3(0.1, 0.01, 1.8)), "road_paint", Vector3(bay.x * x, 0.044, bay.y * 0.1), paint, Vector3.ZERO, false, true)
 		"lamp":
 			if ex == 1:
 				_m(Res.cyl(0.08, 0.12, 6.0, 8), "wood_dark", Vector3(0, 3.0, 0))

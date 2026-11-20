@@ -283,8 +283,8 @@ func _decode(v: Variant) -> Variant:
 	return v
 
 
-## What's on the field: "what" is world, squads, soldiers, vehicles or
-## structures, narrowed by "team", "kind" and "ids".
+## What's on the field: "what" is world, squads, soldiers, vehicles,
+## structures or decor, narrowed by "team", "kind" and "ids".
 func _query(w: World, req: Dictionary) -> Dictionary:
 	var what := String(req.get("what", "world"))
 	var team := int(req.get("team", -9))
@@ -326,8 +326,14 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 				if (team == -9 or st.team == team) and (st.skind == kind if kind != "" else not st.skind in SCENERY) and (ids.is_empty() or ids.has(st.eid)):
 					out.append({"id": st.eid, "kind": st.skind, "team": st.team, "built": st.built, "progress": snappedf(st.progress, 0.01),
 						"wrecked": st.wrecked, "hp": snappedf(st.hp, 0.1), "pos": _xz(st.position), "yaw": snappedf(st.yaw, 0.01)})
+		"decor":
+			# (the scenery drawn on the map but not standing in it: lamps, zebras,
+			# parking bays... as World.decor has them, narrowed by "kind")
+			for e: Array in w.decor:
+				if kind == "" or String(e[0]) == kind:
+					out.append({"kind": String(e[0]), "pos": _xz(e[1]), "yaw": snappedf(float(e[2]), 0.01)})
 		_:
-			return {"ok": false, "error": "query what? world, squads, soldiers, vehicles or structures"}
+			return {"ok": false, "error": "query what? world, squads, soldiers, vehicles, structures or decor"}
 	return {"t": w.time, what: out}
 
 

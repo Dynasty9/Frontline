@@ -721,13 +721,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   telephone box, post boxes, an advertising column on the square, hoardings over car parks and bombed-out lots,
   street names at the junctions, and belongings dropped on the pavements by people fleeing the fighting. Power
   lines also run along the country roads.
-- Cars stand parked along the town's kerbs (`TownGen.kerbside`, battles only: a mission dresses its own streets),
-  in runs nose to tail, the main streets near the shops fullest, each facing the way the traffic ran on its side
-  and a few the other way; now and then one was left in a hurry, slewed out into the lane, and about one in seven
-  has burnt out where it stood. None stands in a junction's mouth, on a zebra, across a driveway's dropped kerb,
-  by a hydrant or at the bus stop, and none opposite another, so a lorry or a tank still gets down the street (to
-  a driver a car is rough going: it can shove through, but would rather go round). To infantry they're cover, and
-  they burn like the cars in the drives.
+- Parking bays are marked out along the main streets by the shops (`TownGen.kerbside`, battles only: a mission
+  dresses its own streets): a few short runs of two to four bays painted on the road at the kerb, a car in about
+  half of them, each facing the way the traffic ran on its side (a few the other way), now and then one burnt out
+  where it stood. Anywhere else a car stands in its driveway or a car park, not in the street. No bay is painted
+  in a junction's mouth, on a zebra, across a driveway's dropped kerb, by a hydrant or at the bus stop, nor opposite
+  another, so a lorry or a tank still gets down the street (to a driver a car is rough going: it can shove
+  through, but would rather go round). To infantry they're cover, and they burn like the cars in the drives.
 - **1 x 1 km** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
   at the north and south edges, their starting FOBs some 940 m apart, so a battle has room to move: fights for
   the villages, farms, woods and river line on the way in, then the town.

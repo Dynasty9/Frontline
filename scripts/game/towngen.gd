@@ -26,8 +26,9 @@ const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
 const REACH := 56.0  # the main streets run this far each way from the middle
 const LOT_D := 14.5  # lot depth
-const PARK_SLOT := 4.4  # a car parked at the kerb: its length along it
-const PARK_OUT := CURB - 0.25 - 0.9  # its middle from the middle of the road (the tyres a hand off the kerb)
+const BAY_L := 4.8  # a parking bay marked out at the kerb: its length along it
+const BAY_W := 2.0  # and its width, out from the kerb
+const PARK_OUT := CURB - BAY_W * 0.5  # a car parked in one: its middle from the middle of the road
 
 var mg  # MapGen
 var world
@@ -1318,7 +1319,7 @@ static func _scenery_points(e: Array) -> Array:
 		"tractor":
 			var ax := Basis(Vector3.UP, float(e[2])).z * 1.3
 			return [[p, 1.1], [p + ax, 1.1], [p - ax, 1.1]]
-		"yard", "walk", "curb", "walk_crossing", "curb_crossing", "junction", "zebra", "drive", "path", "pave", "lot_pave", "wire", "drop", "garden", "soft":
+		"yard", "walk", "curb", "walk_crossing", "curb_crossing", "junction", "zebra", "bays", "drive", "path", "pave", "lot_pave", "wire", "drop", "garden", "soft":
 			return []
 	if Decor.BREAKABLE.has(kind):
 		var sz: Vector3 = Decor.BREAKABLE[kind][0]
@@ -1412,17 +1413,18 @@ func roadside(cars: int, wrecks: int) -> void:
 				wrecks -= 1
 
 
-## Cars parked along the town's kerbs, as the streets were the morning the
-## fighting came: nose to tail in runs with gaps between, the main streets by
-## the shops fuller than the side streets, each facing the way the traffic ran
-## on its side (a few the other way). Some were left in a hurry, slewed out
-## from the kerb; some have burnt out where they stood. Nobody parked in a
-## junction's mouth, on a zebra, across a driveway's dropped kerb, by a
-## hydrant or at the bus stop, and never opposite another car: a lorry or a
-## tank still gets down the street (a car is rough going to a driver, who can
-## shove through it but would rather not; to a rifleman it's cover). Battles
-## only (a mission dresses its own streets), from a stream of their own and
-## after the rest of the scenery, so the map is otherwise as it was.
+## Parking bays marked out along the main streets by the shops, where people
+## left their cars to shop the morning the fighting came: short runs of bays
+## painted on the road at the kerb, a car in about half of them, facing the way
+## the traffic ran on its side (the odd one the other way), now and then one
+## burnt out where it stood. Anywhere else a car stands in its driveway or a
+## car park (Lots), not in the street. No bay is painted in a junction's mouth,
+## on a zebra, across a driveway's dropped kerb, by a hydrant or at the bus
+## stop, nor opposite another: a lorry or a tank still gets down the street (a
+## car is rough going to a driver, who can shove through it but would rather
+## not; to a rifleman it's cover). Battles only (a mission dresses its own
+## streets), from a stream of their own and after the rest of the scenery, so
+## the map is otherwise as it was.
 func kerbside() -> void:
 	var kr := RandomNumberGenerator.new()
 	kr.seed = int(absf(center.x) * 11.0) * 7919 + int(absf(center.z) * 11.0) * 31 + 113
@@ -1438,17 +1440,18 @@ func kerbside() -> void:
 				keep_off.append([e[1], 2.5])
 			"bus_stop":
 				keep_off.append([e[1], 7.0])
-	# each street's parked stretches, both sides of it, measured along the
-	# whole street (so nobody parks opposite a car on the next piece of it)
+	# each street's runs of bays, both sides of it, measured along the whole
+	# street (so none is painted opposite a run on the next piece of it)
 	var streets := {}
+	var runs := 0
 	for pc: Array in pieces:
 		var a: Vector3 = pc[0]
 		var b: Vector3 = pc[1]
+		# (only the main streets near the middle, where the shops are)
+		if not pc[2] or a.lerp(b, 0.5).distance_to(center) > 44.0:
+			continue
 		var d := (b - a).normalized()
 		var L := a.distance_to(b)
-		var busy := 0.3
-		if pc[2]:
-			busy = 0.62 if a.lerp(b, 0.5).distance_to(center) < 36.0 else 0.45
 		var axis := Vector3.RIGHT if absf(d.x) > 0.5 else Vector3.BACK
 		var flip := signf(d.dot(axis))
 		var key := Vector2i(0 if absf(d.x) > 0.5 else 1, roundi(a.dot(_perp(axis))))
@@ -1457,40 +1460,62 @@ func kerbside() -> void:
 		var taken: Array = streets[key]
 		var first := 0 if kr.randf() < 0.5 else 1
 		for si: int in [first, 1 - first]:
+			if runs >= 4 or kr.randf() > 0.6:
+				continue
 			var s := -1.0 if si == 0 else 1.0
 			var n := _perp(d) * s  # (s = 1: the right-hand side going along d)
 			var side := 1 if s * flip > 0.0 else 0  # (the same side of the street from every piece of it)
-			var t := _mouth(a, d, n) + kr.randf_range(0.0, 3.0)
+			var t0 := _mouth(a, d, n) + kr.randf_range(0.0, 1.5)
 			var t1 := L - _mouth(b, -d, n)
-			while t + PARK_SLOT <= t1:
-				var from := t
-				var to := t + PARK_SLOT
-				var ends := Vector2(a.dot(axis) + flip * from, a.dot(axis) + flip * to)
-				var stretch := Vector2(minf(ends.x, ends.y), maxf(ends.x, ends.y))
-				if kr.randf() > busy or not _kerb_free(a, d, n, from, to, keep_off, taken[1 - side], stretch):
-					t += kr.randf_range(2.0, 7.0)
+			# the longest run (of three or four bays, two at a pinch) that fits
+			# between the no-parking spots, as near the junction as it can be
+			var count := kr.randi_range(3, 4)
+			var at := -1.0
+			var stretch := Vector2.ZERO
+			while at < 0.0 and count >= 2:
+				var t := t0
+				while t + count * BAY_L <= t1:
+					var ends := Vector2(a.dot(axis) + flip * t, a.dot(axis) + flip * (t + count * BAY_L))
+					stretch = Vector2(minf(ends.x, ends.y), maxf(ends.x, ends.y))
+					if _kerb_free(a, d, n, t, t + count * BAY_L, keep_off, taken[1 - side], stretch):
+						at = t
+						break
+					t += 1.0
+				if at < 0.0:
+					count -= 1
+			if at < 0.0:
+				continue
+			runs += 1
+			(taken[side] as Array).append(stretch)
+			# which of its bays are taken: about half, never none or all of them
+			var cars: Array[bool] = []
+			for i in count:
+				cars.append(kr.randf() < 0.5)
+			if not true in cars:
+				cars[kr.randi() % count] = true
+			elif not false in cars:
+				cars[kr.randi() % count] = false
+			var yaw_d := yaw_along(d)
+			# (which way across the bay, in its own frame, the road lies: its
+			# outer line is painted on that side)
+			var out := signf(Basis(Vector3.UP, yaw_d).z.dot(-n))
+			for i in count:
+				var bp := a + d * (at + (i + 0.5) * BAY_L) + n * PARK_OUT
+				_d("bays", bp, yaw_d, Vector3(BAY_L, out, 1.0 if i == count - 1 else 0.0))
+				world.stat("parking_bay")
+				if not cars[i]:
 					continue
-				var p := a + d * (t + PARK_SLOT * 0.5) + n * PARK_OUT
+				var p := bp + d * kr.randf_range(-0.2, 0.2)
 				var facing := d * s if kr.randf() < 0.85 else -d * s
-				var yaw := Defs.yaw_of(facing) + kr.randf_range(-0.03, 0.03)
-				var burnt := kr.randf() < 0.14
-				if kr.randf() < 0.07:
-					# abandoned: one end left at the kerb, the other swung out into
-					# the lane (and the whole moved out, so the corner at the kerb
-					# clears it)
-					var slew := kr.randf_range(0.24, 0.4)
-					yaw += slew * (1.0 if kr.randf() < 0.5 else -1.0)
-					p -= n * (2.1 * sin(slew) - 0.2)
+				var yaw := Defs.yaw_of(facing) + kr.randf_range(-0.02, 0.02)
 				var v := kr.randi() % 5
-				var extra := {"variant": v + 6, "burnt": true} if burnt else {"variant": v}
+				var extra := {"variant": v + 6, "burnt": true} if kr.randf() < 0.12 else {"variant": v}
 				if mg._is_free(p, Vector2(1.0, 2.3), yaw, 0.15, false):
 					mg._spawn("car", p, yaw, -1, extra)
-					(taken[side] as Array).append(stretch)
 					world.stat("kerb_car")
-				t = to + kr.randf_range(0.5, 1.6)
 
 
-## How far from a street's end node to keep clear of parked cars on side `n`
+## How far from a street's end node to keep parking bays clear on side `n`
 ## of the street running off it along `d`: the mouth of a junction or a bend,
 ## a little short of where the street runs out of town, nothing where it
 ## carries straight on.
@@ -1503,10 +1528,10 @@ func _mouth(node: Vector3, d: Vector3, n: Vector3) -> float:
 	return 0.5
 
 
-## Whether a car may park on side `n` between `from` and `to` along the street
-## from `a` (along `d`): clear of every no-parking spot on this side or across
-## the road (a zebra), and of the cars already parked opposite (`stretch`: the
-## same, measured along the whole street, as `opposite` is).
+## Whether bays may be painted on side `n` between `from` and `to` along the
+## street from `a` (along `d`): clear of every no-parking spot on this side or
+## across the road (a zebra), and of the bays already painted opposite
+## (`stretch`: the same, measured along the whole street, as `opposite` is).
 func _kerb_free(a: Vector3, d: Vector3, n: Vector3, from: float, to: float, keep_off: Array, opposite: Array, stretch: Vector2) -> bool:
 	for k: Array in keep_off:
 		var r: Vector3 = (k[0] as Vector3) - a
