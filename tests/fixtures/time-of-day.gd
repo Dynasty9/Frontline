@@ -66,7 +66,7 @@ func _check_moods_hold_their_hour() -> void:
 
 
 func _check_weather_holds() -> void:
-	for m in ["overcast", "rain", "hazy"]:
+	for m in ["overcast", "rain", "hazy", "snow"]:
 		_check("%s isn't on the clock" % m, not TimeOfDay.runs(m))
 		for t in [0.0, 600.0, 2400.0, 9000.0]:
 			_check("%s holds at %d s" % [m, t], str(TimeOfDay.light(m, t)) == str(TimeOfDay.still(m)))
@@ -262,7 +262,7 @@ func _check_setting_off() -> void:
 				and before.env.sky.radiance_size == (Sky.RADIANCE_SIZE_256 if physical else Sky.RADIANCE_SIZE_128))
 			_check(what + ": the painted sky as it was", before.sky_mat.get_shader_parameter("zenith") == d.zenith
 				and before.sky_mat.get_shader_parameter("horizon") == d.horizon and before.sky_mat.get_shader_parameter("sun_col") == d.sun
-				and float(before.sky_mat.get_shader_parameter("cloud_cover")) == (1.0 if m in ["overcast", "rain"] else (0.3 if m == "day" else 0.55))
+				and float(before.sky_mat.get_shader_parameter("cloud_cover")) == (1.0 if m in ["overcast", "rain", "snow"] else (0.3 if m == "day" else 0.55))
 				and float(before.sky_mat.get_shader_parameter("stars")) == (1.0 if m == "night" else 0.0))
 			var seen := _seen(before)
 			for t in [2.0, 600.0, 2400.0]:

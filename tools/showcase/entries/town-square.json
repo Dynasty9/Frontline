@@ -1,0 +1,28 @@
+{
+  "entry": "changelog/unreleased/town-square.md",
+  "summary": "The town square's war memorial (a bronze soldier resting on arms reversed, poppy wreaths at its foot) and market stalls.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd (town: square, and the memorial's front at 12 m); tools/showcase/building-surfaces.tscn (memorial, memorial_obelisk)",
+  "rationale": "Appearance change: the square in the map at the game's own camera, and the memorial and stalls up close in the studio; a review sheet compares the memorial as first proposed and as revised.",
+  "source_ref": "514763c7d1b579cbf7305acd19d36d4264955f71",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/town-square/comparison.jpg",
+      "sha256": "547bf595bc0137d6700317e40f4dfcae8d25b9e1cb698b805d17b4d1aff4a462"
+    },
+    {
+      "file": "changelog/unreleased/town-square/memorial.jpg",
+      "sha256": "4335a175d11ac2e3e6d456e61bd439f97dd42326442fdb924c3729844155cba4"
+    },
+    {
+      "file": "changelog/unreleased/town-square/memorial-review.jpg",
+      "sha256": "de96f963454b88fa16b3e58ec6c60a10fa6be0e4fa797dd29597f9920e830480"
+    },
+    {
+      "file": "changelog/unreleased/town-square/capture.json",
+      "sha256": "bda13b4568dfffc7e9cc8675fa20d29f32f4f0d47d80b67c39aa126e09ba2833"
+    }
+  ],
+  "output": null
+}
