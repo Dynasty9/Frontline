@@ -1011,9 +1011,12 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	elif variant == 3:
 		var sw := shop_window_w(L)
 		gaps = [Rect2(-sw * 0.5, SHOP_SILL, sw, SHOP_HEAD - SHOP_SILL)]
+	# (a ruin's broken top, worked out first: what's drawn on the face keeps
+	# under it)
+	var crown: Array = []
 	if _ruined:
 		BuildingWalls.face(k, L, RUIN_CUT, material, wall, gaps, {})
-		_ruin_crown(_kit(rng), L, material, wall, rng)
+		crown = _ruin_profile(L, material, wall, gaps, rng)
 	else:
 		BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
 	# the foundation, below the ground where it's level, showing where the
@@ -1051,7 +1054,10 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, surf, tone, war)
 	if variant != 0 and war.randf() < 0.07:
 		var gap: Rect2 = gaps[0]
-		BuildingWeathering.soot(k, 0.0, gap.end.y, gap.size.x, 2.85, surf, tone, war, L * 0.5 - 0.05)
+		# (on a ruin, no higher than what's left of the wall over it)
+		var soot_top := _crown_low(crown, -gap.size.x * 0.5 - 0.5, gap.size.x * 0.5 + 0.5) if _ruined else 2.85
+		if not _ruined or soot_top - gap.end.y >= 0.5:
+			BuildingWeathering.soot(k, 0.0, gap.end.y, gap.size.x, soot_top, surf, tone, war, L * 0.5 - 0.05)
 	# the years' dirt: grime under the eaves, rain splashed up its foot
 	# (none on boards or sheet, whose laps stand proud of the face; a stream
 	# of its own)
@@ -1063,13 +1069,20 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		for b: Array in _body:
 			rects.append(b[0])
 		BuildingWeathering.grime(k, L, 2.9, rects, surf, tone, 1.0 if rendered else 0.55, grime)
+	# (on a ruin, the war's marks keep to its body, under its broken crown,
+	# as if the crown were an opening)
+	var marked: Array = gaps + [Rect2(-L, RUIN_CUT - 0.1, L * 2.0, 2.0)] if _ruined else gaps
 	if war.randf() < 0.22:
-		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), chips, war, gaps, L * 0.5)
+		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), chips, war, marked, L * 0.5)
 	if variant == 0 and war.randf() < 0.07:
 		var r := war.randf_range(0.32, 0.45)
 		var room_x := L * 0.5 - r * 1.9 - 0.05
 		if room_x > 0.0:
-			BuildingWeathering.scar(k, Vector2(war.randf_range(-room_x, room_x), war.randf_range(1.25, 1.9)), r, surf, tone, raw, chips, war, gaps, L * 0.5)
+			var sx := war.randf_range(-room_x, room_x)
+			var sy := war.randf_range(1.25, 1.9)
+			if _ruined:
+				sy = minf(sy, RUIN_CUT - r * 1.85)
+			BuildingWeathering.scar(k, Vector2(sx, sy), r, surf, tone, raw, chips, war, marked, L * 0.5)
 	var at_window := war.randf()
 	var lamp_side := 0.0
 	# inside: the room's paint and skirting, what hangs on its walls
@@ -1158,7 +1171,8 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				BuildingFurnishings.window_box(k, 0.0, 1.0, 1.1, [Color(0.75, 0.12, 0.12), Color(0.85, 0.45, 0.6), Color(0.9, 0.75, 0.2), Color(0.55, 0.3, 0.7)][life.randi() % 4])
 		2:
 			var w := 1.9
-			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": material, "wall": wall, "frame": trim, "hood": rng.randf() < 0.3,
+			# (a ruin's hood burned and came down with its roof)
+			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": material, "wall": wall, "frame": trim, "hood": rng.randf() < 0.3 and not _ruined,
 				"hood_col": Res.vary(BuildingMaterials.color("roof_tile"), 0.1, rng)})
 			if L > 2.6 and life.randf() < 0.55:
 				lamp_side = 1.0 if life.randf() < 0.5 else -1.0
@@ -1179,6 +1193,8 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				model.add_child(pv)
 				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "ledged" if barn else "panelled", dc, -sx)
 				_door_leaves.append([pv, a])
+	if _ruined:
+		_ruin_crown(_kit(rng), L, material, wall, crown, null if barn else BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()], rng)
 	_wall_fixtures(k, rng, L, barn, ivied, lamp_side)
 
 
@@ -1204,12 +1220,14 @@ func _wall_fixtures(k: BuildingKit, rng: RandomNumberGenerator, L: float, barn: 
 			BuildingFittings.tap(k, Vector3(lerpf(-room, room - (0.6 if hose != null else 0.1), at), 0.55, 0), hose)
 		elif pick < 0.23 and not barn and room > 0.5:
 			var cx := lerpf(-room + 0.4, room - 0.54, at)
-			if fix.randf() < 0.55:
+			# (a ruin's wall may no longer stand as high as a unit up on it, nor
+			# a dish's arm: its unit's on a pad at its foot, its dish gone)
+			if fix.randf() < 0.55 and not _ruined:
 				BuildingFittings.wall_unit(k, Vector3(cx, fix.randf_range(1.75, 2.05), 0))
 			else:
 				k.box(Vector3(0.95, 0.08, 0.52), Vector3(cx, 0.04, 0.3), "concrete", Color(0.55, 0.54, 0.5))
 				BuildingFittings.ac_unit(k, Vector3(cx, 0.08, 0.28))
-		elif pick < 0.29 and not barn:
+		elif pick < 0.29 and not barn and not _ruined:
 			BuildingFittings.wall_dish(k, Vector3(lerpf(-room + 0.4, room - 0.4, at), fix.randf_range(1.85, 2.1), 0),
 				Vector3(fix.randf_range(0.8, 1.0), fix.randf_range(-0.6, 0.6), 0))
 	elif variant == 2 and not barn:
@@ -2782,14 +2800,24 @@ func house_dark() -> void:
 		world.stat("house_dark")
 
 
-## Where a ruin's wall breaks off: its body stands this high, its broken
-## crown (_ruin_crown) above. (Its cover stays the whole wall's: the crown is
-## above a standing man's eyes and fills most of what's left.)
-const RUIN_CUT := 2.4
+## A ruin's wall: its body, as drawn, stands whole to RUIN_CUT, and its broken
+## crown (_ruin_crown) stands on that, here and there to the old top
+## (RUIN_TOP), nowhere lower than RUIN_LOW (over all that hangs or stands on
+## it, inside and out: a cupboard, a clock, the lamp by a door) nor than the
+## head over an opening. (Its cover stays the whole wall's: all of that is
+## above a standing man's eyes.) Between the two its render and its plaster
+## may have come away.
+const RUIN_CUT := 2.0
+const RUIN_LOW := 2.25
+const RUIN_TOP := 3.0
 ## A wall of a ruined house (one whose floor is a ruin's, its lamps long out):
 ## found when its model is built, from the floor it stands on (or, with no
 ## world, a dark wall).
 var _ruined := false
+## The parts of a ruin's wall that stood above RUIN_CUT, [x0, x1, colour as
+## drawn]: its crown is each one's own masonry in its own colour, so the wall
+## carries on up from its body with no seam.
+var _crown_parts: Array = []
 
 
 func _ruin_wall() -> bool:
@@ -2803,34 +2831,327 @@ func _ruin_wall() -> bool:
 	return false
 
 
-## A ruin's wall broken off along its top, in a kit at the wall's middle
-## (local +z out): from RUIN_CUT up, its masonry stands in stepped, broken
-## lumps (a random walk of heights, here and there knocked down to the cut,
-## a stub standing to the old wall top), the courses' ends ragged, the top
-## scorched where the roof burned; the odd block fallen at its foot.
-func _ruin_crown(k: BuildingKit, L: float, material: String, wall: Color, rng: RandomNumberGenerator) -> void:
+## The heights a ruin's wall can break off at, from RUIN_CUT up to its old
+## top (local, its foot `foot` up in the world): its bed joints, where the
+## surface lays them in the world (Mats: brick a course every fourteenth of a
+## metre, its joint 7 mm up; coursed stone in courses of 0.34, 0.22 and 0.3 m
+## in turn), so a course breaks off whole along its joint, as masonry does;
+## boards at their laps (BuildingWalls.boards).
+static func _ruin_courses(finish: String, foot: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array([RUIN_CUT])
+	var lo := RUIN_CUT + 0.03
+	var hi := RUIN_TOP - 0.03
+	match finish:
+		"stone":
+			var n := floori((foot + lo) / 0.86)
+			while float(n) * 0.86 - foot <= hi:
+				for o: float in [0.0, 0.34, 0.56]:
+					var y := float(n) * 0.86 + o - foot
+					if y >= lo and y <= hi:
+						out.append(y)
+				n += 1
+		"boards":
+			var y := 0.34 + ceilf((lo - 0.34) / 0.24) * 0.24
+			while y <= hi:
+				out.append(y)
+				y += 0.24
+		_:
+			var n := ceili((foot + lo - 0.007) * 14.0)
+			while float(n) / 14.0 + 0.007 - foot <= hi:
+				out.append(float(n) / 14.0 + 0.007 - foot)
+				n += 1
+	out.append(RUIN_TOP)
+	return out
+
+
+## A ruin's wall's broken top along its `L`, as runs [x0, x1, base, top,
+## colour]: its masonry stands on its body (or on an opening's head, where
+## that's higher) and breaks off along its courses, a column at a time (a half
+## brick wide, a stone's length, a board's width), stepping back a course or
+## two at a time between what still stands to the old top and where it fell
+## in to its body. Which is which follows how walls come down: the ends (the
+## piers, the corners) hold best, the masonry over an opening goes first once
+## its lintel has burned, and some bays took a blast harder than others.
+func _ruin_profile(L: float, material: String, wall: Color, gaps: Array, rng: RandomNumberGenerator) -> Array:
 	var crown := RandomNumberGenerator.new()
 	crown.seed = rng.seed ^ 0x4c7a91d3
+	var finish: String = BuildingMaterials.value(material, "finish", "render")
+	var foot: float = global_position.y if is_inside_tree() else position.y
+	var levels := _ruin_courses(finish, foot)
+	var half := L * 0.5
+	# the columns, edge to edge: at the parts' and openings' edges, and
+	# between them a half brick apart (under render, its brick), a stone's
+	# length, a board's width
+	var edges: Array[float] = [half]
+	for g: Rect2 in gaps:
+		edges.append_array([g.position.x, g.end.x])
+	for p: Array in _crown_parts:
+		edges.append_array([float(p[0]), float(p[1])])
+	var x := -half
+	while x < half:
+		match finish:
+			"stone":
+				x += crown.randf_range(0.24, 0.52)
+			"boards":
+				x += crown.randf_range(0.1, 0.3)
+			_:
+				x += 0.1125
+		edges.append(x)
+	edges.sort()
+	var cols: Array[Vector2] = []
+	var last := -half
+	for e in edges:
+		var c := clampf(e, -half, half)
+		if c - last >= 0.04:
+			cols.append(Vector2(last, c))
+			last = c
+	if last < half and not cols.is_empty():
+		cols[cols.size() - 1] = Vector2(cols[cols.size() - 1].x, half)
+	# how it stands: knots along it, the ends highest, lower between, lowest
+	# over an opening; `blast`, how hard this bay was hit
+	var blast := crown.randf()
+	var knots: Array[Vector2] = [Vector2(-half, RUIN_TOP - crown.randf() * (0.15 + 0.6 * blast))]
+	# (stone, in its few deep courses, breaks more raggedly along than brick)
+	var apart := Vector2(0.35, 0.75) if finish == "stone" else Vector2(0.5, 1.1)
+	var kx := -half + crown.randf_range(0.4, 0.9)
+	while kx < half - 0.3:
+		knots.append(Vector2(kx, lerpf(RUIN_TOP, RUIN_CUT, clampf(crown.randf() * 0.75 + blast * 0.4, 0.0, 1.0))))
+		kx += crown.randf_range(apart.x, apart.y)
+	knots.append(Vector2(half, RUIN_TOP - crown.randf() * (0.15 + 0.6 * blast)))
+	for g: Rect2 in gaps:
+		var notch := Vector2(g.get_center().x + crown.randf_range(-0.2, 0.2), g.end.y + crown.randf_range(0.3, 0.55))
+		var kept: Array[Vector2] = [notch]
+		for kn in knots:
+			if absf(kn.x - notch.x) > 0.35 or absf(kn.x) >= half - 0.01:
+				kept.append(kn)
+		knots = kept
+	knots.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	# each column's course: the one under where the knots put it, and no
+	# lower than it has to stand
+	var at := PackedInt32Array()
+	var least := PackedInt32Array()
+	var bases := PackedFloat32Array()
+	for c in cols:
+		var mid := (c.x + c.y) * 0.5
+		var want := knots[-1].y
+		for i in range(1, knots.size()):
+			if mid <= knots[i].x:
+				want = lerpf(knots[i - 1].y, knots[i].y, clampf((mid - knots[i - 1].x) / maxf(knots[i].x - knots[i - 1].x, 0.01), 0.0, 1.0))
+				break
+		# what it stands on: its body, or the head over an opening; and what
+		# it has to stand to: over what hangs on it, and the head
+		var base := RUIN_CUT
+		var low := RUIN_LOW
+		for g: Rect2 in gaps:
+			if mid > g.position.x and mid < g.end.x and g.end.y > base:
+				base = g.end.y
+			if c.y > g.position.x - 0.17 and c.x < g.end.x + 0.17:
+				low = maxf(low, g.end.y + 0.3)
+		# (a shop's front stands whole under its fascia)
+		var n := 0
+		while n < levels.size() - 1 and levels[n + 1] <= want + 0.001:
+			n += 1
+		var lo := 0
+		while lo < levels.size() - 1 and levels[lo] < low - 0.001:
+			lo += 1
+		at.append(levels.size() - 1 if variant == 3 else maxi(n, lo))
+		least.append(lo)
+		bases.append(base)
+	# masonry breaks back a course or a few at a time (brick racks back a
+	# half brick, stone a stone; unevenly, as it broke): no column stands
+	# higher than its neighbours let it, nor alone more than a course above
+	# them; and here and there a brick (a stone) is knocked out of the break
+	var rack := PackedInt32Array()
+	for i in at.size():
+		rack.append(crown.randi_range(1, 3) if finish != "boards" else 3)
+	for i in range(1, at.size()):
+		at[i] = mini(at[i], at[i - 1] + rack[i])
+	for i in range(at.size() - 2, -1, -1):
+		at[i] = mini(at[i], at[i + 1] + rack[i + 1])
+	var racked := at.duplicate()
+	for i in at.size():
+		if at.size() > 1:
+			at[i] = mini(at[i], maxi(racked[i - 1] if i > 0 else 0, racked[i + 1] if i < at.size() - 1 else 0) + 1)
+		if crown.randf() < (0.3 if finish == "stone" else 0.2):
+			at[i] -= 1
+		at[i] = maxi(at[i], least[i])
+	var runs: Array = []
+	for i in cols.size():
+		var c := cols[i]
+		var top := levels[at[i]]
+		var base := bases[i]
+		if top <= base + 0.01:
+			continue
+		var col := _crown_color((c.x + c.y) * 0.5, wall)
+		var prev: Array = runs[-1] if not runs.is_empty() else []
+		if not prev.is_empty() and absf(float(prev[1]) - c.x) < 0.001 and prev[2] == base and prev[3] == top and prev[4] == col:
+			prev[1] = c.y
+		else:
+			runs.append([c.x, c.y, base, top, col])
+	return runs
+
+
+## The colour a ruin's wall's part at `x` was drawn in (see _crown_parts).
+func _crown_color(x: float, fallback: Color) -> Color:
+	for p: Array in _crown_parts:
+		if x >= float(p[0]) - 0.001 and x <= float(p[1]) + 0.001:
+			return p[2]
+	return fallback
+
+
+## How high a ruin's wall stands at its lowest between `a` and `b` (its body
+## where nothing stands on it).
+static func _crown_low(runs: Array, a: float, b: float) -> float:
+	var low := RUIN_TOP
+	var x := a
+	for r: Array in runs:
+		if float(r[1]) <= a or float(r[0]) >= b:
+			continue
+		if float(r[0]) > x + 0.01:
+			return RUIN_CUT
+		low = minf(low, float(r[3]))
+		x = float(r[1])
+	return low if x >= b - 0.01 else RUIN_CUT
+
+
+## A ruin's wall broken off along its top (its `runs`, from _ruin_profile), in
+## a kit at the wall's middle (local +z out). Each run is the wall's own
+## masonry carried on up from its body, square-edged and in the same surface
+## and colour, so the break is the same wall; under render it's the brick the
+## render was laid on, a little in from the face, and the render (and the
+## room's plaster and `paint` inside, none in a barn) has spalled off back
+## from the break in a ragged edge. A broken brick or stone lies loose on a
+## step here and there, more lie fallen at its foot with a slab of render,
+## and where the wall still stands to the eaves the joists that bore on it
+## are charred stubs in their pockets, the plaster round them sooted: the fire
+## burned in the roof, so that's where the scorch is.
+func _ruin_crown(k: BuildingKit, L: float, material: String, wall: Color, runs: Array, paint: Variant, rng: RandomNumberGenerator) -> void:
+	var bits := RandomNumberGenerator.new()
+	bits.seed = rng.seed ^ 0x2b7e1516
+	var finish: String = BuildingMaterials.value(material, "finish", "render")
+	var rendered := finish == "render"
 	var surface := BuildingMaterials.surface(material)
-	var x := -L * 0.5
-	var h := crown.randf_range(0.1, 0.5)
-	while x < L * 0.5 - 0.05:
-		var w := minf(crown.randf_range(0.18, 0.5), L * 0.5 - x)
-		h = clampf(h + crown.randf_range(-0.22, 0.22), 0.0, 0.5)
-		if crown.randf() < 0.12:
-			h = 0.0
-		if h > 0.04:
-			var col := wall.darkened(crown.randf_range(0.0, 0.08))
-			k.box(Vector3(w, h, 0.4), Vector3(x + w * 0.5, RUIN_CUT + h * 0.5, 0), surface, col)
-			# a broken course standing a little proud of the lump, its top scorched
-			if h > 0.15 and h < 0.48 and crown.randf() < 0.5:
-				var bw := w * crown.randf_range(0.4, 0.8)
-				k.box(Vector3(bw, 0.1, 0.36), Vector3(x + crown.randf_range(bw * 0.5, w - bw * 0.5), RUIN_CUT + h + 0.05, crown.randf_range(-0.02, 0.02)), surface, col.darkened(0.05))
-			k.plate(Vector3(w, 0.006, 0.4), Vector3(x + w * 0.5, RUIN_CUT + h + 0.003, 0), "plain", wall.lerp(C_CHAR, 0.55), Vector3.ZERO, false)
-		x += w
-	for i in crown.randi_range(1, 3):
-		var b := crown.randf_range(0.14, 0.3)
-		k.box(Vector3(b, b * 0.7, b * 0.8), Vector3(crown.randf_range(-L * 0.45, L * 0.45), b * 0.35, crown.randf_range(0.35, 0.8) * (1.0 if crown.randf() < 0.5 else -1.0)), surface, wall.darkened(0.1), Vector3(crown.randf_range(-0.3, 0.3), crown.randf() * TAU, crown.randf_range(-0.3, 0.3)))
+	var core := BuildingMaterials.surface("brick") if rendered else surface
+	var brick := Res.vary(BuildingMaterials.color("brick"), 0.08, bits)
+	# (render is a couple of centimetres on its brick)
+	var th := 0.37 if rendered else 0.4
+	for r: Array in runs:
+		var x0: float = r[0]
+		var x1: float = r[1]
+		var base: float = r[2]
+		var top: float = r[3]
+		k.block(Vector3(x1 - x0, top - base, th), Vector3((x0 + x1) * 0.5, (base + top) * 0.5, 0.0), core, brick if rendered else r[4])
+		if finish == "boards":
+			# the laps carried on up, the boards' ends charred
+			var y := 0.34 + ceilf((base + 0.03 - 0.34) / 0.24) * 0.24
+			while y < top - 0.03:
+				k.block(Vector3(x1 - x0, 0.022, 0.016), Vector3((x0 + x1) * 0.5, y, th * 0.5 + 0.008), surface, (r[4] as Color).darkened(0.22), Vector3.ZERO, false)
+				y += 0.24
+			k.block(Vector3(x1 - x0, 0.05, th + 0.012), Vector3((x0 + x1) * 0.5, top - 0.024, 0.0), "burnt", BuildingWeathering.CHAR.lerp(r[4], 0.25), Vector3.ZERO, false)
+	# render outside and plaster in, spalled back from the break: patches of
+	# it over the brick, each its own width, as high as the brick under all
+	# of it less how far it's come away there (wandering along the wall, and
+	# never right up to the break: it flakes off a broken edge first)
+	var faces: Array = []
+	if rendered:
+		faces.append([th * 0.5, 0.2 - th * 0.5, surface, null])
+	if paint is Color:
+		# (inside, out to the face of the room's lining under it)
+		faces.append([-th * 0.5, -(0.206 - th * 0.5), "plaster", paint])
+	var lined: Array = []  # the plaster inside, [x0, x1, top]
+	for f: Array in faces:
+		var z0: float = f[0]
+		var dz: float = f[1]
+		var spall := bits.randf_range(0.08, 0.45)
+		var x := -L * 0.5
+		while x < L * 0.5 - 0.02:
+			var w := bits.randf_range(0.12, 0.45)
+			# (no patch across a part's or an opening's edge)
+			for p: Array in _crown_parts:
+				for e: float in [float(p[0]), float(p[1])]:
+					if e > x + 0.04 and e < x + w:
+						w = e - x
+			if L * 0.5 - (x + w) < 0.08:
+				w = L * 0.5 - x
+			spall = clampf(spall + bits.randf_range(-0.2, 0.2), 0.07, 0.7)
+			var pbase := RUIN_CUT
+			for r: Array in runs:
+				if float(r[0]) < x + w - 0.001 and float(r[1]) > x + 0.001:
+					pbase = maxf(pbase, float(r[2]))
+			var ptop := _crown_low(runs, x, x + w) - spall
+			if ptop - pbase > 0.03:
+				var col: Color = f[3] if f[3] is Color else _crown_color(x + w * 0.5, wall)
+				k.block(Vector3(w, ptop - pbase, absf(dz)), Vector3(x + w * 0.5, (pbase + ptop) * 0.5, z0 + dz * 0.5), f[2], col, Vector3.ZERO, false)
+				if dz < 0.0:
+					lined.append([x, x + w, ptop])
+			x += w
+	var stone := finish == "stone"
+	var piece := func() -> Vector3:
+		if stone:
+			return Vector3(bits.randf_range(0.2, 0.36), bits.randf_range(0.1, 0.17), bits.randf_range(0.14, 0.24))
+		if finish == "boards":
+			return Vector3(bits.randf_range(0.3, 0.5), 0.022, bits.randf_range(0.12, 0.2))
+		# a brick, half of one, or two or three still mortared together
+		return Vector3(0.21 * [1.0, 0.5, 1.0, 2.0][bits.randi() % 4], 0.065 * (2.0 if bits.randf() < 0.25 else 1.0), 0.1)
+	var piece_col := func(x: float) -> Color:
+		return (brick if rendered else _crown_color(x, wall)).darkened(bits.randf_range(0.0, 0.14))
+	# loose on the break, below the old top
+	for i in bits.randi_range(0, 2):
+		var r: Array = runs[bits.randi() % runs.size()] if not runs.is_empty() else []
+		if r.is_empty() or float(r[3]) > RUIN_TOP - 0.15 or float(r[1]) - float(r[0]) < 0.25 or finish == "boards":
+			continue
+		var s: Vector3 = piece.call()
+		var px := clampf(bits.randf_range(float(r[0]) + 0.12, float(r[1]) - 0.12), -L * 0.5 + 0.25, L * 0.5 - 0.25)
+		k.block(s, Vector3(px, float(r[3]) + s.y * 0.45, bits.randf_range(-0.06, 0.06)), core, piece_col.call(px),
+			Vector3(bits.randf_range(-0.1, 0.1), bits.randf_range(-0.5, 0.5), bits.randf_range(-0.12, 0.12)))
+	# and fallen at its foot, either side (flat: no higher than an ankle), as
+	# many more as more of it came down; a slab of render among them; clear
+	# of a doorway
+	var fallen := L * (RUIN_TOP - RUIN_CUT)
+	for r: Array in runs:
+		fallen -= (float(r[1]) - float(r[0])) * (float(r[3]) - float(r[2]))
+	for i in bits.randi_range(2, 3) + clampi(int(fallen * 3.0), 0, 5):
+		var s: Vector3 = piece.call()
+		var px := bits.randf_range(-L * 0.5 + 0.3, L * 0.5 - 0.3)
+		var side := 1.0 if bits.randf() < 0.5 else -1.0
+		if variant == 2 and absf(px) < 1.15:
+			continue
+		k.block(s, Vector3(px, s.y * 0.42, side * bits.randf_range(0.3, 0.75)), core, piece_col.call(px),
+			Vector3(bits.randf_range(-0.2, 0.2), bits.randf() * TAU, bits.randf_range(-0.2, 0.2)))
+	if rendered and variant != 2:
+		var px := bits.randf_range(-L * 0.5 + 0.45, L * 0.5 - 0.45)
+		k.block(Vector3(bits.randf_range(0.3, 0.55), 0.022, bits.randf_range(0.2, 0.34)), Vector3(px, 0.02, bits.randf_range(0.35, 0.7)), surface,
+			_crown_color(px, wall).darkened(0.05), Vector3(bits.randf_range(-0.12, 0.12), bits.randf() * TAU, bits.randf_range(-0.12, 0.12)), false)
+	# the joists that bore on it where it stands to the eaves: charred stubs
+	# in their pockets under its top, soot up the plaster under them (as high
+	# as it's still on the wall)
+	if paint is Color:
+		var tone := Mats.tint_for("plaster", paint)
+		for r: Array in runs:
+			if float(r[3]) < RUIN_TOP - 0.01 or float(r[1]) - float(r[0]) < 0.3 or bits.randf() < 0.4:
+				continue
+			var jx := bits.randf_range(float(r[0]) + 0.12, float(r[1]) - 0.12)
+			var reach := bits.randf_range(0.08, 0.3)
+			k.block(Vector3(0.075, 0.16, reach + 0.08), Vector3(jx, RUIN_TOP - 0.2, -th * 0.5 - reach * 0.5 + 0.04), "wood_dark", Color(0.12, 0.1, 0.085),
+				Vector3(bits.randf_range(-0.1, 0.0), bits.randf_range(-0.08, 0.08), 0.0))
+			var sw := minf(0.6, float(r[1]) - float(r[0]))
+			var sx := clampf(jx, float(r[0]) + sw * 0.5, float(r[1]) - sw * 0.5)
+			# (only over plaster that's there, from end to end of the smudge)
+			var stop := RUIN_TOP
+			var at := sx - sw * 0.5
+			for p: Array in lined:
+				if float(p[1]) <= at + 0.001 or float(p[0]) >= sx + sw * 0.5:
+					continue
+				if float(p[0]) > at + 0.001:
+					stop = 0.0
+				stop = minf(stop, float(p[2]))
+				at = float(p[1])
+			if at < sx + sw * 0.5 - 0.001 or stop - RUIN_CUT < 0.25:
+				continue
+			BuildingWeathering.stain(k.at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0)), Rect2(-sx - sw * 0.5, RUIN_CUT, sw, stop - RUIN_CUT), "plaster",
+				func(_p: Vector2) -> Color: return tone, Color(0.08, 0.075, 0.07), func(u: float, v: float) -> float:
+					var across := 1.0 - absf(u * 2.0 - 1.0)
+					return pow(across, 0.7) * pow(v, 1.4) * 1.2, 4, 4, 3, 0.009)
 
 
 ## (server) This wall's or roof's lamps are out (see house_dark). Whether
@@ -3266,6 +3587,7 @@ func _build_model() -> void:
 	_bake = Mats.Bake.new() if skind in BAKED else null
 	_body = []
 	_ruined = _ruin_wall()
+	_crown_parts = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = (look if look > 0 else eid) * 7919 + variant
 	var bags: Array = []
@@ -3293,15 +3615,22 @@ func _build_model() -> void:
 			var pp: Vector3 = p.p
 			var ps: Vector3 = p.s
 			if _ruined:
-				# a ruin's wall stands to its broken crown (see _ruin_crown): its
-				# body only to where the crown starts
+				# a ruin's wall stands whole only to RUIN_CUT: above it each
+				# part's masonry is its broken crown (see _ruin_crown), in the
+				# colour it was drawn in
 				var bottom: float = pp.y - ps.y * 0.5
+				if pp.y + ps.y * 0.5 > RUIN_CUT + 0.01:
+					_crown_parts.append([pp.x - ps.x * 0.5, pp.x + ps.x * 0.5, drawn])
 				if bottom >= RUIN_CUT - 0.01:
 					continue
 				ps.y = minf(ps.y, RUIN_CUT - bottom)
 				pp.y = bottom + ps.y * 0.5
 			_body.append([Rect2(pp.x - ps.x * 0.5, pp.y - ps.y * 0.5, ps.x, ps.y), Mats.tint_for(_surf_kind(drawn, null), drawn)])
-			_bx(pp, ps, col, p.r, true)
+			if _ruined:
+				# (square-edged, so the crown carries on up from it with no seam)
+				_skinned(BuildingKit.plain(ps), Res.mat(col), pp, Vector3(0, p.r, 0), Vector3.ONE, true)
+			else:
+				_bx(pp, ps, col, p.r, true)
 			continue
 		_bx(p.p, p.s, col, p.r, skind != "floor")
 	var tc := _flag_color()

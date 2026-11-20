@@ -405,15 +405,35 @@ func _ready() -> void:
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
 	# A ruin's wall (dark, with no world: as a ruined house's) breaks off along
-	# its top, no higher than the wall stood; its parts, its cover, stay whole.
-	for v in 3:
-		var rw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, 1.0, 0.4), false, 70 + v, true)
-		var lw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, 1.0, 0.4), false, 70 + v, false)
-		var rwb := _bounds(rw, Transform3D.IDENTITY)
-		var lwb := _bounds(lw, Transform3D.IDENTITY)
-		check(rwb.end.y <= 3.05 and rwb.end.y >= Structure.RUIN_CUT and rwb.size.x <= lwb.size.x + 0.05, "a ruin's wall breaks off along its top (%d: %s)" % [v, rwb])
-		rw.free()
-		lw.free()
+	# its top, no higher than the wall stood nor out past its ends, in render,
+	# brick, stone or boards, plain or round an opening; what lies fallen at
+	# its foot lies flat within a metre of it. Its parts, its cover, stay whole.
+	for ci in [1, 2, 4, 5]:
+		for v in 4:
+			var rw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), false, 70 + v + ci * 10, true)
+			var lw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), false, 70 + v + ci * 10, false)
+			var rwb := _bounds(rw, Transform3D.IDENTITY)
+			var lwb := _bounds(lw, Transform3D.IDENTITY)
+			check(rwb.end.y <= Structure.RUIN_TOP + 0.05 and rwb.end.y >= Structure.RUIN_CUT + 0.1 and rwb.size.x <= lwb.size.x + 0.05 and rwb.position.y >= lwb.position.y - 0.01, "a ruin's wall breaks off along its top (%d, %d: %s)" % [ci, v, rwb])
+			check(rwb.position.z >= minf(lwb.position.z, -1.0) and rwb.end.z <= maxf(lwb.end.z, 1.0), "what fell from a ruin's wall lies at its foot (%d, %d: %s)" % [ci, v, rwb])
+			rw.free()
+			lw.free()
+	# ... along its courses: brick at its bed joints (a fourteenth of a metre
+	# apart in the world, wherever the wall's foot is), stone at its three
+	# course heights in turn, from where its body stops to where it stood.
+	for foot: float in [0.0, 0.31, 12.47]:
+		for finish: String in ["brick", "stone"]:
+			var lv := Structure._ruin_courses(finish, foot)
+			var ok := lv[0] == Structure.RUIN_CUT and lv[lv.size() - 1] == Structure.RUIN_TOP and lv.size() >= 5
+			for i in range(1, lv.size() - 1):
+				var y: float = lv[i] + foot
+				ok = ok and lv[i] > lv[i - 1]
+				if finish == "brick":
+					ok = ok and absf((y - 0.007) * 14.0 - roundf((y - 0.007) * 14.0)) < 0.01
+				else:
+					var o := fposmod(y, 0.86)
+					ok = ok and (absf(o) < 0.01 or absf(o - 0.86) < 0.01 or absf(o - 0.34) < 0.01 or absf(o - 0.56) < 0.01)
+			check(ok, "a ruin's %s wall breaks along its courses (%.2f: %s)" % [finish, foot, lv])
 	# The water tower stands on its piers within its footprint, its finial at
 	# 13.5 m or so.
 	var towk := kit()

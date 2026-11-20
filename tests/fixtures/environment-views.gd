@@ -113,6 +113,16 @@ func capture() -> void:
 				if st.skind == "house_wall" and st.variant == 1 and BuildingMaterials.house(int(st.size.y)) == kerb[1] and not st.dark and out.dot(to_sun) > 0.45:
 					views.append([kerb[0], st.position, 16.0, -32.0, st.yaw])
 					break
+		# a ruined house nearest the middle: its walls' broken tops close up
+		# across its garden, and from the command camera (untyped: this script
+		# compiles before the game's autoloads, so it can't name Structure)
+		var ruin = null
+		for st in world.structures_near(center, 120.0, true):
+			if st.skind == "floor" and st.variant == 1 and (ruin == null or st.position.distance_to(center) < ruin.position.distance_to(center)):
+				ruin = st
+		if ruin != null:
+			views.append(["ruin", ruin.position, 18.0, -38.0, ruin.yaw + 0.7])
+			views.append(["ruin-command", ruin.position, 50.0, -55.0, 0.7])
 		# the central crossroads close up, the square, a car park from the street
 		views.append(["crossroads", center, 24.0, -48.0, 0.7])
 		for piece: Array in world.decor:
