@@ -316,7 +316,8 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 				if (team == -9 or s.team == team) and (kind == "" or s.utype == kind) and (ids.is_empty() or ids.has(s.eid)):
 					out.append({"id": s.eid, "type": s.utype, "team": s.team, "squad": s.sid, "life": Soldier.Life.keys()[s.life],
 						"hp": snappedf(s.hp, 0.1), "pos": _xz(s.position), "posture": Soldier.Post.keys()[s.posture], "task": s.task,
-						"riding": s.riding.eid if is_instance_valid(s.riding) else 0, "stance": s.stance, "roe": s.roe})
+						"riding": s.riding.eid if is_instance_valid(s.riding) else 0, "stance": s.stance, "roe": s.roe,
+						"in_trench": w.in_trench(s.position)})
 		"vehicles":
 			for v in w.vehicles:
 				if (team == -9 or v.team == team) and (kind == "" or v.vkind == kind) and (ids.is_empty() or ids.has(v.eid)):
@@ -328,7 +329,8 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 			for st in w.structures:
 				if (team == -9 or st.team == team) and (st.skind == kind if kind != "" else not st.skind in SCENERY) and (ids.is_empty() or ids.has(st.eid)):
 					out.append({"id": st.eid, "kind": st.skind, "team": st.team, "built": st.built, "progress": snappedf(st.progress, 0.01),
-						"wrecked": st.wrecked, "hp": snappedf(st.hp, 0.1), "pos": _xz(st.position), "yaw": snappedf(st.yaw, 0.01)})
+						"wrecked": st.wrecked, "hp": snappedf(st.hp, 0.1), "pos": _xz(st.position), "yaw": snappedf(st.yaw, 0.01),
+						"variant": st.variant, "size": [snappedf(st.size.x, 0.01), snappedf(st.size.y, 0.01), snappedf(st.size.z, 0.01)]})
 		"adviser":
 			# Play vs AI's adviser, as the player's screen has it (Adviser)
 			return {"t": w.time, "adviser": w.adviser.state() if w.adviser else null}

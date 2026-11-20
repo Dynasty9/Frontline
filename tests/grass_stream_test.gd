@@ -27,11 +27,20 @@ func _ready() -> void:
 	check(vertices.size() == 270, "Fine grass retains the 90-triangle clump budget")
 	for i in range(0, vertices.size(), 9):
 		check(vertices[i].y == 0.0 and vertices[i + 1].y == 0.0 and uv[i].y == 0.0, "Grass roots stay on the terrain with zero wind weight")
-		check(vertices[i + 8].y > 0.11 and vertices[i + 8].y < 0.43 and uv[i + 8].y == 1.0, "Pointed tips retain full wind weight and varied heights")
-		check(vertices[i].distance_to(vertices[i + 1]) < 0.017, "Grass blades keep a natural centimetre scale")
+		check(vertices[i + 8].y > 0.17 and vertices[i + 8].y < 0.56 and uv[i + 8].y == 1.0, "Pointed tips retain full wind weight and varied heights")
+		# Thinner blades vanish below a pixel from the battle camera, and the meadow reads as bare ground.
+		check(vertices[i].distance_to(vertices[i + 1]) >= 0.016, "Grass blades stay broad enough to read from the battle camera")
 	var shrub := grass._make_bush()
-	check(shrub.get_faces().size() <= 5400, "Scanned shrubs stay within an 1800-triangle near-view budget")
-	check(absf(shrub.get_aabb().position.y + 0.65) < 0.01, "Scanned shrub roots retain the shader's ground offset")
+	var faces := shrub.get_faces()
+	check(faces.size() <= 5400, "Meadow shrubs stay within an 1800-triangle budget")
+	check(absf(shrub.get_aabb().position.y + 0.65) < 0.1, "Shrub roots sit at the shader's 65 cm ground offset")
+	# A shrub must be a mass of leaves, not an open spray of twigs, to be seen at range:
+	# its leaf cards together cover the crown's footprint at least twice over.
+	var leaf_area := 0.0
+	for i in range(0, faces.size(), 3):
+		leaf_area += (faces[i + 1] - faces[i]).cross(faces[i + 2] - faces[i]).length() * 0.5
+	var crown := shrub.get_aabb().size
+	check(leaf_area >= 2.0 * crown.x * crown.z, "Meadow shrubs are dense enough to read from the battle camera")
 	grass.HALF = 1536.0
 	grass._stream(Vector3.ZERO)
 	check(grass._queue.size() == 225, "Large maps must queue only nearby cosmetic chunks")
@@ -123,6 +132,30 @@ func _ready() -> void:
 			check(packed_biome.get_pixel(x, y).r == biome.get_pixel(x, y).r, "Packing woodland preserves every biome noise texel")
 			check(packed_biome.get_pixel(x, y).g == 1.0, "Woodland coverage occupies the existing texture's green channel")
 	check(biome.get_data() == biome_before, "Woodland packing does not mutate shared terrain noise")
+	# The road map the ground draws the tracks from: 1 on a road's line, fading
+	# to 0 at Grass.ROAD_REACH, in the packed biome's blue.
+	var road := [PackedVector3Array([Vector3(-12, 0, 0.5), Vector3(12, 0, 0.5)])]
+	var near := Grass.road_field(road, 4)
+	check(near.size() == 32, "The road map covers the grid it is packed into, two bytes a texel")
+	var field := Grass.road_field(road, MapDims.N)
+	var mid := MapDims.N >> 1
+	var at := (mid * MapDims.N + mid) << 1
+	var across_2 := ((mid + 2) * MapDims.N + mid) << 1
+	check(field[at] > 250, "A road's own line is fully worn")
+	check(field[across_2] > 0 and field[across_2] < field[at], "Wear fades across the road")
+	check(field[((mid + 6) * MapDims.N + mid) << 1] == 0, "The meadow is untouched past the road's reach")
+	check(field[at + 1] == 0, "A supply route is bare earth")
+	var gravelled := Grass.road_field([], MapDims.N, road)
+	check(gravelled[at] > 250 and gravelled[at + 1] == 255, "A gravel road says so")
+	var lane := PackedByteArray()
+	lane.resize(32)
+	for x in 4:
+		lane[(2 * 4 + x) << 1] = 255
+	lane[((2 * 4 + 3) << 1) + 1] = 255
+	var with_roads := Grass.pack_biome(biome, canopy, lane)
+	check(with_roads.get_format() == Image.FORMAT_RGBA8 and with_roads.get_pixel(1, 2).b == 1.0 and with_roads.get_pixel(1, 0).b == 0.0, "Roads ride in the packed biome's blue")
+	check(with_roads.get_pixel(3, 2).a == 1.0 and with_roads.get_pixel(1, 2).a == 0.0, "Gravel rides in its alpha")
+	check(with_roads.get_pixel(3, 1).r == biome.get_pixel(3, 1).r and with_roads.get_pixel(3, 1).g == 1.0, "Packing roads keeps the noise and the woodland")
 	var generated_biome := FastNoiseLite.new().get_seamless_image(16, 16, false, false, 0.1, true)
 	var packed_generated := Grass.pack_biome(generated_biome, canopy)
 	for y in 16:

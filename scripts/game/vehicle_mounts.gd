@@ -10,9 +10,19 @@ static func _mount(k: VehicleModels, parent: Node3D, center: Vector3, rotation: 
 
 ## Box mantlet or cradle, with a rounded casting and bolted trunnion covers.
 ## Preserve the authored barrel centre: the mount never adds or moves a muzzle.
-static func mantlet(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat: String, col = null, rotation := Vector3.ZERO) -> void:
+## `boot` = (the barrel's radius, the cover's length): the canvas dust cover a
+## main gun wears where it leaves the mantlet (zero: none, as before). Strapped
+## round the casting's front and tied round the barrel, it keeps grit and rain
+## out of the gap the gun recoils and elevates through; its pleats and its
+## dark proofed cloth are what make a tank's gun read as growing out of the
+## turret rather than as a tube stuck on a box. It runs along -Z from the
+## casting's front face on its centre line, so a gun passed through the
+## mantlet's centre (as every main gun is) goes through it.
+static func mantlet(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat: String, col = null, rotation := Vector3.ZERO, boot := Vector2.ZERO) -> void:
 	var mount := _mount(k, parent, center, rotation)
 	k._add(mount, BevelMesh.make(size, minf(size.x, minf(size.y, size.z)) * 0.12), mat, col, Vector3.ZERO)
+	if boot.x > 0.0 and boot.y > 0.0:
+		_gun_boot(k, mount, -size.z * 0.5, minf(size.x, size.y) * 0.46, boot.x, boot.y)
 	var radius := minf(size.y, size.z) * 0.23
 	for side: float in [-1.0, 1.0]:
 		var at := Vector3(side * size.x * 0.5, 0, size.z * 0.12)
@@ -25,6 +35,27 @@ static func mantlet(k: VehicleModels, parent: Node3D, size: Vector3, center: Vec
 			var a := TAU * i / 4.0
 			VehicleBody.fastener(k, mount, at + Vector3(side * radius * 0.16, sin(a) * radius * 0.7, cos(a) * radius * 0.7), Vector3.RIGHT * side, radius * 0.13)
 	k._fold(mount)
+
+## Proofed canvas, near black olive (a dust cover, a mantlet boot).
+const BOOT := Color(0.2, 0.21, 0.16)
+
+## The mantlet's canvas dust cover (see mantlet): from the casting's face at
+## `face` (z, in the mount's space) forward along -Z, `length` long, gathered
+## from `radius` at the face down onto the barrel (`barrel` its radius) in
+## three pleats, each fold puffed out where it starts and drawn in where the
+## next laps over it, and a strap cinched round the barrel at its front.
+static func _gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float, barrel: float, length: float) -> void:
+	var tied := barrel + minf(0.02, barrel * 0.2)
+	if radius <= tied:
+		radius = tied * 1.3
+	var step := length / 3.0
+	for i in 3:
+		var r0 := lerpf(radius, tied, i / 3.0) * (1.0 if i == 0 else 1.06)
+		var r1 := lerpf(radius, tied, (i + 1) / 3.0)
+		# (the first fold's back end a centimetre into the casting's face)
+		k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, 0, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), "canvas", BOOT, 12)
+	k._cyl(mount, tied + 0.008, tied + 0.008, minf(0.035, length * 0.2), Vector3(0, 0, face - length + minf(0.035, length * 0.2) * 0.5), Vector3(PI / 2, 0, 0), "canvas", BOOT.darkened(0.25), 12, false)
+
 
 ## Width is X. End caps stay within the authored envelope; front and back receive
 ## the same hardware so a rear bumper needs no reversed coordinate convention,
@@ -164,12 +195,19 @@ static func mast_segment(k: VehicleModels, parent: Node3D, center: Vector3, heig
 		var p := center + half * side - axis * side * radius * 0.3
 		VehicleEquipment._rod(k, parent, p - axis * radius * 0.3, p + axis * radius * 0.3, radius * 1.18, "metal_dark", null, 10, false, 3)
 
+## A gun's feed cover: plain dark metal taken down to the gun's blackened
+## steel (VehicleWeapons.STEEL's tone).
+const COVER := Color(0.07, 0.072, 0.068)
+
 ## Receiver body with a feed-cover seam and charging handle. Barrel, feed box,
 ## grips and muzzle socket remain with the weapon builder.
 static func receiver(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat := "gunmetal_w", col = null, rotation := Vector3.ZERO) -> void:
 	var mount := _mount(k, parent, center, rotation)
 	k._add(mount, BevelMesh.make(size, minf(size.x, size.y) * 0.08), mat, col, Vector3.ZERO)
-	k._box(mount, Vector3(size.x * 0.9, size.y * 0.025, size.z * 0.62), Vector3(0, size.y * 0.51, size.z * 0.08), "metal_dark", null, Vector3.ZERO, false)
+	# The feed cover is the receiver's own blackened steel: a shade darker
+	# than the plain dark metal, which from above read as a pale grey plate
+	# on every gun's back.
+	k._box(mount, Vector3(size.x * 0.9, size.y * 0.025, size.z * 0.62), Vector3(0, size.y * 0.51, size.z * 0.08), "metal_dark", COVER, Vector3.ZERO, false)
 	var p := Vector3(size.x * 0.50, size.y * 0.12, size.z * 0.17)
 	VehicleFrames.tube(k, mount, p, p + Vector3.RIGHT * size.x * 0.3, size.x * 0.055, "steel", null, 6, false)
 	for z: float in [-0.33, 0.33]:
@@ -364,6 +402,13 @@ static func gun_shield(k: VehicleModels, head: Node3D, center: Vector3, size: Ve
 	var m := _mount(k, head, center, Vector3(tilt, 0, 0))
 	k._add(m, BevelMesh.make(Vector3(size.x, size.y, thickness), minf(0.006, thickness * 0.3)), mat, col, Vector3.ZERO)
 	var face := -thickness * 0.5 - 0.003
+	# a doubler plate welded round its edge on the outside, stiffening it
+	# (standing no prouder than the slot's dark lining)
+	var rim := 0.03
+	for y: float in [-1.0, 1.0]:
+		k._box(m, Vector3(size.x - 0.01, rim, 0.005), Vector3(0, y * (size.y * 0.5 - rim * 0.5 - 0.005), -thickness * 0.5 - 0.0025), mat, col, Vector3.ZERO, false)
+	for x: float in [-1.0, 1.0]:
+		k._box(m, Vector3(rim, size.y - rim * 2.0 - 0.01, 0.005), Vector3(x * (size.x * 0.5 - rim * 0.5 - 0.005), 0, -thickness * 0.5 - 0.0025), mat, col, Vector3.ZERO, false)
 	k._box(m, Vector3(slot.x, slot.y, 0.006), Vector3(0, -size.y * 0.06, face), "plain_dark", null, Vector3.ZERO, false)
 	k._box(m, Vector3(size.x * 0.3, 0.025, 0.006), Vector3(size.x * 0.22, size.y * 0.32, face), "plain_dark", null, Vector3.ZERO, false)
 	VehicleFrames.tube(k, m, Vector3(-size.x * 0.5 + 0.01, size.y * 0.5, 0), Vector3(size.x * 0.5 - 0.01, size.y * 0.5, 0), thickness * 0.55, mat, col, 6, false)
@@ -432,6 +477,43 @@ static func era_brick(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 	k._add(mount, VehicleEquipment._plate(Vector3(size.x * 0.9, size.y * 0.86, size.z * 0.22)), mat, col, Vector3(0, 0, size.z * 0.38))
 	for corner: Vector2 in [Vector2(-1, -1), Vector2(1, 1)]:
 		VehicleBody.fastener(k, mount, Vector3(corner.x * size.x * 0.36, corner.y * size.y * 0.33, size.z * 0.49 + 0.002), Vector3.BACK, minf(0.012, size.x * 0.06))
+	k._fold(mount)
+
+
+## A bolt-on armour module: the appliqué plates hung over a modern hull's
+## sides and roof, a turret's modular cheeks, the cover plate welded over an
+## armour cavity. The old plate's centre, size and rotation, local +Z outward.
+## Real modules are thick slabs with flame-cut, ground edges, so the slab's
+## chamfer is wide (up to 2.5 cm, under half its thickness) and catches the
+## light all round it; that edge, and the shadow under it, are what keep a
+## big flat hull side from reading as one blank face from the RTS camera.
+## `bolts` (columns, rows) of heavy bolt heads stand in from its edges (zero:
+## none, as on a welded cover plate); `lugs` welds that many lifting lugs
+## along its top edge (+Y) for the crane that hangs it. Grids, seams and gaps
+## between modules stay with the family.
+static func applique(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, rotation: Vector3, mat: String, col = null, bolts := Vector2i(2, 2), lugs := 0) -> void:
+	var mount := _mount(k, parent, center, rotation)
+	var bevel := clampf(minf(size.x, size.y) * 0.05, 0.006, minf(0.025, size.z * 0.45))
+	k._add(mount, _bevel(size, bevel), mat, col, Vector3.ZERO)
+	var face := size.z * 0.5
+	if bolts.x > 0 and bolts.y > 0:
+		var head := clampf(minf(size.x, size.y) * 0.03, 0.01, 0.024)
+		var inset := Vector2(minf(0.08, size.x * 0.14), minf(0.08, size.y * 0.16)) + Vector2(bevel, bevel)
+		# A module is painted after it's bolted on, so its heads wear its own
+		# paint (bare steel heads read from above as a scatter of bright
+		# specks over the armour); they show by their shape and shading.
+		var bolt := VehicleBody._head(head)
+		var face_out := VehicleFrames.aim(Vector3.BACK).get_euler()
+		for i in bolts.x:
+			for j in bolts.y:
+				var u := 0.0 if bolts.x == 1 else lerpf(-size.x * 0.5 + inset.x, size.x * 0.5 - inset.x, float(i) / (bolts.x - 1))
+				var v := 0.0 if bolts.y == 1 else lerpf(-size.y * 0.5 + inset.y, size.y * 0.5 - inset.y, float(j) / (bolts.y - 1))
+				k._add(mount, bolt, mat, col, Vector3(u, v, face + 0.002), face_out, Vector3.ONE, false)
+	for i in lugs:
+		# a welded plate lug, its eye across the module's top edge
+		var u := lerpf(-size.x * 0.3, size.x * 0.3, (i + 0.5) / lugs) if lugs > 1 else 0.0
+		var lug := Vector3(0.05, 0.05, minf(0.03, size.z * 0.6))
+		k._box(mount, lug, Vector3(u, size.y * 0.5 + lug.y * 0.35, face - lug.z * 0.5), mat, col, Vector3.ZERO, false)
 	k._fold(mount)
 
 

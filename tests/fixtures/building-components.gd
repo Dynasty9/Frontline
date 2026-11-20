@@ -81,6 +81,17 @@ func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 	return box
 
 
+## (every part's box under `node`, in `parent`'s frame)
+func _part_boxes(node: Node3D, parent: Transform3D, out: Array[AABB]) -> void:
+	var xf := parent * node.transform
+	var mi := node as MeshInstance3D
+	if mi != null and mi.mesh != null:
+		out.append(xf * mi.mesh.get_aabb())
+	for child in node.get_children():
+		if child is Node3D:
+			_part_boxes(child, xf, out)
+
+
 func kit() -> BuildingKit:
 	var root := Node3D.new()
 	add_child(root)
@@ -181,6 +192,29 @@ func _ready() -> void:
 		check(not occupied(wk.sink.root, p), "the window is clear at %s" % p)
 	check(occupied(wk.sink.root, Vector3(0, 1.5, -0.1)), "the window has its mullion")
 	wk.sink.root.free()
+	# A shop's display window: clear between its bars, its stall riser solid
+	# under it; the stock behind the glass below a man's eye and inside the
+	# wall's depth or behind it, none of it out on the pavement.
+	var sfk := kit()
+	BuildingOpenings.shopfront(sfk, Vector3(0, (Structure.SHOP_SILL + Structure.SHOP_HEAD) * 0.5, 0), Vector2(2.2, Structure.SHOP_HEAD - Structure.SHOP_SILL), {"glazing": 0.0, "cracked": 0.0})
+	for p in [Vector3(-0.5, 1.4, -0.05), Vector3(0.5, 1.4, -0.05), Vector3(0, 1.5, 0.1)]:
+		check(not occupied(sfk.sink.root, p), "the display window is clear at %s" % p)
+	check(occupied(sfk.sink.root, Vector3(0, 0.35, 0.04)), "the display window has its stall riser")
+	sfk.sink.root.free()
+	for sd in 12:
+		var dsk := kit()
+		dsk.rng.seed = sd
+		BuildingShops.display(dsk, 2.1, Structure.SHOP_SILL, BuildingShops.paint(sd), dsk.rng)
+		var gb := _bounds(dsk.sink.root, Transform3D.IDENTITY)
+		check(gb.position.y >= Structure.SHOP_SILL - 0.01 and gb.end.y < 1.45 and gb.end.z <= -0.1 and absf(gb.get_center().x) < 0.2, "a window display keeps behind the glass (%s)" % gb)
+		dsk.sink.root.free()
+	# The years' grime lies on the face, under the eaves' band and above the
+	# plinth, on every part of the wall's body and none of its openings.
+	for v in [0, 1, 2, 3]:
+		var gw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, 1.0, 0.4), v == 2, 77)
+		var gwb := _bounds(gw, Transform3D.IDENTITY)
+		check(gwb.end.y <= 3.05 and gwb.size.x <= 3.6, "a house wall (%d) keeps to its bay and under its eaves (%s)" % [v, gwb])
+		gw.free()
 
 	# Shared shapes: windows of one size share one frame mesh.
 	check(BuildingOpenings.frame_shape(1.3, 1.0, 1, 0.7) == BuildingOpenings.frame_shape(1.3, 1.0, 1, 0.7), "window frames are cached")
@@ -194,7 +228,7 @@ func _ready() -> void:
 
 	# Batched scenery keeps to world-space surfaces (StructureView merges
 	# nothing in local space), so the new dressing doesn't break the batches.
-	for spec: Array in [["house_wall", 0, Vector3(2.8, 2.0, 0.4)], ["house_wall", 1, Vector3(2.8, 4.0, 0.4)], ["house_wall", 2, Vector3(2.8, 2.0, 0.4)],
+	for spec: Array in [["house_wall", 0, Vector3(2.8, 2.0, 0.4)], ["house_wall", 1, Vector3(2.8, 4.0, 0.4)], ["house_wall", 2, Vector3(2.8, 2.0, 0.4)], ["house_wall", 3, Vector3(2.8, 1.0, 0.4)],
 			["low_wall", 0, Vector3(4.0, 1.0, 0.5)], ["low_wall", 2, Vector3(4.0, 1.0, 0.5)], ["floor", 0, Vector3(8, 0.06, 7)]]:
 		var m := Structure.preview_model(spec[0], -1, spec[1], spec[2])
 		var stack: Array = [m]
@@ -257,7 +291,10 @@ func _ready() -> void:
 			BuildingYards.bicycle(k.at_point(Vector3(0, 0, -3)), BuildingYards.BIKE_COLS[0])
 			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng)
 			BuildingYards.shed(k.at_point(Vector3(-4, 0, 3)), BuildingYards.SHEDS[0], k.rng)
-			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0]),
+			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0])
+			BuildingYards.graves(k.at_point(Vector3(-6, 0, -4)), 5, k.rng),
+		"storey": func(k: BuildingKit):
+			BuildingStoreys.upper(k, 9.0, 7.6, 3.0, 5.8, "brick", BuildingMaterials.color("brick"), Color(0.86, 0.85, 0.8), k.rng),
 		"fixtures": func(k: BuildingKit):
 			BuildingFittings.meter_box(k, Vector3(-1, 0.5, 0))
 			BuildingFittings.meter_box(k.at_point(Vector3(1, 0, 0)), Vector3.ZERO, true)
@@ -267,6 +304,33 @@ func _ready() -> void:
 			BuildingFittings.house_number(k, Vector3(-3, 1.7, 0), 47, BuildingFittings.NUMBERS[0][0], BuildingFittings.NUMBERS[0][1])
 			BuildingFittings.letterbox(k, Vector3(-3, 1.15, 0), BuildingFittings.LETTERBOXES[0])
 			BuildingFittings.doormat(k, Vector3(-5, 0.14, 0.3), BuildingFittings.MATS[0]),
+		"furniture": func(k: BuildingKit):
+			BuildingInteriors.wardrobe(k, 0.0, BuildingInteriors.WOODS[0], k.rng)
+			BuildingInteriors.bookcase(k.at_point(Vector3(2, 0, 0)), 0.0, BuildingInteriors.WOODS[1], k.rng)
+			BuildingInteriors.dresser(k.at_point(Vector3(4, 0, 0)), 0.0, BuildingInteriors.WOODS[2], k.rng)
+			BuildingInteriors.settee(k.at_point(Vector3(6, 0, 0)), 0.0, 1.8, Color(0.5, 0.2, 0.15), k.rng)
+			BuildingInteriors.kitchen(k.at_point(Vector3(9, 0, 0)), 0.0, 2.2, BuildingInteriors.UNITS[0], k.rng)
+			BuildingInteriors.desk(k.at_point(Vector3(12, 0, 0)), 0.0, BuildingInteriors.WOODS[3], k.rng)
+			BuildingInteriors.table(k.at_point(Vector3(0, 0, 5)), Vector3(9.0, 0.06, 7.6), BuildingInteriors.WOODS[0], k.rng)
+			BuildingInteriors.shop(k.at_point(Vector3(0, 0, 16)), Vector3(9.0, 0.06, 10.0), k.rng),
+		"street": func(k: BuildingKit):
+			BuildingStreet.traffic_light(k, 1.0, k.rng)
+			BuildingStreet.phone_box(k.at_point(Vector3(2, 0, 0)), Color(0.7, 0.1, 0.08), k.rng)
+			BuildingStreet.post_box(k.at_point(Vector3(4, 0, 0)))
+			BuildingStreet.ad_column(k.at_point(Vector3(6, 0, 0)), k.rng)
+			BuildingStreet.hoarding(k.at_point(Vector3(10, 0, 0)), 5.6, k.rng)
+			BuildingStreet.street_name(k.at_point(Vector3(14, 0, 0)), k.rng)
+			BuildingStreet.belongings(k.at_point(Vector3(16, 0, 0)), k.rng),
+		"farm": func(k: BuildingKit):
+			BuildingFarm.barn(k, Vector3(13.0, 0.06, 10.0), 0, k.rng)
+			BuildingFarm.wall_tools(k.at_point(Vector3(0, 0, 8)), 3.2, k.rng)
+			BuildingFarm.bales(k.at_point(Vector3(0, 0, 12)), 3, false, k.rng)
+			BuildingFarm.trough(k.at_point(Vector3(4, 0, 12)), k.rng)
+			BuildingFarm.plough(k.at_point(Vector3(8, 0, 12)), k.rng)
+			BuildingFarm.harrow(k.at_point(Vector3(12, 0, 12)), k.rng)
+			BuildingFarm.churn_stand(k.at_point(Vector3(4, 0, 16)), k.rng)
+			BuildingFarm.hen_house(k.at_point(Vector3(9, 0, 16)), k.rng)
+			BuildingFarm.barrow(k.at_point(Vector3(13, 0, 16)), 1),
 		"inside": func(k: BuildingKit):
 			BuildingFurnishings.lining(k, 2.8, 3.0, [Rect2(-0.65, 1.0, 1.3, 1.0)], Color(0.8, 0.8, 0.7))
 			BuildingFurnishings.radiator(k, 0.0, 1.0)
@@ -309,6 +373,50 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A field hospital (the medic tent) stands its tent where its part is, the
+	# stretchers and stores by its door and the flag beside it, under 4.3 m.
+	for side in 2:
+		var mt := Structure.preview_model("medic_tent", side)
+		var mtb := _bounds(mt, Transform3D.IDENTITY)
+		check(mt.get_child_count() > 0 and mtb.size.x <= 12.5 and mtb.size.z <= 7.8 and mtb.position.y >= -0.15 and mtb.end.y <= 4.4, "a field hospital keeps to its pitch (%d: %s)" % [side, mtb])
+		mt.free()
+	# The street pieces keep to their footprints: the fountain within its
+	# basin, the bus shelter over its pavement (its stop's flag the top of it),
+	# a planter (its trough a square turned on its corner: its bounds are the
+	# turned square's), a bin, the name board.
+	var spieces := [[func(k: BuildingKit): BuildingStreet.fountain(k), Vector3(5.25, 3.2, 5.25)],
+		[func(k: BuildingKit): BuildingStreet.bus_shelter(k, k.rng), Vector3(4.6, 2.85, 1.8)],
+		[func(k: BuildingKit): BuildingStreet.planter(k, k.rng), Vector3(2.05, 1.25, 2.05)],
+		[func(k: BuildingKit): BuildingStreet.litter_bin(k), Vector3(0.55, 0.95, 0.55)],
+		[func(k: BuildingKit): BuildingStreet.town_sign(k, k.rng), Vector3(2.1, 2.35, 0.2)]]
+	for sp: Array in spieces:
+		var spk := kit()
+		(sp[0] as Callable).call(spk)
+		var spb := _bounds(spk.sink.root, Transform3D.IDENTITY)
+		var lim: Vector3 = sp[1]
+		check(spb.size.x <= lim.x and spb.size.z <= lim.z and spb.end.y <= lim.y and spb.position.y >= -0.01, "a street piece keeps to its footprint (%s, %s)" % [spb, lim])
+		spk.sink.root.free()
+	# A farm's bales keep to their footprint (two side by side, a third on
+	# them), straw or wrapped.
+	for i in 6:
+		var bk := kit()
+		bk.rng.seed = i
+		BuildingFarm.bales(bk, 1 + i % 3, i >= 3, bk.rng)
+		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
+		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
+		bk.sink.root.free()
+	# The water tower stands on its piers within its footprint, its finial at
+	# 13.5 m or so.
+	var towk := kit()
+	BuildingLandmarks.water_tower(towk, towk.rng)
+	var towb := _bounds(towk.sink.root, Transform3D.IDENTITY)
+	check(towb.size.x <= 6.5 and towb.size.z <= 6.4 and towb.position.y >= -0.01 and towb.end.y > 13.0 and towb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % towb)
+	towk.sink.root.free()
+	# A tunnel's mouth keeps to its 3 m plot, its shaft going down below it.
+	var tn := Structure.preview_model("tunnel", 1)
+	var tnb := _bounds(tn, Transform3D.IDENTITY)
+	check(tn.get_child_count() > 0 and tnb.size.x <= 3.9 and tnb.size.z <= 4.6 and tnb.end.y < 2.2 and tnb.position.y < -1.0, "a tunnel's mouth keeps to its plot (%s)" % tnb)
+	tn.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:
@@ -423,6 +531,31 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# The FOB's command post: its HESCO square keeps to the post's footprint
+	# (the baffle of bags a step outside its way in) and under the net, and
+	# its roof carries a burst layer of bags.
+	var cp_root := Node3D.new()
+	add_child(cp_root)
+	var cp_rng := RandomNumberGenerator.new()
+	cp_rng.seed = 11
+	var cp_bags: Array = []
+	WorksModels.command_post(cp_root, cp_rng, cp_bags)
+	var cpb := _bounds(cp_root, Transform3D.IDENTITY)
+	check(cpb.position.x >= -2.6 and cpb.end.x <= 2.6 and cpb.position.z >= -2.6 and cpb.end.z <= 2.6 and cpb.end.y <= 2.45, "a FOB's command post keeps to its footprint (%s)" % cpb)
+	check(cp_bags.size() == 8, "a FOB's command post has its roof of bags and its baffle (%d rows)" % cp_bags.size())
+	cp_root.free()
+	# Cover crates: the stores stand on the ground inside the boxes their parts
+	# give for cover, and one stack is loaded differently from the next.
+	var loads := {}
+	for id in 12:
+		for v in 2:
+			var cr := Structure.preview_model("crates", -1, v, Vector3.ZERO, false, id)
+			var cb := _bounds(cr, Transform3D.IDENTITY)
+			var reach := Vector3(0.65, 1.3, 0.65) if v == 0 else Vector3(1.3, 2.45, 0.72)
+			check(cb.position.y >= -0.01 and cb.end.y <= reach.y and absf(cb.position.x) <= reach.x and cb.end.x <= reach.x and absf(cb.position.z) <= reach.z and cb.end.z <= reach.z, "crate stack %d (variant %d) keeps to its cover (%s)" % [id, v, cb])
+			loads["%d|%s" % [v, cb.size.snapped(Vector3.ONE * 0.05)]] = true
+			cr.free()
+	check(loads.size() >= 4, "crate stacks are loaded differently (%d ways)" % loads.size())
 
 	# Roofs: a hip rises as high as a gable of the same pitch over the same
 	# walls; its underside comes down to the eaves on all four walls where a
@@ -459,8 +592,10 @@ func _ready() -> void:
 
 	# A farm's barn: weatherboarded walls, a steeper sheet roof with no
 	# chimney, straw on a bare floor, in each of its three colours.
-	check(BuildingMaterials.house(5) == "timber" and BuildingMaterials.house(11) == "timber", "a barn is weatherboarded")
-	for ci in [5, 11, 17]:
+	var timber := BuildingMaterials.HOUSE.find("timber")
+	var n_mat := BuildingMaterials.HOUSE.size()
+	check(BuildingMaterials.house(timber) == "timber" and BuildingMaterials.house(timber + n_mat) == "timber", "a barn is weatherboarded")
+	for ci in [timber, timber + n_mat, timber + n_mat * 2]:
 		for v in 3:
 			var bw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), v == 2, 50 + v)
 			check(bw.get_child_count() > 0, "a barn's wall builds (%d/%d)" % [ci, v])
@@ -469,9 +604,37 @@ func _ready() -> void:
 		var bb := _bounds(br, Transform3D.IDENTITY)
 		check(br.get_child_count() > 0 and bb.end.y < 3.0 + 5.2 * tan(deg_to_rad(40.5)) + 0.3, "a barn's roof builds, no chimney over it (%s)" % bb)
 		br.free()
+	# (and its floor is fitted out as a barn's: straw over it, the hay
+	# stacked, the stalls, under its roof)
 	var bf := Structure.preview_model("floor", -1, 2, Vector3(13.0, 0.06, 10.0), false, 3)
-	check(bf.get_child_count() > 0 and _bounds(bf, Transform3D.IDENTITY).end.y < 0.12, "a barn's straw lies flat")
+	var bfb := _bounds(bf, Transform3D.IDENTITY)
+	check(bf.get_child_count() > 0 and bfb.end.y > 1.0 and bfb.end.y < 3.0, "a barn's floor is fitted out under its roof (%s)" % bfb)
 	bf.free()
+
+	# A second storey is drawn with the roof over it: the roof the same, a
+	# storey higher, the storey on the ground floor's walls (sills and bands
+	# no further out than theirs).
+	for ci in [1, 2, 4]:
+		for flat in [0, 1]:
+			var one := Structure.preview_model("roof", -1, ci * 2 + flat, Vector3(9.0, 3.0, 7.6), false, 21)
+			var two := Structure.preview_model("roof", -1, ci * 2 + flat, Vector3(9.0, 5.8, 7.6), false, 21)
+			var b1 := _bounds(one, Transform3D.IDENTITY)
+			var b2 := _bounds(two, Transform3D.IDENTITY)
+			check(absf(b2.end.y - b1.end.y - 2.8) < 0.02, "a second storey lifts the roof a storey (%d: %s, %s)" % [ci, b1, b2])
+			check(b2.size.x <= maxf(b1.size.x, 9.0 + 0.4) + 0.3 and b2.size.z <= maxf(b1.size.z, 7.6 + 0.4) + 0.3, "a second storey keeps to the walls' lines (%d: %s, %s)" % [ci, b1, b2])
+			one.free()
+			two.free()
+	var stk := kit()
+	BuildingStoreys.upper(stk, 9.0, 7.6, 3.0, 5.8, "plaster", Color(0.8, 0.75, 0.7), Color.WHITE, stk.rng)
+	var stb := _bounds(stk.sink.root, Transform3D.IDENTITY)
+	check(stb.position.y >= 2.75 and stb.end.y <= 5.85 and absf(stb.get_center().x) < 0.05 and stb.size.x <= 9.6 and stb.size.z <= 8.2, "a storey stands on the ground floor's lines (%s)" % stb)
+	var panes := 0
+	for child in stk.sink.root.get_children():
+		var mat := Mats.base_of((child as MeshInstance3D).material_override)
+		if mat == Mats.get_mat("glass") or mat == Mats.get_mat("window_lit"):
+			panes += 1
+	check(panes >= 12, "a storey has its windows (%d panes)" % panes)
+	stk.sink.root.free()
 
 	# What's fixed to a house wall keeps to the room Structure gives it (its
 	# placing relies on these reaches), sits on the face, and stands proud of
@@ -538,6 +701,209 @@ func _ready() -> void:
 		check(tb.position.y >= -0.25 and tb.end.y <= 0.3, "a tarp lies on the slope (%s)" % tb)
 		check(absf(tb.get_center().x) < 0.5 and tb.size.x <= 3.2 and tb.position.z >= -2.6 and tb.end.z <= 1.2, "a tarp keeps to its patch and the eave (%s)" % tb)
 		tk.sink.root.free()
+	# (and a storey's lamps go out with the rest of the house's)
+	var dark_storeys := 0
+	for id in 40:
+		var ls := Structure.preview_model("roof", -1, (id % 5) * 2, Vector3(9.0, 5.8, 7.6), false, id)
+		var ds := Structure.preview_model("roof", -1, (id % 5) * 2, Vector3(9.0, 5.8, 7.6), false, id, true)
+		if _lit(ls) > 0:
+			dark_storeys += 1
+		check(_lit(ds) == 0, "a dark house's floor above has no lamp lit (%d)" % id)
+		ls.free()
+		ds.free()
+	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
+
+	# The parish church: its tower, the cross on its spire the top of it, its
+	# ground stage open to the west (a doorway men pass, solid above); its nave
+	# and chancel house walls (the west and south doors, lancets), floors (pews,
+	# the pulpit, the altar) and roofs that build, the roof's gable no higher
+	# than its pitch; the south porch in front of the south door.
+	var church := Structure.preview_model("church", -1, BuildingMaterials.HOUSE.find("church"), Vector3(Structure.CHURCH_TOWER, Structure.CHURCH_TOWER_H, Structure.CHURCH_TOWER), false, 1)
+	var chb := _bounds(church, Transform3D.IDENTITY)
+	check(church.get_child_count() > 0 and chb.end.y > 24.0 and chb.end.y < 27.5 and chb.size.x < 6.0 and chb.size.z < 6.0 and chb.position.y > -1.2, "the church tower builds, its spire the top of it (%s)" % chb)
+	church.free()
+	var tower_parts: Array = Structure.preview_parts("church", Vector3(Structure.CHURCH_TOWER, Structure.CHURCH_TOWER_H, Structure.CHURCH_TOWER))
+	var solid_low := 0
+	var doorway_free := true
+	for tp: Dictionary in tower_parts:
+		var lo: float = tp.p.y - tp.s.y * 0.5
+		if int(tp.nav) == Nav.SOLID:
+			solid_low += 1
+			# nothing solid across the doorway's line through the west wall
+			if absf(tp.p.x) < Structure.CHURCH_WEST_DOOR * 0.5 + tp.s.x * 0.5 - 0.01 and tp.p.z < 0.0 and lo < 2.0:
+				doorway_free = false
+		elif lo < 2.0:
+			doorway_free = false
+	check(solid_low >= 4 and doorway_free, "the tower's ground stage has walls round it and a doorway through its west wall (%d)" % solid_low)
+	var cci := BuildingMaterials.HOUSE.find("church")
+	check(BuildingMaterials.house(cci) == "church" and BuildingMaterials.house(cci + BuildingMaterials.HOUSE.size()) == "church", "a church is rendered in its own limewash")
+	for body: Array in [[8.0, 14.0, 6.2, false], [5.6, 4.4, 5.0, true]]:
+		var plan := Structure.church_walls(body[0], body[1], body[3])
+		var doors := 0
+		for e: Array in plan:
+			var cw := Structure.preview_model("house_wall", -1, e[3], Vector3(e[2], float(cci), 0.4), int(e[3]) == 2, 60 + doors)
+			check(cw.get_child_count() > 0, "a church wall builds (%s)" % [e])
+			cw.free()
+			if int(e[3]) == 2:
+				doors += 1
+		check(doors == (0 if body[3] else 2), "a church's nave has its west and south doors, its chancel none (%d)" % doors)
+		var porches := 0
+		for e: Array in plan:
+			if not Structure.church_porch(e).is_empty():
+				porches += 1
+		check(porches == (0 if body[3] else 1), "the south door has its porch (%d)" % porches)
+		var cr2 := Structure.preview_model("roof", -1, cci * 2, Vector3(body[0], body[2], body[1]), false, 5)
+		var crb := _bounds(cr2, Transform3D.IDENTITY)
+		check(cr2.get_child_count() > 0 and crb.end.y < body[2] + body[0] * 0.5 * tan(deg_to_rad(50.0)) + 1.4 and crb.position.y > -0.1, "a church roof builds over its walls (%s)" % crb)
+		cr2.free()
+		var cf := Structure.preview_model("floor", -1, 3, Vector3(body[0], 0.06, body[1]), false, 5)
+		var cfb := _bounds(cf, Transform3D.IDENTITY)
+		check(cf.get_child_count() > 0 and cfb.end.y < 3.05 and cfb.size.x <= body[0] + 0.5, "a church floor builds: its fittings, and its corners' quoins no higher than the ground floor's walls (%s)" % cfb)
+		cf.free()
+
+	# What a ruined or shelled house sheds lies flat on the ground in front of
+	# the wall it came off, within its length and a metre and a half of it;
+	# and a dark wall carries it while a lit one doesn't.
+	for s in 10:
+		var spk := kit()
+		spk.rng.seed = s
+		BuildingWeathering.spill(spk, 2.8, Color(0.8, 0.75, 0.7), spk.rng)
+		BuildingWeathering.shards(spk, 0.0, 1.3, spk.rng)
+		var spb := _bounds(spk.sink.root, Transform3D.IDENTITY)
+		check(spb.position.y >= -0.04 and spb.end.y <= 0.2 and spb.position.x >= -1.55 and spb.end.x <= 1.55 and spb.position.z >= 0.0 and spb.end.z <= 1.85, "debris lies flat by its wall (%s)" % spb)
+		spk.sink.root.free()
+	var lit_wall := Structure.preview_model("house_wall", -1, 0, Vector3(2.8, 1.0, 0.4), false, 31)
+	var dark_wall := Structure.preview_model("house_wall", -1, 0, Vector3(2.8, 1.0, 0.4), false, 31, true)
+	check(_bounds(dark_wall, Transform3D.IDENTITY).end.z > _bounds(lit_wall, Transform3D.IDENTITY).end.z + 0.5, "a dark house's wall has its debris in front of it")
+	lit_wall.free()
+	dark_wall.free()
+	# What stands against a wall keeps its reach out from it and in from its
+	# ends (so two walls meeting in a corner never put things in each other's
+	# way), on the floor and under the ceiling; the table and chairs keep to
+	# the middle of the room.
+	for s2 in 60:
+		var L: float = [2.33, 2.6, 2.8, 3.1, 3.5][s2 % 5]
+		var ak := kit()
+		ak.rng.seed = s2
+		BuildingInteriors.against_wall(ak, L, ak.rng)
+		var ab := _bounds(ak.sink.root, Transform3D.IDENTITY)
+		check(ak.sink.root.get_child_count() > 0, "something stands against a %.2f m wall" % L)
+		check(ab.position.x >= -L * 0.5 + BuildingInteriors.REACH - 0.06 and ab.end.x <= L * 0.5 - BuildingInteriors.REACH + 0.06, "it keeps in from the wall's ends (%.2f: %s)" % [L, ab])
+		check(ab.position.z >= -0.01 and ab.end.z <= BuildingInteriors.REACH + 0.02 and ab.position.y >= 0.0 and ab.end.y <= 2.6, "it keeps within reach of the wall, under the ceiling (%.2f: %s)" % [L, ab])
+		ak.sink.root.free()
+		# (and a shop's wall the same: its shelving, its cooler, its rack)
+		var swk := kit()
+		swk.rng.seed = s2
+		BuildingInteriors.shop_wall(swk, L, swk.rng)
+		var swb := _bounds(swk.sink.root, Transform3D.IDENTITY)
+		check(swk.sink.root.get_child_count() > 0, "a shop's %.2f m wall is fitted out" % L)
+		check(swb.position.x >= -L * 0.5 + BuildingInteriors.REACH - 0.06 and swb.end.x <= L * 0.5 - BuildingInteriors.REACH + 0.06, "a shop's fittings keep in from the wall's ends (%.2f: %s)" % [L, swb])
+		check(swb.position.z >= -0.01 and swb.end.z <= BuildingInteriors.REACH + 0.02 and swb.position.y >= 0.0 and swb.end.y <= 2.6, "a shop's fittings keep within reach of the wall, under the ceiling (%.2f: %s)" % [L, swb])
+		swk.sink.root.free()
+		var tk := kit()
+		tk.rng.seed = s2
+		BuildingInteriors.table(tk, Vector3(9.0, 0.06, 7.6), BuildingInteriors.WOODS[0], tk.rng)
+		var tb := _bounds(tk.sink.root, Transform3D.IDENTITY)
+		check(tb.position.y >= 0.0 and tb.end.y <= 1.2 and absf(tb.get_center().x) < 1.0 and absf(tb.get_center().z) < 1.0 and tb.size.x < 3.6 and tb.size.z < 3.6, "a table and its chairs keep to the middle of the room (%s)" % tb)
+		tk.sink.root.free()
+
+	# Every shop size is checked with a door on each of its four walls.
+	# Inspect in the entrance frame so end doors exercise the swapped axes.
+	for s5 in 96:
+		var size5: Vector3 = [Vector3(9.0, 0.06, 10.0), Vector3(7.4, 0.06, 9.4), Vector3(12.6, 0.06, 10.5), Vector3(6.5, 0.06, 9.0)][s5 % 4]
+		var entry5 := (s5 / 4) % 4
+		var shk := kit()
+		shk.rng.seed = s5
+		BuildingInteriors.shop(shk, size5, shk.rng, entry5)
+		var turn5: float = [0.0, PI, PI * 0.5, -PI * 0.5][entry5]
+		var frame5 := Transform3D(Basis(Vector3.UP, turn5), Vector3.ZERO).affine_inverse()
+		var shb := _bounds(shk.sink.root, frame5)
+		if entry5 >= 2:
+			size5 = Vector3(size5.z, size5.y, size5.x)
+		check(shb.position.y >= -0.001 and shb.end.y <= 1.7, "a shop's fittings stand on its floor (%s)" % shb)
+		check(shb.position.x >= -size5.x * 0.5 + 0.2 + BuildingInteriors.REACH - 0.05 and shb.end.x <= size5.x * 0.5 - 0.2 - BuildingInteriors.REACH + 0.05, "shop fittings clear side furniture (%d, %s)" % [entry5, shb])
+		check(shb.position.z >= -size5.z * 0.5 + 1.9 and shb.end.z <= size5.z * 0.5 - 0.2 - BuildingInteriors.REACH + 0.05, "shop fittings clear the actual entrance (%d, %s)" % [entry5, shb])
+		shk.sink.root.free()
+
+	# The streets' furniture stands on the pavement inside the box a vehicle
+	# or a blast knocks it down as (Decor.BREAKABLE), whatever it drew.
+	var street_kits := {
+		"traffic_light": func(k: BuildingKit): BuildingStreet.traffic_light(k, -1.0, k.rng),
+		"phone_box": func(k: BuildingKit): BuildingStreet.phone_box(k, Color(0.22, 0.3, 0.24), k.rng),
+		"post_box": func(k: BuildingKit): BuildingStreet.post_box(k),
+		"ad_column": func(k: BuildingKit): BuildingStreet.ad_column(k, k.rng),
+		"hoarding": func(k: BuildingKit): BuildingStreet.hoarding(k, 5.0, k.rng),
+		"street_name": func(k: BuildingKit): BuildingStreet.street_name(k, k.rng),
+	}
+	for kind: String in street_kits:
+		var size: Vector3 = Decor.BREAKABLE[kind][0]
+		for s3 in 12:
+			var skt := kit()
+			skt.rng.seed = s3
+			(street_kits[kind] as Callable).call(skt)
+			var sb := _bounds(skt.sink.root, Transform3D.IDENTITY)
+			check(sb.position.y >= -0.02 and sb.end.y <= size.y + 0.2, "a %s stands on the pavement, no taller than it falls (%s)" % [kind, sb])
+			check(maxf(absf(sb.position.x), absf(sb.end.x)) <= size.x * 0.5 + 0.9 and maxf(absf(sb.position.z), absf(sb.end.z)) <= size.z * 0.5 + 0.9, "a %s keeps near its own box (%s)" % [kind, sb])
+			skt.sink.root.free()
+	for s4 in 20:
+		var bk := kit()
+		bk.rng.seed = s4
+		BuildingStreet.belongings(bk, bk.rng)
+		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
+		check(bb.position.y >= -0.02 and bb.end.y <= 1.1 and bb.size.x <= 3.4 and bb.size.z <= 3.4, "what was dropped lies on the pavement in a heap (%s)" % bb)
+		bk.sink.root.free()
+
+	# A barn's fittings keep inside it and clear of the wall its door is in,
+	# whichever wall that is; what stands within reach of a wall keeps under
+	# the tools hung on it, and they keep above it, out from their wall's ends.
+	for s6 in 32:
+		var entry := s6 % 4
+		var size6: Vector3 = [Vector3(13.0, 0.06, 10.0), Vector3(12.0, 0.06, 9.0)][(s6 >> 2) % 2]
+		var bnk := kit()
+		bnk.rng.seed = s6
+		BuildingFarm.barn(bnk, size6, entry, bnk.rng)
+		var bhx := size6.x * 0.5 - 0.2
+		var bhz := size6.z * 0.5 - 0.2
+		var whole := _bounds(bnk.sink.root, Transform3D.IDENTITY)
+		check(whole.position.y >= 0.0 and whole.end.y <= 2.9 and whole.position.x >= -bhx - 0.02 and whole.end.x <= bhx + 0.02 and whole.position.z >= -bhz - 0.02 and whole.end.z <= bhz + 0.02, "a barn's fittings stand inside its walls (%s, %s)" % [size6, whole])
+		var clear: float = [whole.position.z + bhz, bhz - whole.end.z, whole.position.x + bhx, bhx - whole.end.x][entry]
+		check(clear >= 2.25, "they keep clear of the wall its door is in (%d, %s, %.2f)" % [entry, size6, clear])
+		var boxes: Array[AABB] = []
+		_part_boxes(bnk.sink.root, Transform3D.IDENTITY, boxes)
+		for pb in boxes:
+			var off := minf(minf(pb.position.x + bhx, bhx - pb.end.x), minf(pb.position.z + bhz, bhz - pb.end.z))
+			if off < 0.65:
+				check(pb.end.y <= BuildingFarm.LOW + BuildingFarm.FLOOR + 0.02, "what stands by a barn's wall keeps under its tools (%s, %.2f m out)" % [pb, off])
+		bnk.sink.root.free()
+	for s7 in 30:
+		var L7: float = [2.6, 3.2, 2.33][s7 % 3]
+		var wall_tk := kit()
+		wall_tk.rng.seed = s7
+		BuildingFarm.wall_tools(wall_tk, L7, wall_tk.rng)
+		var wall_tb := _bounds(wall_tk.sink.root, Transform3D.IDENTITY)
+		check(wall_tb.position.y >= BuildingFarm.TOOLS - 0.01 and wall_tb.end.y <= 2.6 and wall_tb.position.z >= -0.01 and wall_tb.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, wall_tb])
+		check(wall_tb.position.x >= -L7 * 0.5 + 0.63 and wall_tb.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, wall_tb])
+		wall_tk.sink.root.free()
+	# The farmyard's kit stands on the ground inside the box a vehicle or a
+	# blast knocks it down as.
+	var farm_kits := {
+		"trough": func(k: BuildingKit): BuildingFarm.trough(k, k.rng),
+		"plough": func(k: BuildingKit): BuildingFarm.plough(k, k.rng),
+		"harrow": func(k: BuildingKit): BuildingFarm.harrow(k, k.rng),
+		"churn_stand": func(k: BuildingKit): BuildingFarm.churn_stand(k, k.rng),
+		"hen_house": func(k: BuildingKit): BuildingFarm.hen_house(k, k.rng),
+		"barrow": func(k: BuildingKit): BuildingFarm.barrow(k, k.rng.randi()),
+	}
+	for kind: String in farm_kits:
+		var fsize: Vector3 = Decor.BREAKABLE[kind][0]
+		for s8 in 12:
+			var fyk := kit()
+			fyk.rng.seed = s8
+			(farm_kits[kind] as Callable).call(fyk)
+			var fb := _bounds(fyk.sink.root, Transform3D.IDENTITY)
+			check(fb.position.y >= -0.02 and fb.end.y <= fsize.y + 0.2, "a %s stands on the ground, no taller than it falls (%s)" % [kind, fb])
+			check(maxf(absf(fb.position.x), absf(fb.end.x)) <= fsize.x * 0.5 + 0.3 and maxf(absf(fb.position.z), absf(fb.end.z)) <= fsize.z * 0.5 + 0.3, "a %s keeps inside its own box (%s)" % [kind, fb])
+			fyk.sink.root.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()

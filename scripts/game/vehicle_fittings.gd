@@ -102,26 +102,51 @@ static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, in
 			k._add(parent, angled.patch(clipped, 0.0, depth), material, col, Vector3.ZERO)
 
 
+## How a mudflap hangs, each (its lower edge kicked back, its lean from the
+## clamp): straight, pushed back by the wheel's spray, and leaning either way
+## where a bracket was bent.
+const FLAP_HANG: Array[Vector2] = [Vector2(0.045, 0.0), Vector2(0.03, 0.05), Vector2(0.075, -0.02), Vector2(0.06, 0.03)]
+
 ## A clamped rubber flap with a gently kicked lower edge and reinforcing ribs.
+## On a vehicle with a load of its own (VehicleCargo.kit) each flap hangs as
+## the road has left it: kicked back further or leaning off its bracket (see
+## FLAP_HANG), now and then with a lower corner torn away on a kerb or a
+## track, so no two vehicles' flaps hang alike. Stays within its old box but
+## for up to 5 cm more lean or kick at its lower edge.
 static func mudflap(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation := Vector3.ZERO) -> void:
+	var hang := FLAP_HANG[0]
+	var torn := 0
+	var rng := VehicleCargo.kit(k, parent, center, 16)
+	if rng != null:
+		hang = FLAP_HANG[rng.randi_range(0, FLAP_HANG.size() - 1)]
+		if rng.randf() < 0.3:
+			torn = 1 if rng.randf() < 0.5 else -1
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
+	var bend := func(t: float) -> float: return t * t * hang.x + t * hang.y * size.y
 	var rings: Array = []
 	for i in 5:
 		var t := float(i) / 4
 		var y := size.y * (0.5 - t)
-		var bend := t * t * 0.045
-		rings.append(PackedVector3Array([Vector3(-size.x / 2, y, bend - 0.012), Vector3(size.x / 2, y, bend - 0.012), Vector3(size.x / 2, y, bend + 0.012), Vector3(-size.x / 2, y, bend + 0.012)]))
-	k._add(mount, VehicleModels.solid(rings, "shared_mudflap_%s" % str(size)), "rubber", null, Vector3.ZERO)
+		var z: float = bend.call(t)
+		# A torn corner: the lower edge cut up toward that side, a third of the
+		# flap's height at its corner.
+		var lift: float = [0.0, 0.0, 0.0, 0.06, 0.33][i] * size.y
+		var yl := y + (lift if torn < 0 else 0.0)
+		var yr := y + (lift if torn > 0 else 0.0)
+		rings.append(PackedVector3Array([Vector3(-size.x / 2, yl, z - 0.012), Vector3(size.x / 2, yr, z - 0.012), Vector3(size.x / 2, yr, z + 0.012), Vector3(-size.x / 2, yl, z + 0.012)]))
+	var key := "shared_mudflap_%s" % str(size) + ("" if hang == FLAP_HANG[0] and torn == 0 else "_%s_%d" % [str(hang), torn])
+	k._add(mount, VehicleModels.solid(rings, key), "rubber", null, Vector3.ZERO)
 	k._box(mount, Vector3(size.x, 0.04, 0.018), Vector3(0, size.y / 2 - 0.025, 0.026), "gunmetal", Color(0.22, 0.23, 0.21))
 	for side in [-1.0, 0.0, 1.0]:
 		VehicleBody.fastener(k, mount, Vector3(side * size.x * 0.36, size.y / 2 - 0.025, 0.038), Vector3.BACK, 0.009)
-	# Each rib is one moulded bead following the kick.
-	for side in [-1.0, 1.0]:
+	# Each rib is one moulded bead following the kick, ending short of a tear.
+	for side: float in [-1.0, 1.0]:
 		var rib := []
-		for i in 5:
+		var steps := 3 if torn != 0 and signf(side) == float(torn) else 5
+		for i in steps:
 			var t := float(i) / 4
-			rib.append(Vector3(side * size.x * 0.36, size.y * (0.5 - t), t * t * 0.045 + 0.016))
+			rib.append(Vector3(side * size.x * 0.36, size.y * (0.5 - t), float(bend.call(t)) + 0.016))
 		VehicleFrames.path(k, mount, rib, 0.006, "rubber", Color(0.10, 0.11, 0.10), 5, false)
 	k._fold(mount)
 
@@ -329,16 +354,18 @@ static var _fitting_rings := {}
 ## fewer than a large one: twelve round a ring whose outer radius is under 3
 ## cm, sixteen under 12 cm, twenty beyond (as every ring once had); `rings`
 ## sets the count instead (a gun's muzzle matches its tube). A band under 2 cm
-## thick is four-sided: mostly scaled flat, it reads as a rolled edge.
-static func _ring(inner: float, outer: float, rings := 0) -> TorusMesh:
+## thick is four-sided: mostly scaled flat, it reads as a rolled edge;
+## `sides` sets the sides round the band instead.
+static func _ring(inner: float, outer: float, rings := 0, sides := 0) -> TorusMesh:
 	var count := rings if rings > 0 else (12 if outer < 0.03 else (16 if outer < 0.12 else 20))
-	var key := Vector3(inner, outer, count)
+	var band := sides if sides > 0 else (4 if outer - inner < 0.02 else 6)
+	var key := Quaternion(inner, outer, count, band)
 	if not _fitting_rings.has(key):
 		var mesh := TorusMesh.new()
 		mesh.inner_radius = inner
 		mesh.outer_radius = outer
 		mesh.rings = count
-		mesh.ring_segments = 4 if outer - inner < 0.02 else 6
+		mesh.ring_segments = band
 		_fitting_rings[key] = mesh
 	return _fitting_rings[key]
 
@@ -389,7 +416,13 @@ static func _mirror_glass(size: Vector2) -> ArrayMesh:
 
 ## Pressed 20-litre fuel can. Center is the body center, broad faces along X.
 ## Rotate the complete assembly so the cap, handle and ribs stay attached.
+## On a vehicle with a load of its own (VehicleCargo.kit) a crew's cans come
+## from wherever it filled them: mostly the colour given, a shade newer or
+## more faded, now and then another army's olive or sand.
 static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, width := 0.17, size := Vector3.ZERO) -> void:
+	var rng := VehicleCargo.kit(k, parent, center, 3)
+	if rng != null:
+		col = VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_PAINT, 0.6)
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
 	if size != Vector3.ZERO:
@@ -424,15 +457,37 @@ static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 
 
 ## Sealed ammunition can; feed boxes and wooden ammunition crates are separate.
-static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, size := Vector3(0.16, 0.2, 0.3)) -> void:
+## On a vehicle with a load of its own (VehicleCargo.kit) each can is from its
+## own lot: a shade apart, now and then a sand or dark green one. Wider than
+## 20 cm it is a ready box, lifted by grab handles at its sides. `open`: the
+## can on a gun, feeding it - its lid off, as gunners leave it so the belt runs
+## freely, and the mouth dark round the belt's top fold (the gun's builder lays
+## the belt in it: VehicleWeapons._belt).
+static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Color, rotation := Vector3.ZERO, size := Vector3(0.16, 0.2, 0.3), open := false) -> void:
+	var rng := VehicleCargo.kit(k, parent, center, 4)
+	if rng != null:
+		col = VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_PAINT, 0.75)
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
 	mount.scale = size / Vector3(0.16, 0.2, 0.3)
 	k._box(mount, Vector3(0.16, 0.18, 0.3), Vector3(0, -0.01, 0), "paint", col)
-	k._box(mount, Vector3(0.162, 0.008, 0.302), Vector3(0, 0.078, 0), "rubber", null, Vector3.ZERO, false)
-	k._box(mount, Vector3(0.17, 0.025, 0.31), Vector3(0, 0.095, 0), "paint", col)
-	# The carrying handle's feet are pinned into the lid.
-	VehicleFrames.path(k, mount, [Vector3(0, 0.108, -0.065), Vector3(0, 0.133, -0.065), Vector3(0, 0.133, 0.065), Vector3(0, 0.108, 0.065)], 0.008, "gunmetal_w", null, 6, true, 0)
+	if open:
+		# the dark of the can's inside, and the lip round its mouth
+		k._box(mount, Vector3(0.146, 0.004, 0.286), Vector3(0, 0.0805, 0), "plain_dark", Color(0.04, 0.04, 0.037), Vector3.ZERO, false)
+		for s: float in [-1.0, 1.0]:
+			k._box(mount, Vector3(0.007, 0.016, 0.3), Vector3(s * 0.0765, 0.088, 0), "paint", col, Vector3.ZERO, false)
+			k._box(mount, Vector3(0.146, 0.016, 0.007), Vector3(0, 0.088, s * 0.1465), "paint", col, Vector3.ZERO, false)
+	else:
+		k._box(mount, Vector3(0.162, 0.008, 0.302), Vector3(0, 0.078, 0), "rubber", null, Vector3.ZERO, false)
+		k._box(mount, Vector3(0.17, 0.025, 0.31), Vector3(0, 0.095, 0), "paint", col)
+		if size.x <= 0.2:
+			# The carrying handle's feet are pinned into the lid.
+			VehicleFrames.path(k, mount, [Vector3(0, 0.108, -0.065), Vector3(0, 0.133, -0.065), Vector3(0, 0.133, 0.065), Vector3(0, 0.108, 0.065)], 0.008, "gunmetal_w", null, 6, true, 0)
+	if size.x > 0.2:
+		# a container too big for one hand (a station's or a mount's ready
+		# box): a grab handle on either side, none on the lid
+		for side: float in [-1.0, 1.0]:
+			VehicleDoors.pull(k, mount, Vector3(side * 0.081, 0.03, 0), Vector3(side, 0, 0), Vector3.FORWARD, 0.07, 0.005, "gunmetal_w")
 	for z in [-0.157, 0.157]:
 		k._box(mount, Vector3(0.04, 0.055, 0.012), Vector3(0, 0.065, z), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleFrames.tube(k, mount, Vector3(-0.028, 0.089, z), Vector3(0.028, 0.089, z), 0.007, "gunmetal_w", null, 6, false)
@@ -882,8 +937,11 @@ static func tow_cable(k: VehicleModels, parent: Node3D, supports: Array, radius:
 		var stretch := Vector3(1, 1, 1.3)
 		var loop := tip - d * (eye + radius) * 1.3
 		var neck := loop - d * eye * 1.3
-		k._add(parent, _ring(eye - radius, eye + radius), mat, col, loop, flat, stretch, false)
-		k._add(parent, _ring(eye - radius * 1.55, eye - radius * 0.75), "steel", Color(0.46, 0.47, 0.44), loop, flat, stretch, false)
+		# Twelve stations round a loop a hand across and five sides round the
+		# wire read as round from any distance a player looks at a deck; the
+		# thimble inside it is a bright band, three-sided.
+		k._add(parent, _ring(eye - radius, eye + radius, 12, 5), mat, col, loop, flat, stretch, false)
+		k._add(parent, _ring(eye - radius * 1.55, eye - radius * 0.75, 12, 3), "steel", Color(0.46, 0.47, 0.44), loop, flat, stretch, false)
 		VehicleFrames.tube(k, parent, neck - d * ferrule, neck + d * radius * 0.5, radius * 1.55, "steel", Color(0.40, 0.41, 0.38), 8, false)
 		# The peg's foot is in the hull face.
 		VehicleFrames.tube(k, parent, loop - n * 0.04, loop + n * radius * 1.6, radius * 0.6, "gunmetal_w", null, 6, false, -1.0, 1)
@@ -891,8 +949,9 @@ static func tow_cable(k: VehicleModels, parent: Node3D, supports: Array, radius:
 	points[0] = ends[0]
 	points[points.size() - 1] = ends[1]
 	# The wire, clipped at each inner support and at spread clips between,
-	# sagging between clips as VehicleFrames.cable sags it. It is one bent
-	# wire, its ends swaged inside the ferrules.
+	# sagging between clips as VehicleFrames.cable sags it: a sag of a
+	# centimetre or two needs only its lowest point. It is one bent wire,
+	# its ends swaged inside the ferrules.
 	var spans := 0.0
 	for i in points.size() - 1:
 		spans += points[i].distance_to(points[i + 1])
@@ -910,8 +969,8 @@ static func tow_cable(k: VehicleModels, parent: Node3D, supports: Array, radius:
 		for j in line.size() - 1:
 			var from: Vector3 = line[j]
 			var to: Vector3 = line[j + 1]
-			for s in range(1, 5 if sag > 0.0 else 2):
-				var t := float(s) / (4 if sag > 0.0 else 1)
+			for s in range(1, 3 if sag > 0.0 else 2):
+				var t := float(s) / (2 if sag > 0.0 else 1)
 				wire.append(from.lerp(to, t) + Vector3.DOWN * sin(PI * t) * sag)
 		for j in range(1, line.size() - 1):
 			_cable_clip(k, parent, line[j], (b - a).normalized(), n, radius)

@@ -222,7 +222,7 @@ the calling system's time; do not add it to the total. Headless FPS is zero beca
 frames are rendered. The overlay's game-logic bar is time per rendered frame, which can
 contain several simulation ticks; its system table is time per tick.
 
-`--gpu-bench[=out.json]` prices each graphics setting on the graphics card. Windowed (it reads the renderer's
+`--gpu-bench[=out.json]` prices graphics settings in a stationary scene on the graphics card. Windowed (it reads the renderer's
 GPU time, which headless runs don't have), `--gpu-bench-at` seconds into the battle (8) it holds the battle still,
 hides the interface, turns vsync and the frame cap off, and switches each setting that's on off and on again in
 short blocks (off, on, off, on, ... off: `--gpu-bench-cycles` pairs, 10, of `--gpu-bench-frames` frames, 20, after a
@@ -231,12 +231,20 @@ time, so each block counts by the frame a fifth of the way up from its quickest,
 the average of the off blocks either side of it, which cancels load that rises or fades steadily. A setting's cost
 is the median of those differences and its spread their middle half; render scale (100% against 50%) is the control
 and the run says whether it stood clear of the noise. It prints a table (`GPUBENCH` lines), writes the report as
-JSON, puts every setting back and never saves them. Start it on the settings to price (`--preset=cinematic` prices
+JSON, puts every setting back and never saves them. Start it on the settings to price (`--preset=cinematic` enables
 them all) with `--gpu-bench-only=key,key` for a few, e.g.
 `godot --path . --resolution 1920x1080 -- --offscreen --nohud --perf=0 --scenario=roster --seed=3 --mood=golden
 --preset=cinematic --focus=-84,24 --zoom=34 --gpu-bench=costs.json --gpu-bench-at=10`. Other programs drawing on
 the same card widen the spread (several game windows rendering at once made it several milliseconds); keep the
 machine quiet for small settings.
+
+This is not an advancing-battle benchmark. `Time passes` is explicitly **not measured**:
+the held clock does not exercise periodic sky relighting, terrain-shadow rebakes or mountain
+reflection recaptures. The JSON lists it in `unmeasured_settings` with its reason and
+`requires: "advancing_battle_clock"`, never as a zero-cost setting. `scope: "stationary"`
+and the starting/ending battle times record the measurement boundary. Use an advancing-clock
+run (the existing `FL_DEBUG_TOD` diagnostics separate step/rebake frames from other frames)
+for that work; this report does not establish its cost.
 
 Run `godot --headless --path . res://tests/structure_index_test.tscn` for building-index
 lifecycle checks and a same-process FOB lookup comparison with 1,000 scenery objects.
@@ -262,7 +270,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       client to join
 --test-port=N                                         (with --fixed-fps 30) take orders over a local socket: see
                                                       "The test port"; 0 takes any free port
---scenario=cover|lean|grenade|tank|drone|tunnel|heli|defense|air|support|showroom|trenches|poses|attack|solo
+--scenario=cover|lean|alley|grenade|tank|drone|tunnel|heli|defense|air|support|showroom|trenches|poses|attack|solo
                                                       (attack: two squads and a gun team attack a walled yard;
                                                       solo: one squad against a stronger position)
 --play --select-first --tactical --nohud              command a scenario's Coalition side / select a squad /
@@ -316,6 +324,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --focus-vehicle=kind[,n]                              camera on the nth vehicle of a kind (zero-based, first by default)
 --focus-vehicle-at=SECONDS                            switch to that vehicle at this simulation time (default 1 second)
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
+--destroy-near=X,Z,KIND,TIME                          the structure of that kind nearest X,Z destroyed at that time (a single house_wall, say)
                                                       X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
                                                       beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
@@ -355,11 +364,15 @@ FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=mounted                                    two halted IFVs drop only some of their men (Vehicle.dismount's n and squad)
+--scenario=convoy                                     a column of four drives down a dirt road: its dust trail by day, headlights in the air at night
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
 FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under way: where, heading, speed, how far down its route; and each grounding
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
+--scenario=church                                     the parish church held by a fighter cell; two squads clear it by its west door and south porch
+--scenario=storeys                                    a house on two floors with a wing; a charge blows in a front wall
+                                                      and the floor above comes down with its roof (storey_fell)
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
 --scenario=town                                       a rifle squad takes a village's supply dump, its lorry runs the stock to
                                                       FOB Alpha, then a Rebel cell comes to take it back (town_captured,
@@ -479,7 +492,7 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 | `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI), `skirmish: true` (Play vs AI: you, with `play`, against the AI commander); `seed`, `play`, `ai_allies` (with `play`: an AI commander on your side too), `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
 | `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
 | `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
-| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`, `adviser` (Play vs AI's adviser: its suggestions, its word and how often it has said each); `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind` |
+| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`, `adviser` (Play vs AI's adviser: its suggestions, its word and how often it has said each); `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind`, and carry their `variant` and `size` |
 | `ping` | `peer` (1: you), `kind` (`attack`, `defend`, `help`...), `pos` | a co-commander's ping as the host receives it (an AI ally answers some) |
 | `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
 | `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
@@ -539,7 +552,8 @@ The client prints a `CLIENT entities=...` summary when it quits. Check both outp
 `--quit-after` counts from when the host's world has reached it and been built (`World.loaded`): the host answers
 only once it has laid out the map and, with a window, drawn its first frame, which takes a minute or more off-screen.
 `waited=` in the summary is how long the client took to get there (-1: nothing came, and it gave up 5 minutes past
-`--quit-after`). With `FL_DEBUG_NET=1` the host prints what it sent a joiner (`JOIN sent peer ... entities in N kB`)
+`--quit-after`). A client whose host quits first (the host's `--quit-after` counts from the battle's start, so it
+usually does) prints the summary then, ending `host_left=1`, and quits. With `FL_DEBUG_NET=1` the host prints what it sent a joiner (`JOIN sent peer ... entities in N kB`)
 and the client when its world was laid out, built and covered (`JOIN loaded ...`).
 
 The host's lobby takes `--battle-name=NAME`, `--coop` (everyone on `--team`'s side), `--max-players=N` and
@@ -873,9 +887,12 @@ The rendered `tests/fixtures/terrain-materials.tscn` also compares tinted roofs 
 batching in both renderers; packed tints retain the renderer's colour space and their full bright range.
 The scaling runner includes this scene alongside the navigation and AI regressions.
 Benchmark JSON includes loading-stage timings, route-cache hits and path queue
-waiting time. `--require-target` makes the benchmark fail when any measured rendered
-frame exceeds 16.67 ms or any simulation tick exceeds 33.33 ms; ordinary runs retain
-these budget results without treating an unfinished optimization as a harness error.
+waiting time. `--require-target` requires `--rendered` and nonempty frame and simulation
+tick measurements. It fails when either measurement is absent, any rendered frame exceeds
+16.67 ms, or any simulation tick exceeds 33.33 ms. Headless runs leave render budgets
+unmeasured (`null`) and cannot pass this acceptance gate. Ordinary runs without
+`--require-target` retain diagnostic reports and budget results without treating an
+unfinished optimization as a harness error.
 
 ## Generated elevation
 

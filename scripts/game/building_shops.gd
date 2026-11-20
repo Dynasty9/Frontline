@@ -33,12 +33,27 @@ const GLYPHS := [
 const PRODUCE := [Color(0.72, 0.1, 0.08), Color(0.9, 0.5, 0.08), Color(0.35, 0.55, 0.15), Color(0.92, 0.8, 0.2), Color(0.38, 0.12, 0.3), Color(0.55, 0.38, 0.2)]
 
 
+## The paint a shop's woodwork is in, fascia and shopfront alike, by the
+## house's colour index (which every wall of the house knows): the deep
+## colours shopfronts are painted, that don't show the dirt (bottle green,
+## navy, oxblood, charcoal, a dark teal), dulled by the street's dust.
+const SHOPFRONT := [Color(0.08, 0.17, 0.11), Color(0.07, 0.09, 0.15), Color(0.25, 0.09, 0.07), Color(0.12, 0.12, 0.13), Color(0.07, 0.15, 0.19)]
+
+
+static func paint(ci: int) -> Color:
+	return SHOPFRONT[posmod(ci * 3 + 1, SHOPFRONT.size())]
+
+
 ## The fascia and awning across a front `width` wide, for a shop of `kind`
 ## (an index into KINDS).
-static func front(k: BuildingKit, width: float, kind: int, rng: RandomNumberGenerator) -> void:
-	var col: Color = FASCIA[kind % FASCIA.size()]
-	k.box(Vector3(width, 0.48, 0.07), Vector3(0, 2.62, FACE - 0.035), "paint", col)
-	k.box(Vector3(width + 0.12, 0.06, 0.13), Vector3(0, 2.89, FACE - 0.065), "paint", col.lightened(0.12))
+## `ci` is the house's colour index, when known: its shopfront below is
+## painted to match (see paint).
+static func front(k: BuildingKit, width: float, kind: int, rng: RandomNumberGenerator, ci := -1) -> void:
+	var col: Color = paint(ci) if ci >= 0 else FASCIA[kind % FASCIA.size()]
+	# (a board, painted, as the shopfront under it is)
+	var board := "wood_painted" if ci >= 0 else "paint"
+	k.box(Vector3(width, 0.48, 0.07), Vector3(0, 2.62, FACE - 0.035), board, col)
+	k.box(Vector3(width + 0.12, 0.06, 0.13), Vector3(0, 2.89, FACE - 0.065), board, col.lightened(0.12))
 	lettering(k.at_point(Vector3(0, 2.62, FACE - 0.07)), width * 0.72, LETTERS[kind % LETTERS.size()], rng)
 	awning(k, width - 0.3, STRIPES[kind % STRIPES.size()])
 	# a sign standing out from the wall at one end, on a bracket, for those
@@ -107,6 +122,41 @@ static func awning(k: BuildingKit, width: float, cols: Array) -> void:
 	for sx: float in [-1.0, 1.0]:
 		var ax := sx * (width * 0.5 - 0.15)
 		k.bar(Vector3(ax, top - 0.5, FACE - 0.02), Vector3(ax, top - drop - 0.01, FACE - depth + 0.05), 0.03, 0.03, "metal_dark", metal, false)
+
+
+## Its window display, behind the glass of a display window `width` wide
+## whose sill is `sill` high, in a kit at the middle of the window's foot on
+## the wall's outside face (+z out of it, the glass at about z = -0.1): a
+## display bed the depth of the wall in the shop's paint (`col`) with the
+## stock set out on it in rows, boxes and tins and jars in their packets'
+## colours, the odd card propped among them, and behind it a low screen
+## that hides the shop from the street (only the top of a lit room shows
+## over it). What's set out is drawn from `rng`.
+static func display(k: BuildingKit, width: float, sill: float, col: Color, rng: RandomNumberGenerator) -> void:
+	var bed_z := -0.42
+	k.box(Vector3(width, 0.06, 0.5), Vector3(0, sill + 0.03, bed_z), "wood_dark", col.darkened(0.25))
+	k.box(Vector3(width, 0.5, 0.03), Vector3(0, sill + 0.31, bed_z - 0.27), "wood_painted", col.lightened(0.1))
+	var packs := [Color(0.75, 0.68, 0.5), Color(0.6, 0.12, 0.1), Color(0.18, 0.28, 0.5), Color(0.85, 0.82, 0.74), Color(0.85, 0.6, 0.12), Color(0.25, 0.42, 0.2)]
+	var x := -width * 0.5 + 0.1
+	while x < width * 0.5 - 0.2:
+		var gw := rng.randf_range(0.1, 0.22)
+		var gh := rng.randf_range(0.08, 0.3)
+		var pick := rng.randf()
+		var gc: Color = PRODUCE[rng.randi() % PRODUCE.size()] if pick < 0.3 else packs[rng.randi() % packs.size()]
+		var z := bed_z + rng.randf_range(-0.12, 0.12)
+		if pick < 0.12:
+			# a card propped up: a price, a name
+			k.plate(Vector3(0.22, 0.16, 0.01), Vector3(x + 0.11, sill + 0.14, z + 0.1), "paint", Color(0.9, 0.88, 0.8), Vector3(-0.3, 0, 0))
+			x += 0.26
+			continue
+		if pick < 0.3:
+			k.cyl(gw * 0.4, gw * 0.4, gh, Vector3(x + gw * 0.5, sill + 0.06 + gh * 0.5, z), "paint", gc, Vector3.ZERO, 6, false)
+		else:
+			k.box(Vector3(gw, gh, gw * 0.8), Vector3(x + gw * 0.5, sill + 0.06 + gh * 0.5, z), "paint", gc, Vector3(0, rng.randf_range(-0.15, 0.15), 0), false)
+		# (stacked, now and then)
+		if rng.randf() < 0.3:
+			k.box(Vector3(gw * 0.9, gh * 0.8, gw * 0.7), Vector3(x + gw * 0.5, sill + 0.06 + gh * 1.4, z), "paint", gc.darkened(0.1), Vector3.ZERO, false)
+		x += gw + rng.randf_range(0.02, 0.1)
 
 
 ## What a shop of `kind` puts out on the pavement in front of it, about 1.6 m

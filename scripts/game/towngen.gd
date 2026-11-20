@@ -14,6 +14,14 @@ extends RefCounted
 const ROAD_HW := 2.9
 const CURB := ROAD_HW  # the kerb meets the carriageway without a grass strip
 const WALK := 4.8  # back of the sidewalk
+const CORNER_R := 1.6  # the kerb's radius round a crossroads corner (the sidewalk is 1.9 m wide)
+
+
+## Where a post stands on a crossroads corner (from the crossing's middle,
+## toward the sx, sz corner): on the rounded paving, 0.55 m back from its kerb.
+static func corner_post(sx: float, sz: float) -> Vector3:
+	return Vector3(sx, 0, sz) * (CURB + CORNER_R - (CORNER_R - 0.55) * sqrt(0.5))
+
 const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
 const REACH := 56.0  # the main streets run this far each way from the middle
@@ -42,7 +50,12 @@ var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump
 ## Yard dressing (see _yard_life), kept apart and put after the rest of the
 ## decor, so every older piece keeps its place in the list and so its look.
 var _yard_decor: Array = []
+var church_at := Vector3.INF  # where the parish church stands (none: INF)
+var _church_decor: Array = []  # its churchyard's dressing (decor, after everything else)
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
+var _street_decor: Array = []  # the streets' furniture (decor, after the shops'; see _street_furniture)
+var _vacant: Array = []  # [front, n, d, W] of each car park and bombed-out lot, for the hoardings
+var farmsteads: Array = []  # {"base", "t", "n"} of each farm (its gate, along the road, away from it), for farmyards()
 
 
 func _init(m) -> void:
@@ -253,11 +266,10 @@ func streetscape() -> void:
 				var m := (CURB + WALK) * 0.5
 				var w := WALK - CURB
 				if hx and hz:
+					# the kerb turns the corner on a radius, as lorries need it to
 					var cp := p + Vector3(sx * m, 0, sz * m)
-					_d("walk", cp, 0.0, Vector3(w, 0.12, w))
+					_d("walk_corner", cp, 0.0, Vector3(sx * w, CORNER_R, sz * w))
 					_pave(cp, 0.0, Vector3(w, 0.12, w))
-					_d("curb", p + Vector3(sx * m, 0, sz * (CURB + 0.09)), 0.0, Vector3(w, 0.17, 0.18))
-					_d("curb", p + Vector3(sx * (CURB + 0.09), 0, sz * m), PI * 0.5, Vector3(w, 0.17, 0.18))
 				elif not hx and not hz and dirs.has(Vector2i(-sx, 0)) and dirs.has(Vector2i(0, -sz)):
 					# the outside of a bend
 					var r1 := p + Vector3(sx * WALK * 0.5, 0, sz * m)
@@ -442,6 +454,60 @@ func _lot_free(front: Vector3, n: Vector3, d: Vector3, W: float) -> bool:
 	return mg._is_free(lc, Vector2(W * 0.5 - 0.4, _depth * 0.5 - 0.4), yaw_along(d), 0.0, false)
 
 
+## Where the house just built put its wing ([centre, half size, yaw], or
+## none: MapGen._house), so what goes in its garden keeps clear of it.
+var _wing_at: Array = []
+
+
+func _in_wing(p: Vector3, r: float) -> bool:
+	if _wing_at.is_empty():
+		return false
+	return Defs.point_in_obb(Vector2(p.x, p.z), _wing_at[0], (_wing_at[1] as Vector2) + Vector2(r, r), float(_wing_at[2]))
+
+
+## A piece of decor, unless it would stand in the wing (its arguments drawn
+## all the same, so the rest of the garden is as it was).
+func _d_clear(kind: String, p: Vector3, yaw: float, extra: Variant, r: float) -> void:
+	if not _in_wing(p, r):
+		_d(kind, p, yaw, extra)
+
+
+## How a house is built beyond its four walls (MapGen._house): a floor over
+## the ground floor for many of the bigger houses and most shops near the
+## middle (flats over the shops), and on a wide house with the garden for it
+## a wing out of the back, at one end (an L) or in the middle (a T); `room` is
+## how deep it may go. A farmhouse (`farm`) has both, as most do. From a
+## stream of its own, seeded from where the house is, so the town is laid out
+## as it was.
+func _plan(at: Vector3, w: float, dep: float, room: float, shop: bool, farm := false) -> Dictionary:
+	var pr := RandomNumberGenerator.new()
+	pr.seed = int(absf(at.x) * 11.0) * 7919 + int(absf(at.z) * 11.0) * 31 + 53
+	var plan := {"seed": pr.randi(), "shop": shop}
+	var central := at.distance_to(center) < 48.0
+	var up := 0.85 if farm else ((0.65 if central else 0.35) if shop else (0.5 if w >= 10.0 else (0.32 if w >= 8.0 else 0.12)))
+	if w >= 7.0 and pr.randf() < up:
+		plan["storeys"] = 2
+	var bays := maxi(1, int(round(w / 2.8)))
+	var r := pr.randf() * (0.35 if farm else 1.0)
+	if shop or bays < 3 or room < 2.8 or w < dep + 0.5 or r >= 0.55:
+		return plan
+	var two := int(plan.get("storeys", 1)) > 1
+	# an L over half the back or more, from its left end (the downpipe is at
+	# the right); a T over all but the end bays
+	var k0 := 0 if r < 0.35 else 1
+	var n := (bays - 1 if bays == 3 else (bays + 1) >> 1) if k0 == 0 else bays - 2
+	var ww := n * w / bays
+	# (deep as it may go; on one floor no deeper than it's wide, so its
+	# ridge runs with the house's and its gable stays out of the roof)
+	var wd := minf(pr.randf_range(3.0, 4.8 if two else 4.4), room)
+	if not two:
+		wd = minf(wd, ww - 0.2)
+	if ww < 2.6 or wd < 2.8:
+		return plan
+	plan["wing"] = [k0, n, wd, pr.randf() < 0.3]
+	return plan
+
+
 func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) -> void:
 	var axis := atan2(n.x, n.z)  # local +z points away from the street
 	var w := clampf(W - rng.randf_range(1.8, 3.0), 6.5, 13.0)
@@ -457,14 +523,27 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 			side = -side
 	var hc := front + n * (setback + dep * 0.5) + d * side
 	var entrances: Array[Vector3] = []
-	if not mg._house(hc, w, dep, axis, 1.0, false, 0.18 if shop else 0.25, entrances):
+	var plan := _plan(front, w, dep, _depth - setback - dep - 1.8, shop)
+	_wing_at = []
+	if not mg._house(hc, w, dep, axis, 1.0, false, 0.18 if shop else 0.25, entrances, false, plan):
 		return
+	_wing_at = plan.get("built_wing", [])
 	_fronts.append(hc - n * dep * 0.5 + Vector3(0, 2.85, 0))
 	_d("yard", front + n * (_depth * 0.5), axis, Vector3(W - 0.3, 0.015, _depth - 0.3))
 	# A narrow apron connects side doors without paving over the entire garden.
+	# (and along the back either side of a wing, not under it)
+	var lx := Vector3(n.z, 0, -n.x)  # (the house's own x)
+	var whole: Array[Vector2] = [Vector2(-w * 0.5, w * 0.5)]
+	var spans: Array[Vector2] = whole
+	if not _wing_at.is_empty():
+		var wx: float = (Vector3(_wing_at[0].x, 0, _wing_at[0].y) - Defs.flat(hc)).dot(lx)
+		var hw: float = (_wing_at[1] as Vector2).x
+		spans = BuildingWalls.runs(-w * 0.5, w * 0.5, 0.0, 1.0, [Rect2(wx - hw, 0.0, hw * 2.0, 1.0)])
 	for edge: float in [-1.0, 1.0]:
 		_d("drive", hc + d * edge * (w * 0.5 + 0.3), axis, Vector3(0.6, 0, dep + 1.2))
-		_d("drive", hc + n * edge * (dep * 0.5 + 0.3), axis, Vector3(w, 0, 0.6))
+		for sp in (spans if edge > 0.0 else whole):
+			if sp.y - sp.x > 0.3:
+				_d("drive", hc + n * edge * (dep * 0.5 + 0.3) + lx * ((sp.x + sp.y) * 0.5), axis, Vector3(sp.y - sp.x, 0, 0.6))
 	var gate := side
 	if not entrances.is_empty():
 		gate = _approach(front, n, d, entrances[0], side, setback, W)
@@ -472,7 +551,7 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 	var yaw_d := yaw_along(d)
 	if shop:
 		var shop_kind := rng.randi() % 5
-		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, 0, shop_kind))
+		_d("awning", hc - n * dep * 0.5, axis, Vector3(w - 0.6, int(plan.get("color", -1)) + 1, shop_kind))
 		_shop_wares(hc, n, w, dep, shop_kind, entrances)
 	# the garden behind: hedge (or a wall) along the back, fences down the sides
 	var back := front + n * _depth
@@ -505,11 +584,17 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 		if yard > 3.0:
 			var yc := front + n * (setback + dep + yard * 0.5)
 			var r := rng.randf()
+			# (where a wing stands in the garden: the tree the other side of
+			# it, no vegetable patch or washing line)
 			if r < 0.4:
-				mg._try("tree", yc + d * rng.randf_range(-W * 0.3, W * 0.3), 0.0, -1)
+				var off := rng.randf_range(-W * 0.3, W * 0.3)
+				mg._try("tree", yc + d * (-off if _in_wing(yc + d * off, 1.0) else off), 0.0, -1)
 			elif r < 0.65:
-				_d("garden", yc + d * rng.randf_range(-W * 0.2, W * 0.2), yaw_d, Vector3(minf(W - 3.0, 6.0), 0, minf(yard - 1.0, 3.0)))
-			elif r < 0.85:
+				var gp := yc + d * rng.randf_range(-W * 0.2, W * 0.2)
+				var gs := Vector3(minf(W - 3.0, 6.0), 0, minf(yard - 1.0, 3.0))
+				if not _in_wing(gp, gs.x * 0.5):
+					_d("garden", gp, yaw_d, gs)
+			elif r < 0.85 and not _in_wing(yc, 2.0):
 				_d("clothesline", yc, yaw_d)
 		_yard_life(front, n, d, W, hc, w, dep, setback, entrances)
 	if drive:
@@ -578,14 +663,16 @@ func _place_yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vect
 	var back := hc + n * (dep * 0.5 + 0.2)
 	var yard := _depth - setback - dep
 	if life.randf() < 0.4:
-		_d("woodpile", back + n * 0.21 + d * corner * (w * 0.5 - 1.5), axis, snappedf(life.randf_range(1.4, 2.2), 0.1))
+		var wood := snappedf(life.randf_range(1.4, 2.2), 0.1)
+		_d_clear("woodpile", back + n * 0.21 + d * corner * (w * 0.5 - 1.5), axis, wood, 1.0)
 	var has_set := false
 	var has_kennel := false
 	if yard > 4.0 and life.randf() < 0.4:
-		_d("garden_set", back + n * 1.7 - d * corner * w * 0.22, life.randf() * TAU, 1 if life.randf() < 0.4 else 0)
+		var set_yaw := life.randf() * TAU
+		_d_clear("garden_set", back + n * 1.7 - d * corner * w * 0.22, set_yaw, 1 if life.randf() < 0.4 else 0, 0.9)
 		has_set = true
 	if yard > 4.0 and life.randf() < 0.15:
-		_d("kennel", front + n * (_depth - 1.2) + d * corner * (W * 0.5 - 1.1), axis + PI + life.randf_range(-0.4, 0.4))
+		_d_clear("kennel", front + n * (_depth - 1.2) + d * corner * (W * 0.5 - 1.1), axis + PI + life.randf_range(-0.4, 0.4), null, 0.6)
 		has_kennel = true
 	# a shed at the bottom of the garden (in the corner the kennel isn't in),
 	# its door to the house; a trampoline on a lawn with room for it (drawn
@@ -593,10 +680,10 @@ func _place_yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vect
 	var shed_side := corner if not has_kennel else -corner
 	var has_shed := false
 	if yard > 4.2 and life.randf() < 0.4 and not (shed_side != corner and has_set and yard < 5.4):
-		_d("shed", front + n * (_depth - 2.0) + d * shed_side * (W * 0.5 - 1.7), axis + PI, life.randi() % BuildingYards.SHEDS.size())
+		_d_clear("shed", front + n * (_depth - 2.0) + d * shed_side * (W * 0.5 - 1.7), axis + PI, life.randi() % BuildingYards.SHEDS.size(), 1.3)
 		has_shed = true
 	if yard > 4.4 and not has_set and not has_shed and life.randf() < 0.3:
-		_d("trampoline", back + n * (yard * 0.5), 0.0, life.randi() % BuildingYards.PADS.size())
+		_d_clear("trampoline", back + n * (yard * 0.5), 0.0, life.randi() % BuildingYards.PADS.size(), 1.7)
 
 
 func _curb_crossing(front: Vector3, n: Vector3, d: Vector3, width: float) -> bool:
@@ -702,6 +789,10 @@ func _square(c: Vector3, q: Vector3) -> void:
 	for i in 4:
 		var a := PI * 0.25 + i * PI * 0.5
 		var off := Vector3(cos(a), 0, sin(a)) * 5.2
+		# The dump's rear panel stays need room beyond the mesh, including their
+		# concrete feet. Move this bench before later street furniture chooses space.
+		if String(world.settings.get("mission", "")) == "" and off.x * q.x < 0.0 and off.z * q.z > 0.0:
+			off.x += q.x * 1.4
 		_d("bench", c + off, Defs.yaw_of(-off))
 		_d("lamp_deco", c + Vector3(signf(cos(a)) * 8.6, 0, signf(sin(a)) * 8.6))
 	# trees in the far corner, planters and a flag along the edges
@@ -781,6 +872,7 @@ func _park(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 func _parking(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	if not _lot_free(front, n, d, W):
 		return
+	_vacant.append([front, n, d, W, 10.6])
 	var c := front + n * 5.5
 	var size := Vector3(W - 1.0, 0, 11.0)
 	_reserve(c, Vector2(W * 0.5, 5.6), yaw_along(d))
@@ -811,12 +903,125 @@ func _allotment(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 func _ruin_lot(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	if not _lot_free(front, n, d, W):
 		return
+	_vacant.append([front, n, d, W, 1.7])
 	var c := front + n * 5.0
 	_reserve(c, Vector2(W * 0.5, _depth * 0.5), yaw_along(d))
 	for i in rng.randi_range(2, 4):
 		world.spawn("structure", {"skind": "rubble", "pos": c + d * rng.randf_range(-W * 0.35, W * 0.35) + n * rng.randf_range(-3, 4), "yaw": rng.randf() * TAU, "size": Vector3(rng.randf_range(2.0, 3.6), 0, rng.randf_range(1.2, 2.0))})
 	if rng.randf() < 0.6:
 		mg._try("low_wall", front + n * 0.6, yaw_along(d), -1, {"size": Vector3(minf(W - 2.0, 6.0), 1.0, 0.5), "variant": 0})
+
+
+## The streets' furniture beyond their lamps and poles (BuildingStreet):
+## traffic lights at the central crossroads, a telephone box and post boxes
+## on the main street's pavements, an advertising column on the square, a
+## hoarding over each car park and bombed-out lot, street names on posts at
+## the junctions, and what people running from the fighting dropped on the
+## pavements. Laid once everything else is down, each kept clear of what's
+## on the pavement already (and off the drives); a stream of its own and a
+## list of its own after the rest, so the town is as it was.
+func _street_furniture() -> void:
+	var sr := RandomNumberGenerator.new()
+	sr.seed = int(absf(center.x) * 13.0) * 7919 + int(absf(center.z) * 13.0) * 31 + 71
+	var main_decor := decor
+	decor = _street_decor
+	var taken: Array = []  # [position, reach] of every piece standing on the ground
+	var drives: Array = []
+	for list: Array in [main_decor, _yard_decor, _shop_decor]:
+		for e: Array in list:
+			var k: String = e[0]
+			if k == "drive":
+				drives.append(e)
+			elif not k in ["walk", "walk_corner", "curb", "junction", "zebra", "pave", "lot_pave", "yard", "wire", "drop", "garden", "fence", "soft"]:
+				taken.append([e[1], 1.0])
+	var clear := func(p: Vector3, r: float) -> bool:
+		for t: Array in taken:
+			if Defs.flat((t[0] as Vector3) - p).length() < r + float(t[1]):
+				return false
+		for e: Array in drives:
+			var half: Vector2 = Vector2((e[3] as Vector3).x, (e[3] as Vector3).z) * 0.5 + Vector2(r, r)
+			if Defs.point_in_obb(Vector2(p.x, p.z), Vector2(e[1].x, e[1].z), half, float(e[2])):
+				return false
+		return true
+	var put := func(kind: String, p: Vector3, yaw: float, extra: Variant, r: float) -> bool:
+		if not clear.call(p, r):
+			return false
+		_d(kind, p, yaw, extra)
+		taken.append([p, r])
+		world.stat("street_" + kind)
+		return true
+	# traffic lights at the four corners of the central crossroads, each with
+	# a head down its street and one down the cross street (all dark now)
+	if (node_dirs.get(_key(center), {}) as Dictionary).size() >= 4:
+		for sx: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				var tp := center + corner_post(sx, sz)
+				var yaw := Defs.yaw_of(Vector3(sx, 0, 0))
+				var side := signf((Basis(Vector3.UP, yaw) * Vector3.RIGHT).dot(Vector3(0, 0, sz)))
+				put.call("traffic_light", tp, yaw, side, 0.4)
+	# a telephone box and two post boxes along the main street near the middle
+	var mains: Array = []
+	for pc: Array in pieces:
+		if pc[2] and ((pc[0] as Vector3).lerp(pc[1], 0.5)).distance_to(center) < 36.0:
+			mains.append(pc)
+	for item: Array in [["phone_box", 0.75], ["post_box", 0.4], ["post_box", 0.4]]:
+		for attempt in 8:
+			if mains.is_empty():
+				break
+			var pc: Array = mains[sr.randi() % mains.size()]
+			var a: Vector3 = pc[0]
+			var b: Vector3 = pc[1]
+			var dd := (b - a).normalized()
+			var n := _perp(dd) * (1.0 if sr.randf() < 0.5 else -1.0)
+			var L := a.distance_to(b)
+			var pp := a + dd * sr.randf_range(WALK + 1.5, L - WALK - 1.5) + n * (4.15 if item[0] == "phone_box" else 4.3)
+			if put.call(item[0], pp, Defs.yaw_of(-n), sr.randi() % 3, item[1]):
+				break
+	# an advertising column on the square
+	if square != Vector3.INF:
+		for attempt in 8:
+			var cp := square + Vector3(sr.randf_range(-7.5, 7.5), 0, sr.randf_range(-7.5, 7.5))
+			if put.call("ad_column", cp, sr.randf() * TAU, null, 1.1):
+				break
+	# a hoarding over each car park and bombed-out lot, facing the street
+	for v: Array in _vacant:
+		var front: Vector3 = v[0]
+		var n: Vector3 = v[1]
+		var w := minf(float(v[3]) - 2.0, 6.0)
+		if w >= 3.0:
+			put.call("hoarding", front + n * float(v[4]), Defs.yaw_of(-n), snappedf(w, 0.1), 0.3)
+	# street names at the junctions, on whichever corner has room
+	for key in node_dirs:
+		var dirs: Dictionary = node_dirs[key]
+		if dirs.size() < 3:
+			continue
+		var p := Vector3(key.x, 0, key.y)
+		var corners: Array = []
+		for sx: int in [-1, 1]:
+			for sz: int in [-1, 1]:
+				if dirs.has(Vector2i(sx, 0)) and dirs.has(Vector2i(0, sz)):
+					corners.append(Vector3(sx, 0, sz))
+		var first := sr.randi() % maxi(1, corners.size())
+		for i in corners.size():
+			var c: Vector3 = corners[(first + i) % corners.size()]
+			if put.call("street_name", p + c * (CURB + 0.45), Defs.yaw_of(Vector3(0, 0, -c.z)), null, 0.3):
+				break
+	# what people running from the fighting dropped on the pavements
+	for i in sr.randi_range(4, 7):
+		for attempt in 6:
+			var pc: Array = pieces[sr.randi() % pieces.size()]
+			var a: Vector3 = pc[0]
+			var b: Vector3 = pc[1]
+			var dd := (b - a).normalized()
+			var L := a.distance_to(b)
+			if L < WALK * 2.0 + 3.0:
+				break
+			var n := _perp(dd) * (1.0 if sr.randf() < 0.5 else -1.0)
+			var bp := a + dd * sr.randf_range(WALK + 1.0, L - WALK - 1.0) + n * sr.randf_range(3.5, 4.2)
+			if put.call("belongings", bp, sr.randf() * TAU, null, 1.2):
+				break
+	_street_decor = decor
+	decor = main_decor
 
 
 ## Every house within reach of a pole gets its service wire.
@@ -955,13 +1160,22 @@ func farms(k: int) -> void:
 			continue
 		if not mg._is_free(hc, Vector2(6, 5), axis, 1.0) or not mg._is_free(bc, Vector2(8, 6), axis, 1.0):
 			continue
-		mg._house(hc, rng.randf_range(9.0, 11.0), 8.0, axis, 1.0, false, 0.2)
+		# the farmhouse: the biggest house about, most of them on two floors
+		# with a wing out of the back (an L round the yard)
+		var fw := rng.randf_range(9.0, 11.0)
+		var fe: Array[Vector3] = []
+		var fplan := _plan(hc, fw, 8.0, 5.0, false, true)
+		_wing_at = []
+		mg._house(hc, fw, 8.0, axis, 1.0, false, 0.2, fe, false, fplan)
+		_wing_at = fplan.get("built_wing", [])
 		_fronts.append(hc - n * 4.0 + Vector3(0, 2.85, 0))
 		var no_doors: Array[Vector3] = []
 		mg._house(bc, 13.0, 10.0, axis, 1.0, false, 0.35, no_doors, true)
 		_d("fence", base - n * 2.0 + t * 1.0, yaw_along(t), Vector3(30.0, 1.1, BuildingFences.code(BuildingFences.POST_RAIL, int(absf(base.x)) % 2)))
 		for j in rng.randi_range(2, 4):
-			_d("hay", base + n * rng.randf_range(12.0, 15.0) + t * (rng.randf_range(-4, 4)), yaw_along(t) + rng.randf_range(-0.3, 0.3), rng.randi_range(1, 3))
+			var hp := base + n * rng.randf_range(12.0, 15.0) + t * (rng.randf_range(-4, 4))
+			var hy := yaw_along(t) + rng.randf_range(-0.3, 0.3)
+			_d_clear("hay", hp, hy, rng.randi_range(1, 3), 1.5)
 		mg._try("crates", bc - n * 6.0 - t * 2.0, yaw_along(t), -1, {"variant": 1})
 		if rng.randf() < 0.7:
 			mg._try("car", base + n * 2.0 + t * 1.0, axis + PI * 0.5, -1, {"variant": 4})
@@ -973,7 +1187,254 @@ func farms(k: int) -> void:
 					mg._try("tree", oc + n * r * 5.0 + t * (c * 5.0 - 7.5) + Vector3(rng.randf_range(-0.4, 0.4), 0, rng.randf_range(-0.4, 0.4)), 0.0, -1, {"variant": 1})
 		_d("pole", base - n * 4.4 + t * 9.0, yaw_along(t), 1)
 		poles.append([base - n * 4.4 + t * 9.0, yaw_along(t), n])
+		farmsteads.append({"base": base, "t": t, "n": n})
 		made += 1
+
+
+## The parish church: on the edge of the town where one of its roads comes
+## in, standing back from it with its tower to the road. From a stream of its
+## own, after the town and its villages are laid out (so they stand where
+## they did) and before the farms, which settle round it; a map with no room
+## for it has none.
+func church() -> void:
+	var cr := RandomNumberGenerator.new()
+	cr.seed = int(absf(center.x) * 13.0) * 7919 + int(absf(center.z) * 13.0) * 31 + 71
+	var size := Vector3(8.0, 6.5, 23.0)
+	# (first where its whole churchyard has room; failing that, wherever the
+	# church itself has, its wall laid where it fits)
+	for whole: bool in [true, false]:
+		for attempt in 160:
+			var poly: PackedVector3Array = main_road if cr.randf() < 0.5 else cross_road
+			if poly.size() < 7:
+				continue
+			var i := cr.randi_range(3, poly.size() - 4)
+			var p := poly[i]
+			var out := cr.randf() < 0.5
+			var dc := Defs.flat(p - center).length()
+			if dc < REACH - 6.0 or dc > REACH + 70.0:
+				continue
+			var t := TrenchNet.snap_dir(poly[i + 2] - poly[i - 2])
+			var n := _perp(t) * (1.0 if out else -1.0)
+			var c := TrenchNet.snap_pos(p + n * (size.z * 0.5 + 7.5))
+			var axis := atan2(n.x, n.z)
+			if not Defs.in_map(c, size.z * 0.5 + 6.0) or _road_dist(c, size.z * 0.5 + 4.0) < size.z * 0.5 + 3.5:
+				continue
+			if whole and not mg._is_free(c + n * CHURCHYARD.z, Vector2(size.x * 0.5 + CHURCHYARD.x + 0.5, size.z * 0.5 + CHURCHYARD.y + 0.5), axis, 0.3, true, 1.5):
+				continue
+			var ci := BuildingMaterials.HOUSE.find("church") + BuildingMaterials.HOUSE.size() * (cr.randi() % 3)
+			if mg._church(c, axis, ci, size):
+				church_at = c
+				var main_decor := decor
+				decor = _church_decor
+				_churchyard(c, axis, size, cr, whole)
+				_church_decor = decor
+				decor = main_decor
+				return
+
+
+## How far the churchyard's wall stands out from the church: x either side,
+## y the mean of the front and back (from the church's middle), z how far
+## its middle is behind the church's.
+const CHURCHYARD := Vector3(5.0, 3.6, 0.85)
+
+
+## The churchyard round the church at `c` (its tower to local -z, toward the
+## road): a low stone wall round it (cover, as a garden wall is) with a gap
+## in front for the path up to the west door and round to the south porch,
+## rows of graves either side of the nave and behind the chancel, a dark
+## conifer at each front corner.
+## (Where the church was put with room for all this, `whole`, the wall is
+## laid whole over whatever lie the ground has; else where it fits.) Then
+## the yard is kept clear of whatever the map puts down after it.
+func _churchyard(c: Vector3, axis: float, size: Vector3, cr: RandomNumberGenerator, whole: bool) -> void:
+	var b := Basis(Vector3.UP, axis)
+	var hx := size.x * 0.5 + CHURCHYARD.x
+	var front := -size.z * 0.5 - (CHURCHYARD.y - CHURCHYARD.z)
+	var back := size.z * 0.5 + CHURCHYARD.y + CHURCHYARD.z
+	var at := func(x: float, z: float) -> Vector3: return c + b * Vector3(x, 0, z)
+	var wall_at := func(p: Vector3, yaw: float, team: int, extra: Dictionary) -> void:
+		if whole:
+			mg._spawn("low_wall", p, yaw, team, extra)
+		else:
+			mg._try("low_wall", p, yaw, team, extra)
+	# the wall: along the front either side of the gate, down the sides, across the back
+	for side: float in [-1.0, 1.0]:
+		var run := hx - 1.3
+		var n := maxi(1, int(round(run / 3.6)))
+		for i in n:
+			wall_at.call(at.call(side * (1.3 + (i + 0.5) * run / n), front), axis, -1, {"size": Vector3(run / n, 1.0, 0.5), "variant": 0})
+		var len := back - front
+		var m := maxi(1, int(round(len / 3.8)))
+		for i in m:
+			wall_at.call(at.call(side * hx, front + (i + 0.5) * len / m), axis + PI * 0.5, -1, {"size": Vector3(len / m, 1.0, 0.5), "variant": 0})
+	var k := maxi(1, int(round(hx * 2.0 / 3.8)))
+	for i in k:
+		wall_at.call(at.call(-hx + (i + 0.5) * hx * 2.0 / k, back), axis, -1, {"size": Vector3(hx * 2.0 / k, 1.0, 0.5), "variant": 0})
+	# the path from the gate up to the west door, and round to the porch
+	var tower := -size.z * 0.5
+	_d("path", at.call(0.0, (front + tower) * 0.5), axis, Vector3(2.2, 0, tower - front + 0.3))
+	# A small landing gives the west doorway a readable approach from above.
+	_d("path", at.call(0.0, tower - 0.6), axis, Vector3(3.6, 0, 1.2))
+	var nl := size.z - Structure.CHURCH_TOWER - Structure.CHURCH_CHANCEL
+	var porch_z := tower + Structure.CHURCH_TOWER + nl / maxi(1, int(round(nl / 2.8))) * 0.5
+	var porch_x := -(size.x * 0.5 + 0.2 + Structure.CHURCH_PORCH.y + 0.8)
+	# (past the conifer at the front corner)
+	var fork := front + 3.4
+	_d("path", at.call(porch_x, (fork - 0.6 + porch_z) * 0.5), axis, Vector3(1.8, 0, porch_z - fork + 0.9))
+	_d("path", at.call((porch_x - 0.1) * 0.5, fork), axis, Vector3(-porch_x - 1.1, 0, 1.8))
+	# rows of graves either side of the nave (clear of the porch and its
+	# path), more behind the chancel
+	for side: float in [-1.0, 1.0]:
+		for i in 7:
+			if cr.randf() < 0.18:
+				continue
+			var gz := -size.z * 0.5 + 2.0 + i * 2.6
+			if side < 0.0 and gz < porch_z + Structure.CHURCH_PORCH.x * 0.5 + 0.8:
+				continue
+			_d("graves", at.call(side * (size.x * 0.5 + 3.4), gz), axis, cr.randi_range(2, 3))
+	_d("graves", at.call(cr.randf_range(-1.0, 1.0), size.z * 0.5 + 1.5), axis, cr.randi_range(4, 6))
+	for side: float in [-1.0, 1.0]:
+		mg._try("tree", at.call(side * (hx - 1.6), front + 1.8), cr.randf() * TAU, -1, {"variant": 2})
+	_reserve(at.call(0.0, (front + back) * 0.5), Vector2(hx, (back - front) * 0.5), axis)
+
+
+## What each farmstead keeps round its yard (BuildingFarm), set out once the
+## whole map is laid (so nothing laid after it lies differently, and it keeps
+## clear of the hedges and woods laid since), from a stream of its own seeded
+## from where the farm is: the tractor parked in the yard or behind the barn,
+## a water trough at the barn's end, the plough and the harrow put away by
+## it, a churn stand at the gate, a hen house and its run by the farmhouse, a
+## wheelbarrow at the barn door. (In the farm's own frame: `t` along the road,
+## `n` away from it, the farmhouse at -t, the barn at +t: see farms().)
+func farmyards() -> void:
+	# the scenery about each farm, in one pass over the map's (filed by 84 m
+	# square: a farm's 42 m round touches at most four)
+	var cells := {}
+	var near_of: Array = []
+	for fs: Dictionary in farmsteads:
+		var base: Vector3 = fs.base
+		var list: Array = []
+		near_of.append(list)
+		for cx in range(floori((base.x - 42.0) / 84.0), floori((base.x + 42.0) / 84.0) + 1):
+			for cz in range(floori((base.z - 42.0) / 84.0), floori((base.z + 42.0) / 84.0) + 1):
+				var key := Vector2i(cx, cz)
+				if not cells.has(key):
+					cells[key] = []
+				(cells[key] as Array).append([base, list])
+	if not cells.is_empty():
+		for e: Array in decor:
+			var p: Vector3 = e[1]
+			var here = cells.get(Vector2i(floori(p.x / 84.0), floori(p.z / 84.0)))
+			if here != null:
+				for f: Array in here:
+					if Defs.flat(p - (f[0] as Vector3)).length() < 42.0:
+						(f[1] as Array).append(e)
+	for fi in farmsteads.size():
+		var fs: Dictionary = farmsteads[fi]
+		var base: Vector3 = fs.base
+		var t: Vector3 = fs.t
+		var n: Vector3 = fs.n
+		var fr := RandomNumberGenerator.new()
+		fr.seed = int(absf(base.x) * 13.0) * 7919 + int(absf(base.z) * 13.0) * 31 + 977
+		var near: Array = near_of[fi]
+		var mine: Array = []  # [kind, pos, yaw, extra] of what's set out here
+		# the tractor: a parked civilian vehicle (Structure "car", variant 5)
+		if fr.randf() < 0.7:
+			for spot: Vector2 in [Vector2(11.5, -0.3), Vector2(17.2, 6.0), Vector2(9.5, 13.6)]:
+				var along := t if spot.y < 1.0 or spot.y > 12.0 else n
+				var p := base + t * spot.x + n * spot.y
+				var yaw := atan2(along.x, along.z) + (PI if fr.randf() < 0.5 else 0.0)
+				if _yard_free(p, Vector2(1.1, 2.2), yaw, 0.4, near, mine):
+					mg._place([Vector2(p.x, p.z), Vector2(1.0, 2.1), yaw])
+					mg._late.append({"skind": "car", "pos": Vector3(p.x, world.terrain.landform.height(p), p.z), "yaw": yaw, "team": -1, "variant": 5})
+					mine.append(["tractor", p, yaw, null])
+					world.stat("farm_tractor")
+					break
+		# what stands about: [kind, chance, half size, where (t, n), x along (t or n)]
+		var kit := [
+			["trough", 0.8, Vector2(1.0, 0.35), [Vector2(15.6, 3.2), Vector2(15.6, 8.4), Vector2(-14.0, 3.5)], "n"],
+			["plough", 0.6, Vector2(1.3, 0.6), [Vector2(16.4, 10.2), Vector2(12.5, 13.3), Vector2(5.0, 13.3)], "t"],
+			["harrow", 0.5, Vector2(1.25, 0.85), [Vector2(8.5, 13.5), Vector2(16.6, 12.8), Vector2(3.0, 16.5)], "t"],
+			["churn_stand", 0.55, Vector2(1.25, 0.5), [Vector2(-4.0, -3.1), Vector2(-7.0, -3.1), Vector2(4.0, -3.1)], "t"],
+			["hen_house", 0.55, Vector2(1.85, 1.2), [Vector2(-15.0, 4.0), Vector2(-7.0, 16.5), Vector2(-15.0, 10.0)], "n"],
+			["barrow", 0.6, Vector2(0.35, 0.75), [Vector2(3.0, 0.75), Vector2(13.4, 0.8), Vector2(-0.2, 9.0)], "-"],
+		]
+		for item: Array in kit:
+			if fr.randf() >= float(item[1]):
+				continue
+			var half: Vector2 = item[2]
+			var spots: Array = item[3]
+			var first := fr.randi() % spots.size()
+			for j in spots.size():
+				var spot: Vector2 = spots[(first + j) % spots.size()]
+				var p := base + t * spot.x + n * spot.y
+				var yaw: float
+				match String(item[4]):
+					"t":
+						yaw = yaw_along(t if fr.randf() < 0.5 else -t)
+					"n":
+						yaw = yaw_along(n if fr.randf() < 0.5 else -n)
+					_:
+						yaw = fr.randf() * TAU
+				# (a churn stand's deck faces the road, where the lorry stops)
+				if item[0] == "churn_stand":
+					yaw = yaw_along(t) if Basis(Vector3.UP, yaw_along(t)).z.dot(n) > 0.0 else yaw_along(-t)
+				if _yard_free(p, half, yaw, 0.15, near, mine):
+					mine.append([item[0], p, yaw, fr.randi() % 4])
+					world.stat("farm_" + String(item[0]))
+					break
+		for e: Array in mine:
+			if e[0] != "tractor":
+				_d(e[0], e[1], e[2], e[3])
+				# (and the farms still to come keep clear of it)
+				for fj in range(fi + 1, farmsteads.size()):
+					if Defs.flat((e[1] as Vector3) - (farmsteads[fj].base as Vector3)).length() < 42.0:
+						(near_of[fj] as Array).append(decor[-1])
+
+
+## (for farmyards: whether a piece `half` across, turned `yaw`, has room at `p`:
+## on level ground off the road, clear of what's built and of the scenery
+## about, and of what's already been set out there)
+func _yard_free(p: Vector3, half: Vector2, yaw: float, margin: float, near: Array, mine: Array) -> bool:
+	if not mg._is_free(p, half, yaw, margin) or _road_dist(p, 6.0) < half.length() + 0.8:
+		return false
+	var inv := Basis(Vector3.UP, yaw).inverse()
+	for list: Array in [near, mine]:
+		for e: Array in list:
+			for pt: Array in _scenery_points(e):
+				var q: Vector3 = inv * Defs.flat((pt[0] as Vector3) - p)
+				var r: float = pt[1]
+				if absf(q.x) < half.x + r + margin and absf(q.z) < half.y + r + margin:
+					return false
+	return true
+
+
+## (the ground a piece of scenery stands on, as points and how far round each:
+## a fence bay its posts and middle, hay each bale; nothing for what lies flat
+## or hangs overhead)
+static func _scenery_points(e: Array) -> Array:
+	var kind := String(e[0])
+	var p: Vector3 = e[1]
+	match kind:
+		"fence":
+			var ax := Basis(Vector3.UP, float(e[2])).x * float((e[3] as Vector3).x) * 0.5
+			return [[p, 0.2], [p + ax, 0.2], [p - ax, 0.2]]
+		"hay":
+			var ax := Basis(Vector3.UP, float(e[2])).x * 1.35
+			var count := int(e[3]) if e[3] != null else 1
+			var out := []
+			for i in count:
+				out.append([p + ax * (i - (count - 1) * 0.5), 0.75])
+			return out
+		"tractor":
+			var ax := Basis(Vector3.UP, float(e[2])).z * 1.3
+			return [[p, 1.1], [p + ax, 1.1], [p - ax, 1.1]]
+		"yard", "walk", "curb", "walk_crossing", "curb_crossing", "junction", "zebra", "drive", "path", "pave", "lot_pave", "wire", "drop", "garden", "soft":
+			return []
+	if Decor.BREAKABLE.has(kind):
+		var sz: Vector3 = Decor.BREAKABLE[kind][0]
+		return [[p, minf(maxf(sz.x, sz.z) * 0.5, 2.0)]]
+	return [[p, 0.6]]
 
 
 ## A power line along each country road on the verge, pole every ~34 m.
@@ -1132,9 +1593,45 @@ func finish(build_view := true) -> void:
 		var arr: PackedVector3Array = poly
 		for k in range(0, arr.size(), 2):
 			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
+	_street_furniture()
 	decor.append_array(_yard_decor)
 	decor.append_array(_shop_decor)
+	decor.append_array(_street_decor)
+	decor.append_array(_church_decor)
 	_yard_decor = []
 	_shop_decor = []
+	_street_decor = []
+	_church_decor = []
 	if build_view:
 		world.set_decor(decor, rect)
+
+
+## Sparse roadside markers and loose stone, without consuming the battle's RNG.
+func _road_verges() -> void:
+	var scatter := RandomNumberGenerator.new()
+	scatter.seed = int(world.settings.get("seed", 1)) + 48017
+	for poly: PackedVector3Array in world.roads[2]:
+		var next := 12.0
+		var along := 0.0
+		var station := 0
+		for i in range(1, poly.size()):
+			var start := poly[i - 1]
+			var length := Defs.flat(poly[i] - start).length()
+			if length < 0.01:
+				continue
+			var direction := Defs.flat(poly[i] - start) / length
+			while next < along + length:
+				var centerline := start + direction * (next - along)
+				for side in [-1.0, 1.0]:
+					var p: Vector3 = centerline + _perp(direction) * side * scatter.randf_range(3.7, 4.1)
+					if rect.grow(8.0).has_point(Vector2(p.x, p.z)) or _road_dist(p, 3.4) < 3.4:
+						continue
+					var yaw := yaw_along(direction)
+					if not mg._is_free(p, Vector2(2.6, 0.65), yaw, 0.5, false):
+						continue
+					_d("road_gravel", p, yaw)
+					if station % 4 == 0:
+						_d("road_marker", p, yaw)
+				station += 1
+				next += scatter.randf_range(8.0, 12.0)
+			along += length

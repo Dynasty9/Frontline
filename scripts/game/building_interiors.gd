@@ -1,0 +1,457 @@
+class_name BuildingInteriors
+extends RefCounted
+## What a house has in it: against the walls with no window or door in them
+## a wardrobe, a bookcase, a dresser with the television or a lamp on it, a
+## settee, a kitchen run (cupboards, the sink, the cooker, wall cupboards
+## over it), a desk; in the middle of the room a table and its chairs, one of
+## them knocked over now and then. Looks only, like the pictures on the walls,
+## and in the walls' own materials (world-space, so a town's walls still draw
+## together). Work in a wall's room kit (at its inner face: x along it, y up
+## from the ground, +z into the room) or the floor's (centred on the room).
+
+## How far anything stands out from its wall, and how far it keeps in from
+## either end of it: two walls meeting in a corner then never put things in
+## each other's way (each keeps out of what the other's can reach).
+const REACH := 0.65
+## The top of the floor slab.
+const FLOOR := 0.06
+const WOODS := [Color(0.42, 0.28, 0.17), Color(0.3, 0.2, 0.13), Color(0.55, 0.4, 0.26), Color(0.24, 0.17, 0.11)]
+const UNITS := [Color(0.88, 0.86, 0.8), Color(0.56, 0.64, 0.52), Color(0.44, 0.52, 0.62), Color(0.82, 0.74, 0.56)]
+const BRASS := Color(0.62, 0.5, 0.26)
+
+
+## Something against a wall `length` long, picked by `rng` from what fits
+## between its ends. True if it stands tall against the wall (a wardrobe, a
+## bookcase, wall cupboards), so nothing else hangs there.
+static func against_wall(k: BuildingKit, length: float, rng: RandomNumberGenerator) -> bool:
+	var room := length - REACH * 2.0
+	var pick := rng.randf()
+	var wood: Color = WOODS[rng.randi() % WOODS.size()]
+	var slide := rng.randf_range(-1.0, 1.0)
+	var at := func(w: float) -> float: return slide * maxf(0.0, room - w) * 0.5
+	if pick < 0.2 and room >= 1.05:
+		wardrobe(k, at.call(1.05), wood, rng)
+		return true
+	if pick < 0.36:
+		bookcase(k, at.call(0.9), wood, rng)
+		return true
+	if pick < 0.54 and room >= 1.2:
+		dresser(k, at.call(1.2), wood, rng)
+		return false
+	if pick < 0.72 and room >= 1.3:
+		var w := minf(1.9, room)
+		settee(k, at.call(w), w, BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()], rng)
+		return false
+	if pick < 0.9 and room >= 1.5:
+		var w := minf(2.4, room)
+		kitchen(k, at.call(w), w, UNITS[rng.randi() % UNITS.size()], rng)
+		return true
+	if room >= 1.0:
+		desk(k, at.call(1.0), wood, rng)
+		return false
+	bookcase(k, at.call(0.9), wood, rng)
+	return true
+
+
+## A wardrobe: its body on a plinth under a cornice, two doors with their
+## handles, a suitcase on top of some.
+static func wardrobe(k: BuildingKit, x: float, wood: Color, rng: RandomNumberGenerator) -> void:
+	var w := 1.05
+	var d := 0.58
+	var h := 1.95
+	k.box(Vector3(w, h - 0.08, d), Vector3(x, FLOOR + 0.08 + (h - 0.08) * 0.5, d * 0.5), "wood", wood)
+	k.box(Vector3(w - 0.06, 0.08, d - 0.04), Vector3(x, FLOOR + 0.04, d * 0.5 - 0.02), "wood_dark", wood.darkened(0.3))
+	k.box(Vector3(w + 0.06, 0.06, d + 0.04), Vector3(x, FLOOR + h + 0.03, d * 0.5 + 0.01), "wood", wood.darkened(0.12))
+	for s: float in [-1.0, 1.0]:
+		k.plate(Vector3(w * 0.5 - 0.04, h - 0.26, 0.015), Vector3(x + s * w * 0.25, FLOOR + 0.12 + (h - 0.26) * 0.5, d + 0.008), "wood", wood.lightened(0.06))
+		k.bar(Vector3(x + s * 0.05, FLOOR + 1.0, d + 0.025), Vector3(x + s * 0.05, FLOOR + 1.16, d + 0.025), 0.015, 0.015, "metal_dark", BRASS, false)
+	if rng.randf() < 0.35:
+		k.box(Vector3(0.62, 0.2, 0.42), Vector3(x + rng.randf_range(-0.15, 0.15), FLOOR + h + 0.16, d * 0.5), "canvas", [Color(0.36, 0.25, 0.17), Color(0.22, 0.25, 0.3), Color(0.45, 0.16, 0.12)][rng.randi() % 3])
+
+
+## A bookcase: its sides, back and shelves, books standing along each shelf
+## (a gap here and there, one leaning).
+static func bookcase(k: BuildingKit, x: float, wood: Color, rng: RandomNumberGenerator) -> void:
+	var w := 0.9
+	var d := 0.3
+	var h := 1.85
+	k.plate(Vector3(w, h, 0.02), Vector3(x, FLOOR + h * 0.5, 0.01), "wood", wood.darkened(0.2))
+	for s: float in [-1.0, 1.0]:
+		k.box(Vector3(0.03, h, d), Vector3(x + s * (w * 0.5 - 0.015), FLOOR + h * 0.5, d * 0.5), "wood", wood)
+	var shelves := 5
+	for i in shelves + 1:
+		var y := FLOOR + 0.06 + i * (h - 0.09) / shelves
+		k.box(Vector3(w - 0.06, 0.025, d - 0.02), Vector3(x, y, d * 0.5), "wood", wood)
+		if i == shelves:
+			break
+		# (in runs, a set or a shelf-full of one kind together, gaps between)
+		var bx := x - w * 0.5 + 0.04
+		while bx < x + w * 0.5 - 0.1:
+			var bw := minf(rng.randf_range(0.1, 0.3), x + w * 0.5 - 0.04 - bx)
+			var bh := rng.randf_range(0.18, 0.28)
+			var col: Color = BuildingFurnishings.BOOKS[rng.randi() % BuildingFurnishings.BOOKS.size()]
+			k.block(Vector3(bw, bh, rng.randf_range(0.17, 0.22)), Vector3(bx + bw * 0.5, y + 0.0125 + bh * 0.5, d * 0.5), "paint", col.darkened(rng.randf_range(0.0, 0.25)), Vector3.ZERO, false)
+			bx += bw + rng.randf_range(0.005, 0.08)
+
+
+## A dresser: drawers under a top, and on it the television or a lamp.
+static func dresser(k: BuildingKit, x: float, wood: Color, rng: RandomNumberGenerator) -> void:
+	var w := 1.2
+	var d := 0.46
+	var h := 0.82
+	k.box(Vector3(w, h - 0.03, d), Vector3(x, FLOOR + (h - 0.03) * 0.5, d * 0.5), "wood", wood)
+	k.box(Vector3(w + 0.04, 0.03, d + 0.03), Vector3(x, FLOOR + h - 0.015, d * 0.5 + 0.01), "wood", wood.darkened(0.15))
+	for row in 3:
+		for col in 2:
+			var c := Vector3(x + (col - 0.5) * (w * 0.5), FLOOR + 0.13 + row * 0.22, d + 0.006)
+			k.plate(Vector3(w * 0.5 - 0.05, 0.18, 0.012), c, "wood", wood.lightened(0.05))
+			k.plate(Vector3(0.1, 0.018, 0.02), c + Vector3(0, 0.02, 0.012), "metal_dark", BRASS, Vector3.ZERO, false)
+	var top := FLOOR + h
+	if rng.randf() < 0.5:
+		# an old television, its screen grey
+		var tx := x + rng.randf_range(-0.2, 0.2)
+		k.box(Vector3(0.56, 0.42, 0.42), Vector3(tx, top + 0.21, 0.24), "plain_dark", Color(0.12, 0.12, 0.12))
+		k.plate(Vector3(0.44, 0.32, 0.01), Vector3(tx - 0.03, top + 0.22, 0.455), "glass", Color(0.24, 0.27, 0.28))
+		k.rod(Vector3(tx, top + 0.42, 0.24), Vector3(tx - 0.22, top + 0.72, 0.18), 0.006, "metal_dark", Color(0.6, 0.6, 0.6), 3, false)
+		k.rod(Vector3(tx, top + 0.42, 0.24), Vector3(tx + 0.22, top + 0.72, 0.18), 0.006, "metal_dark", Color(0.6, 0.6, 0.6), 3, false)
+	else:
+		# a lamp, and a jug or a plant
+		var lx := x - w * 0.3
+		k.cyl(0.07, 0.09, 0.05, Vector3(lx, top + 0.025, d * 0.5), "paint", BRASS, Vector3.ZERO, 8, false)
+		k.rod(Vector3(lx, top + 0.05, d * 0.5), Vector3(lx, top + 0.38, d * 0.5), 0.012, "metal_dark", BRASS, 4, false)
+		k.cyl(0.08, 0.15, 0.2, Vector3(lx, top + 0.44, d * 0.5), "canvas", Color(0.86, 0.8, 0.64), Vector3.ZERO, 10, false)
+		var jx := x + w * 0.28
+		if rng.randf() < 0.5:
+			k.cyl(0.06, 0.08, 0.2, Vector3(jx, top + 0.1, d * 0.5), "paint", [Color(0.3, 0.4, 0.6), Color(0.75, 0.72, 0.65), Color(0.55, 0.25, 0.18)][rng.randi() % 3], Vector3.ZERO, 8, false)
+		else:
+			k.cyl(0.08, 0.06, 0.14, Vector3(jx, top + 0.07, d * 0.5), "paint", Color(0.6, 0.32, 0.2), Vector3.ZERO, 8, false)
+			k.part(Res.sphere(0.13, 6), "paint", Transform3D(Basis.from_scale(Vector3(1.0, 0.8, 1.0)), Vector3(jx, top + 0.24, d * 0.5)), Color(0.25, 0.42, 0.2), false)
+
+
+## A settee `w` wide: its base, the seat cushions, the back and the arms,
+## a cushion thrown in one corner.
+static func settee(k: BuildingKit, x: float, w: float, cloth: Color, rng: RandomNumberGenerator) -> void:
+	var d := 0.62
+	var arm := 0.14
+	k.box(Vector3(w, 0.26, d - 0.06), Vector3(x, FLOOR + 0.1 + 0.13, d * 0.5 + 0.03), "canvas", cloth.darkened(0.12))
+	for s: float in [-1.0, 1.0]:
+		k.bar(Vector3(x + s * (w * 0.5 - 0.08), FLOOR, d - 0.08), Vector3(x + s * (w * 0.5 - 0.08), FLOOR + 0.1, d - 0.08), 0.04, 0.04, "wood_dark", Color(0.2, 0.14, 0.09), false)
+		k.box(Vector3(arm, 0.56, d), Vector3(x + s * (w * 0.5 - arm * 0.5), FLOOR + 0.1 + 0.28, d * 0.5), "canvas", cloth)
+	var seats := 3 if w > 1.6 else 2
+	var sw := (w - arm * 2.0) / seats
+	for i in seats:
+		k.box(Vector3(sw - 0.02, 0.12, d - 0.2), Vector3(x - w * 0.5 + arm + (i + 0.5) * sw, FLOOR + 0.42, d * 0.5 + 0.08), "canvas", cloth.lightened(0.05))
+		k.box(Vector3(sw - 0.02, 0.4, 0.16), Vector3(x - w * 0.5 + arm + (i + 0.5) * sw, FLOOR + 0.62, 0.12), "canvas", cloth)
+	if rng.randf() < 0.6:
+		var cx := x + (w * 0.5 - arm - 0.22) * (1.0 if rng.randf() < 0.5 else -1.0)
+		k.box(Vector3(0.36, 0.34, 0.12), Vector3(cx, FLOOR + 0.62, 0.3), "canvas", BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()],
+			Vector3(-0.35, rng.randf_range(-0.3, 0.3), rng.randf_range(-0.2, 0.2)), false)
+
+
+## A kitchen run `w` long: the cupboards under a worktop, the sink with its
+## tap, the cooker at one end with its rings and oven door, wall cupboards
+## over it, a kettle or a pan on the side.
+static func kitchen(k: BuildingKit, x: float, w: float, col: Color, rng: RandomNumberGenerator) -> void:
+	var d := 0.58
+	var h := 0.88
+	var end := 1.0 if rng.randf() < 0.5 else -1.0
+	var cooker := x + end * (w * 0.5 - 0.3)
+	var run := w - 0.6
+	var rx := x - end * 0.3
+	k.box(Vector3(run, h - 0.1, d), Vector3(rx, FLOOR + 0.1 + (h - 0.1) * 0.5, d * 0.5), "paint", col)
+	k.box(Vector3(run - 0.04, 0.1, d - 0.06), Vector3(rx, FLOOR + 0.05, d * 0.5 - 0.03), "plain_dark", Color(0.15, 0.15, 0.14))
+	var doors := maxi(1, int(run / 0.5))
+	for i in doors:
+		var dx := rx - run * 0.5 + (i + 0.5) * run / doors
+		k.plate(Vector3(run / doors - 0.03, h - 0.18, 0.015), Vector3(dx, FLOOR + 0.1 + (h - 0.18) * 0.5, d + 0.008), "paint", col.lightened(0.06))
+		k.bar(Vector3(dx - 0.1, FLOOR + h - 0.14, d + 0.025), Vector3(dx + 0.1, FLOOR + h - 0.14, d + 0.025), 0.012, 0.012, "metal_dark", Color(0.65, 0.65, 0.63), false)
+	k.box(Vector3(w + 0.02, 0.04, d + 0.04), Vector3(x, FLOOR + h + 0.02, d * 0.5 + 0.02), "wood", Color(0.5, 0.36, 0.22))
+	# the sink: a steel bowl let into the top, its tap
+	var sx := rx + rng.randf_range(-0.15, 0.15) * maxf(0.0, run - 0.6)
+	k.plate(Vector3(0.52, 0.006, 0.4), Vector3(sx, FLOOR + h + 0.043, d * 0.5), "steel", Color(0.7, 0.7, 0.7))
+	k.plate(Vector3(0.36, 0.006, 0.3), Vector3(sx, FLOOR + h + 0.046, d * 0.5 + 0.02), "plain_dark", Color(0.32, 0.33, 0.34))
+	k.rod(Vector3(sx, FLOOR + h + 0.04, 0.08), Vector3(sx, FLOOR + h + 0.28, 0.08), 0.012, "steel", Color(0.75, 0.75, 0.75), 4, false)
+	k.rod(Vector3(sx, FLOOR + h + 0.28, 0.08), Vector3(sx, FLOOR + h + 0.24, 0.24), 0.012, "steel", Color(0.75, 0.75, 0.75), 4, false)
+	# the cooker
+	k.box(Vector3(0.58, h + 0.02, d), Vector3(cooker, FLOOR + (h + 0.02) * 0.5, d * 0.5), "paint", Color(0.88, 0.87, 0.84))
+	k.plate(Vector3(0.46, 0.34, 0.012), Vector3(cooker, FLOOR + 0.32, d + 0.006), "glass", Color(0.12, 0.12, 0.12))
+	k.bar(Vector3(cooker - 0.2, FLOOR + 0.56, d + 0.03), Vector3(cooker + 0.2, FLOOR + 0.56, d + 0.03), 0.015, 0.015, "metal_dark", Color(0.6, 0.6, 0.6), false)
+	for i in 4:
+		var rp := Vector3(cooker + (0.13 if i % 2 == 0 else -0.13), FLOOR + h + 0.03, d * 0.5 + (0.12 if i < 2 else -0.12))
+		k.cyl(0.08, 0.08, 0.012, rp, "plain_dark", Color(0.1, 0.1, 0.1), Vector3.ZERO, 10, false)
+	k.plate(Vector3(0.58, 0.12, 0.03), Vector3(cooker, FLOOR + h + 0.08, 0.02), "paint", Color(0.85, 0.84, 0.8))
+	# wall cupboards over the run (clear of the cooker's heat)
+	var uw := run * 0.8
+	k.box(Vector3(uw, 0.62, 0.32), Vector3(rx, FLOOR + 1.52 + 0.31, 0.16), "paint", col)
+	for i in maxi(1, int(uw / 0.5)):
+		var n := maxi(1, int(uw / 0.5))
+		k.plate(Vector3(uw / n - 0.03, 0.56, 0.012), Vector3(rx - uw * 0.5 + (i + 0.5) * uw / n, FLOOR + 1.83, 0.327), "paint", col.lightened(0.06))
+	if rng.randf() < 0.6:
+		var kx := rx + run * 0.35 * -end
+		k.cyl(0.07, 0.08, 0.2, Vector3(kx, FLOOR + h + 0.14, d * 0.5), "steel", Color(0.72, 0.72, 0.7), Vector3.ZERO, 10, false)
+	if rng.randf() < 0.5:
+		k.cyl(0.1, 0.1, 0.1, Vector3(cooker + 0.13, FLOOR + h + 0.09, d * 0.5 + 0.12), "metal_dark", Color(0.25, 0.25, 0.26), Vector3.ZERO, 10, false)
+
+
+## A writing desk on its pedestal, its chair pushed in under it, papers and
+## a lamp on top.
+static func desk(k: BuildingKit, x: float, wood: Color, rng: RandomNumberGenerator) -> void:
+	var w := 1.0
+	var d := 0.55
+	var h := 0.74
+	k.box(Vector3(w, 0.035, d), Vector3(x, FLOOR + h - 0.018, d * 0.5), "wood", wood)
+	k.box(Vector3(0.38, h - 0.04, d - 0.04), Vector3(x + w * 0.5 - 0.21, FLOOR + (h - 0.04) * 0.5, d * 0.5), "wood", wood.darkened(0.08))
+	for i in 3:
+		k.plate(Vector3(0.34, 0.18, 0.012), Vector3(x + w * 0.5 - 0.21, FLOOR + 0.13 + i * 0.22, d + 0.006), "wood", wood.lightened(0.06))
+	for z: float in [0.04, d - 0.04]:
+		k.bar(Vector3(x - w * 0.5 + 0.04, FLOOR, z), Vector3(x - w * 0.5 + 0.04, FLOOR + h - 0.035, z), 0.04, 0.04, "wood", wood, false)
+	chair(k, Vector3(x - 0.12, FLOOR, d - 0.12), PI, wood.darkened(0.1))
+	k.plate(Vector3(0.3, 0.004, 0.22), Vector3(x - 0.15, FLOOR + h + 0.002, d * 0.5), "paint", Color(0.92, 0.9, 0.84), Vector3(0, rng.randf_range(-0.4, 0.4), 0), false)
+	k.cyl(0.06, 0.07, 0.03, Vector3(x + 0.32, FLOOR + h + 0.015, 0.12), "metal_dark", Color(0.2, 0.3, 0.22), Vector3.ZERO, 8, false)
+	k.rod(Vector3(x + 0.32, FLOOR + h + 0.03, 0.12), Vector3(x + 0.26, FLOOR + h + 0.36, 0.2), 0.01, "metal_dark", Color(0.2, 0.3, 0.22), 4, false)
+	k.cyl(0.03, 0.09, 0.1, Vector3(x + 0.24, FLOOR + h + 0.34, 0.24), "paint", Color(0.2, 0.3, 0.22), Vector3(0.5, 0, 0), 8, false)
+
+
+## A chair standing at `p` (its seat's back edge middle on the floor below),
+## facing `yaw` (toward +z unturned); on its back with `fallen`. One shape,
+## made once (rooms have them by the dozen).
+static func chair(k: BuildingKit, p: Vector3, yaw: float, col: Color, fallen := false) -> void:
+	var c := k.at_point(p + (Vector3(0, 0.02, 0) if fallen else Vector3.ZERO), Vector3(0, yaw, 0) + (Vector3(-PI * 0.5, 0, 0) if fallen else Vector3.ZERO))
+	c.part(BuildingKit.shape("chair", func() -> Array:
+		var pieces := [BuildingKit.piece(Vector3(0.42, 0.04, 0.4), Vector3(0, 0.44, 0.2)), BuildingKit.piece(Vector3(0.4, 0.14, 0.025), Vector3(0, 0.82, 0.01))]
+		for lx: float in [-0.18, 0.18]:
+			for lz: float in [0.03, 0.37]:
+				pieces.append(BuildingKit.piece(Vector3(0.035, 0.42, 0.035), Vector3(lx, 0.21, lz)))
+			pieces.append(BuildingKit.piece(Vector3(0.035, 0.46, 0.035), Vector3(lx, 0.69, 0.01)))
+		return pieces), "wood", Transform3D.IDENTITY, col, false)
+
+
+## The table in the middle of a room `size` (the floor's), its chairs drawn
+## up round it, one pushed back or knocked over now and then; a cloth on
+## some, a jug and plates on it.
+static func table(k: BuildingKit, size: Vector3, wood: Color, rng: RandomNumberGenerator) -> void:
+	var c := Vector3(rng.randf_range(-0.4, 0.4), FLOOR, rng.randf_range(-0.3, 0.3))
+	var t := k.at_point(c, Vector3(0, rng.randf_range(-0.12, 0.12) + (PI * 0.5 if size.z > size.x else 0.0), 0))
+	var L := 1.4
+	var W := 0.85
+	var h := 0.75
+	t.part(BuildingKit.shape("table", func() -> Array:
+		var pieces := [BuildingKit.piece(Vector3(L, 0.04, W), Vector3(0, h - 0.02, 0))]
+		for sx: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				pieces.append(BuildingKit.piece(Vector3(0.055, h - 0.04, 0.055), Vector3(sx * (L * 0.5 - 0.06), (h - 0.04) * 0.5, sz * (W * 0.5 - 0.06))))
+		return pieces), "wood", Transform3D.IDENTITY, wood)
+	if rng.randf() < 0.5:
+		t.box(Vector3(L * 0.72, 0.006, W + 0.08), Vector3(0, h + 0.003, 0), "canvas", [Color(0.88, 0.86, 0.8), Color(0.62, 0.2, 0.16), Color(0.32, 0.42, 0.56)][rng.randi() % 3], Vector3.ZERO, false)
+	for i in rng.randi_range(1, 3):
+		t.cyl(0.11, 0.1, 0.015, Vector3(rng.randf_range(-0.5, 0.5), h + 0.012, rng.randf_range(-0.25, 0.25)), "paint", Color(0.9, 0.89, 0.85), Vector3.ZERO, 10, false)
+	if rng.randf() < 0.6:
+		t.cyl(0.06, 0.07, 0.2, Vector3(rng.randf_range(-0.3, 0.3), h + 0.1, rng.randf_range(-0.15, 0.15)), "paint", [Color(0.3, 0.4, 0.6), Color(0.75, 0.72, 0.65)][rng.randi() % 2], Vector3.ZERO, 8, false)
+	var chair_col := wood.darkened(rng.randf_range(0.0, 0.15))
+	for sx: float in [-0.35, 0.35]:
+		for sz: float in [-1.0, 1.0]:
+			var back := rng.randf_range(0.0, 0.25)
+			var fallen := rng.randf() < 0.08
+			chair(t, Vector3(sx, 0, sz * (W * 0.5 + 0.12 + back)), 0.0 if sz < 0.0 else PI, chair_col, fallen)
+
+
+# --- a shop ----------------------------------------------------------------------------
+
+## Goods on a shelf: tins, packets, bottles and jars in their colours.
+const GOODS := [Color(0.75, 0.15, 0.1), Color(0.9, 0.75, 0.2), Color(0.2, 0.35, 0.6), Color(0.85, 0.85, 0.8), Color(0.3, 0.5, 0.25),
+	Color(0.55, 0.32, 0.18), Color(0.92, 0.5, 0.15), Color(0.4, 0.25, 0.45)]
+
+
+## A shop's floor `size` (the floor's own frame: its front, the street, to
+## -z): rows of shelving running back from the door (clear of the front, and
+## of what stands against the side walls), stocked or picked half empty; the
+## counter across the back with its till and scales, sacks and boxes of stock
+## stacked at its end.
+static func shop(k: BuildingKit, size: Vector3, rng: RandomNumberGenerator, entry: int = 0) -> void:
+	# Furnish from the actual entrance, including shops entered from an end.
+	# This keeps the arrival space clear wherever the generator puts the door.
+	var turn: float = [0.0, PI, PI * 0.5, -PI * 0.5][clampi(entry, 0, 3)]
+	k = k.at_point(Vector3.ZERO, Vector3(0, turn, 0))
+	if entry == 2 or entry == 3:
+		size = Vector3(size.z, size.y, size.x)
+	var wood: Color = WOODS[rng.randi() % WOODS.size()]
+	var hx := size.x * 0.5
+	var hz := size.z * 0.5
+	# the shelving, from 2 m in from the front to short of the counter
+	var z0 := -hz + 2.0
+	var z1 := hz - 2.3
+	if z1 - z0 >= 2.0:
+		var rows: Array[float] = [0.0]
+		if hx >= 4.2:
+			rows = [-1.9, 1.9]
+		for x in rows:
+			gondola(k.at_point(Vector3(x, FLOOR, (z0 + z1) * 0.5), Vector3(0, PI * 0.5, 0)), z1 - z0, rng.randf() < 0.3, rng)
+	# the counter across the back (in front of what stands against the back
+	# wall), the till and scales on it
+	var cz := hz - 0.2 - REACH - 0.45
+	var cw := minf(size.x * 0.45, 3.2)
+	var side := 1.0 if rng.randf() < 0.5 else -1.0
+	var cx := side * maxf(0.0, hx - 0.2 - REACH - cw * 0.5)
+	k.box(Vector3(cw, 0.95, 0.6), Vector3(cx, FLOOR + 0.475, cz), "wood", wood)
+	k.box(Vector3(cw + 0.06, 0.04, 0.68), Vector3(cx, FLOOR + 0.97, cz), "wood", wood.darkened(0.2))
+	k.box(Vector3(0.36, 0.22, 0.3), Vector3(cx - cw * 0.3, FLOOR + 1.1, cz), "metal_dark", Color(0.3, 0.3, 0.32))
+	k.plate(Vector3(0.3, 0.12, 0.012), Vector3(cx - cw * 0.3, FLOOR + 1.25, cz - 0.1), "plain_dark", Color(0.1, 0.12, 0.1), Vector3(-0.5, 0, 0))
+	k.box(Vector3(0.22, 0.08, 0.16), Vector3(cx + cw * 0.25, FLOOR + 1.03, cz), "paint", Color(0.85, 0.82, 0.75))
+	k.cyl(0.14, 0.14, 0.02, Vector3(cx + cw * 0.25, FLOOR + 1.08, cz), "steel", Color(0.75, 0.75, 0.72), Vector3.ZERO, 12, false)
+	# the stock, at the counter's open end
+	var sx := cx - side * (cw * 0.5 + 0.55)
+	for i in rng.randi_range(3, 6):
+		var p := Vector3(sx + rng.randf_range(-0.35, 0.35), FLOOR, cz + rng.randf_range(-0.45, 0.1))
+		if rng.randf() < 0.5:
+			# a sack of flour or potatoes
+			k.part(Res.sphere(0.24, 8), "canvas", Transform3D(Basis.from_scale(Vector3(1.0, 1.4, 0.8)), p + Vector3(0, 0.32, 0)), Color(0.78, 0.72, 0.58).darkened(rng.randf_range(0.0, 0.2)), false)
+		else:
+			var bs := Vector3(rng.randf_range(0.35, 0.55), rng.randf_range(0.25, 0.4), rng.randf_range(0.3, 0.42))
+			k.block(bs, p + Vector3(0, bs.y * 0.5 + (0.0 if i < 3 else 0.4), 0), "wood", Color(0.6, 0.48, 0.32).darkened(rng.randf_range(0.0, 0.2)), Vector3(0, rng.randf_range(-0.4, 0.4), 0))
+
+
+## A run of shelving `length` long (along x, both faces stocked): the plinth,
+## the spine, four shelves a side with the goods along them in runs of one
+## kind; `bare` when it's been picked half empty.
+static func gondola(k: BuildingKit, length: float, bare: bool, rng: RandomNumberGenerator) -> void:
+	var h := 1.45
+	var d := 0.9
+	var white := Color(0.82, 0.8, 0.74)
+	k.box(Vector3(length, 0.12, d), Vector3(0, 0.06, 0), "paint", Color(0.3, 0.3, 0.3))
+	k.box(Vector3(length, h, 0.05), Vector3(0, h * 0.5, 0), "paint", white)
+	for e: float in [-1.0, 1.0]:
+		k.box(Vector3(0.05, h, d), Vector3(e * length * 0.5, h * 0.5, 0), "paint", white)
+	for side: float in [-1.0, 1.0]:
+		for i in 4:
+			var y := 0.12 + i * 0.34
+			k.block(Vector3(length - 0.04, 0.025, d * 0.5 - 0.05), Vector3(0, y, side * d * 0.25), "paint", white.darkened(0.08), Vector3.ZERO, false)
+			_stock(k, -length * 0.5, length * 0.5, y + 0.0125, side * (d * 0.25 + 0.02), d * 0.5 - 0.12, bare, rng)
+
+
+## The goods along a shelf from `x0` to `x1` (its top at `y`, the goods
+## `depth` deep centred on `z`): runs of packets, tins and jars side by side,
+## a gap here and there where some were taken (many, when it's `bare`);
+## `tight` on a wall's shelves, filled to the shelf above.
+static func _stock(k: BuildingKit, x0: float, x1: float, y: float, z: float, depth: float, bare: bool, rng: RandomNumberGenerator, tight := false) -> void:
+	var x := x0 + 0.05
+	while x < x1 - 0.12:
+		var w := minf(rng.randf_range(0.15, 0.4) if tight else rng.randf_range(0.2, 0.55), x1 - 0.05 - x)
+		if rng.randf() < (0.55 if bare else (0.06 if tight else 0.12)):
+			x += w + 0.04
+			continue  # (a gap where it's been taken)
+		var gh := rng.randf_range(0.18, 0.3) if tight else rng.randf_range(0.12, 0.26)
+		var col: Color = GOODS[rng.randi() % GOODS.size()]
+		k.block(Vector3(w, gh, depth), Vector3(x + w * 0.5, y + gh * 0.5, z), "paint", col.darkened(rng.randf_range(0.0, 0.25)), Vector3.ZERO, false)
+		x += w + (rng.randf_range(0.005, 0.02) if tight else rng.randf_range(0.01, 0.05))
+
+
+## Fruit and vegetables in their crates: apples, oranges, cabbages, potatoes,
+## lemons, onions.
+const PRODUCE := [Color(0.62, 0.12, 0.1), Color(0.9, 0.5, 0.12), Color(0.35, 0.55, 0.22), Color(0.55, 0.42, 0.26),
+	Color(0.9, 0.8, 0.25), Color(0.7, 0.55, 0.35)]
+
+
+## What stands against a shop's plain wall, where a house has its wardrobe
+## or its settee (from what fits between the wall's ends, as there): shelving
+## to head height the length of it, stocked or picked half empty; a cooler of
+## drinks at one end of some; or a greengrocer's rack of crates under a
+## chalked price board.
+static func shop_wall(k: BuildingKit, length: float, rng: RandomNumberGenerator) -> void:
+	var room := length - REACH * 2.0
+	if room < 0.6:
+		return
+	var pick := rng.randf()
+	if pick < 0.25 and room >= 1.4:
+		var e := 1.0 if rng.randf() < 0.5 else -1.0
+		cooler(k, e * (room * 0.5 - 0.36), rng)
+		wall_shelves(k, -e * 0.39, room - 0.78, rng.randf() < 0.2, rng)
+	elif pick < 0.45 and room >= 1.0:
+		var w := minf(room, 1.6)
+		produce(k, rng.randf_range(-1.0, 1.0) * (room - w) * 0.5, w, rng)
+	else:
+		wall_shelves(k, 0.0, room, rng.randf() < 0.2, rng)
+
+
+## Shelving against a wall `w` long (centred on `x`): its grey back and plinth,
+## uprights a metre apart, five shelves with their price strips, the goods
+## along them; `bare` when it's been picked half empty.
+static func wall_shelves(k: BuildingKit, x: float, w: float, bare: bool, rng: RandomNumberGenerator) -> void:
+	var d := 0.42
+	var h := 1.95
+	var white := Color(0.82, 0.8, 0.74)
+	k.plate(Vector3(w, h, 0.02), Vector3(x, FLOOR + h * 0.5, 0.01), "paint", Color(0.42, 0.45, 0.47))
+	k.box(Vector3(w, 0.12, d), Vector3(x, FLOOR + 0.06, d * 0.5), "paint", Color(0.3, 0.3, 0.3))
+	k.block(Vector3(w, 0.03, d), Vector3(x, FLOOR + h - 0.015, d * 0.5), "paint", white)
+	var bays := maxi(1, int(ceil(w - 0.05)))
+	for i in bays + 1:
+		k.block(Vector3(0.04, h, d), Vector3(x - w * 0.5 + 0.02 + i * (w - 0.04) / bays, FLOOR + h * 0.5, d * 0.5), "paint", white)
+	for i in 5:
+		var y := FLOOR + 0.12 + i * 0.36
+		k.block(Vector3(w - 0.04, 0.025, d - 0.03), Vector3(x, y, d * 0.5 + 0.005), "paint", white.darkened(0.08), Vector3.ZERO, false)
+		k.block(Vector3(w - 0.04, 0.035, 0.01), Vector3(x, y - 0.005, d - 0.01), "plain", Color(0.9, 0.88, 0.8), Vector3.ZERO, false)
+		_stock(k, x - w * 0.5, x + w * 0.5, y + 0.0125, d * 0.5 + 0.01, d - 0.12, bare, rng, true)
+
+
+## A cooler of drinks against the wall at `x`: the cabinet with its sign
+## over the door, the door's frame and handle (the glass clear), shelves of
+## bottles and cans behind it, a gap where some were taken.
+static func cooler(k: BuildingKit, x: float, rng: RandomNumberGenerator) -> void:
+	var w := 0.72
+	var d := 0.6
+	var h := 1.95
+	var body: Color = [Color(0.88, 0.88, 0.86), Color(0.66, 0.13, 0.11), Color(0.18, 0.3, 0.5)][rng.randi() % 3]
+	k.box(Vector3(w, 0.16, d), Vector3(x, FLOOR + 0.08, d * 0.5), "paint", body)
+	k.plate(Vector3(w - 0.1, 0.1, 0.01), Vector3(x, FLOOR + 0.08, d + 0.005), "metal_dark", Color(0.15, 0.15, 0.15))
+	k.block(Vector3(w - 0.08, h - 0.38, 0.03), Vector3(x, FLOOR + 0.16 + (h - 0.38) * 0.5, 0.015), "plain_dark", Color(0.12, 0.13, 0.14))
+	for s: float in [-1.0, 1.0]:
+		k.block(Vector3(0.04, h - 0.38, d), Vector3(x + s * (w * 0.5 - 0.02), FLOOR + 0.16 + (h - 0.38) * 0.5, d * 0.5), "paint", body)
+	k.box(Vector3(w, 0.22, d), Vector3(x, FLOOR + h - 0.11, d * 0.5), "paint", body)
+	k.plate(Vector3(w - 0.12, 0.13, 0.01), Vector3(x, FLOOR + h - 0.11, d + 0.005), "paint", Color(0.94, 0.92, 0.86))
+	k.plate(Vector3(w - 0.24, 0.05, 0.01), Vector3(x, FLOOR + h - 0.11, d + 0.012), "paint", body.darkened(0.25))
+	# (the shelves, a row of one drink each)
+	for i in 4:
+		var y := FLOOR + 0.2 + i * 0.36
+		k.block(Vector3(w - 0.1, 0.02, d - 0.12), Vector3(x, y, d * 0.5 - 0.02), "metal_dark", Color(0.55, 0.56, 0.58), Vector3.ZERO, false)
+		var col: Color = [Color(0.55, 0.12, 0.1), Color(0.2, 0.45, 0.25), Color(0.85, 0.55, 0.15), Color(0.25, 0.3, 0.55), Color(0.85, 0.85, 0.8)][rng.randi() % 5]
+		var bh := rng.randf_range(0.14, 0.26)
+		for j in 5:
+			if rng.randf() < 0.15:
+				continue
+			for row: float in [0.0, 1.0]:
+				k.block(Vector3(0.075, bh, 0.075), Vector3(x - (w - 0.14) * 0.5 + (j + 0.5) * (w - 0.14) / 5.0, y + 0.01 + bh * 0.5, d * 0.5 + 0.06 - row * 0.12), "paint", col.darkened(row * 0.2), Vector3.ZERO, false)
+	# (the door: its frame and its handle)
+	var dy := FLOOR + 0.16 + (h - 0.38) * 0.5
+	for s: float in [-1.0, 1.0]:
+		k.block(Vector3(0.045, h - 0.38, 0.035), Vector3(x + s * (w * 0.5 - 0.045), dy, d - 0.02), "paint", body.darkened(0.1))
+		k.block(Vector3(w - 0.05, 0.045, 0.035), Vector3(x, dy + s * ((h - 0.38) * 0.5 - 0.02), d - 0.02), "paint", body.darkened(0.1))
+	k.block(Vector3(0.025, 0.4, 0.03), Vector3(x + w * 0.5 - 0.1, dy, d + 0.0), "metal_dark", Color(0.6, 0.6, 0.62))
+
+
+## A greengrocer's rack `w` wide at `x`: three tiers of crates, the higher
+## further back, tipped towards the shop and heaped with fruit and
+## vegetables, a chalked price board on the wall over them.
+static func produce(k: BuildingKit, x: float, w: float, rng: RandomNumberGenerator) -> void:
+	var d := 0.6
+	var wood := Color(0.55, 0.42, 0.28)
+	for s: float in [-1.0, 1.0]:
+		k.block(Vector3(0.04, 1.05, d), Vector3(x + s * (w * 0.5 - 0.02), FLOOR + 0.525, d * 0.5), "wood", wood.darkened(0.25))
+	var n := maxi(1, int(w / 0.5))
+	var cw := (w - 0.08) / n
+	for tier in 3:
+		var y := FLOOR + 0.28 + tier * 0.33
+		var z := d - 0.2 - tier * 0.1
+		for i in n:
+			var cx := x - (w - 0.08) * 0.5 + (i + 0.5) * cw
+			var tilt := Vector3(0.35, rng.randf_range(-0.03, 0.03), 0)
+			var col: Color = PRODUCE[rng.randi() % PRODUCE.size()]
+			k.block(Vector3(cw - 0.03, 0.12, 0.34), Vector3(cx, y, z), "wood", wood.darkened(rng.randf_range(0.0, 0.2)), tilt)
+			k.block(Vector3(cw - 0.08, 0.06, 0.29), Vector3(cx, y + 0.05, z - 0.02), "paint", col.darkened(0.15), tilt, false)
+			for j in 2:
+				var p := Vector3(cx + rng.randf_range(-cw * 0.3, cw * 0.3), y + 0.09, z + rng.randf_range(-0.08, 0.06))
+				k.part(Res.sphere(0.05, 6), "paint", Transform3D(Basis.IDENTITY, p), col.lightened(rng.randf_range(0.0, 0.1)), false)
+	# (the price board, its prices chalked up)
+	var bw := minf(w, 0.9)
+	k.plate(Vector3(bw + 0.05, 0.6, 0.02), Vector3(x, FLOOR + 1.6, 0.01), "wood", wood.darkened(0.3))
+	k.plate(Vector3(bw - 0.03, 0.52, 0.01), Vector3(x, FLOOR + 1.6, 0.025), "plain_dark", Color(0.1, 0.12, 0.11))
+	for i in 4:
+		k.plate(Vector3(rng.randf_range(0.3, bw - 0.15), 0.025, 0.004), Vector3(x + rng.randf_range(-0.05, 0.05), FLOOR + 1.78 - i * 0.12, 0.032), "plain", Color(0.85, 0.85, 0.8))

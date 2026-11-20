@@ -12,7 +12,7 @@ The long version: how each system works and why. For the short version, see the 
 
 ## Full controls reference
 
-These are the default keys. **Settings â†’ Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
+These are the default keys. **Settings Ã¢â€ â€™ Controls** (`scripts/autoload/keys.gd`, `scripts/ui/controls_page.gd`)
 changes any of them:
 
 - **By category:** camera, saved views, orders, abilities and fire support, building, control groups,
@@ -273,7 +273,7 @@ run and save the screen or a picture (listed with the other screenshot flags in 
   - **Command Net** (top right, under a mission's objectives): one row per commander with their colour and
     initials, what they command, and what they're doing this moment, in order: lining something up; the
     order they've just given ("Ordered Golf 1: ASSAULT D4"); what they've just committed ("Called in 155 mm
-    Artillery · E5"); who they have selected; idle; or which square they're watching. A row flashes when its
+    Artillery Â· E5"); who they have selected; idle; or which square they're watching. A row flashes when its
     commander pings. Its buttons look at their view, or watch it live: your camera keeps to their view
     until you pan, turn or zoom, with their colour round the screen and a caption saying whose view it is.
   - **Who spent the supply.** The host tells the side when a commander puts down a building, lays a line,
@@ -312,7 +312,8 @@ Every release also comes as a browser build (WebAssembly and WebGL 2), the same 
 plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
 a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
 between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
-lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have: the mist and the weather's
+smoke and dust thicken the plain fog where you look instead, and the water's caustics are a single web) and, with no threads to
 spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
 simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
 shaders (it keeps them, so only the first time); to keep that short, surface lighting is worked out per vertex and emitter particles run on the processor. Animated blast clouds and
@@ -531,7 +532,13 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   slackens the squad carries on, by bounds while they're still about (a squad told to move fast keeps running).
   *React to indirect fire*: at the second shell or bomb among a squad that isn't dug in, it runs out of the
   impact area - sideways or back from the enemy, never towards him - and goes back to what it was doing when it
-  lifts; men in trenches stay down in them. *Break contact*: a squad losing its nerve (or, for the AI, cut up and
+  lifts; men in trenches stay down in them. *Take shelter*: a squad holding a trench line with a dugout within
+  20 m goes down its stairs instead, all but a sentry (the man furthest forward) and any gun crews, and stays
+  below until the barrage lifts, the sentry sees enemy infantry within 90 m, or it is given an order - then
+  "Stand to!" and everyone is back on the fire step. A dugout holds nine; men below can't be hit, but a shell
+  that brings the section in buries the stairs and they dig themselves out hurt. Right-click a dugout's doorway
+  with a squad selected to send it below yourself: it stays there, barrage or not, until you give it another
+  order or the sentry sees them coming, then mans the line by the dugout. *Break contact*: a squad losing its nerve (or, for the AI, cut up and
   outnumbered) throws smoke and pulls back by bounds to a rally point, one team firing while the other moves,
   then counts off and checks its ammunition; crews on their guns and squads holding their own base don't.
   *Lying in wait*: a squad set to defend somewhere the enemy doesn't know about holds its fire until they're
@@ -546,7 +553,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   they leapfrog, so nobody is ever in the open without a team covering him. The covering team's gunner puts a
   burst into the hedge or house where the enemy was last heard (*recon by fire*). Ordered to run (Shift) it
   just runs. A squad sent to hold somewhere a long way off gets there as a squad, then spreads into its
-  positions - and *clears* any house on that ground first: two men stack on the door, kick it in, go through
+  positions. On a long move, followers take nearby places relative to the leader’s next waypoint, including when a new order reverses their direction. The squad *clears* any house on that ground first: two men stack on the door, kick it in, go through
   (a grenade first only if someone's known to be inside) and call "Clear!".
 - **Near ambush.** Hit at 30 metres or less, a steady squad that isn't hopelessly outnumbered assaults straight
   into the ambush instead of lying in the killing zone.
@@ -606,6 +613,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (tier
   1) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
   Selecting a drone or recon vehicle shows its sight ring.
+- Jets and reconnaissance planes bank into curved approaches and departures. The A-10 eases into its climb.
 - **Every aircraft spots.** A jet on a bomb run sees 70 m round it as it flies, a gun run 55 m, and an orbiting
   gunship or armed drone the 70 m circle its sensor turret is watching (and the ground beneath it). So an air strike
   also shows you what's around the target, and the minimap draws each aircraft with the ground it can see.
@@ -635,7 +643,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Stuck watchdogs: infantry re-plan if they stop making progress; vehicles back off, turn and re-plan.
 
 **The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
-- Town asphalt combines fine photographed aggregate with larger cracks and repairs, continuous across street junctions. Traffic wears it by lane: polished wheel paths, oil down each lane's middle, grit and damp in the gutters, with drain grates along the kerbs and manhole covers in the lanes. Repairs are saw-cut patches edged with sealant and cracks are filled with tar. Zebra crossings and parking lines are paint on that same asphalt, worn through in places, and junctions and markings take the rain as the roads do. Sidewalk slabs are shaded along the photograph's own stretcher-bond joints; the square is laid in larger slabs of the same concrete. Road and pavement normal maps follow their actual slopes. Photographic roof, concrete, wood and bark materials are calibrated to their intended colours, so grey roofs remain grey and terracotta stays distinct at distance.
+- Town asphalt combines fine photographed aggregate with larger cracks and repairs, continuous across street junctions. Traffic wears it by lane: polished wheel paths, oil down each lane's middle, grit and damp in the gutters, with drain grates along the kerbs and manhole covers in the lanes. Repairs are saw-cut patches edged with sealant and cracks are filled with tar. Zebra crossings and parking lines are paint on that same asphalt, worn through in places, and junctions and markings take the rain as the roads do. Sidewalk slabs are shaded along the photograph's own stretcher-bond joints; the square is laid in larger slabs of the same concrete. Outside town every road is drawn by the terrain shader itself, not a mesh: the grass job rasterises each texel's nearness to a road (Grass.road_field) into the packed biome texture's blue, and in its alpha whether that road is gravelled (the civilian network; the sides' supply routes are earth). The ground blends the trail scan (terrain layer 11) in by its height against the turf's, and on gravel roads the aggregate scan (layer 12) over it, banked where no wheel runs, with potholes in clusters, with wandering wheel ruts and rolled shoulders in the normal and the meadow's rutted soil at the edges. The road ribbon draws only the town's asphalt. Asphalt cracks run along and across the street grid. At crossroads the kerb turns each corner on a 1.6 m radius (TownGen.CORNER_R; Decor builds the corner as a terrain-following fan of paving with asphalt in the bite). Car parks are kerbed on three sides, and playgrounds are surfaced in poured rubber crumb. Road and pavement normal maps follow their actual slopes. Photographic roof, concrete, wood and bark materials are calibrated to their intended colours, so grey roofs remain grey and terracotta stays distinct at distance.
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
@@ -662,7 +670,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   steeper in the gullies than on the spurs, and take the same distance haze as the ground beneath them.
 - Distant scenery composes surveyed Mont Blanc, Matterhorn and Jungfrau ridge shapes into seeded fictional mountain groups and low passes, with floating-point heights and a finer indexed mesh at Medium/Far detail. Coastal scenery continues into an irregular shoreline and a coarse ocean surface beyond the detailed battlefield water. Boundary rivers extend into curved scenery pools with matching beds and banks; these extensions leave authoritative water shapes and navigation unchanged. Reusable cliff forms have uneven shoulders and irregular drainage cuts before erosion.
 - Coastal scenery continues through a broad water channel to outer islands, with gentler foothills and a coarse ocean horizon beyond the terrain. The channel is entirely outside the playable boundary; inland maps keep their land backdrop. Shared shoreline masks, seed phase and beach/seabed profiles keep scenery ground and water continuous across the playable edge.
-- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64� R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
+- Distant mountain groups lose contrast into sky-coloured haze while nearby ground retains its detail. Localized 3D cloud banks and thin trailing ridge mist sit beyond the playable boundary, with shaded bases, soft edges and lighting matched to the weather. A baked 64³ R8 noise volume avoids runtime generation; scene-depth termination prevents clouds behind mountains showing through them. Stronger aerial perspective is masked to distant scenery, preserving foreground contrast. Mountain clouds have independent Off/Low/Medium/High/Ultra settings (8/12/20/32 samples), work in Compatibility, and stop drifting with reduced motion. They do not affect visibility rules.
 - Rock beds catch light along their ledges instead of appearing only as painted colour bands.
 - Broad cliff fractures and smaller joint patterns break up recognisable repeated rock tiles.
 - Sheltered lower slopes collect pale loose stone while exposed walls retain darker bedrock.
@@ -709,11 +717,17 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   including backward seeks; older recordings and dedicated flat test scenarios remain supported.
 - A town in the middle, laid out on a street grid: two main streets crossing at the centre, side streets closing
   some of the blocks, asphalt with a dashed centre line, curbs and sidewalks, zebra crossings at the crossroads.
-  Houses stand on lots facing the street with their door to it; behind them, gardens closed off by hedges or
+  Houses stand on lots facing the street with their door to it, some on two floors and some with a wing out of
+  the back (an L or a T); behind them, gardens closed off by hedges or
   walls, fences down the sides, vegetable patches, washing lines and trees; some have a drive with the car on it.
-  Shops with awnings line the main street near the middle.
+  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs) and the shops
+  fitted out (shelving down the middle and along the walls stocked with goods, a cooler of drinks, a greengrocer's
+  crates, a counter and till), seen when the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
+  floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
-  stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
+  stalls, bollards; the fountain a stone basin with two bowls, the planters concrete troughs of bedding flowers
+  round a clipped box ball), glazed bus shelters with their timetable and flag, slatted litter bins, a yellow name
+  board where each road comes into town, a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
 - Fences are built as the real ones are (`BuildingFences`), one bay between two posts, climbing with the ground.
   A house keeps one look: white or painted pickets, chestnut paling, or iron railings with spear heads on a dwarf
@@ -729,7 +743,10 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   wire. Concertina is razor tape whose clipped loops cross as it is pulled out.
 - Street lights down every street (they light up at dusk and at night), wooden utility poles carrying sagging
   power lines with a drop to each house, fire hydrants, stop signs where side streets meet the main road, the
-  town's name on the way in and a bus stop. Power lines also run along the country roads.
+  town's name on the way in and a bus stop; traffic lights at the central crossroads (dark, the power's off), a
+  telephone box, post boxes, an advertising column on the square, hoardings over car parks and bombed-out lots,
+  street names at the junctions, and belongings dropped on the pavements by people fleeing the fighting. Power
+  lines also run along the country roads.
 - **1 x 1 km** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
   at the north and south edges, their starting FOBs some 940 m apart, so a battle has room to move: fights for
   the villages, farms, woods and river line on the way in, then the town.
@@ -753,35 +770,66 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   crests and streaks of foam laid down the wind. Breakers rise as they shoal, spill unevenly along the beach and
   surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
-  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
-  its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
+  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows (laid on the bed along the sun's way
+  down through the water, crisp in the first metre and broadening deeper down; from High a net of wandering cells
+  worked out per pixel, thin lines brightest at the nodes where they meet and tinted by the sun, so it re-forms
+  rather than slides; the same net is thrown back up onto hulls, piles and banks, moving with the bed's,
+  `caustics.gd`, faint, since that light is a small share of the sun's; both fade out as the camera pulls back, where
+  the lines would be finer than the eye picks out and only brighten the shore), and the sky and
+  its clouds are reflected, more the flatter you look across it. Where something stands above the water on screen
+  - a bank, trees, a bridge, a boat (not flames or smoke: they're drawn after) - it's mirrored instead (a ray marched over the screen; looked down on
+  steeply, where calm water mirrors only a couple of percent, none is marched). Rivers run: a flow map baked from
+  their courses carries the ripples down the stream and round its bends, quick in mid-stream and slack under the
+  banks, with lanes of glassy water and strings of bubbles drifting with the current; ponds lie still. The sun
+  shines green through the thin tops of the sea's waves when it's behind them, and the bed is dimmed by the water
+  the sunlight came down through as well as the water looked through, so a river's channel goes dark. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
   gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
   back into the spreading foam. Boats ride the same waves the player sees (the
   CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
   Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
-  fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
-  streaks; Ultra a finer grid for the swell.
+  fewer waves on a coarser grid; Medium is the full surface; High adds the reflections, the light on the bed
+  and the wind's streaks; Ultra a finer grid for the swell and longer reflections.
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
-  cross road either side of town and on the road between each HQ and the town; farmsteads (farmhouse and barn round a yard, hay bales, a fenced road frontage, an orchard; the barn weatherboarded
-  under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
+  cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, round bales of straw (the spiral of the roll on their ends) and silage wrapped in black or green film, a fenced road frontage, an orchard; the barn weatherboarded
+  under a corrugated sheet roof with loft doors in its gables; inside, hay stacked in a corner, stalls with mangers
+  and hay racks, a cart, a workbench and churns, tools hung on its walls; round the yard a parked tractor, a water
+  trough, a plough and a harrow, a churn stand at the gate, a hen house and its run) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
+  Photographed gravel roads blend compacted wheel tracks into loose aggregate and irregular dirt edges,
+  with small, ground-aligned stone deposits and reflector posts
+  outside town. The road mesh follows the terrain across its width and adds a shallow visual crown.
+  Posts avoid buildings, junctions and water; the shoulders do not widen the drivable road.
+  Supply tracks use darker compacted earth, two wheel ruts and a broken grassy centre.
+  Loose fines trail onto asphalt at town entrances. Bridge decks use the shared weathered
+  asphalt and worn road paint, with expansion joints; gravel stops at the deck boundary.
+  Concrete driveways have transverse slab joints. Paving and bridge decks share rain wetness.
+- A skirmish town has its parish church where a road comes in, in a walled churchyard of graves: a nave and
+  chancel of coursed stone with dressed quoins, buttresses and tall traceried windows of stained glass under a
+  steep slate roof, and a west tower with a clock, louvred belfry, battlements and a slate spire seen across the
+  map. It has two ways in: the west door under the tower (the tower's ground stage is its porch) and the south
+  door in a timber porch on stone dwarf walls (cover for men holding it). Men go in by either, fight from its
+  chest-high windows (the roofs lift off for them, over the pews, the pulpit, the lectern, the font and the choir
+  and altar), and its walls come down to rubble as a house's do. A squad told to hold it takes its places inside,
+  at the windows and doors, rather than out among the graves; its slate roof on oak trusses rarely catches fire.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
   supply. (Missions don't have them; the dumps use their own random numbers, so a seed's map is otherwise
   unchanged.)
-- Houses are rendered and painted, bare brick or rough stone, and dressed as they're built: a darker plinth and a
+- Houses are rendered and painted (nine old paint colours, from limewash to a faded pink or sage), bare brick or rough stone (three shades of each), and dressed as they're built: a darker plinth and a
   band under the eaves, sills and lintels in render, concrete or dressed stone (a keystone over stone windows),
   painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
   shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
   often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
   houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; moss and lichen
-  grow on the tiles, and flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  grow on the tiles in uneven patches. Tiled roofs are weathered clay or concrete tile in five shades or slate and grey tile in three,
+  barns dull galvanised, rusted or red sheet; walls are dirty under the eaves and damp at the foot, with the odd run down from a gutter; brick is old red-brown, and stone is coursed rubble (courses of three heights, stones
+  of their own lengths and shades) in pale lime mortar. Flat roofs are felted black or green-grey, bare concrete or old asphalt, and carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
@@ -792,7 +840,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
   tiles, plaster and glass; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
-  a charred joist and bent rods sticking out. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
+  a charred joist and bent rods sticking out. A ruined or shelled house has debris spilled at the foot of its walls, and glass lies
+  under shot-out windows. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
   to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
   boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
@@ -800,7 +849,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and there a trampoline, all set dressing that a blast or a truck
   knocks over. On the walls are a house's services and the things by its door: meter boxes, outside taps
   with a hose on a hook, air conditioners on brackets or on a pad, satellite dishes on arms, and at the front
-  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
+  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: display windows over panelled stall risers with their stock set out behind the glass, a fascia with the shop's name painted to match, a striped awning, and on the
   pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
@@ -853,7 +902,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 **Wounded, medics and prisoners** (`squad.gd`, `rules.gd`)
 - Badly hit soldiers go down screaming for a medic and start bleeding out. If they're strong enough they crawl to cover and keep firing a pistol, including while being dragged.
 - The squad lays covering fire and throws smoke. A rescuer drags the wounded man back by the shoulders while an escort walks backwards beside them firing. Then he gets patched up (medics are 2x faster). Each time he goes down he comes back weaker.
-- Medic tent: two stretcher bearers recover wounded *and dead* soldiers. If one bearer is hit, the other drags the stretcher alone. After the tent, soldiers limp back to base and rejoin a squad.
+- Medic tent: a field hospital, a frame tent with the red cross on its roof, its windows and its door open,
+  stretchers and medical stores by the door (a Rebel one older canvas, faded and patched). Two stretcher bearers
+  recover wounded *and dead* soldiers. If one bearer is hit, the other drags the stretcher alone. After the tent, soldiers limp back to base and rejoin a squad.
 - Rarely, a cut-off soldier whose squad is all down will throw away his rifle and surrender. The Rebels march prisoners
   into their tunnels and interrogate them. The Coalition questions prisoners on the march back. Either way the
   prisoner gives **live intel** generated from the real game state (FOB supply and defenders, MG nests,
@@ -888,7 +939,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Signal** ([UI.md](UI.md)): the interface is a battle management display laid onto the scene. The HUD sits
   on the battlefield over scrims that darken toward the screen's edges, with no boxes: 1 px rules under rows and
   corner ticks where a region needs marking, everything square. Names and labels are condensed capitals, every
-  figure and code is mono (`SUP 2115 +230/M`, `PINNED · TO SPT D4`, `T+04:31`, `RDY`), and prose is kept for
+  figure and code is mono (`SUP 2115 +230/M`, `PINNED Â· TO SPT D4`, `T+04:31`, `RDY`), and prose is kept for
   sentences. One accent colour marks what's selected, active or primary. Short choices in the settings are rows
   of segments, amounts are counted bars, keys are drawn as key boxes. Things cut, type on, count or flicker
   rather than glide or glow, and Settings > Interface > Reduce motion makes all of it cut.
@@ -983,7 +1034,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Mac, makes two fingers zoom instead, for a Magic Mouse.
   Jumps (the last alert, a base, a group, a unit in the order of battle, a saved view) glide rather than cut.
   Backspace turns back to the heading the battle started on, Ctrl+F follows the selection until you pan away,
-  and Ctrl+F5..F8 save views that F5..F8 glide back to. Select one vehicle, building or individual soldier and press F10 to cycle its views. Each has behind and aerial views. Vehicle models can also offer tracks or wheels, barrel, roof gun and engine deck. Rotorcraft offer a cabin-side view. Sling-capable helicopters offer a wide view of the lift and a cargo-door view looking down at the load. The stern-quarter view looks past a boat's cabin with the horizon level as the hull rolls. On the patrol ship, Bridge roof looks down past the port rail as boats come alongside. Boats also offer bow and waterline views. On a RHIB the starboard camera looks forward past the console. The Helm view rides behind the driver’s right shoulder as he sits at the controls. Escape returns to command with the object still selected.
+  and Ctrl+F5..F8 save views that F5..F8 glide back to. Select one vehicle, building or individual soldier and press F10 to cycle its views. Each has behind and aerial views. Vehicle models can also offer tracks or wheels, barrel, roof gun and engine deck. Rotorcraft offer a cabin-side view. Sling-capable helicopters offer a wide view of the lift and a cargo-door view looking down at the load. The stern-quarter view looks past a boat's cabin with the horizon level as the hull rolls. On the patrol ship, Bridge roof looks down past the port rail as boats come alongside. Boats also offer bow and waterline views. On a RHIB the starboard camera looks forward past the console. The Helm view rides behind the driverâ€™s right shoulder as he sits at the controls. Escape returns to command with the object still selected.
 - **The minimap** (`hud_minimap.gd`): the ground, water, roads (main roads light with a dark edge, supply
   tracks thinner), woods and every house's footprint (light while its roof stands, dark once it's a ruin) are
   baked into a texture. Over it go the fog of war (darker where your side can't see), every man you can see as a
@@ -1078,7 +1129,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   cradles of their own that the crew lay on the target: they elevate onto it (twin AA guns climb steeply after
   aircraft, a helicopter's guns depress onto the ground), door guns and hull pintles swing out to it within an arc
   on their own side, a coaxial gun keeps to the main gun's travel, and each round runs the gun back on its cradle
-  with a jump at the muzzle. The host sends where each vehicle's guns are laid, so a client (and a solo battle,
+  with a jump at the muzzle. A crew-served gun has its gunner on it (a technical's DShK, a Humvee's .50 in its
+  turret, a light vehicle's pintle gun, a boat's bow gun, a Ghost Hawk's door guns): one of the infantry in his
+  side's kit, standing behind it (kneeling at a boat's bow, crouched in a helicopter's door) with his hands on its
+  grips, turning with it as it's laid; door guns rest pointing out of their doors with the gunner inside. A
+  pickup's gunner stands on the bed floor and walks round the pedestal as the gun swings, never off the bed; a
+  Humvee's stands in the hatch inside its O-GPK turret, which traverses whole with the gun. Pedestal guns stand
+  tall enough to fire forward over the cab. Remote
+  weapon stations and turret guns have none. The host sends where each vehicle's guns are laid, so a client (and a solo battle,
   whose view is a client of its own simulation) lays them too, main guns included. Vehicle and gunship shots leave the
   actual model barrels, including separately positioned gunship guns. Tank drivers build into turns. Turrets accelerate into a traverse and brake onto
   the target, holding their world bearing as the hull turns underneath. The gunner holds a steady aim
@@ -1151,13 +1209,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   rotor is usually gone, and broken blade and torn panels lie strewn round her. Over deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
-- Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
+- Tanks smash through walls, trees and cars. The tracks and hull corners break house walls on contact, bringing down the roof and leaving a path across the slab. Solid bridge parapets and headquarters buildings stop the hull. Small arms ricochet off them. Frontal rockets can bounce,
   and a blown track leaves the tank stranded until engineers repair it. Destroyed vehicles become wrecks you can use as cover.
   A destroyed vehicle burns out: over the best part of a minute the fire spreads across the hull from where it took
-  hold (the engine deck, a helicopter's engines), leaving charred steel, rust running down the sides, soot streaks and
-  ash on the tops, with a few islands of blistered paint; embers glow in the seams while it burns. Tyres and canvas
-  burn away and a wheeled hull settles on its rims, the grass round it is burnt flat and the ground blackened, and
-  torn-off pieces lie round it.
+  hold (the engine deck, a helicopter's engines), leaving charred black steel, the paint burnt to a pale grey film
+  where it burnt hottest, rust running down the sides, soot streaks and ash on the tops, with a few islands of
+  blistered paint; embers glow in the seams while it burns. Tyres and canvas burn away and a wheeled hull settles on
+  its rims, the grass is burnt flat and the ground blackened a couple of metres out all round it, and torn-off pieces
+  lie round it. A tank or IFV whose ammunition goes up (more likely the harder it was hit) has its turret blown clean
+  off: it rises through a 1.6-second arc and settles for 0.7 seconds a few metres away, upside down, on its side
+  or dug in, its gun bent, a black hole where it sat. This visual motion uses the battle clock and recorded
+  destruction time, so late model builds and replay seeks reconstruct the same pose. The seeded resting pose
+  remains authoritative; the animation adds no rigid-body simulation. Replay validation covers the conditional
+  wreck paint, turret and skirt fields.
 - Coalition: battle tank, **IFV** (tracked, 25 mm with airburst rounds, carries a four-man fire team), **Humvee**
   (.50 cal), supply helicopter, **attack helicopter** (circles its target with a 30 mm chain gun firing explosive
   rounds, plus rocket salvos).
@@ -1220,7 +1284,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, HESCO walls and T-walls (Coalition), barricades (Rebels), barbed wire, minefields, tank traps,
   camouflage nets, ammo caches, watchtowers (see 85 m, 115 m with a lookout up; shoot over walls), and Rebel
-  tunnel entrances (move squads through the network or bring them back out with "Exit here").
+  tunnel entrances (move squads through the network or bring them back out with "Exit here"): a shaft dug down,
+  shored with timber round its mouth with a ladder into it, sandbagged, a sheet of corrugated iron propped over its
+  back against eyes overhead, its spoil heaped behind.
 
 **Base defenses**
 - **Build grid**: buildings and works sit on a 1 m grid at 45 degree headings; a building's walls land on grid
@@ -1255,8 +1321,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     joined cuts remove retaining boards and parapet bags where their supporting ground is gone.
     Placing or removing a bunker refreshes the vegetation around its earth banks.
     The trenches scenario includes a rear bunker route, covered ammunition, sandbags and anti-tank obstacles.
-  - **Rear bays:** occasional long sections include a recessed supply shelf or a timber-roofed resting
-    bay, with kit kept off the through route. The timber roof is physical cover, not a bombproof bunker.
+  - **Fitting out** (`trench_fittings.gd`): kept deliberately plain. A finished fire bay (one running across the
+    enemy's front) has a low parapet of sandbags along its front lip, two bags high, all one earth-caked hessian
+    so it reads as part of the ground. Walls are revetted with planks behind posts, every third section with
+    corrugated-iron sheets on round pickets instead. Along the bays: a scaling ladder against the front wall on
+    some, ammunition boxes on the fire step, and the field telephone line along the back wall. Communication
+    trenches get just the line.
+  - **Rear bays:** occasional long sections include a recess off the through route: a dugout entrance (a
+    timber door frame in the back wall, the stairs going down into the dark, a gas blanket rolled over the door;
+    the dugout is mined deep under the ground behind, so nothing of it shows above), a timber-roofed funk hole or a supply shelf. Squads shelter in the dugouts under shellfire
+    (see *Take shelter*); the funk hole's roof is physical cover, not a bombproof bunker.
     Moving soldiers yield and sidestep inside narrow passages; crossing a high lip takes a slower climb.
   - **Damage:** a trench remains excavated after bombardment. Damage affects one section's depth,
     exposes earth and broken timber, removes its fitted kit and slows passage until repaired. Neighbouring
@@ -1265,11 +1339,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   its tripod for the Rebels, on a platform of bags behind a front wall low enough to fire over. The gunner kneels
   behind it with both hands on it; it traverses to where he aims within its arc, bucks as it fires and the
   tracers leave its muzzle. **Placed on a trench it becomes a gun bay**: the tripod on the front lip behind a low
-  wall of bags, the gunner standing on the fire step, the trench left open. The AI sites its guns in its trench
+  wall of bags, the gunner standing on the fire step, the trench left open. The bay's own parapet and kit give
+  way to it. The AI sites its guns in its trench
   lines.
 - **.50 cal nest** (M2HB on the M3 tripod / DShKM with a gun shield; also as a trench bay): 100 m range and crushing suppression. Its armour-piercing rounds shred trucks, technicals,
   helicopters and drones (they still bounce off tanks).
-- **Mortar pit**: crewed automatically and fires on enemies your side has spotted, behind cover too, at 30–160 m.
+- **Mortar pit**: crewed automatically and fires on enemies your side has spotted, behind cover too, at 30â€“160 m.
   It holds fire when your own troops are within 8 m of the target. Select it to call 6-round HE or smoke fire missions.
   Rounds whistle on the way down, so soldiers shout "Incoming!" and hit the dirt, or dive if a shell is landing right on them.
 - **Mortar teams** (both sides) do the same on the move with limited rounds. Press F to call a fire mission.
@@ -1320,6 +1395,224 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   graphics setting (Cloud shadows on everything; on from High, and in Cinematic; off, the grass and bushes fold the
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
+- **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
+  far side of the field lies in layers. Mist lies level in the low ground, a few metres deep over the valley floor (deeper and thinner at dawn), filling the valley, the hollows and
+  the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet ground as it
+  dries after rain), and a hill rises out of it rather than wearing it up its flanks; it takes little of the sun
+  straight through it and is lit mostly by the sky, evenly (an emission in its fog shader), so it reads as a pale sheet
+  rather than flaring into a glowing band toward a low sun, thinning upward to a soft top so the ridges behind stand out as silhouettes.
+  Open water has a smaller extra pooling weight than enclosed hollows: the weather grid already makes it humid,
+  and applying both full weights had hidden nearby boats behind an opaque coastal band. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
+  at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
+  mist glows, and turned from it the sky lights it blue-grey. At dawn, golden hour and dusk a faint low haze fills the
+  first tens of metres with the fog's anisotropy near 0.7-0.8 and little skylight in it, so it glows close around a low sun
+  and stays clear across and away from it, and the air in shadow stays dark: the fog reads the sun's shadow map for
+  houses and trees, and the air shader marches the sun's ray a few times over the ground's height for the ridges. Close up, the smoke a barrage or a fire leaves is a plume
+  of its own (`smoke_plumes.gd`, up to 16 fog volumes laid along the wind): dense where it rose, drawn out, climbing and
+  breaking into rags downwind, lit on top and grey underneath, until it thins away; shells landing close together feed
+  one plume. A plume over a burning house or wreck stands as long as the fire burns and keeps its smoke lit: each puff of the fire's
+  smoke leaves the flames lit a dull orange-red and darkens to grey as it climbs (the smoke particles' own light,
+  set from the fire's strength), so the undersides of the billows nearest the fire glow, mottled as the smoke is, and a shell burst flashes the pall around it for a
+  frame or two. Over that, a coarse weather grid sized from the map (32 cells
+  across a 1 km map, 64 on the bigger ones) holds the mist, rain, dust and smoke over each patch of ground: rain
+  comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust (by the ground
+  under them, `WeatherGrid.dust_of`: most off a dirt road or bare, churned earth, a little off a paved street or the
+  leaf litter in a wood, none off thick grass or mud, out of the water, or in the rain; how fast each goes comes from
+  where it was half a second before, since a peer isn't sent the vehicles' speeds), and barrages,
+  burning buildings and smoke screens leave a pall (the far field's smoke, behind the close-up plumes). The grid drifts with the wind as a whole (a sub-cell offset the
+  shader reads, the grid shifting a cell downwind once it reaches one), mist and rain settle toward what the weather
+  makes of each cell, and dust and smoke thin away (half-lives of 22 s and 55 s); it's swept a few rows a frame
+  and uploaded once a sweep, plus immediately when a whole-cell drift wraps so the texture and sampling offset
+  move together. With volumetric fog it's one fog volume over the map with its own fog shader (ground
+  height from the terrain tiles, the grid, a drifting noise, the cloud pattern); without it, and in the browser, the
+  plain fog takes the air at the camera's focus and a height fog lays the mist in the low ground below it. All of it
+  thins as the camera pulls back, so it never veils the battle you're looking at. It's looks only: who can see whom
+  is the host's own smoke (`Combat.smoke_blocks`), so the grid runs on every peer from what it already has (the
+  mood, the rain's wetness, replicated fires, smoke rounds and vehicles, the blasts' effect events), sends nothing
+  and never touches the battle's seed. Close up, a vehicle's dust is a trail of its own (`dust_trails.gd`, up to 20
+  fog volumes, each a stretch of the route up to 36 m long): a low, pale bank that billows up behind it, spreads,
+  drifts off downwind and settles over about half a minute, so a column's route stays marked; a vehicle behind on the
+  same road thickens the stretch rather than laying another. After dark the air lights up round the lights: at night
+  a damp low haze lies over the field that the moon barely lights, and the street lamps (softly, a halo round each rather than a wash over the town), the flares, the muzzle and
+  burst flashes (each light's `light_volumetric_fog_energy`) and the headlights of the vehicles driving near the
+  camera (`headlights.gd`, a pair of narrow shadowless spot lights each for the six nearest on the move, none in the
+  browser) glow in it: soft halos round the lamps, a brief bloom with each flash. The fog's grid can't hold a beam's
+  edge, so each headlight draws its own: a glare spot on the lamp and a cone mesh whose shader follows the view ray
+  through the cone (24 steps, stopped at the depth buffer) and adds up the light thrown back along it, bright by the
+  lamp and dying away past about 15 m, with a firm edge; the spot light lays the pool on the road. A column's dust shows thinner after dark, when only the headlights light it. Under rain the
+  showers further off hang as grey curtains from the cloud base (`rain_curtains.gd`, 24 camera-facing quads scattered
+  over a 3.6 km tile that drifts with the clouds and wraps round the camera, none within 360 m, where the falling
+  streaks are): soft veils, uneven across, feathered into the cloud base and slanted by the wind, some trailing off
+  before they reach the ground, under both renderers.
+- **Light probes** (`light_probes.gd`): a grid of probes over the whole battlefield, one every 2 m at eight heights
+  2 m apart following the ground, records how much sky each point sees, from which way, and the mean light off
+  whatever hides the rest. Streets, courtyards, trench floors and the foot of walls take less skylight than open
+  ground; a room under its roof is dim and lit from its windows (seen when soldiers go in and the roof lifts away);
+  a sunlit wall throws some of its colour onto the shaded one across the street. The scene as the probes see it is
+  a block model: every structure's boxes (and roofs, tree crowns and nets, half see-through; floor slabs and kerbs
+  count as ground) laid into 1 m cubes up to 16 m above the ground in 64 m tiles, over the terrain's own heights. The GPU traces 32 rays a probe through it
+  (a 2D pass into a 4096x1536 atlas, 8 bytes a probe: the first two spherical-harmonic bands of what it sees, which
+  are also its bent normal, and the bounce), and every surface shader that opts in rebuilds its own light from the
+  probes round it in five filtered reads. On Low its cosine-weighted share of sky is the exact two-band formula
+  m0 + 2 m1.n; on High a tiny network with baked weights (10 inputs, 16 hidden, 176 multiply-adds a pixel), trained
+  offline against sky occlusion traced from every pixel (ground, walls and roof tops), reads it from the same numbers
+  with about 28% less error on towns it never saw. It multiplies the skylight (AO) and the cool fill light opposite
+  the sun, which stands for skylight too; what it doesn't see comes back lit by the bounce. Where the probes see
+  little sky in any direction, a room, the sun is cut to 40%: a roof lifted off to show the men inside takes its
+  shadow with it, and this gives the room back its indoors without hiding them (wall feet, roof tops and narrow
+  streets see about half the sky and keep their sun). The probes' trace lets the same 40% of sun through roofs, so they see
+  the sunlit patch the player sees and bounce it, warm and floor-coloured, into the room's shade; skylight and fill
+  never fall below 30%, so a room's corners are dim, not black (50% once the sun is low, below about 9 degrees and
+  easing in from 27, when it no longer reaches a room's floor to bounce: dusk interiors stay dim, not crushed). Open ground under
+  open sky counts as seen (the sky's lower half already stands for it), so open fields look as they did. Only what
+  changes is redone: a structure built, destroyed or burnt marks its tile, which is laid again on the CPU and its
+  probes traced again, two tiles a frame nearest the camera first; craters retrace the tiles round them (out in the open too: a crater's tile is traced from then on, and a pixel
+  whose column stands below the ground 3 m round it, a shell crater's bowl, loses up to about a quarter of its sky at the floor, less up its sides), and trenches too (their mask cuts them into the ground the probes trace and
+  stand on, though 1.4 m trenches are narrower than the 2 m grid, so trench floors stay mostly SSAO's); the bounce is
+  kept relative to the light it was traced in (the sun at its height, never below a quarter, plus the sky), so as
+  Time passes dims and reddens the evening it follows every frame with nothing traced; once the sun has swung 2
+  degrees or its share of the light changed by 0.12, the bounce alone (not the cubes or the sky share) of every tile
+  with something in it is traced again, one a frame after anything the battle changed, so a tile's step is a degree
+  or two of sun; a doorway's leaf swung open, a tree burnt to a snag or a car thrown across the street lays its tile
+  again on host and client alike; tiles with nothing in reach are written as open
+  sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
+  light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),
+  Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off. Reflections are shut in with
+  the sky too (specular occlusion): Godot's own cone-against-cone test (after Jimenez et al. 2016), which runs after
+  the battlefield's reflection probe, takes the visible sky's cone from AO (which carries the probes' share of sky) and
+  its axis from a bent normal, so every surface that reads the probes hands it theirs (`BENT_NORMAL_MAP`, in the
+  surface's tangent space, leaning back to its normal where the sky is seen nearly all round). Writing the reflection
+  into RADIANCE, as this first did, came before the reflection probe, which painted over it. Hulls parked under the
+  eaves, wet cobbles in an alley and windows across it stop mirroring the open sky, as do wet floors in
+  trenches. Tree crowns are laid as leaves, sized to the tree the game grows (a
+  fir's cone in two tiers, a field tree's dome, an orchard tree's small one), three fifths of the light stopped a
+  cube; the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it
+  sit in a dimmer, greener shade. The occlusion itself is one grey factor on the ambient, which would take away
+  more green than red (the sky's light is greener than the sun's left behind), so the bake also keeps how much of
+  what shuts a probe in is leaves, and the share of skylight the crowns took comes back tinted toward the light
+  through leaves, (0.35, 0.55, 0.2) at grey's brightness, about their albedo squared. Grass, ferns and undergrowth (which cover most of a wood's floor) read the probes
+  too, once a vertex rather than a pixel (`CloudShadow.PROBES_VERTEX`), each blade as if it faced up. Light leaks: a pixel on a floor by a wall sits between a probe in the room and one outside,
+  so on High it reads the cubes halfway to the probes on either side of it, each way (six reads), and leaves out any
+  with a wall or roof between (a cheap stand-in for DDGI's per-probe depth). Fires and lamps (lights in the
+  `probe_light` group) light the probes round them: the 16 nearest the camera, at their steady brightness rather
+  than their flicker, are traced from every probe within 1.6 times their range (20 m at most) through the cubes,
+  so walls keep the glow in (the burning thing's own cubes aside: the flames fill its box), into the atlas's bottom
+  block beside the heights; a light that comes, goes, moves a metre or changes by a quarter retraces only its own
+  tiles, four a frame. It reaches the browser too, which has no fire lights of its own. The skinned riflemen, whose
+  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, and the
+  procedural men's flat colours (`LightProbes.probe_surfaces`: every other soldier's uniform, face and kit, and the
+  distant men's baked poses copied from them) a twin that does the same; both go through `CloudShadow` like the
+  world's surfaces, so a man in a room or an alley has the sun cut and the fill light shut out with the sky as the
+  walls round him do, and in a wood takes its green shade, rather than standing in open-sky light. Vehicles and men shut out a little sky round their feet (after Unreal's
+  capsule and Frostbite's box occlusion): every frame their footprints, rounded boxes for hulls (half-metre
+  corners), darkest along the contact line under tracks and wheels and fading out over a pad of 1 to 1.5 m that
+  grows with their height, and faint discs for men (fainter crouched, a longer patch lying down), are
+  drawn into a 256-texel map over 96 m round the camera that a pixel reads once and fades out over 1.8 m above the
+  ground, so a parked tank sits in a soft dark pool, a man in a faint one, and a hull's deck and a man's head still
+  see the sky; a helicopter in the air casts none.
+- **Bounce light** (`ssgi_fx.gd`; Settings > Graphics > Lighting: Off / Medium / High; Medium on High, High on Ultra and
+  Cinematic): sunlight thrown back off walls, roofs and roads lights what faces them, in their colours, so a sunlit
+  wall warms the pavement and the shaded wall across from it, a statue's plinth glows from the square round it and
+  the floor of a roofless ruin picks up its sunlit walls. It is screen-space global illumination, a compositor pass
+  in Forward+ (the browser build has no compositor and draws without it): at half resolution, 4 (Medium) or 6
+  (High) cosine-weighted rays per pixel march up to 8 m through the depth buffer (after Mara, McGuire,
+  Nowrouzezahrai and Luebke, "Deep G-Buffers for Stable Global Illumination Approximation", HPG 2016) and bring
+  back the light of the first surface facing them; rays that escape bring nothing, since the engine's sky light
+  already covers the open sky. Last frame's bounce light, reprojected, is added to what each surface sends out,
+  so light carries one bounce further every frame (a wall lit by the street lights the floor beside it in turn).
+  What goes round again is the light each surface shows, at 0.8 of it, so each round is weaker by the surface's
+  colour and that share, and the gather's cap (below) holds it to what its rays hit: on a still view of a ruin the
+  further bounces add about a fifth to the first one's light, gathered in the room's inner corners and wall feet,
+  and settle within two seconds with no creep after. The answer is accumulated over up to 16 frames by reprojecting each pixel through
+  last frame's camera (so a pan or zoom keeps it), kept only where the same surface was there (depth and facing
+  agree) and clipped to this frame's neighbourhood (Salvi's variance clipping, GDC 2016), so moving units and newly
+  uncovered ground never trail a ghost; then an edge-aware blur and a joint bilateral upsample (Kopf et al. 2007)
+  keep it off the wrong side of an edge. Forward+ keeps no albedo buffer, so each surface's colour is estimated
+  from its pixel against the sky light it gets (exact in shade, where bounce light shows; capped in sun). Where
+  ambient occlusion has darkened a pixel, that estimate would darken the bounce a second time, so a wall's or a
+  room's colour is held to at least a quarter's reflectance in its own hue: contact shadows lift instead of staying
+  black. Not level ground's, or a man's or a vehicle's: a cast shadow there is lit by the shade's light alone, so the
+  estimate is right, and held up to a quarter the dark grass and near-black gear of a squad took several times their
+  own share and lifted grey. On level ground the bounce may raise a pixel by 15% at most, so a cast shadow keeps its
+  depth against the sunlit ground beside it (its rays run into the next blades of grass, and overstate what reaches
+  it); walls and what stands in their shade keep the full light. A pixel brighter than the sky light alone could make it is taken to be in the sun and its colour is
+  read against sky and sun together, so sunlit surfaces aren't veiled. The bounce is laid on at twice physical
+  strength, to make up for what the rays can't see off screen and past 8 m, and its colour is brought back towards
+  the wall it came from (mixed over many rays it greys). Further off (past 15 m, fully by 50 m, so
+  the usual 55 m command height gets all of it) the rays reach twice as far and the light is laid on one and a half
+  times as strong again (two and a half at first: capped at what its rays hit, that filled the shade at a wall's foot to
+  nearly the sunlit grass's light, a hard brown band from the command height): there a wall is a few pixels tall, and a lift of a few levels in its shade went unseen (the
+  first ramp ran out to 90 m and gave the command height less than half). From 55 m at midday, yards, wall feet and
+  roofless floors lift plainly while open grass, lit by the sky alone, is untouched (it has nothing near to gather
+  from); sunlit surfaces in the frame's brightest fifth gain about 5-7% (linear) on average. However strong it is laid on,
+  the light a surface gathers never comes out brighter than the surfaces its rays hit (a yard walled in on every
+  side gets its walls' own light, no more), and from afar it was laid on a quarter greyer, so a yard was tinted by its
+  wall rather than painted it; once sunlit ground stopped taking it, that went back up to 1.3 times as gathered, so a
+  red-brick house reddens the shade at its foot from the 55 m command height. Under cloud the walls have little light to throw, so there it stays subtle. Fires,
+  lamps and flashes bounce the same way, since the pass reads the lit frame, flames and all: a burning car throws its
+  orange onto the wall and grass beside it, and a shell's flash is thrown about the frame it bursts (the history is
+  clipped to what this frame's rays see, so it comes and goes with the flash; cutting the history short on a jump
+  was tried and only added shimmer). Rays that leave the screen count as misses, falling back to the sky light like
+  any other (taking them as unknown instead, and letting the rest stand for them, lit open ground three times over
+  up close, where most rising rays leave the frame): over twelve headings the outer 2% of the frame gets about as much
+  as the band inside it, and in a fast pan the edge bands change no faster than the rest. Posts, trunks, foliage and
+  soldiers were looked over for leaks and halos and show none; holding each ray's hit to its own step's depth, to
+  keep thin things from catching rays that pass behind them, cost a third of the light off real walls and was left
+  out. A rough surface also gives the gathered light back as a dielectric's sheen (Karis's split-sum fit), fading
+  out on mirror-smooth ones, which the screen-space reflections handle: a few percent of the bounce on rough
+  ground, a little more on wet patches seen at a slant. Vehicles and soldiers (what the renderer marks as moving) take only a fill: at most 15%
+  again the shade's own light on them, at half the colour, and nothing from rays that run into a man or a vehicle
+  (their own body first), so camouflage keeps its colours and their shaded sides their depth; a tank's shaded side
+  gains about 5% at midday. The colour
+  the gathered light is laid on with is brought back against the sun's own colour, not white: made richer along with
+  the rest, the sun's warmth in everything it lights turned the light off a pale wall or lawn orange, and browned
+  soldiers standing by it. In the sun the bounce is a few percent of a surface's light at most, and the short rays overstate
+  it (from a lawn they run into the next sunlit blades, whose faces turn every way), so where a pixel's light is the
+  sun's it is laid on at 0.15: sunlit lawn, decks and roofs gain under 1.5% while the shade beside them gains 11-16%.
+  Which pixels the sun reaches can't be read from brightness (a dark lawn in the sun is no brighter than a pale wall
+  in shade, and read as shade it was given a yellow near-white colour that tinted the light laid on it orange): the
+  engine's shadow maps aren't open to the pass, so at half resolution each pixel facing the sun takes 16 steps
+  towards it through the depth buffer, up to 10 m, as far as a house's or a tank's shadow falls on screen (a grass
+  blade's own shadow is too fine to see, so a lawn reads as in the sun). That answer is brought up to full resolution
+  weighted by how near each half-resolution sample's brightness is to the pixel's, and trusted only when it is sure
+  and runs smoothly rather than as a switch; where it is mixed (only near a shadow's edge) the same steps are taken
+  again from the full-resolution pixel, so the lift follows the shadow rather than the half-resolution pixels'
+  steps (they showed as a sawtooth along a room's sunlit floor). Its sunlight is taken as at least what
+  level ground of its facing gets, and the shade's light counts Atmosphere's fill light from the side away from the
+  sun, which lights shaded faces turned to it as strongly as the sky does.
+  Smoke, dust and flames are drawn over the lit world, and the pass needs them drawn (a flame is a light it
+  throws), so it runs after them; with MSAA anything written before them is lost again when they are resolved. A
+  picture of the world taken just before them tells it where they are: where they moved a pixel's brightness, the
+  bounce light is laid on only in that ratio, so a dust cloud in front of a sunlit tank hides the tank's bounce
+  light as it hides the tank (laid on regardless, the hull's outline showed through the cloud), and the fog of
+  war's shade, a multiply, darkens it by exactly its own share. Level ground is spared where they darkened it: roads are drawn
+  among the see-through things too (their edges fade into the verges), and the asphalt is darker than the ground
+  under it, so a road over grass would otherwise read as a cloud; level ground they brightened is under dust or
+  smoke. The light each surface sends out is read from that same picture, so a muzzle flash's or a flame's sprite
+  doesn't light the gun barrel it hangs in front of; fires and flashes still throw their light off the walls and
+  ground their own lights reach.
+  At the edges of thin things (a man, a post) where all four half-resolution pixels belong to what stands in front,
+  the upsample looks a pixel further out for one of the pixel's own surface; at 3x, soldiers against walls and
+  grass showed no halo either way. With the roof
+  lifted off a house (as when men are inside), its sunlit floor lights the shaded floor along its walls and the walls
+  themselves. The light probes (`light_probes.gd`) shut out sky in streets and rooms and add a coarse bounce of their
+  own; with both on, the two mostly complement each other (the darkest 30% of a ruin: probes alone -21%, bounce light
+  alone +31%, both +2%; an alley -50%, +147%, +54%), and bounce light gives about a quarter less on top of the probes,
+  since its colour estimate still reads a surface against the open sky's light. In a 60 fps golden-hour pan and zoom
+  over the town, the bounce light changes about 1 level a frame (on a mean of 4) once the camera's shift is taken
+  out, against 2.8 for the whole picture, with no shimmer or crawl; and with the camera still while a squad crosses a field at golden hour, the
+  bounce light's mean on the still ground and walls holds within 6% over three seconds and each pixel varies about half
+  a level round its own average. Godot's
+  own SSIL (the Indirect light setting) and SDFGI (Global illumination) stay as options, but on the RTS camera
+  neither shows colour bleed: SSIL mostly darkens corners (over the town it lowered the frame's mean by half a
+  level and added nothing visible), and SDFGI lifts the whole frame evenly (its cells are too coarse for a street
+  seen from 30 m) and sees only static geometry. Measured at 1600x900 on an RTX 3090, interleaved on the same frozen
+  frame: SSIL 0.27 ms and SDFGI 0.83 ms (median of five runs), bounce light on High 0.32 ms (median of three, on
+  the final shader); Medium is below what a shared card can resolve (its runs ranged from 0.26 to 0.46 ms). Later,
+  with a heavier town and a busier machine (a frame without it 13-17 ms), High read 0.88-1.51 ms (median 1.04) and
+  the same without the picture taken before the smoke 0.74-1.65 ms: its cost is lost in that noise. `FL_DEBUG_GI_CYCLE=DIR` saves the
+  same frozen frame with each (`scripts/test/gi_compare.gd`), `FL_DEBUG_GI_AB=mode,...` measures what each costs
+  the graphics card, and `FL_DEBUG_SSGI_VIEW=1..13` shows the pass's buffers (13: the sun's share, whether the sun reaches it).
 - **Cinematic lighting** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`), each part its own setting and all
   of it on the **Cinematic** preset (Ultra plus everything below; for a fast graphics card, screenshots and replays).
   None of it reaches the simulation, so it can't change a battle or its seed.
@@ -1406,6 +1699,41 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   in streaks. A battle that opens in the rain starts soaked; rain that sets in mid-battle wets things over 30 s,
   and they dry over three minutes once it stops. It costs a few instructions per pixel, so every preset has it,
   the browser too.
+- **Under a roof** (`rain_cover.gd`, `Mats.RAIN_COVER`): rain falls near enough straight down, so a roof (a
+  house's, or the one on a barracks, factory or research post) keeps it off what's under it. Its walls stay dry up to the eaves, and its gable ends up under the barge
+  boards, but for a ragged band about half a metre high at the foot of each outside wall that the drops splash
+  back onto; the rooms, floors and furniture inside stay dry, and no drops burst or run there. A ruin with its roof
+  fallen in takes the rain like the street. One float texture holds it: 4 m squares across the map, each naming
+  the (up to four) roofs over it, then each roof's middle, axes, wall faces, eaves, floor, pitch and form (as
+  its model was built), so the dry edge follows the roof's own underside (`BuildingRoofs.underside`) out to its
+  eaves whatever the squares. It's rebuilt when a roof comes down.
+- **Falling rain** (`Mats.RAIN_DROPS`, the `rain_fx` global; `Atmosphere._rain_fx_tick`): while it's still
+  coming down, drops land on everything (after Lagarde's "Water drop 2a/2b", 2012-13, procedurally rather than
+  from flipbooks). In puddles, ruts and gutters, and faintly on wet soil and asphalt, each lands as a ring that runs
+  out 10 to 21 cm, a packet of crests 6 cm apart, sized and timed by its own drop. On roofs, decks and helmets each
+  bursts as a crown of spray a centimetre or two across for a few hundredths of a second. Here and there down a
+  hull's side or a wall with no roof over it, about one a metre, a rivulet runs, a bead sliding down it every two
+  metres or so at its own slow pace with a wet trail behind, catching the sky on its swollen head; a vehicle
+  carries its rivulets with it. All of it is laid out in world cells, one drop
+  to a cell per period, so a pixel looks at one cell; it fades as it shrinks under a pixel (where puddles keep a
+  rougher face in its place), so from the command camera's height nothing shimmers. Effects Medium has the rings
+  and crowns, High adds a third layer of rings, denser crowns and the rivulets; Low has none of it. The browser
+  lights the ground per vertex, so there it has the crowns only.
+- **Lightning** (`lightning.gd`): every half a minute or so a strike lands somewhere ahead of the camera, a few
+  hundred metres to a couple of kilometres out. The channel is a stepped leader's random walk down from the cloud
+  base, kinked again at finer scales and forking as it goes, drawn as ribbons that face the camera, stay a few
+  pixels wide at any range and glow far past white, so the glow blooms them; it grows down in a frame, then two to
+  four return strokes flicker it over a few tenths of a second. The cloud base lights up round it (the sky shader's
+  `flash`), the rim light swings round to shine from the bolt's side, and on Forward+ a light low on the channel
+  lights the ground beneath. A near strike lights the field far more than a far one (falling off as 500 m over the
+  distance). A third of the flashes stay in the cloud as a dimmer crawler along its base. The thunder comes as late
+  as the nearest part of the channel is far (343 m/s), from its direction, a crack close by and a low, quieter
+  rumble from kilometres off. `FL_LIGHTNING_EVERY=S` strikes every S seconds; `FL_DEBUG_LIGHTNING=1` prints each
+  strike and its thunder.
+- **Rain on the lens** (Camera and lens > Lens flare; the composite pass in `cinematic_fx.gd`): when the camera
+  faces into the rain, drops gather on the front glass, sit a few seconds and dry, and now and then one runs down it
+  leaving beads behind. Each is a small lens showing the scene behind it flipped, shrunk and out of focus, darker
+  at its rim. Looking down from the command camera, the glass stays dry.
 - **Level-of-detail cross-fades**: a vehicle and its distant single-mesh stand-in (`Mats.add_distance_lod`), cab
   glass, the street's fine stones and distant blast clouds dissolve into each other over a few metres (Godot's
   dithered visibility-range fade) instead of popping as the camera zooms.
@@ -1527,12 +1855,38 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
   tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
   stay where they were. Autocannon tubes step down from a thick chamber end, carry a barrel clamp and end in a
-  ported brake; machine-gun belts show their rounds, the .50 its feed-cover latch and retracting handle. Each
+  ported brake, a plain crown where the real gun has none (the M242), or a conical flash hider (the ZU-23, the
+  KPVT); a machine gun's ammunition can stands open beside it, its lid off, and the belt (brass
+  rounds in blackened links) lies in the can's mouth and rises over the lip into the feedway; the .50 has its feed-cover latch and retracting handle, the cooling
+  holes through its barrel support, its trunnion block and side-plate rivets and a flash hider flaring to the
+  muzzle, and spade grips that loop off its back plate round the butterfly trigger; the 7.62s are cut to an M240's
+  slim proportions, with a slotted flash hider and front sight, the gas block and the bipod folded under it; the
+  DShK carries its anti-aircraft ring sight. Gun shields with ballistic windows (the Humvee's O-GPK, the Abrams
+  loader's) hold their glass as real ones do, a block a hand thick clamped behind the plate, dark and green. The
+  guns themselves are phosphated steel, near black and
+  matte, scuffed where hands and belts wear them. Each
   builder notes its gun, so the finished model lifts the machine gun onto a cradle the crew can lay. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
   rectangular hatches and bore evacuators are shared across the armour; helicopters share rotor masts and
   turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
   sheets and saddle fuel tanks; rolled tarps are common stowage. See "Twenty shared components" in
   [the component guide](vehicle-components.md).
+- **Gun stations as the real ones are built**: each family's guns are the weapons it really carries and work
+  as their mounts do.
+  - *Remote weapon stations* elevate whole: the gun, its sensor head (thermal, day-camera and laser windows
+    under an armoured door) and its ammunition box ride one cradle, a chute of links arching over the yoke into
+    the feed. NATO's (CROWS, the Samson pair) carry the .50 and the Mk 19; CSAT's (Arbalet pattern) the Kord and
+    the AGS-17 with its finned barrel; the AAF's the .50 and the GMG with the box hung outboard.
+  - *Pintles and rings* carry open cans and belts on the side each gun feeds from (a PK from its right).
+  - *Tank roofs*: the Abrams loader's armoured gun shield with its windows, the Merkava's loader's and
+    commander's MAGs, the T-100's remote Kord on its cupola, the T-55's DShK with its ring sight.
+  - *Cannon mounts*: the Gepard-pattern velocity sensor behind the brake and the gun houses rising with the
+    35 mm, the Marshall's mantlet and coax rising with its 40 mm, the Rh 202's twin feed, coaxial guns in
+    armoured port collars.
+  - *Boats*: the SURC's after gun on a yoke behind an armoured shield, the trawler's DShK behind a scrap
+    shield, the patrol ship's .50s on braced stanchions with brass bags, the Mk 38 with its sight head.
+  - *Aircraft*: the Ghost Hawk's door guns on swing-out arms, feeding from inboard; the Little Birds' guns on
+    pylons with chutes; the gunships' guns through bolted port plugs and rubber boots, the 40 mm ending in the
+    Bofors flash hider.
 - **Second construction pass** (shared builders across `vehicle_cargo.gd`, `vehicle_aircraft.gd`,
   `vehicle_fittings.gd` and others): engine-deck grilles, track skirts and return rollers, smoke banks and
   lamp units are shared across the armour; trucks share cargo beds, box bodies with doors, roller shutters
@@ -1557,6 +1911,36 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   seen, one band of cylinder sides, joints only at sharp bends. About 45% less vehicle geometry and 38% faster
   model builds (each vehicle, air-strike plane and wreck builds its model as it appears), with the same look.
   See "Fifth pass" in [the component guide](vehicle-components.md).
+- **Markings and finish** (seventh pass): tanks and armoured vehicles carry tactical numbers (on CSAT and
+  independent armour drawn from the vehicle's seed, so neighbours differ), chamfered or welded hull and turret
+  edges, bolt-on armour modules (`VehicleMounts.applique`), tow cables, deck tarps and exhaust soot. Aircraft
+  wear national insignia, serials and bort numbers, panel joints and exhaust soot (`VehicleAircraft.paint`).
+  Car glass is tinted with a cabin behind it, bodies shade like pressed metal, and opaque panes reflect the
+  sky. See "Seventh pass" in [the component guide](vehicle-components.md).
+- **Mud, stencils, wheels and tracks** (eighth pass): armour and trucks carry wet mud low on the hull and
+  running gear with paler dust above (cars road dust, boats a waterline stain), measured in the model's own
+  frame so it stays put on a turning wheel. Every vehicle's tactical number comes from its seed in heavy
+  stencil bars, and US vehicles wear battalion and company bumper codes. Cars roll on alloys or plastic
+  trims; Russian-style tracks have single-pin links with guide horns between twin sprockets, Western ones
+  rubber pads with end connectors and centre guides. Vehicle glass reflects the sky, and helicopter rotors
+  blur into a soft disc with ghost blades that don't strobe. See "Eighth pass" in
+  [the component guide](vehicle-components.md).
+- **Rotor discs, wrecks, edges and kit** (ninth pass): a helicopter's rotor reads from above as a soft dark
+  disc in its blades' paint rather than a pale ring, and tail rotors, ducted fans, drones' rotors and
+  propellers blur too. Burnt-out hulks on the map and gutted cars are rust, ash and soot (a car's tyres
+  burnt to the wire), not black shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
+  seed, so a column of one kind isn't stamped from one mould. Bonnets, roofs, consoles and deckhouses have
+  chamfered edges that catch the light. See "Ninth pass" in [the component guide](vehicle-components.md).
+- **Nets, bolted armour and weather** (tenth pass): crews camouflage about half the armour and trucks with nets
+  and cut branches; armour edges are chamfered and welded, with bolted modules, stowage baskets, walkways and
+  gun covers; paint varies plate to plate and gathers dust and grime at a size the battle camera sees; car
+  roofs show their paint; helicopter tails are aerofoils and cowlings carry panels; boats are wet at the
+  waterline. See "Tenth pass" in [the component guide](vehicle-components.md).
+- **Gun boots, foliage and matte steel** (eleventh pass): tank guns wear canvas boots, camouflaged crews'
+  branches read from the battle camera along fenders and hull sides, truck cabs have rounded roofs with
+  gutters, helicopter fairings sit on the hull, the Merkava has its arrowhead turret, dark steel and
+  ID panels are matte, and boats have moulded motors. See "Eleventh pass" in
+  [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
@@ -1597,7 +1981,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   (striking at night). The gas that follows the round out glows for an instant and cools into a breath of smoke,
   and the case spins out of the ejection port to lie in the grass (brass piles up round a machine gun). A vehicle's
   gun throws its cases from its receiver, and a belt-fed one its links too; a coaxial gun keeps them inside the
-  turret. 25 and 30 mm cannon (the Bradley's Bushmaster, the chain guns, the ZU-23) flash and bark as cannon. However
+  turret. 25 and 30 mm cannon (the Bradley's Bushmaster, the chain guns, the ZU-23) flash and bark as cannon. A
+  mounted gun hot from its bursts goes on smoking when it stops: thin wisps curl up off the muzzle and drift away,
+  thicker after a long burst and from a cannon. However
   small, a flash never shrinks below a few pixels, so you can still see who's firing from high up. The weapon
   kicks with each shot: the rifle back into the shoulder and the muzzle up, the mounted gun on its pintle or its
   vehicle cradle, the main gun back in its mantlet. One round in so many is a tracer, red for the Coalition and
@@ -1626,8 +2012,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   seconds (up to a quarter of a minute for heavy rounds), swelling and leaning downwind as it rises, while dust rolls
   out along the ground and hangs there. Hits close together feed the same plume, so a barrage leaves one great
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
-  softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
-  volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
+  softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). On high native effects settings, a smoke screen rises from a narrow source and spreads downwind. Lower settings
+  and the Compatibility renderer draw the screen with particles. Helicopter dust spreads in a shallow sheet over dry ground. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
 - A minimal HUD: the status line along the top, the order of battle and the ready fire missions down the left,
   the latest radio lines top right, a terrain minimap, and the selection and its orders along the bottom only when
   something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",
@@ -1673,8 +2059,8 @@ The AI commander plays through the same command interface as a human. It places
 buildings that its engineers must build, trains a mix of squads, saves for vehicles, expands with new FOBs,
 garrisons, answers attacks on its bases, sends waves at your FOBs and ambushes your supply roads. The Rebel AI
 digs forward tunnel entrances and moves its attack waves through them. AI-vs-AI results swing a lot between
-batches of six games (from 5–1 one way to 5–1 the other with small parameter changes), so the sides are close
-but balance needs real playtesting. With the base defenses, most games last 10–23 minutes.
+batches of six games (from 5â€“1 one way to 5â€“1 the other with small parameter changes), so the sides are close
+but balance needs real playtesting. With the base defenses, most games last 10â€“23 minutes.
 
 **AI difficulty** (`Defs.AI_LEVELS`, `CommanderAI._apply_skill`): Play vs AI's **Opponent** choice and the lobby's
 **AI difficulty** row (the host's setting `ai_difficulty`, for every AI commander in the battle, the enemy's and any
@@ -1728,7 +2114,7 @@ Delta 1 - take objective, D4. Wilco.").
 - **On the map** each intent is drawn in the side's colour with an XO tag, its grid and phase: a sector's
   forward edge with its ticks, an objective ring, a screen's dashed line, a reserve's ring (and, committed, the
   arrow to the fight it went to), an ambush's killing zone; a faint tether runs to it from each squad still on
-  its way. The squads' symbols carry an XO tab, and the order of battle and squad card read "XO HOLD · DEF E5".
+  its way. The squads' symbols carry an XO tab, and the order of battle and squad card read "XO HOLD Â· DEF E5".
 - The intents are commands like any other (`delegate` and `take_back` through `World.execute_cmd`), so a client
   delegates exactly as the host does; each side's intents reach its players in the team summary.
 - **An AI ally answers your pings** (`CommanderAI.answer_ping`): with an AI commander on your side, an "attack here"
@@ -1737,6 +2123,8 @@ Delta 1 - take objective, D4. Wilco.").
   It says who's coming on the net, or that nobody is free; the squads go back to the company after a few minutes.
 
 ### Imported rifleman and shared impacts
+
+When a soldier changes direction, the visible body finishes its outgoing stride and turns toward the new heading. The close-up skeleton and distant formation share the same motion. The host keeps the model within 32 cm of the simulated position, and clients use their existing position interpolation.
 
 The detailed rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. Locally installed Male Injured Pack clips supply standing limping and dazed recovery with the rifle slung. Installed Talking, Laughing and Arm Stretching clips also replace the standing relaxed idles and recover to the armed pose; Rifle Idle supplies the armed lookout. Foot plants retain the visible boot position when acquiring contact. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
 
@@ -1830,7 +2218,7 @@ Alpine stone clusters combine slabs, blocks and small fragments in shared batche
 
 Daylight uses a bundled CC0 photographic cloud panorama, aligned with the sun and cached for sky lighting and reflections. Other lighting moods retain their procedural skies.
 
-Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Driveway aprons continue across sidewalks through lowered kerbs with sloping shoulders; grass stays out of the crossing. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Meadow and garden turf combines photographic soil/blade detail with moisture variation from sheltered soil and exposed patches. Grass uses thirty narrow pointed blades at the previous ninety-triangle clump cost, with shorter clumps in towns; grass stays outside the carriageway.
+Generated towns have distinct garden plots, narrow foundation aprons and paths leading to their generated front or side doors. Front fences leave pedestrian and driveway openings. Driveway aprons continue across sidewalks through lowered kerbs with sloping shoulders; grass stays out of the crossing. Paving follows immutable terrain elevation and retains crater cutouts; street furniture and both wire endpoints carry authoritative ground heights. Long fences are broken into short, independently destructible sections. Streets and junctions share scanned asphalt; sidewalks, drives and door paths use scanned paving slabs. CC0 photographs include mipmapped normal and roughness maps, with source credits in assets/town/LICENSE.md. Meadow and garden turf combines photographic soil/blade detail with moisture variation from sheltered soil and exposed patches. Grass uses thirty pointed blades per ninety-triangle clump, with shorter clumps in towns; grass stays outside the carriageway. Blades are drawn a little broader and taller than real grass, and meadow shrubs are dense balls of leaf cards rather than the open scanned shrubs of the woods: anything finer falls below a pixel from the battle camera and the meadow reads as bare ground (tests/grass_stream_test.gd holds both to that).
 
 Town entrances blend gravel into asphalt through irregular edges. Local repair patches, staining, aged tile roofs, concrete roof slabs and weathered timber fences use bundled CC0 scans with mipmapped relief; metal fences retain rust and worn paint.
 
