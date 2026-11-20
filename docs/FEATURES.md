@@ -1847,8 +1847,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   seconds (up to a quarter of a minute for heavy rounds), swelling and leaning downwind as it rises, while dust rolls
   out along the ground and hangs there. Hits close together feed the same plume, so a barrage leaves one great
   drifting cloud over the target. Smoke is shaded like a volume (sun, sky, self-shadowing) and fades
-  softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). Smoke screens are real volumetric fog when
-  volumetric fog is on. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
+  softly where it meets the ground. Burning wrecks burn, then smoulder (see Fire). On high native effects settings, a smoke screen rises from a narrow source and spreads downwind. Lower settings
+  and the Compatibility renderer draw the screen with particles. Helicopter dust spreads in a shallow sheet over dry ground. All effect shaders are compiled during loading, so the first explosion doesn't hitch.
 - A minimal HUD: the status line along the top, the order of battle and the ready fire missions down the left,
   the latest radio lines top right, a terrain minimap, and the selection and its orders along the bottom only when
   something is selected. Zoom in and every soldier shows what he's doing ("Bandaging Doyle",

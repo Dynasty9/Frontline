@@ -23,6 +23,7 @@ var world: World
 var noise_tex: ImageTexture
 var scorch_tex: ImageTexture
 var smoke_mat: ShaderMaterial
+var screen_volume_mat: ShaderMaterial
 var flare_smoke_mat: ShaderMaterial
 var blast_flame_mat: ShaderMaterial
 var flash_mat: ShaderMaterial
@@ -303,6 +304,9 @@ func _add_clods(p: Vector3, size: float) -> void:
 
 func _make_materials() -> void:
 	smoke_mat = _shader_mat(SMOKE_SHADER)
+	screen_volume_mat = ShaderMaterial.new()
+	screen_volume_mat.shader = preload("res://scripts/shaders/smoke_screen.gdshader")
+	screen_volume_mat.set_shader_parameter("noise_tex", preload("res://assets/sky/cloud_noise.res"))
 	var flare_shader: Shader = load("res://scripts/shaders/flare_smoke.gdshader")
 	flare_smoke_mat = _shader_mat(flare_shader.code)
 	flare_smoke_mat.set_shader_parameter("positive_map", load("res://assets/vfx/fuel_positive.png"))
@@ -354,7 +358,7 @@ func apply_lighting() -> void:
 	var zn: Color = mood.zenith
 	var amb := _desat(hz.lerp(zn, 0.4), 0.55)
 	# (and the copies of it carrying a smoke's own density, in the browser build)
-	for material in [smoke_mat, flare_smoke_mat]:
+	for material in [smoke_mat, flare_smoke_mat, screen_volume_mat]:
 		Mats.set_shared(material, &"sun_dir", sd)
 		Mats.set_shared(material, &"sun_col", sc)
 		Mats.set_shared(material, &"sun_energy", at.sun.light_energy * at.by_mood(SMOKE_SUN, 0.75))
@@ -1486,7 +1490,22 @@ func make_rotor_wash(radius: float) -> Node3D:
 			pm.color_ramp = _ramp([0.0, 0.12, 1.0], [Color(0.92, 0.94, 0.95, 0.0), Color(0.92, 0.94, 0.95, 0.42), Color(0.9, 0.92, 0.93, 0.0)])
 		else:
 			pm.color_ramp = _ramp([0.0, 0.15, 0.6, 1.0], [Color(0.6, 0.55, 0.45, 0.0), Color(0.6, 0.55, 0.45, 0.3), Color(0.62, 0.58, 0.5, 0.18), Color(0.64, 0.6, 0.52, 0.0)])
-		var d := _sys(int((40 if wet else 64) * k), 1.2 if wet else 2.0, pm, smoke_mat)
+		# Dust leaves the rotor disc as a shallow sheet, then lifts and loses density.
+		# Spray is heavier and falls back into the water.
+		if not wet:
+			pm.emission_ring_inner_radius = radius * 0.42
+			pm.gravity = WIND * 0.46 + Vector3.UP * 0.48
+			pm.radial_accel_min = 11.0
+			pm.radial_accel_max = 18.0
+			pm.damping_min = 1.0
+			pm.damping_max = 1.75
+			pm.angle_min = -8.0
+			pm.angle_max = 8.0
+			pm.angular_velocity_min = -5.0
+			pm.angular_velocity_max = 5.0
+			pm.scale_curve = _curve([Vector2(0, 0.28), Vector2(0.26, 0.9), Vector2(1, 1.8)])
+		var sheet: Mesh = null if wet else Res.quad(Vector2(2.6, 0.69))
+		var d := _sys(int((40 if wet else 64) * k), 1.2 if wet else 2.4, pm, smoke_mat, sheet)
 		d.one_shot = false
 		d.explosiveness = 0.0
 		d.emitting = false
@@ -1508,11 +1527,20 @@ static func set_rotor_wash(h: Node3D, strength: float, wet: bool) -> void:
 			set_ratio(p, clampf(strength, 0.2, 1.0))
 
 
-## Thick white smoke screen (grenade / mortar smoke); FogVolume adds real
-## volumetric density when volumetric fog is on.
+## High effects trace the screen through its depth. Lower settings and the
+## browser use particles, with fog where the renderer supports it.
 func make_smoke_screen() -> Node3D:
 	var h := Node3D.new()
-	var pm := _pm(Vector3.UP, 60.0, 0.35, 1.15, Fires.WIND * 0.68 + Vector3.UP * 0.22, 2.3, 4.8)
+	if not gl and Settings.fx_mult() > 0.65:
+		var volume := MeshInstance3D.new()
+		volume.name = "ScreenVolume"
+		volume.mesh = Res.box(Vector3.ONE)
+		volume.material_override = screen_volume_mat
+		volume.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		volume.visible = false
+		h.add_child(volume)
+		return h
+	var pm := _pm(Vector3.UP, 60.0, 0.35, 1.15, Fires.WIND * 0.68 + Vector3.UP * 0.22, 2.3, 4.1)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	pm.emission_sphere_radius = 1.0
 	pm.damping_min = 0.5
@@ -1525,11 +1553,14 @@ func make_smoke_screen() -> Node3D:
 	pm.turbulence_influence_min = 0.01
 	pm.turbulence_influence_max = 0.04
 	pm.scale_curve = _curve([Vector2(0, 0.3), Vector2(0.3, 0.9), Vector2(1, 1.0)])
-	pm.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [Color(0.85, 0.85, 0.83, 0.0), Color(0.69, 0.69, 0.65, 0.72), Color(0.82, 0.82, 0.79, 0.52), Color(0.8, 0.8, 0.78, 0.0)])
+	pm.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [Color(0.85, 0.85, 0.83, 0.0), Color(0.65, 0.65, 0.62, 0.70), Color(0.74, 0.74, 0.71, 0.32), Color(0.8, 0.8, 0.78, 0.0)])
 	var s := _sys(60, 6.0, pm, smoke_mat)
 	s.one_shot = false
 	s.explosiveness = 0.0
 	s.name = "Smoke"
+	# Each screen gets its own billow pattern. Let older wisps break up around the dense core.
+	Mats.set_inst(s, &"seed", randf() * 100.0)
+	Mats.set_inst(s, &"erode", 1.6)
 	s.visibility_aabb = AABB(Vector3(-15, -2, -15), Vector3(30, 20, 30))
 	Mats.set_inst(s, &"density", 1.0)
 	s.emitting = false
@@ -1551,6 +1582,13 @@ func make_smoke_screen() -> Node3D:
 
 
 func set_smoke_screen(h: Node3D, r: float) -> void:
+	var volume := h.get_node_or_null("ScreenVolume") as MeshInstance3D
+	if volume:
+		volume.visible = r > 0.3
+		if volume.visible:
+			volume.scale = Vector3(3.15, 1.36, 2.7) * r
+			volume.position = (Fires.WIND * 0.58 + Vector3.UP * 0.44) * r
+		return
 	var s := h.get_node("Smoke") as GeometryInstance3D
 	var fv := h.get_node_or_null("Fog") as FogVolume
 	set_emitting(s, r > 0.3)
