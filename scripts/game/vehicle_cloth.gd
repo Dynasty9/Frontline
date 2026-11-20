@@ -211,14 +211,16 @@ static func bag(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3
 		var part: Variant = _bag(k, mount, Vector3(body, place.y, place.z), scale, material, tint, shadow, strap, Vector3(pocket * depth, 0, 0))
 		if first == null:
 			first = part
-	if dress != null and dress.randf() < 0.55 * camo and long >= 0.4:
-		# A branch laid along the load's top, off its middle, its tip either way.
+	if dress != null and dress.randf() < 0.8 * camo and long >= 0.4:
+		# A branch laid along the load's top, off its middle, its tip either way,
+		# cut longer than the load so its leaves hang past both ends and break
+		# the load's square outline (what a branch is cut for).
 		var lay := basis * (Vector3.RIGHT if long_x else Vector3.BACK) * (1.0 if dress.randf() < 0.5 else -1.0)
 		var off := basis * (Vector3.BACK if long_x else Vector3.RIGHT) * dress.randf_range(-0.25, 0.25) * minf(size.x, size.z)
 		# (its stem pressed a little into the bags' tops)
 		var top := center + basis * Vector3(0, size.y * 0.42, 0) + off
-		var reach := long * dress.randf_range(0.4, 0.5)
-		branch(k, parent, top - lay * reach, top + lay * reach, dress, clampf(minf(size.x, size.z) * 0.6, 0.15, 0.26))
+		var reach := long * dress.randf_range(0.55, 0.7)
+		branch(k, parent, top - lay * reach, top + lay * reach, dress, clampf(minf(size.x, size.z) * 0.75, 0.2, 0.32))
 	return first
 
 
@@ -277,8 +279,11 @@ static func camouflage(k: VehicleModels) -> float:
 ## sand over pale stone and brown for a vehicle painted sand.
 const NET_WOODLAND: Array[Color] = [Color(0.2, 0.24, 0.14), Color(0.4, 0.39, 0.25), Color(0.13, 0.11, 0.07)]
 const NET_DESERT: Array[Color] = [Color(0.50, 0.44, 0.31), Color(0.66, 0.60, 0.46), Color(0.30, 0.24, 0.16)]
-## Cut leaves: fresh, in shade, and a day or two on, drying out.
-const LEAVES: Array[Color] = [Color(0.19, 0.28, 0.10), Color(0.13, 0.20, 0.08), Color(0.30, 0.31, 0.14), Color(0.40, 0.34, 0.17)]
+## Cut leaves: fresh, in shade, and a day or two on, drying out. Living leaves
+## are a yellower, more saturated green than any olive or green paint, and
+## a branch is cut to be seen as bush from above, so these keep that: a fresh
+## spray stands off the paint under it at 50 m, a drying one goes olive-gold.
+const LEAVES: Array[Color] = [Color(0.25, 0.38, 0.10), Color(0.18, 0.29, 0.08), Color(0.36, 0.38, 0.13), Color(0.47, 0.40, 0.16)]
 ## A cut branch's bark.
 const STEM := Color(0.27, 0.21, 0.15)
 
@@ -361,8 +366,8 @@ static func _net_meshes(size: Vector3, variant: int) -> Array:
 	var count := clampi(roundi(size.x * size.z * 130.0), 8, 64)
 	var hx := size.x * 0.5
 	var hz := size.z * 0.5
-	var ru := maxf(0.2, 1.0 - 0.08 / hx)
-	var rv := maxf(0.2, 1.0 - 0.08 / hz)
+	var ru := maxf(0.2, 1.0 - 0.09 / hx)
+	var rv := maxf(0.2, 1.0 - 0.09 / hz)
 	for tint in 2:
 		var lv := PackedVector3Array()
 		var ln := PackedVector3Array()
@@ -381,8 +386,10 @@ static func _net_meshes(size: Vector3, variant: int) -> Array:
 			var t := (du.normalized() * cos(a) + dv.normalized() * sin(a)).normalized()
 			var tilt := rng.randf_range(0.05, 0.75)
 			var b := (up.cross(t).normalized() * cos(tilt) + up * sin(tilt)).normalized()
-			var w := rng.randf_range(0.05, 0.075)
-			_leaf(lv, ln, li, p + up * 0.006 + b * w * 0.5 * sin(tilt), t, b, rng.randf_range(0.09, 0.14), w, up)
+			# (cut a hand long: from a few tens of metres the scrim's tufts, not
+			# the net, are what break up the bundle's shape)
+			var w := rng.randf_range(0.06, 0.09)
+			_leaf(lv, ln, li, p + up * 0.006 + b * w * 0.5 * sin(tilt), t, b, rng.randf_range(0.11, 0.17), w, up)
 		parts.append(VehicleWheels._mesh(lv, ln, li))
 	_nets[key] = parts
 	return parts
@@ -488,11 +495,13 @@ static func branch(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, rng
 		var f := lerpf(0.3, 1.0, float(i) / (sprays - 1))
 		var s := spread * rng.randf_range(0.9, 1.1) * (0.8 + 0.2 * f)
 		var lean := (1.0 if i % 2 == 0 else -1.0) * rng.randf_range(0.15, 0.4)
-		var at := a + along * f + side * lean * s + up * s * 0.4
+		var at := a + along * f + side * lean * s + up * s * 0.3
 		var basis := Basis(dir, up, dir.cross(up)).rotated(dir, rng.randf_range(-0.4, 0.4)) * Basis(Vector3.UP, rng.randf_range(-0.5, 0.5))
 		var shade := rng.randf_range(-0.05, 0.05)
 		var c := LEAVES[age].lightened(shade) if shade > 0.0 else LEAVES[age].darkened(-shade)
-		k._add(parent, _spray(rng.randi_range(0, 3)), "canvas", c, at, basis.get_euler(), Vector3.ONE * s)
+		# (spread wider than tall, along and across what it lies on: a spray
+		# pressed down by its own weight covers ground, it doesn't stand up)
+		k._add(parent, _spray(rng.randi_range(0, 3)), "canvas", c, at, basis.get_euler(), Vector3(1.2, 0.75, 1.2) * s)
 
 
 ## Whether `node` stands upright on the model (its +Y within 25 degrees of
@@ -566,11 +575,11 @@ static func roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: floa
 	var camo := camouflage(k) if level and length >= 0.5 else 0.0
 	if camo > 0.0 and _upright(k, parent):
 		var dress := VehicleCargo.kit(k, parent, center, 14)
-		if dress.randf() < 0.5 * camo:
+		if dress.randf() < 0.75 * camo:
 			var lay := axis * (1.0 if dress.randf() < 0.5 else -1.0)
 			var top := center - down * radius * 0.85
-			var reach := length * dress.randf_range(0.42, 0.5)
-			branch(k, parent, top - lay * reach, top + lay * reach, dress, clampf(radius * 1.5, 0.14, 0.24))
+			var reach := length * dress.randf_range(0.5, 0.62)
+			branch(k, parent, top - lay * reach, top + lay * reach, dress, clampf(radius * 1.9, 0.18, 0.3))
 
 
 ## One roll on its mount, along its Y: `straps` the two straps' places as

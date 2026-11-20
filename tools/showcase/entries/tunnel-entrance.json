@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/tunnel-entrance.md",
+  "summary": "The Rebels' tunnel entrance dug as a shored, sandbagged shaft.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (tunnel:1)",
+  "rationale": "Appearance change: the entrance in the studio from the same camera.",
+  "source_ref": "7082d047ed4103fe9efbd68497ae5499bc2cd765",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/tunnel-entrance/comparison.jpg",
+      "sha256": "d1d49ae04b02d21f6d8f5e03ee3c0d341d67aafb379cd08f38c3e74ed56c45cc"
+    },
+    {
+      "file": "changelog/unreleased/tunnel-entrance/capture.json",
+      "sha256": "513f90db7ccbc6df7f7e3b512f0d196d7f62fa3ced78492ca7988b5687313680"
+    }
+  ],
+  "output": null
+}

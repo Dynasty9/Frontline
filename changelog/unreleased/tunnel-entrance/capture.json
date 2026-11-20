@@ -1,0 +1,25 @@
+{
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "source_ref": "7082d047ed4103fe9efbd68497ae5499bc2cd765",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=tunnel:1",
+  "comparisons": [
+    {
+      "subjects": [
+        "tunnel:1"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "crop": [
+        450,
+        220,
+        1150,
+        700
+      ]
+    }
+  ],
+  "notes": "Both from the after run's studio camera.",
+  "composition": "PIL: one matched row, 792 px halves, JPEG quality 82"
+}
