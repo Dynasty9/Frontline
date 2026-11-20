@@ -1,0 +1,29 @@
+{
+  "entry": "changelog/unreleased/battle-lights-in-smoke.md",
+  "title": "Shell bursts, fires and tracers light the smoke",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "At night, shell bursts light their smoke from inside, fires and muzzle flashes light the smoke drifting past them, and tracers leave a faint glowing streak in the haze and dust.",
+  "medium": "motion",
+  "stage": "Game scenarios off-screen at night: --scenario=attack with --fx-demo and --shot-demo (controlled bursts and machine-gun tracers across the field), --scenario=roster (a battle), frozen and flipped with FL_DEBUG_AIR_FLIP + FL_DEBUG_AIR_FLIP_LIGHTS for the stills; the clip is two matched live runs, the second with FL_DEBUG_AIR_LIGHTS_OFF for the before.",
+  "rationale": "The change is light that comes and goes with each burst, so a short matched before/after clip shows it best; one combined still sheet holds the same frozen moments with the lights off and on, including the browser renderer, for a quick comparison.",
+  "source_ref": "9ffb6149 on dines/battle-lights-in-smoke (Godot 4.7.2, Windows, RTX 3090). Frames from the movie writer (MJPEG), composed with PIL; WebM: VP9 via Playwright's ffmpeg.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/battle-lights-in-smoke/lights-off-on.jpg",
+      "sha256": "06ff4e1adeb15e4974738451d66cc8561ab3048d6fca747362e0f1a711559e56",
+      "caption": "Before | after rows of 1600x900 frames halved: (1) --preset=high --scenario=attack --seed=3 --set=mood:night --focus=0,0 --zoom=24 --pitch=-10 --cam-yaw=1.57 --fx-demo=1.2 --fx-every=1.0, FL_DEBUG_AIR_FLIP=8.07; (2) --preset=high --scenario=roster --seed=3 --set=mood:night --focus=-84,24 --zoom=34, FL_DEBUG_AIR_FLIP=8.8; (3) row 1's stage under --rendering-method gl_compatibility with force_vertex_shading, --preset=medium. Flip frames 28 (on) and 58 (off) of the 30-frame blocks."
+    },
+    {
+      "file": "changelog/unreleased/battle-lights-in-smoke/night-battle-lights.webm",
+      "sha256": "479cf4090910f74db100365de767b9b6f46a649d5beddea1936d434073f46aab",
+      "caption": "Seconds 6-14 of two 1280x720 movies (--fixed-fps 30), each halved and stacked: --preset=high --scenario=attack --seed=3 --set=mood:night --focus=0,0 --zoom=24 --pitch=-10 --cam-yaw=1.57 --fx-demo=1.2 --fx-every=1.0 --shot-demo=hmg --shot-demo-every=0.25 --shot-demo-range=90; the top run with FL_DEBUG_AIR_LIGHTS_OFF. View-only particles differ between the runs."
+    },
+    {
+      "file": "changelog/unreleased/battle-lights-in-smoke/night-battle-lights-poster.jpg",
+      "sha256": "d430e5726f107c89644b3a4a9106b9d6da56ab797133684cfe668c725309739f",
+      "caption": "Frame 362 of the clip's runs (12.07 s, just after a burst)."
+    }
+  ],
+  "output": null
+}
