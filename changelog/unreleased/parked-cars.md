@@ -6,6 +6,10 @@ kind = "improved"
 [[screenshots]]
 file = "comparison.jpg"
 caption = "The same town, square and street from the same cameras, before and after"
+[[videos]]
+file = "parking-motion.webm"
+poster = "parking-motion.jpg"
+caption = "Seed 3, main versus this branch: marked empty and occupied bays beside the shops, with the opposite lane visible. Matched native camera motion at Low settings, Forward+ software rendering; simulation held. This is separate from the earlier PR-revision comparison."
 +++
 
 - **Parking bays** are painted on the road at the kerb in a few short runs along the main streets by the shops, and about half of them have a car in. Every other car in town stands in a driveway or a car park, not in the street.

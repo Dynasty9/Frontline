@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/parked-cars.md",
   "summary": "The main streets by the shops have parking bays marked out at the kerb, some with the cars people left there when the fighting came, and every car is cover.",
-  "medium": "still",
+  "medium": "motion",
   "stage": "tests/fixtures/environment-views.gd (town); main.gd off-screen screenshot",
-  "rationale": "Appearance change: matched seed-3 cameras show the town from the battle camera, the square and the main streets off it, and a closer view of a run of bays by the shops.",
+  "rationale": "Appearance change: matched seed-3 cameras show the town from the battle camera, the square and the main streets off it, and a closer view of a run of bays by the shops. Matched main-versus-head native motion establishes occupied and empty bays and the visible opposite lane, at a command camera with the full bay run in frame.",
   "source_ref": "55cd82b4ae38754cc0e2666f8a0e47222c7f2a89",
   "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
   "sources": [
@@ -14,7 +14,26 @@
     {
       "file": "changelog/unreleased/parked-cars/capture.json",
       "sha256": "475e68583dd12317c828552e103a45a5cbf49e1a000c1f0f19af14a0a3850ef8"
+    },
+    {
+      "file": "changelog/unreleased/parked-cars/parking-motion.webm",
+      "sha256": "af2b63cc007b3c6ac8386cbfa86c530295c70f843a5634d8a7a7759d213bf233"
+    },
+    {
+      "file": "changelog/unreleased/parked-cars/parking-motion.jpg",
+      "sha256": "0b796e44383eb5b5c0ee990503c709b1d14ac07fa4e9761b81911b26573c42bb"
+    },
+    {
+      "file": "changelog/unreleased/parked-cars/motion-capture.json",
+      "sha256": "8771b095772a749801d1c8b334fed8248091865a1443e1a74d7dfb3536f78321"
     }
   ],
-  "output": null
+  "output": null,
+  "motion_review": {
+    "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
+    "source_ref": "175e258150a28cecc0a21bdec147fe0a81e6dc4a",
+    "harness_sha256": "3fdaf78ca26d96ad93f9ab7842e919a0ff734e91b259673d0a6cf7d3402255cd",
+    "stage": "tools/showcase/environment-motion.gd --motion-stage=parking",
+    "capture": "changelog/unreleased/parked-cars/motion-capture.json"
+  }
 }
