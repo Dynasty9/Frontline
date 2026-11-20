@@ -435,6 +435,8 @@ A side's helipad is `BuildingAirfield.helipad`:
 - **Round its corners:** a windsock lifting on its mast, a fuel bladder on its berm with its hose and pump, chocks,
   a fire extinguisher, and the flag. The edge lights glow on their own nodes, as before.
 
+The windsock takes a wind direction in the pad's local space; placed pads use the shared weather wind, so rotating a pad does not rotate its sock downwind.
+
 Render both sides' with `--building-kinds=helipad:0,helipad:1`.
 
 ## The vehicle works

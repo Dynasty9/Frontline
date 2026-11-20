@@ -4270,7 +4270,7 @@ func _build_model() -> void:
 		"helipad":
 			# a forward helipad (BuildingAirfield): the pad, its markings, the
 			# windsock, the fuel bladder; its edge lights glow on their own
-			var hoist := BuildingAirfield.helipad(_kit(rng), size, team, rng)
+			var hoist := BuildingAirfield.helipad(_kit(rng), size, team, rng, Basis(Vector3.UP, -yaw) * Fires.WIND)
 			for x in [-4.6, 4.6]:
 				for z in [-4.6, 4.6]:
 					Res.mi(model, Res.cyl(0.06, 0.09, 0.1, 8), Res.mat(Color(0.25, 0.25, 0.24)), Vector3(x, 0.15, z), Vector3.ZERO, false)

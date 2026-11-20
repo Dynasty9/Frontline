@@ -13,7 +13,7 @@ const SOCK := Color(0.95, 0.42, 0.08)
 ## edge markers, tie-down rings, the windsock on its mast at one corner, a
 ## fuel bladder on its berm off another with its hose and pump, chocks, the
 ## flagpole (returns where its flag's hoist is).
-static func helipad(k: BuildingKit, size: Vector3, team: int, rng: RandomNumberGenerator) -> Vector3:
+static func helipad(k: BuildingKit, size: Vector3, team: int, rng: RandomNumberGenerator, wind_local := Vector3.RIGHT) -> Vector3:
 	var hs := size.x * 0.5
 	if team != 1:
 		# aluminium landing mat: planks laid in a bond, their joints, the
@@ -60,8 +60,10 @@ static func helipad(k: BuildingKit, size: Vector3, team: int, rng: RandomNumberG
 	var ws := Vector3(hs + 0.2, 0, -hs - 0.2)
 	k.box(Vector3(0.5, 0.15, 0.5), ws + Vector3(0, 0.075, 0), "concrete", Color(0.5, 0.5, 0.47))
 	k.cyl(0.04, 0.06, 4.2, ws + Vector3(0, 2.25, 0), "steel", Color(0.72, 0.72, 0.7), Vector3.ZERO, 8)
-	var lift := Basis(Vector3.BACK, rng.randf_range(-0.55, -0.25))
-	var mouth := ws + Vector3(0.12, 4.15, 0)
+	# The sock follows the weather, not the heading of the pad beneath it.
+	var heading := Basis(Vector3.UP, atan2(-wind_local.z, wind_local.x))
+	var lift := heading * Basis(Vector3.BACK, rng.randf_range(-0.55, -0.25))
+	var mouth := ws + heading * Vector3(0.12, 4.15, 0)
 	k.part(BuildingKit.ring(0.25, 0.28), "steel", Transform3D(lift * Basis(Vector3.BACK, PI * 0.5), mouth), Color(0.72, 0.72, 0.7), false)
 	k.rod(ws + Vector3(0, 4.15, 0), mouth, 0.02, "steel", Color(0.72, 0.72, 0.7), 4, false)
 	for s in 5:

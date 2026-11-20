@@ -518,6 +518,24 @@ func _ready() -> void:
 		var hpb := _bounds(hp, Transform3D.IDENTITY)
 		check(hp.get_child_count() > 0 and hpb.size.x <= 12.5 and hpb.size.z <= 12.5 and hpb.position.y >= -0.3 and hpb.end.y < 5.0, "a helipad keeps to its pad (%d: %s)" % [side, hpb])
 		hp.free()
+	# Turning either pad must not turn its windsock away from the shared wind.
+	for side in 2:
+		for pad_yaw: float in [0.0, PI * 0.5, PI, PI * 1.5]:
+			var sock_kit := kit()
+			BuildingAirfield.helipad(sock_kit, Vector3(10, 3, 10), side, sock_kit.rng, Basis(Vector3.UP, -pad_yaw) * Fires.WIND)
+			var sock_stripes: Array[Vector3] = []
+			for child in sock_kit.sink.root.get_children():
+				var sock_mesh := child as MeshInstance3D
+				if sock_mesh != null and sock_mesh.mesh is CylinderMesh:
+					var sock_cylinder := sock_mesh.mesh as CylinderMesh
+					if is_equal_approx(sock_cylinder.height, 0.24) and sock_cylinder.radial_segments == 12:
+						sock_stripes.append(sock_mesh.position)
+			check(sock_stripes.size() == 5, "the windsock has five striped sections")
+			if sock_stripes.size() == 5:
+				var pad_downwind := Basis(Vector3.UP, pad_yaw) * (sock_stripes[4] - sock_stripes[0])
+				pad_downwind.y = 0.0
+				check(pad_downwind.normalized().dot(Fires.WIND.normalized()) > 0.9999, "the windsock stays downwind (%d, %.2f)" % [side, pad_yaw])
+			sock_kit.sink.root.free()
 	# The water tower stands on its piers within its footprint, its finial at
 	# 13.5 m or so.
 	var towk := kit()
