@@ -57,4 +57,11 @@ static func surface(k: VehicleModels, parent: Node3D, stations: Array, material:
 				var ga: float = gap / a[1] if j > 0 else 0.0
 				var gb: float = gap / b[1] if j > 0 else 0.0
 				var rings := [section(la, a[1], a[2], up, fa[j] + ga, fa[j + 1], Vector3.BACK, 8), section(lb, b[1], b[2], up, fb[j] + gb, fb[j + 1], Vector3.BACK, 8)]
-				k._add(parent, VehicleProfiles.loft(rings, crease), material, col, Vector3.ZERO)
+				# A control surface is a separate part on its hinge, skinned
+				# in composite or thinner sheet and painted on its own: it
+				# weathers a shade off the wing box ahead of it, which is
+				# how its hinge line reads from above at any distance (the
+				# gap itself is two centimetres). Camouflage (no colour)
+				# keeps its pattern running across.
+				var tone: Variant = (col as Color).darkened(0.08) if j > 0 and col is Color else col
+				k._add(parent, VehicleProfiles.loft(rings, crease), material, tone, Vector3.ZERO)

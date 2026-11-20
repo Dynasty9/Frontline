@@ -44,6 +44,11 @@ func capture() -> void:
 				if st.skind == "church":
 					views = [["Church entrances from the road", st.position, 48.0, -30.0, st.yaw + PI + 0.6],
 						["Churchyard at command height", st.position, 75.0, -55.0, st.yaw + PI + 0.6]]
+		"square":
+			views = [["Bench and fence support clearance", Vector3(-1, 0, 12), 10.0, -26.0, 2.6]]
+			for piece: Array in world.decor:
+				if piece[0] in ["fountain", "statue"]:
+					views.append(["Square at command height", piece[1], 42.0, -55.0, 0.7])
 					break
 		"environment":
 			world.cam.cam.fov = 55.0
