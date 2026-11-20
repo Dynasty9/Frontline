@@ -1703,6 +1703,7 @@ func _add_effect(fx: CompositorEffect) -> void:
 	var effects: Array[CompositorEffect] = we.compositor.compositor_effects
 	if fx is SsgiFx:
 		effects.push_front(fx)
+		effects.push_front((fx as SsgiFx).snap)
 	else:
 		effects.append(fx)
 	we.compositor.compositor_effects = effects
@@ -1723,6 +1724,7 @@ func _apply_ssgi() -> void:
 		return
 	ssgi.quality = q
 	ssgi.enabled = q > 0
+	ssgi.snap.enabled = q > 0 and not OS.has_environment("FL_DEBUG_SSGI_NOSNAP")  # (to time it)
 
 
 ## How far a ray looks for a surface to light it (m), and how strongly what it
@@ -1736,12 +1738,19 @@ const SSGI_STRENGTH := 2.0
 ## Seen from further than SSGI_FAR.x (m) and fully past SSGI_FAR.y, rays
 ## reach SSGI_FAR_REACH times as far and the light is laid on SSGI_FAR_STRENGTH
 ## times as strong: from the command height a wall is a few pixels tall and a
-## lift of a few levels in its shade goes unseen.
-const SSGI_FAR := Vector2(25.0, 90.0)
+## lift of a few levels in its shade goes unseen. (Full by 50 m, so the usual
+## command height, about 55 m off, gets all of it: ramped out to 90 m, it got
+## less than half, and the light there was too faint to see. It was 2.5
+## times: with the rays capped at what they hit, the shade at a wall's foot
+## was then filled to nearly the sunlit grass's light, a hard brown band from
+## 55 m; 1.5 leaves a faint lift that still reads there.)
+const SSGI_FAR := Vector2(15.0, 50.0)
 const SSGI_FAR_REACH := 2.0
-const SSGI_FAR_STRENGTH := 2.0
-## How much more saturated the gathered light is laid on (1 as gathered).
+const SSGI_FAR_STRENGTH := 1.5
+## How much more saturated the gathered light is laid on (1 as gathered),
+## near and from afar (FL_DEBUG_SSGI_GREYFAR: the old 0.75 from afar, to compare).
 const SSGI_BLEED := 1.6
+const SSGI_FAR_BLEED := 1.3
 ## The brightest a surface's estimated colour may be (a white wall's ~0.8).
 const SSGI_ALBEDO_CAP := 0.8
 
@@ -1767,6 +1776,11 @@ func _ssgi_tick() -> void:
 	p[17] = SSGI_FAR.y
 	p[18] = SSGI_FAR_REACH
 	p[19] = SSGI_FAR_STRENGTH
+	# FL_DEBUG_SSGI_FAR="from,full,reach,strength": the far view's weights, for tuning
+	if OS.has_environment("FL_DEBUG_SSGI_FAR"):
+		var f := OS.get_environment("FL_DEBUG_SSGI_FAR").split(",")
+		for i in mini(f.size(), 4):
+			p[16 + i] = float(f[i])
 	var to_sun := sun.global_transform.basis.z
 	p[20] = to_sun.x
 	p[21] = to_sun.y
@@ -1778,6 +1792,26 @@ func _ssgi_tick() -> void:
 	p[24] = sc.r
 	p[25] = sc.g
 	p[26] = sc.b
+	# how much of last frame's bounce light goes round again (under all of
+	# it, so a closed room settles), and whether the upsample looks further
+	# out at thin edges. FL_DEBUG_SSGI_BOUNCES=1 (one bounce only) and
+	# FL_DEBUG_SSGI_NOFIX (the plain upsample) compare them. (Medium casting
+	# half its rays where a pixel's history already held was tried: it saved
+	# nothing measurable and lost a fifth of the light, since what is gathered
+	# is capped at what its rays hit, and fewer rays a frame cap it lower.)
+	p[28] = 0.0 if OS.get_environment("FL_DEBUG_SSGI_BOUNCES") == "1" else 0.8
+	p[29] = 0.0 if OS.has_environment("FL_DEBUG_SSGI_NOFIX") else 1.0
+	p[30] = 0.75 if OS.has_environment("FL_DEBUG_SSGI_GREYFAR") else SSGI_FAR_BLEED
+	var to_rim := rim.global_transform.basis.z
+	var rc := rim.light_color.srgb_to_linear() * rim.light_energy * (1.0 if rim.visible else 0.0)
+	p[32] = to_rim.x
+	p[33] = to_rim.y
+	p[34] = to_rim.z
+	p[36] = rc.r
+	p[37] = rc.g
+	p[38] = rc.b
+	if OS.has_environment("FL_DEBUG_SSGI") and Engine.get_process_frames() % 300 == 0:
+		print("SSGI sky light %s, to the sun %s, sun %s" % [Vector3(p[4], p[5], p[6]), to_sun, Vector3(p[24], p[25], p[26])])
 	ssgi.params = p
 
 
