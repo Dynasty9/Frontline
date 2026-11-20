@@ -1897,7 +1897,11 @@ func _research_dress(rk: BuildingKit, wc: Color, rng: RandomNumberGenerator) -> 
 			rk.box(Vector3(0.04, 0.18, 0.04), q - Vector3(0, 0.09, 0), "steel", Color(0.4, 0.41, 0.4), Vector3.ZERO, false)
 	# the conduit down the side wall to the generator, a junction box on it
 	var gx := size.x * 0.5
-	rk.rod(Vector3(gx + 0.06, roof + 0.25, 1.0), Vector3(gx + 0.06, 0.9, 1.0), 0.035, "metal_dark", Color(0.25, 0.26, 0.26), 6, false)
+	# Keep the decorative run on solid wall, outside the ribbon window.
+	var conduit_z := size.z * 0.5 - 0.4
+	rk.rod(Vector3(gx + 0.06, roof + 0.25, conduit_z), Vector3(gx + 0.06, 1.5, conduit_z), 0.035, "metal_dark", Color(0.25, 0.26, 0.26), 6, false)
+	rk.rod(Vector3(gx + 0.06, 1.5, conduit_z), Vector3(gx + 0.06, 1.5, 1.0), 0.035, "metal_dark", Color(0.25, 0.26, 0.26), 6, false)
+	rk.rod(Vector3(gx + 0.06, 1.5, 1.0), Vector3(gx + 0.06, 0.9, 1.0), 0.035, "metal_dark", Color(0.25, 0.26, 0.26), 6, false)
 	rk.box(Vector3(0.1, 0.3, 0.24), Vector3(gx + 0.06, 1.5, 1.0), "metal_dark", Color(0.3, 0.32, 0.3))
 	rk.rod(Vector3(gx + 0.06, 0.9, 1.0), Vector3(gx + 0.65, 0.55, 1.25), 0.03, "rubber", Color(0.08, 0.08, 0.08), 6, false)
 	# a dish on a bracket on the back wall
