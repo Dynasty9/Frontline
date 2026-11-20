@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/pillbox.md",
+  "summary": "The Coalition's bunker looks like poured concrete now: chamfered corners, a thick roof slab with moss on it and a steel observation cupola, splayed embrasures at every slit, and its steel doors standing open at the back.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (bunker, --building-single, front and --building-rear, the after framed by the before's capture.json with --building-match); the game's showroom scenario at the command camera (--scenario=showroom --seed=3 --focus=-22,16 --zoom=18 --cam-yaw=2.8 --nohud --perf=0 --shot-at=4)",
+  "rationale": "Appearance change of the concrete bunker: matched studio stills from the front and the door side show the walls, roof and embrasures up close, and a matched command-camera shot shows how it reads in play. Before is main's bunker, what players have now.",
+  "source_ref": "1a940c7ced5cf3b0ab1b2767ef4a911ec9041977",
+  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
+  "sources": [
+    {
+      "file": "changelog/unreleased/pillbox/before-after.jpg",
+      "sha256": "7c1ade494723fedcb57ed65c107027113107729b06e1bc1af995ecbb8d451061"
+    }
+  ],
+  "output": null
+}
