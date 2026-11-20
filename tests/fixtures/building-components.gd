@@ -797,13 +797,13 @@ func _ready() -> void:
 		bnk.sink.root.free()
 	for s7 in 30:
 		var L7: float = [2.6, 3.2, 2.33][s7 % 3]
-		var wtk := kit()
-		wtk.rng.seed = s7
-		BuildingFarm.wall_tools(wtk, L7, wtk.rng)
-		var wtb := _bounds(wtk.sink.root, Transform3D.IDENTITY)
-		check(wtb.position.y >= BuildingFarm.TOOLS - 0.01 and wtb.end.y <= 2.6 and wtb.position.z >= -0.01 and wtb.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, wtb])
-		check(wtb.position.x >= -L7 * 0.5 + 0.63 and wtb.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, wtb])
-		wtk.sink.root.free()
+		var tools_kit := kit()
+		tools_kit.rng.seed = s7
+		BuildingFarm.wall_tools(tools_kit, L7, tools_kit.rng)
+		var tools_box := _bounds(tools_kit.sink.root, Transform3D.IDENTITY)
+		check(tools_box.position.y >= BuildingFarm.TOOLS - 0.01 and tools_box.end.y <= 2.6 and tools_box.position.z >= -0.01 and tools_box.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, tools_box])
+		check(tools_box.position.x >= -L7 * 0.5 + 0.63 and tools_box.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, tools_box])
+		tools_kit.sink.root.free()
 	# The farmyard's kit stands on the ground inside the box a vehicle or a
 	# blast knocks it down as.
 	var farm_kits := {
