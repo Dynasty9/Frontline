@@ -1,0 +1,30 @@
+{
+  "entry": "changelog/unreleased/shop-windows-and-weathered-walls.md",
+  "summary": "Shops have display windows with stock behind the glass; house walls carry grime under the eaves, damp at the foot and gutter runs.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=town (shopfront-kerb and house-kerb, eye-level views added for this) and tools/showcase/building-surfaces.tscn --building-kinds=shops; parent-revision comparison",
+  "rationale": "A look change seen best at a man's eye: matched stills of a shop and a sunlit rendered wall from the street, and the studio's shop parade, side by side with the revision before.",
+  "source_ref": "b054bb01 (before) + dines/town-buildings-realism-5d2b5a working tree (after)",
+  "before_ref": "git archive of b054bb01 into a scratch copy, rendered with the same fixtures and flags (the new eye-level views copied into it).",
+  "capture": {
+    "renderer": "Godot 4.7.2 Forward+, High preset, 1600x900, day; Compatibility renderer checked on both eye-level views",
+    "command": "godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --capture-set=town --capture-views=shopfront-kerb,house-kerb; godot --path . tools/showcase/building-surfaces.tscn -- --building-single --building-kinds=shops --offscreen",
+    "comparison": "Captures reduced to 800x450 panels (the wall and the studio parade cropped to 1280x720 first), before left and after right."
+  },
+  "validation": [
+    "godot --import clean",
+    "building-components, structure-batches and determinism tests pass",
+    "town scenario expectation passes",
+    "changelog check passes"
+  ],
+  "limitations": [
+    "The glass is the town's opaque glass, so the stock shows where a pane is out; the studio's before parade has house windows where the after has display windows, as the town builds them."
+  ],
+  "sources": [
+    {
+      "file": "changelog/unreleased/shop-windows-and-weathered-walls/comparison.jpg",
+      "sha256": "07079c49ea81887126f2b88e2e36eea1556a0c447da510aab0f8893dded29e89"
+    }
+  ],
+  "output": null
+}

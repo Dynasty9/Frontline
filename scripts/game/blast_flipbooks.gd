@@ -179,8 +179,8 @@ func burst(p: Vector3, size: float, kind: String, detail: float, ground := true)
 	b.material.set_shader_parameter("ground_dust", 1.0 if key == "dust" else 0.0)
 	b.material.set_shader_parameter("age", 0.0)
 	b.material.set_shader_parameter("duration", b.life)
-	# Stable for this cloud, refreshed on pool reuse. One draw also picks
-	# the mirror, keeping the surrounding cosmetic RNG sequence intact.
+	# Pick an orientation once per burst, including when reusing a pooled cloud.
+	b.material.set_shader_parameter("heading", randf_range(-PI, PI))
 	b.material.set_shader_parameter("mirror", -1.0 if roll < 0.5 else 1.0)
 	b.material.set_shader_parameter("shape_bias", fposmod(roll * 2.0, 1.0) * 2.0 - 1.0)
 	b.material.set_shader_parameter("interpolate", detail * Settings.fx_mult() > 0.45)
