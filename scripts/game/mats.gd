@@ -1374,6 +1374,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": preload("res://assets/terrain/rock_face_03_color_height.png")}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
+		"church_stone":
+			# a church's walls: coursed rubble, the stones smaller and more
+			# varied than a house's, a little lichen and grime in the joints
+			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.47, 0.44, 0.39), "col_c": Color(0.56, 0.5, 0.42), "rough": 0.92, "bump": 2.2, "grime": 0.8, "scale": 1.6}
 		"rubble":
 			return {"pattern": STONE, "col_a": Color(0.55, 0.52, 0.47), "col_b": Color(0.36, 0.34, 0.3), "col_c": Color(0.5, 0.33, 0.25), "rough": 0.95, "bump": 2.4, "grime": 0.5, "scale": 2.0}
 		"roof_tile":
@@ -1466,6 +1470,10 @@ static func _preset(kind: String) -> Dictionary:
 			# precast and cast-in-place defence concrete: smooth formwork faces,
 			# weathered and rain-streaked, none of the pitting of old walls
 			return {"pattern": CONCRETE, "col_a": Color(0.56, 0.55, 0.52), "col_b": Color(0.38, 0.37, 0.34), "rough": 0.88, "bump": 0.7, "grime": 0.85, "pitting": 0.15, "seams": 0.0}
+		"shuttered":
+			# concrete cast in place against plank formwork (a pillbox): the
+			# boards' print on its walls, a warmer grey, weathered and dirtied
+			return {"pattern": CONCRETE, "col_a": Color(0.58, 0.56, 0.52), "col_b": Color(0.42, 0.41, 0.37), "rough": 0.9, "bump": 0.8, "grime": 0.9, "pitting": 0.06, "seams": 0.0, "boards": 1.0}
 		"rust_steel":
 			return {"pattern": PAINT, "col_a": Color(0.32, 0.2, 0.12), "col_b": Color(0.22, 0.2, 0.18), "rough": 0.85, "metal": 0.35, "bump": 1.0, "grime": 0.5, "rust": 1.0}
 		"wire":
@@ -1546,6 +1554,7 @@ uniform sampler2D wear_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float rust = 0.0;
 uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
 uniform float seams = 1.0;  // concrete: the formwork joints
+uniform float boards = 0.0;  // concrete: the planks of the formwork it was cast against, printed on its walls
 uniform float cell_w = 1.05;  // HESCO: the width of a cell
 uniform float lit = 0.0;  // lamplight behind it (a window, a lantern): glows as the light goes
 global uniform float window_glow;  // how much lamplight shows: the time of day (Atmosphere.lamplight)
@@ -1801,6 +1810,22 @@ void fragment() {
 		float pits = smoothstep(0.93, 0.97, h12(floor(uv * 60.0) + off)) * keep(0.05, px) * pitting;
 		col *= 1.0 - seam * 0.35 - pits * 0.1;
 		h = 1.0 - seam * 0.6 - pits * 0.5 + tnoise(uv * 25.0) * 0.08;
+		if (boards > 0.0 && an.y < 0.7) {
+			// Cast in place against planks: every board's print a shade of its
+			// own, a fine ridge where two met (the butt joints staggered course
+			// to course), and the holes the form ties left, in rows.
+			float bq = uv.y / 0.15;
+			float course = floor(bq);
+			float bx = uv.x / 2.7 + h12(vec2(course, 3.7));
+			float board = h12(vec2(course, floor(bx)) + off);
+			float lip = 1.0 - smoothstep(0.0, 0.07, min(fract(bq), 1.0 - fract(bq)));
+			float butt = 1.0 - smoothstep(0.0, 0.012, min(fract(bx), 1.0 - fract(bx)));
+			vec2 tq = (fract(uv / vec2(0.9, 0.6) + vec2(0.5, 0.25)) - 0.5) * vec2(0.9, 0.6);
+			float tie = 1.0 - smoothstep(0.012, 0.022, length(tq));
+			float kb = keep(0.15, px) * boards;
+			col *= 1.0 + (board - 0.5) * 0.06 * kb - lip * 0.05 * kb - butt * 0.03 * kb - tie * 0.25 * keep(0.05, px) * boards;
+			h += (board - 0.5) * 0.04 * kb - lip * 0.1 * kb - tie * 0.4 * boards;
+		}
 	} else if (pattern == 4) {
 		vec2 bs = vec2(0.58, 0.2);
 		vec2 q = uv / bs;

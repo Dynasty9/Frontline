@@ -216,6 +216,12 @@ it, a joist or two run up out of it (charred or bare), and reinforcing rods bent
 stands proud of the cover boxes, and lumps at its edges bed into the ground; the fixture checks every size a
 fallen wall leaves. Render two with `--building-kinds=rubble`.
 
+A house that has gone dark (a ruin, or hit hard, holed or burning: see the lamplight above) also sheds debris at
+the foot of every wall (`BuildingWeathering.spill`: lumps of brick and render, plaster flakes, roof-tile shards,
+a splinter of timber, glass), thickest by the wall and thinning out over a metre and a half, all lying flat; it
+comes with the wall's rebuild when the house goes dark. Under a shot-out window lies its glass
+(`BuildingWeathering.shards`). Both draw from a stream of their own.
+
 ## Barns
 
 A farmstead's barn is built as a house but weatherboarded: `BuildingMaterials.HOUSE` ends in `timber`, and
@@ -302,6 +308,39 @@ door to the house) and some lawns with room for it a trampoline; these are drawn
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 
+## The parish church
+
+A skirmish town has a parish church, built as a house is so men can go in (`MapGen._church`): `TownGen.church`
+stands it back from one of the roads into the town with its west tower to the road, first where its whole
+churchyard has room, from a stream of its own after the town and its villages are laid out and before the farms.
+The tower (Structure "church": coursed stone, the `church_stone` surface, over a plinth, dressed quoins long and
+short up its corners, string courses, a clock on its north and south faces, louvred belfry lancets under hood
+moulds, battlements, pinnacles, a slate spire with lucarnes and a gilded cross) is solid above its ground stage,
+which is the west porch: walls north, south and west (`CHURCH_TOWER_WALL`), the west doorway open under a
+pointed arch of two orders and a hood mould (`CHURCH_WEST_DOOR`, its head clear of a man at `CHURCH_DOOR_H`), its
+oak doors folded back inside, and a traceried two-light window over it. The nave and the chancel are each a floor
+(variant 3: flagstones and the quoins at the walls' outer corners, which the walls stop short of; in the nave
+pews either side of a red runner, the font, the pulpit by the chancel arch on the north side and the brass eagle
+lectern on the south; in the chancel a tiled floor, choir stalls, the altar on its step with a frontal, cross and
+candlesticks, behind a rail), house walls in the "church" material (coursed stone over a dressed plinth,
+whitewashed inside) laid by `Structure.church_walls` (bays with a window in each, the south door in the south
+side's west bay, the west door at the nave's west end under the tower, the nave's ends either side of the tower
+and of the chancel arch), and a roof that draws the walls on up to the eaves by the same plan (`_church_roof`:
+the rest of each two-light window - leaded lights with a coloured panel in each, a pointed head with tracery and a
+round light, a hood mould - a string course, quoins, stepped buttresses, and the south porch's oak frame and slate
+roof) under a 50 degree slate roof. `Structure.church_porch` says where the porch stands; its stone dwarf walls are
+low walls of their own (cover). A window's sill is chest high, so men inside fire from it; the roofs lift off when
+they go in, and a wall knocked down leaves rubble as a house's does. A squad's places when it's put in the church
+are kept inside it (`Terrain.slots`), and its roofs are `church_roof` fuel (`Fires`): slate on oak, hard to light.
+The `church` scenario has a fighter cell holding it and two squads clearing it by both doors. Render it with
+`--building-kinds=church` (and `church_open`, its roofs off) in the studio stage.
+
+Round it `TownGen._churchyard` lays out the churchyard from the same stream: a low stone wall all round
+(Structure "low_wall", cover as a garden wall is) with a gap in front for the path up to the west door and round
+to the south porch, rows of graves either side of the nave (clear of the porch) and behind the chancel (Decor "graves": `BuildingYards.graves`, headstones with
+round or pointed tops, the odd cross, some leaning, a few kerbed plots), a dark conifer at each front corner;
+then the yard is reserved, so nothing the map puts down after it lands among the graves.
+
 ## Wall fittings
 
 What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,
@@ -361,6 +400,31 @@ A research post (Structure `research`) dresses its precast block (`Structure._re
 - **At the door:** a precast blast wall, and the post's plate beside it.
 - **The generator:** in its canopy on skids, with louvres and its exhaust.
 
+## Pillbox
+
+The Coalition's concrete bunker is `BuildingPillbox`: a pillbox cast in place. Its surface is `shuttered`, concrete
+with the print of the plank formwork on its walls (a fine line every 15 cm, each board a shade of its own, rows of
+form-tie holes; the `boards` value of the concrete pattern, faded out with distance).
+- **`walls`** draws the structure's wall parts themselves, since they are what stops the bullets: as plain boxes that
+  meet flush (one pour, no seam between them), the four at the outer corners cut back 0.3 m (`CHAMFER`). The fixture
+  checks they fill every part but for that chamfer. Inside, the faces, floor and ceiling are dark, so a slit or the
+  doorway looks into the gloom of the room.
+- **`roof`**: the slab, half a metre thick at its edge and 0.66 m at the crown, 0.2 m over the walls, its corners cut back with theirs, its top edge
+  chamfered and its top falling from the crown (`CROWN`, `SLAB_TOP`) to every edge. Moss grows in patches on the
+  crown (one stain over all of it, so no patch's rim lies over another's). On the crown stand a cast steel
+  observation cupola in a concrete collar, vision slits round its front and a periscope through it; the escape hatch
+  on its kerb; and a mushroom vent cowl.
+- **`embrasure`**, on each slit's outer face: a frame `EMBRASURE` deep whose mouth splays out from the slit (the
+  hood's underside rises, the sill falls, the cheeks open out), and steel angle on the slit's lips.
+- **`door`**: the steel doors at the back stand open, folded flat against the wall either side, so the way in is
+  clear for the men who garrison it; **`step_irons`** go up the back wall to the roof.
+- **`weather`**: the grime of a season under the slab and runs down from its edge, the splash and weeds at the foot of
+  the back wall (earth is banked against the rest), and bullet strikes round the slits.
+
+`solid` lofts the convex outlines the walls' corners, the slab and the cheeks are cut from, cached per shape. The
+bunker bakes (`Structure.BAKED`'s path) so its stains merge with the rest of it rather than drawing one by one.
+Render it with `--building-kinds=bunker` (add `--building-rear` for the door side).
+
 ## The water tower
 
 A town's water tower is `BuildingLandmarks.water_tower`, standing where Decor's `water_tower` stands:
@@ -404,8 +468,14 @@ parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingPillbox.walls`, `roof`, `embrasure`, `door`, `weather` | The Coalition's concrete bunker |
 | `BuildingCargo.stack`, `shipping_crate`, `ammo_box`, `pallet_load`, `ammo_row` | Cover crate stacks, the town's supply dumps, the FOB's stores |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
+
+The FOB's command post is `WorksModels.command_post`, built over the block its part gives:
+- twelve tall HESCO cells (`_hesco` with `h` 2.0) in a square four to a side, with one cell left out at the back
+  as the way in (`skip`) behind a baffle of bags;
+- a roof of sheets on timber bearers under a burst layer of bags.
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the
 concertina's coils, sandbags, HESCO cells, the camouflage net itself, trees, cars and wrecks.

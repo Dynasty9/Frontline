@@ -32,6 +32,15 @@ static func rocket_pod(k: VehicleModels, parent: Node3D, center: Vector3, radius
 	for hole in holes:
 		var pos := center + Vector3(hole.x, hole.y, front + 0.003)
 		k._add(parent, tube, "steel", Color(0.23, 0.24, 0.22), pos)
+	# A loaded pod: each rocket's warhead, olive drab under its fuze, filling
+	# its tube's mouth a hand inside the lip (a Hydra's M151, an S-8's head), so
+	# the face reads as a pod of rockets and not a pepperpot of empty holes.
+	# Wrecks keep the old empty face.
+	if not k.wreck:
+		var war := [Vector2(0, -0.006), Vector2(bore * 0.24, 0.004), Vector2(bore * 0.58, 0.02), Vector2(bore * 0.72, 0.034)]
+		var head := VehicleProfiles.revolve(war, 6, 50.0)
+		for hole in holes:
+			k._add(parent, head, "paint", Color(0.3, 0.32, 0.24), center + Vector3(hole.x, hole.y, front + 0.012), Vector3.ZERO, Vector3.ONE, false)
 	k._box(parent, Vector3(r * 0.5, 0.055, ln * 0.4), center + Vector3(0, r + 0.015, 0), "metal_dark")
 
 

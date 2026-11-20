@@ -272,6 +272,27 @@ Use engine `--fixed-fps 30` so animation and simulation advance together.
 See [the trench review](../../docs/trench-realism-review.md) for exact commands,
 matched baseline provenance and coverage limits. Raw frames belong outside Git.
 
+### Weather cell boundary
+
+`weather-drift.gd` loads the actual naval scenario, freezes the battle after one
+simulated second, and fixes a low shoreline camera. Drawing is disabled while
+scenery queues finish building; the stage rejects construction during capture.
+It holds the weather still for 20 rendered frames, then steps the production grid
+across a cell boundary for 60 frames at 30 fps. This controlled boundary crossing
+is not a performance measurement. Use the identical script on both revisions and
+compare `camera.json`, including the weather phase and scenery count, before encoding.
+
+```sh
+FL_DRIFT_CAPTURE=/tmp/weather-after godot --path . --rendering-method forward_plus \
+  --resolution 960x540 --fixed-fps 30 --script tools/showcase/weather-drift.gd -- \
+  --scenario=naval --static --seed=3 --preset=high --mood=dawn \
+  --nohud --offscreen --set=perf:0,shadows:1,aa:0
+```
+
+The software diagnostic keeps volumetric fog and cloud shadows on, with 2048-pixel
+shadows and AA off. It does not establish full-High image quality or hardware
+speed. Keep raw frames outside the repository and leave exposure unchanged.
+
 ### Surface-history correction comparison
 
 `ssgi-history-capture.patch` records the identical capture-only changes applied
