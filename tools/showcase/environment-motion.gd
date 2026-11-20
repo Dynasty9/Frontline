@@ -39,6 +39,12 @@ func capture() -> void:
 		"town":
 			views = [["Photographed surfaces and door paths", Vector3(-30,0,-12), 35.0, -50.0, 0.7],
 				["Town plots and connected streets", Vector3.ZERO, 190.0, -40.0, 0.7]]
+		"square":
+			views = [["Bench and fence support clearance", Vector3(-1, 0, 12), 10.0, -26.0, 2.6]]
+			for piece: Array in world.decor:
+				if piece[0] in ["fountain", "statue"]:
+					views.append(["Square at command height", piece[1], 42.0, -55.0, 0.7])
+					break
 		"environment":
 			world.cam.cam.fov = 55.0
 			views = [["Alpine ranges, ocean and forest coverage", Vector3.ZERO, 900.0, -22.0, 0.7],
