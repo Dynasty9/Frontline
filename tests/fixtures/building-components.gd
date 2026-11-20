@@ -412,6 +412,21 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A side's HQ stands its containers and command post where its parts are,
+	# turned the way the battle puts it: its wall out in front (-z, towards
+	# the enemy), its gate on the road's side (+x), its drive in running out
+	# to the road's edge (11.6 m: TownGen.build_roads lays the road 14 m out)
+	# and nothing past it, nor past the security fence along its back (8.5 m:
+	# TownGen.military_fences). The masts, the long-range aerial and the flag
+	# are the top of it, its guys' pickets driven in the bottom. Either side.
+	for side in 2:
+		var hq := Structure.preview_model("depot", side, 0)
+		var hqb := _bounds(hq, Transform3D.IDENTITY)
+		check(hq.get_child_count() > 0 and hqb.position.x >= -10.5 and hqb.end.x <= 11.65 and hqb.position.z >= -7.0 and hqb.end.z <= 8.5
+			and hqb.position.y >= -0.2 and hqb.end.y < 12.0, "a side's HQ keeps to its compound (%d: %s)" % [side, hqb])
+		check(hqb.position.z <= BuildingDepot.FRONT_Z - 0.4, "its wall stands out in front of it, towards the enemy (%d: %s)" % [side, hqb])
+		hq.free()
+
 	# The town square's war memorial stands within its steps, the soldier (or
 	# the obelisk) on top of it; a market stall keeps to its pitch, its
 	# canopy over a man's head.
@@ -517,6 +532,24 @@ func _ready() -> void:
 	var rpb := _bounds(rp, Transform3D.IDENTITY)
 	check(rp.get_child_count() > 0 and rpb.size.x <= 10.5 and rpb.size.z <= 9.5 and rpb.position.y >= -0.05 and rpb.end.y < 9.5, "a research post keeps to its plot (%s)" % rpb)
 	rp.free()
+	# What stands at the kerb keeps to its spot: a lamp's head out over the
+	# road no further than its arm, a sign, a hydrant, a mailbox, a cabinet
+	# (the bounds of a turned lantern or sign are a turned square's;
+	# the sign now turns in its face plane, making that box wider, not deeper).
+	var kerbs := [[func(k: BuildingKit): BuildingKerbside.column(k), Vector3(2.0, 6.45, 0.45)],
+		[func(k: BuildingKit): BuildingKerbside.pole_lamp(k), Vector3(1.45, 6.05, 0.65)],
+		[func(k: BuildingKit): BuildingKerbside.lantern_post(k), Vector3(0.75, 4.95, 0.75)],
+		[func(k: BuildingKit): BuildingKerbside.hydrant(k), Vector3(0.55, 0.8, 0.36)],
+		[func(k: BuildingKit): BuildingKerbside.stop_sign(k, k.rng), Vector3(1.03, 2.67, 0.12)],
+		[func(k: BuildingKit): BuildingKerbside.mailbox(k, Color.BLUE, true), Vector3(0.3, 1.42, 0.5)],
+		[func(k: BuildingKit): BuildingKerbside.cabinet(k), Vector3(1.25, 1.5, 0.75)]]
+	for kb: Array in kerbs:
+		var kbk := kit()
+		(kb[0] as Callable).call(kbk)
+		var kbb := _bounds(kbk.sink.root, Transform3D.IDENTITY)
+		var kbl: Vector3 = kb[1]
+		check(kbb.size.x <= kbl.x and kbb.size.z <= kbl.z and kbb.end.y <= kbl.y and kbb.position.y >= -0.01, "a kerbside piece keeps to its spot (%s, %s)" % [kbb, kbl])
+		kbk.sink.root.free()
 	# The water tower stands on its piers within its footprint, its finial at
 	# 13.5 m or so.
 	var towk := kit()

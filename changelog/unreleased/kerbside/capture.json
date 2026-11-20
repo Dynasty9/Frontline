@@ -1,0 +1,32 @@
+{
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "source_ref": "8318774b76c5aedc980f68c63ac7f987a35a4a6a",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=kerbside",
+  "comparisons": [
+    {
+      "subjects": [
+        "kerbside"
+      ],
+      "file": "pieces.jpg",
+      "after_only": true
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "file": "comparison.jpg",
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "env": "FL_ONLY_VIEW=kerb,9,1,7,-22,3.3",
+      "crop": [
+        0,
+        0,
+        1600,
+        900
+      ]
+    }
+  ],
+  "notes": "The studio's kerbside pieces exist only after (the old ones were Decor primitives). In the map the difference is small at the battle camera: the gain is up close.",
+  "composition": "PIL: the studio pieces cropped and scaled to 1600 px, JPEG quality 84; one matched row, 792 px halves, JPEG quality 82"
+}

@@ -1123,31 +1123,67 @@ func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunme
 	return VehicleWheels.pneumatic(self, parent, pos, r, w, hub_kind, hub_col, profile)
 
 
+## A side's identification mark, painted on as armies paint them for a
+## campaign (the inverted-V chevrons of 2003, the bands of others): where the
+## old panel box `s` sat, centred on `pos`, on the face its thin axis is the
+## normal of (a roof's faces up, a flank's out to its side, an end's fore or
+## aft). It's brushed on in the vehicle's own paint, so it takes the dust,
+## grime and wear the hull round it takes and never stands clean and dark
+## like a hole in the roof; the side's colour, sunk toward the hull's grey,
+## still tells the sides apart from the battle camera, and so does its shape
+## (`_mark_outline`). Laid on the box's outer face, which stood clear of the
+## hull everywhere the box showed. Burnt off a wreck with the paint.
 func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
-	if wreck or team < 0:  # (burnt off a wreck with the paint)
+	if wreck or team < 0:
 		return
-	var mi := MeshInstance3D.new()
-	mi.mesh = Res.box(s)
-	mi.position = pos
-	mi.material_override = _mark_mat(team)
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mi)
+	var normal := Vector3.UP
+	var along := Vector3.RIGHT
+	var up := Vector3.FORWARD  # (a roof's mark points at the bow)
+	var size := Vector2(s.x, s.z)
+	var thin := s.y
+	if s.x < s.y and s.x <= s.z:
+		normal = Vector3(-1.0 if pos.x < 0.0 else 1.0, 0, 0)
+		along = Vector3.BACK
+		up = Vector3.UP
+		size = Vector2(s.z, s.y)
+		thin = s.x
+	elif s.z < s.y and s.z < s.x:
+		normal = Vector3(0, 0, -1.0 if pos.z < 0.0 else 1.0)
+		up = Vector3.UP
+		size = Vector2(s.x, s.y)
+		thin = s.z
+	var o := pos + normal * thin * 0.5
+	VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return o + along * q.x + up * q.y, normal, _mark_col(team), "paint", true, 0)
 
 
-static var _mark_mats := {}
+## A team mark's outline, `size` (across, up) centred on the origin: the
+## coalition's inverted-V chevron, its arms half the mark's height thick,
+## apex up (toward the bow on a roof or wing); the other side's band, its
+## ends cut on a slant leaning forward. Two shapes, so the sides read apart
+## even where the colour doesn't.
+static func _mark_outline(team: int, size: Vector2) -> PackedVector2Array:
+	# (a flank's mark box is wide and short: a chevron stretched across all of
+	# it, arms half its height thick, read from the battle camera as a smear.
+	# Painted no wider than 1.6 times its height, centred, with slimmer arms,
+	# it reads as a chevron)
+	var wide := size.x > size.y * 1.6
+	var w := minf(size.x, size.y * 1.6) * 0.5
+	var h := size.y * 0.5
+	if team == 0:
+		var t := size.y * (0.34 if wide else 0.52)
+		return PackedVector2Array([Vector2(0, h), Vector2(w, -h + t), Vector2(w, -h), Vector2(0, h - t), Vector2(-w, -h), Vector2(-w, -h + t)])
+	var slant := minf(size.y * 0.6, size.x * 0.3)
+	return PackedVector2Array([Vector2(-w + slant, -h), Vector2(w, -h), Vector2(w - slant, h), Vector2(-w, h)])
 
 
-## A subdued identification panel, not a toy's coloured sticker: the side's
-## colour sunk most of the way to the hull's dark grey, in flat matte paint
-## with hardly any sheen, so the sky doesn't lie on it as a bright patch
-## beside the matte camouflage round it.
-static func _mark_mat(team: int) -> StandardMaterial3D:
-	if not _mark_mats.has(team):
-		var tc: Color = Defs.TEAM_COLORS[team]
-		var mat := Res.mat(tc.lerp(Color(0.2, 0.21, 0.2), 0.7).darkened(0.62), 0.97).duplicate() as StandardMaterial3D
-		mat.metallic_specular = 0.12
-		_mark_mats[team] = mat
-	return _mark_mats[team]
+## A team mark's paint: the side's colour lerped toward a pale grey, a pale
+## service blue or a pale brick at about value 0.6, light enough to stand off
+## dark camouflage and dark enough not to glow like a sticker on sand (sunk to
+## the hull's grey and darkened, it was as dark as olive camouflage, and the
+## sides could not be told apart from the battle camera).
+static func _mark_col(team: int) -> Color:
+	var tc: Color = Defs.TEAM_COLORS[team]
+	return tc.lerp(Color(0.74, 0.74, 0.7), 0.4)
 
 
 # --- tanks -----------------------------------------------------------------------

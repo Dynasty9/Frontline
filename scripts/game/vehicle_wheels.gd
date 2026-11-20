@@ -22,6 +22,10 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	var fine := r >= 0.18
 	if k.wreck:
 		pass  # (burnt away: only the rim is left, and the hull sits down on it: Structure._ruin)
+	elif r < 0.18 and r >= 0.04 and w <= r * 1.6 and profile == "road":
+		# A kart's slick or a robot's road wheel is still a tyre, its
+		# shoulders rounded over onto the walls (see _small_tyre).
+		k._add(pv, _small_tyre(r, w), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO)
 	elif r < 0.18 or w > r * 1.2:
 		k._add(pv, drum(r, r, w, 24), "rubber", null, Vector3.ZERO, AXLE)
 	else:
@@ -176,6 +180,34 @@ static func _car_tyre(r: float, w: float, rr: float) -> ArrayMesh:
 	for i in range(half.size() - 1, -1, -1):
 		section.append(Vector2(-half[i].x, half[i].y))
 	_meshes[key] = _lathe(section, 32)
+	return _meshes[key]
+
+
+## A small wheel's tyre, a kart's slick or a robot's road wheel: a flat crown
+## rolling over rounded shoulders onto walls that bulge past the rim, lathed
+## round the axle (x), its bead on the rim's lip. A plain drum read as a
+## black cylinder cut off square, a toy's wheel. Twenty sides, as round as a
+## wheel this small needs; cached by size.
+static func _small_tyre(r: float, w: float) -> ArrayMesh:
+	var key := "small_tyre_%.3f_%.3f" % [r, w]
+	if _meshes.has(key):
+		return _meshes[key]
+	var rr := r * 0.56
+	var wall := r - rr
+	var half: Array[Vector2] = [Vector2(0.4 * w, rr), Vector2(0.49 * w, rr + wall * 0.35), Vector2(0.475 * w, r - wall * 0.26),
+		Vector2(0.38 * w, r - wall * 0.04), Vector2(0.22 * w, r)]
+	# (a road wheel a few centimetres wide needs only its rounded shoulder,
+	# and fewer sides: from a few metres it is a dark rim round the hub)
+	var around := 20
+	if w < 0.05:
+		half = [Vector2(0.45 * w, rr), Vector2(0.5 * w, r - wall * 0.3), Vector2(0.3 * w, r)]
+		around = 14
+	var section := PackedVector2Array()
+	for p in half:
+		section.append(p)
+	for i in range(half.size() - 1, -1, -1):
+		section.append(Vector2(-half[i].x, half[i].y))
+	_meshes[key] = _lathe(section, around)
 	return _meshes[key]
 
 

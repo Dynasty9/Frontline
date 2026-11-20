@@ -472,9 +472,10 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   moving one way while he aims another turns his hips and legs towards where he's going and his shoulders
   back to the target. Kicking, lying on a grenade, cooking one (grenade in hand), breathing at rest, a
   knee-buckle before the fall, three ways to lie dead.
-- Kit: Coalition soldiers wear slate sneaking suits under armour vests, helmets and goggles (or a bandana),
-  codec headsets, shoulder, elbow, knee and shin pads, and carry carbines with optics; Rebels wear balaclavas,
-  berets, field caps and mismatched field jackets with chest rigs or bandoliers, and carry AKs.
+- Kit: Coalition soldiers wear slate sneaking suits printed in a tonal slate camouflage under armour vests,
+  camouflage-covered helmets and goggles (or a bandana), codec headsets, shoulder, elbow, knee and shin pads, and
+  carry carbines with optics; Rebels wear balaclavas, berets, field caps and mismatched field jackets and trousers
+  in surplus camouflage of every kind (or plain), with chest rigs or bandoliers, and carry AKs.
 
 **Standing orders** (`soldier.gd`, `squad.gd`, `vehicle.gd`; `World.execute_cmd` "stance", "roe", "prio",
 "pop_smoke", "dismount")
@@ -1257,6 +1258,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   over the last two minutes) and how many towns you hold; beside the FOB lines, a line of its own (stock, rate,
   where its trucks go) for each town being taken or whose trucks aren't getting through, and the quiet ones in
   one line once there are more than a couple. The order of battle moves down to make room.
+- Each side's HQ is a compound facing the way the battle puts it: a wall towards the enemy (HESCO for the
+  Coalition, sandbags and drums for the Rebels), a yard behind it under a camouflage net between two shipping
+  containers (the signals office and the stores), a precast command post sandbagged round its roof with a mast
+  and a satellite dish, two generators and a long-range aerial behind the office, and on the road side the gate
+  (barrier, guard booth, stop board) with the vehicle park inside it. The command post's door, the gate and the
+  flag face the rear, where the traffic comes from and the side's commander first looks from. A regular army's
+  containers are olive, tan or grey; a militia's are rusty, faded commercial ones.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, HESCO walls and T-walls (Coalition), barricades (Rebels), barbed wire, minefields, tank traps,
   camouflage nets, ammo caches, watchtowers (see 85 m, 115 m with a lookout up; shoot over walls), and Rebel
@@ -1828,6 +1836,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   stacked from individual bags in proper courses, FOBs and camouflage nets throw dappled shadows, trees sway.
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
+- Camouflage (`camo.gd`): uniforms are printed, not tinted: hard-edged motifs at their real size, laid out so a
+  blotch runs on unbroken round a sleeve or a helmet, each man cut from a different part of the bolt. The patterns
+  follow real issue: woodland, leaf, three-colour desert, fleck dots, square-pixel digital, tiger stripe, rain
+  dashes and multi-terrain, plus the Coalition's tonal slate. The Coalition wear their slate (the detailed riflemen
+  its digital form); a Rebel's jacket and trousers are surplus from anywhere, often two different patterns, or
+  plain. On the imported character the shader reprints the cloth in its texture space, keeping its folds, and its
+  black webbing takes the man's rig colour. Detail too fine to see fades to the colour the print averages to.
+  The Coalition's concrete bunker is painted over in
+  big disruptive blotches of three colours, green, brown and black, running on
+  across walls, corners and roof, sun-bleached on top and flaked through low down. Camouflage nets are garnish
+  cut into leaves, each turned its own way, tied to a diamond cord mesh and printed in blotches, woodland for the
+  Coalition and desert for the Rebels; the FOB's net is pitched over the block on its poles and hangs to head
+  height.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
   On the Abrams, T-55 and Bradley, each track cycles independently and its road wheels follow the ground under that side.
   Hinged shoes retain their place around the track. The T-55's upper run rests on its road wheels and sags in the gaps.
@@ -1983,6 +2004,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   are pierced steel, tracks show their pins, bolts and hatches stop glinting, soot fades into the paint, and
   the M35 and FIA truck have cabs you can see into. See "Twelfth pass" in
   [the component guide](vehicle-components.md).
+- **Canvas, kit, seats and covers** (thirteenth and fourteenth passes): truck tilts drape over their hoops with
+  laced hems and rolled curtains, bags and bedrolls look packed and strapped, webbing, nylon, vinyl and rope each
+  have their own finish, cockpits and cabs have real seats, helicopter doors open on troop seats, and some
+  vehicles carry air-recognition panels and covers. See "Thirteenth pass" and "Fourteenth pass" in
+  [the component guide](vehicle-components.md).
+- **Bolted plate, painted marks and armoured glass** (fifteenth to seventeenth passes): some rebel vehicles bolt
+  on improvised plate, team marks are painted chevrons and bands, tyres stay rubber, armoured glass is dark and
+  thick, tilts open on their benches, rotors shimmer, vans, tractors and the Blackfoot show their crews, and boats
+  fly slack ensigns. Two critics ranked the roster's worst-looking parts to steer these passes. See "Fifteenth
+  pass" to "Seventeenth pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
