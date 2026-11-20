@@ -804,13 +804,20 @@ static func _road_tyre(r: float, h: float) -> ArrayMesh:
 ## rubber tyres leave the gap the guide horns run through; the pressed disc
 ## face, a hub that runs on through the inboard side as its stub axle, and the
 ## hub bolts on the outer face (the side pos.x points to). Rollers are static:
-## nothing is registered, so the wheel animation is unchanged.
-static func roller(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, mat := "gunmetal_w", col = null) -> void:
+## nothing is registered, so the wheel animation is unchanged. `hidden`: a
+## roller wholly behind full-length skirts and under the sponson (the
+## Merkava's), which no camera sees but which still carries the run: its two
+## tyres and disc, eight-sided, without the hub or its bolts.
+static func roller(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, mat := "gunmetal_w", col = null, hidden := false) -> void:
 	var pv := k._pivot(parent, pos)
 	# Up to eight a vehicle, mostly behind the skirts: a few cheap cylinders.
+	var segs := 8 if hidden else 10
 	for side: float in [-1.0, 1.0]:
-		k._add(pv, drum(r, r, w * 0.28, 10), "rubber", null, Vector3(side * w * 0.36, 0, 0), AXLE, Vector3.ONE, false)
-	k._add(pv, drum(r * 0.76, r * 0.76, w * 1.02, 10), mat, col, Vector3.ZERO, AXLE, Vector3.ONE, false)
+		k._add(pv, drum(r, r, w * 0.28, segs), "rubber", null, Vector3(side * w * 0.36, 0, 0), AXLE, Vector3.ONE, false)
+	k._add(pv, drum(r * 0.76, r * 0.76, w * 1.02, segs), mat, col, Vector3.ZERO, AXLE, Vector3.ONE, false)
+	if hidden:
+		k._fold(pv)
+		return
 	k._add(pv, drum(r * 0.28, r * 0.32, w + 0.04, 8), mat, col, Vector3.ZERO, AXLE, Vector3.ONE, false)
 	var outer := signf(pos.x) if pos.x != 0 else 1.0
 	var nut := drum(r * 0.05, r * 0.05, 0.014, 6, false)
