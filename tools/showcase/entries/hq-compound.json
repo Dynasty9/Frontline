@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/hq-compound.md",
   "summary": "Each side's HQ built as a compound facing the way the map lays it out: a wall towards the enemy, the gate, vehicle park and command post's door towards its own lines and the road.",
-  "medium": "still",
-  "stage": "tests/fixtures/environment-views.gd (--capture-set=hq); tools/showcase/building-surfaces.tscn (depot:0, depot:1, front and rear) reviewed",
-  "rationale": "A layout and facing change: matched stills from each side's opening command view, closer from the same side and from the enemy's side show what changed and which way it now faces. The earlier motion clip and its showroom stage framed the compound from the enemy's side and were retired. facing.jpg (first build against now, same cameras) is review evidence for the pull request only.",
+  "medium": "motion",
+  "stage": "tests/fixtures/environment-views.gd (--capture-set=hq); tools/showcase/building-surfaces.tscn (depot:0, depot:1, front and rear) reviewed; tests/fixtures/environment-views.gd --capture-set=hq-roadside",
+  "rationale": "A layout and facing change: matched stills from each side's opening command view, closer from the same side and from the enemy's side show what changed and which way it now faces. The earlier motion clip and its showroom stage framed the compound from the enemy's side and were retired. facing.jpg (first build against now, same cameras) is review evidence for the pull request only. Current in-world motion shows the roadside entrances of both generated variants at matched local command and close camera settings. This replaces no historical evidence and does not reuse the obsolete showroom clip.",
   "source_ref": "bd7bbccf81589ec35f9429cefda0b1b481f82ecb",
   "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
   "sources": [
@@ -18,7 +18,20 @@
     {
       "file": "changelog/unreleased/hq-compound/capture.json",
       "sha256": "780e7138328bf3b9750f5f3a5273f55894110c07001213ed7c6a41202974e97f"
+    },
+    {
+      "file": "changelog/unreleased/hq-compound/roadside-entry-motion.webm",
+      "sha256": "68f7e00f072086f71f82772496c3def6a2e5388c08a3cda21a2d94bfa2756686"
+    },
+    {
+      "file": "changelog/unreleased/hq-compound/roadside-entry-motion.jpg",
+      "sha256": "2c0054666bb4fe986f2eec8646d9cca10f28e96249c813b3af7a6ab60a5b6f74"
+    },
+    {
+      "file": "changelog/unreleased/hq-compound/roadside-motion-capture.json",
+      "sha256": "6991798b1db98c08bd8625d52b325d9659689f45d8cbd294fdc028aeef87aca8"
     }
   ],
-  "output": null
+  "output": null,
+  "motion_source_ref": "99eee2870abd2ac6cb33c1ac1fd99f203d9ee4e3"
 }

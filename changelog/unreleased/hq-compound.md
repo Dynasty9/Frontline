@@ -3,6 +3,11 @@ title = "Each side's HQ is a compound, not three boxes"
 summary = "A side's HQ is a working compound: a wall facing the enemy, a yard under a camouflage net between two shipping containers, a sandbagged command post, and a guarded gate and vehicle park on the road side, facing your own lines."
 kind = "improved"
 
+[[videos]]
+file = "roadside-entry-motion.webm"
+poster = "roadside-entry-motion.jpg"
+caption = "The current roadside entrance in the generated battlefield: both variants at command height and close, with matching camera motion."
+
 [[screenshots]]
 file = "comparison.jpg"
 caption = "The Coalition's HQ before and after: from your own lines as the battle opens, closer from the same side, and from the enemy's side; then the Rebels' from their side"

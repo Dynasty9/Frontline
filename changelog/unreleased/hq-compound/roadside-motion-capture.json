@@ -1,0 +1,85 @@
+{
+  "source_ref": "99eee2870abd2ac6cb33c1ac1fd99f203d9ee4e3",
+  "source_sha256": {
+    "scripts/game/building_depot.gd": "982cbcac16557a2509c01e24f4fea2f3c33b9d55f6ef21fcab13b92ed2a57d48",
+    "scripts/game/structure.gd": "065f79602843cae00a195b39ebf468223b144aa6952d62f438f22efed13109ef",
+    "scripts/game/mapgen.gd": "0744993aa15f28ba473b8a030118db7e882d727102cfb47ee9669601dc5e1264",
+    "tests/fixtures/environment-views.gd": "22391cbdf082a0904febf3be589118d9d1f98456cbc6f24b6895482eef7e3271"
+  },
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "renderer": "gl_compatibility",
+  "device": "Mesa llvmpipe software",
+  "stage": "tests/fixtures/environment-views.gd --capture-set=hq-roadside",
+  "scenario": "Actual generated --aivai world; seed 3; unmodified depot positions and terrain",
+  "preset": "medium",
+  "mood": "day; same world lighting and exposure",
+  "fps": 15,
+  "duration_seconds": 8,
+  "edit": "Current build only: Coalition command and close, Rebels command and close, two seconds each. Identical local camera framing and orbit for both variants. Simulation held at two seconds; camera and cosmetic motion continue.",
+  "views": [
+    {
+      "camera": "[X: (0.687631, 0.0, -0.726061), Y: (-0.572144, 0.615662, -0.54186), Z: (0.447008, 0.788011, 0.423348), O: (25.35038, 39.40054, 522.1674)]",
+      "camera_position": "(25.35038, 39.40054, 522.1674)",
+      "camera_rotation": "(-0.907571, 0.812576, 0.0)",
+      "cloud_quality": 2,
+      "file": "/workspace/captures/environment-resume/pr267/compatibility/current-coalition-roadside-command.png",
+      "focus": "(3.0, 0.0, 501.0)",
+      "mood": "day",
+      "pitch": -52.0,
+      "time": 2.0,
+      "wetness": 0.0,
+      "yaw": 0.85,
+      "zoom": 50.0
+    },
+    {
+      "camera": "[X: (0.529678, 0.0, -0.848199), Y: (-0.449477, 0.848048, -0.280686), Z: (0.719314, 0.529919, 0.449192), O: (22.8249, 11.65822, 511.3822)]",
+      "camera_position": "(22.8249, 11.65822, 511.3822)",
+      "camera_rotation": "(-0.558505, 1.012576, 0.0)",
+      "cloud_quality": 2,
+      "file": "/workspace/captures/environment-resume/pr267/compatibility/current-coalition-roadside-close.png",
+      "focus": "(7.0, 0.0, 501.5)",
+      "mood": "day",
+      "pitch": -32.0,
+      "time": 2.0,
+      "wetness": 0.0,
+      "yaw": 1.05,
+      "zoom": 22.0
+    },
+    {
+      "camera": "[X: (-0.68763, 0.0, 0.726061), Y: (0.572144, 0.615662, 0.54186), Z: (-0.447008, 0.788011, -0.423348), O: (-25.35039, 39.40054, -522.1674)]",
+      "camera_position": "(-25.35039, 39.40054, -522.1674)",
+      "camera_rotation": "(-0.907571, -2.329017, 0.0)",
+      "cloud_quality": 2,
+      "file": "/workspace/captures/environment-resume/pr267/compatibility/current-rebels-roadside-command.png",
+      "focus": "(-3.0, 0.0, -501.0)",
+      "mood": "day",
+      "pitch": -52.0,
+      "time": 2.0,
+      "wetness": 0.0,
+      "yaw": 3.99159265358979,
+      "zoom": 50.0
+    },
+    {
+      "camera": "[X: (-0.529678, 0.0, 0.848199), Y: (0.449477, 0.848048, 0.280686), Z: (-0.719314, 0.529919, -0.449192), O: (-22.8249, 11.65822, -511.3822)]",
+      "camera_position": "(-22.8249, 11.65822, -511.3822)",
+      "camera_rotation": "(-0.558505, -2.129017, 0.0)",
+      "cloud_quality": 2,
+      "file": "/workspace/captures/environment-resume/pr267/compatibility/current-rebels-roadside-close.png",
+      "focus": "(-7.0, 0.0, -501.5)",
+      "mood": "day",
+      "pitch": -32.0,
+      "time": 2.0,
+      "wetness": 0.0,
+      "yaw": 4.19159265358979,
+      "zoom": 22.0
+    }
+  ],
+  "audio": "silent",
+  "command": "godot --path CHECKOUT --audio-driver Dummy --rendering-method gl_compatibility --resolution 1280x720 --fixed-fps 15 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --nohud --set=perf:0 --preset=medium --mood=day --focus=0,500 --capture-set=hq-roadside --capture-fast --capture-defer-draw --capture-orbit --capture-clip=all --capture-frames=30 --capture-prefix=OUTPUT/current",
+  "limitations": [
+    "Current in-world decorative entrance review, not historical before/after footage or combat validation.",
+    "Software capture does not establish hardware GPU performance.",
+    "Capture exited with code 0 after all frames and metadata were saved, but logged renderer resource-leak warnings at shutdown. No script errors were logged during capture."
+  ],
+  "encoding": "VP9 CRF 35, 1280x720, yuv420p"
+}
