@@ -744,14 +744,20 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
   water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
-  its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
+  its clouds are reflected, more the flatter you look across it. Where something stands above the water on screen
+  - a bank, trees, a bridge, a boat (not flames or smoke: they're drawn after) - it's mirrored instead (a ray marched over the screen; looked down on
+  steeply, where calm water mirrors only a couple of percent, none is marched). Rivers run: a flow map baked from
+  their courses carries the ripples down the stream and round its bends, quick in mid-stream and slack under the
+  banks, with lanes of glassy water and strings of bubbles drifting with the current; ponds lie still. The sun
+  shines green through the thin tops of the sea's waves when it's behind them, and the bed is dimmed by the water
+  the sunlight came down through as well as the water looked through, so a river's channel goes dark. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
   gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
   back into the spreading foam. Boats ride the same waves the player sees (the
   CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
   Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
-  fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
-  streaks; Ultra a finer grid for the swell.
+  fewer waves on a coarser grid; Medium is the full surface; High adds the reflections, the light on the bed
+  and the wind's streaks; Ultra a finer grid for the swell and longer reflections.
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
