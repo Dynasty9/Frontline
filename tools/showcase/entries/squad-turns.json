@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/squad-turns.md",
+  "title": "Squads turn together on the move",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Soldiers turn onto the leader’s new route and choose nearby formation positions.",
+  "medium": "motion",
+  "stage": "Native Forward+ gameplay at 30 fps, seed 3. Both cameras show the same village road from 23.20 seconds in the street take.",
+  "rationale": "A continuous, matched shot lets the viewer follow individual soldiers through the change of direction.",
+  "source_ref": "Edition 49 gameplay baseline at aec37dd with the individual infantry turn changes. Edition 50 adds the squad travel change. Both recordings use the same scene orders.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/squad-turns/crossing.mp4",
+      "caption": "The road crossing before and after the change.",
+      "sha256": "2a994cb57cad166583bf1b969f8f767d28aabb273d0ed61f0b5aacb8c855ca12"
+    },
+    {
+      "file": "changelog/unreleased/squad-turns/crossing.jpg",
+      "caption": "The squad approaching the turn.",
+      "sha256": "bd74f5c3ede39dff4375fefac6e61704ab3148e33777dcb684f9c08dc2d26f30"
+    }
+  ],
+  "output": null
+}
