@@ -10,21 +10,11 @@
   ],
   "sheet_size": [
     1600,
-    10350
+    9450
   ],
-  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82. Both columns rendered from checkouts of before_ref (round 9's code), the after column with this change's files copied in (rounds 10 to 12).",
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82. Both columns rendered from checkouts of before_ref (round 9's code), the after column with this change's files copied in (rounds 10 to 12). The sandbags the pickups carried here came off before merge: the two rows that showed only them are gone, and the two technicals' after column was rendered again from this change with the sandbags taken off.",
   "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> [--surface-flight] [--surface-rear] --surface-seed=<seed> [--surface-focus=<focus> --surface-size=<size>] --surface-out=<outside-repo-directory>",
   "shots": [
-    {
-      "model": "offroad_hmg",
-      "rear": true,
-      "label": "Armed pickup: sandbags along the bed rails"
-    },
-    {
-      "model": "aa_tech",
-      "rear": true,
-      "label": "AA technical: a sandbag wall behind the gun"
-    },
     {
       "model": "technical",
       "seed": 2,

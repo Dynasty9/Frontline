@@ -1861,8 +1861,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   have their own finish, cockpits and cabs have real seats, helicopter doors open on troop seats, and some
   vehicles carry air-recognition panels and covers. See "Thirteenth pass" and "Fourteenth pass" in
   [the component guide](vehicle-components.md).
-- **Sandbags, painted marks and armoured glass** (fifteenth to seventeenth passes): rebel vehicles carry sandbags
-  and improvised plate, team marks are painted chevrons and bands, tyres stay rubber, armoured glass is dark and
+- **Bolted plate, painted marks and armoured glass** (fifteenth to seventeenth passes): some rebel vehicles bolt
+  on improvised plate, team marks are painted chevrons and bands, tyres stay rubber, armoured glass is dark and
   thick, tilts open on their benches, rotors shimmer, vans, tractors and the Blackfoot show their crews, and boats
   fly slack ensigns. Two critics ranked the roster's worst-looking parts to steer these passes. See "Fifteenth
   pass" to "Seventeenth pass" in [the component guide](vehicle-components.md).

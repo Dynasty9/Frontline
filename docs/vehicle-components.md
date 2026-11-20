@@ -947,10 +947,11 @@ roster at seed 3, at most 5.0% (the motorboat's bimini and line).
   `sandbags(k, parent, a, b, rng, lot, courses, drape)`, `_sack`): a crew's sacks come from one lot, hessian
   (`canvas`) or woven plastic (`nylon`), about one in six from the other; each sack is one of eight cached
   pillow meshes (tied ear or folded mouth, slumped either way, or draped over a rail), and a wall lays each
-  course half a sack along, nested into the one below. Kit-seeded, never on wrecks or scenery: rail bags and
-  rear-door plate on the DShK technical (`VmCore._hilux_dshk`, which also ropes its spare and jerrycan), a wall
-  behind the ZU-23 (`_zu23`), rail bags or bolted bed plate on the armed off-roaders (`VmCiv._bed_guard`), wing
-  bags on the Zamak (`VmIndep._zamak_cab`), grain sacks in its load (`_zamak_cargo`).
+  course half a sack along, nested into the one below. Only the gun trawler's parapet uses them: the rail bags,
+  the wall behind the ZU-23 and the Zamak's wing bags this pass first laid came off on review (sandbags aren't
+  every vehicle's kit). Kit-seeded, never on wrecks or scenery: rear-door plate on the DShK technical
+  (`VmCore._hilux_dshk`, which also ropes its spare and jerrycan), bolted bed plate on a quarter of the armed
+  off-roaders (`VmCiv._bed_guard`), grain sacks in the Zamak's load (`_zamak_cargo`).
 - **Marine cloth** (`VehicleMarine.ensign`, `cloth`, `line_coil`; `VmBoat._bimini`; `VmShips._hatch_tarp`): a
   slack nylon ensign in the team colour, sagging at the fly with two folds and a white tabling, on the ships and
   boats (`VmBoat._motorboat(..., team)`); Hypalon tubes and vinyl seats in `"coated"`; a bimini on three bows
@@ -979,7 +980,7 @@ paint batch, and rise by two on the vans and the tractor for their clear glass (
   the same outline on the wing skin (`VehicleAircraft.paint`, `wing_skin`), mirrored wing to wing.
 - **Finishes**: rubber's grime is 0.06 and its dust a darker road film (`VehicleMaterials.preset`), so tyres stay
   dusty rubber in a dusty battle; recognition panels are a duller orange or rose with dust in them, on 20% of
-  crews; `NET_DESERT` is a mid sand with a mid-brown scrim; `VehicleMounts.BLOCK` and `OPTIC` are darker.
+  crews; `VehicleMounts.BLOCK` and `OPTIC` are darker.
 - **Tilts and loads**: `VehicleCloth._tilt` lays a dim liner set in under every width, so the boards that closed
   tilt openings are gone (HEMTT, Zamak, M35) and you see the benches; `back_flap` (with `_flap_half`, `_flap_mesh`)
   hangs the Tempest's rear flap from its last bow in two folds, rolled at the foot; laced-shut flaps fold.
@@ -1002,8 +1003,7 @@ paint batch, and rise by two on the vans and the tractor for their clear glass (
   paint-picked roof, the SUV a rising shoulder and tighter arches, the MB 4WD a padded bar.
 - **Military fittings**: `VehicleFittings.panel_hatch`'s stiffeners are two parallel ribs, not a cross;
   `VehicleFittings.vent` (and `_slats(..., slope)`) louvres cover 0.64 of their pitch, so engine decks read as
-  louvres; `VehicleMounts.gun_boot` pleats are ridges in matte duck (`BOOT_DUCK`); `VehicleCloth.LEAVES` and `_spray`
-  are duller, smaller, drooping leaves; the Ifrit has framed armoured glass (`VmCsat.ARMOR_GLASS`), hinges, bins
+  louvres; `VehicleMounts.gun_boot` pleats are ridges in matte duck (`BOOT_DUCK`); the Ifrit has framed armoured glass (`VmCsat.ARMOR_GLASS`), hinges, bins
   and grab rails (`_ifrit_side`); the Strider's door windows are framed and the MRAPs' glass green-black.
 
 ### Seventeenth pass: cost, glass and a second critic

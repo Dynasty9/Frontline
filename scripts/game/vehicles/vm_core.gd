@@ -1453,14 +1453,6 @@ static func _hilux_dshk(k: VehicleModels) -> void:
 	if lash != null and not k.wreck:
 		# the jerrycan roped round its waist to the rail, so it can't walk
 		VehicleCloth.rope(k, m, [Vector3(0.8, 1.185, 1.05), Vector3(0.712, 1.2, 1.045), Vector3(0.528, 1.2, 1.045), Vector3(0.528, 1.2, 1.395), Vector3(0.712, 1.2, 1.395), Vector3(0.8, 1.185, 1.42)], 0.006, Color(0.5, 0.45, 0.33), [0, 5])
-	# Sandbags along both bed rails behind the roll bar's stays, two courses
-	# on most, where the gunner crouches out of the side's small-arms fire
-	# (a crew that has filled its sacks: VehicleCloth.sack_lot)
-	var lot := VehicleCloth.sack_lot(k)
-	for s: float in [-1.0, 1.0]:
-		var bags := VehicleCargo.kit(k, m, Vector3(s * 0.82, 1.18, 2.0), 43)
-		if bags != null and bags.randf() < 0.6:
-			VehicleCloth.sandbags(k, m, Vector3(s * 0.82, 1.183, 1.72), Vector3(s * 0.82, 1.183, 2.42), bags, lot, 2 if bags.randf() < 0.7 else 1, true)
 	# a steel plate bolted over each rear door on some, cut from whatever the
 	# crew found, its cut edges rusting (the front doors keep the side's mark)
 	var plate := VehicleCargo.kit(k, m, Vector3(0, 0.8, 0.5), 45)
@@ -1495,14 +1487,6 @@ static func _zu23(k: VehicleModels, team: int) -> void:
 	for i in 2:
 		VehicleCargo.crate_stack(k, m, Vector3(-0.72, 0.88, 1.95), Vector3(0.22, 0.2, 0.5), Vector3i.ONE, "wood_dark", null, 0.0, [], 0.12, Color(0.28, 0.26, 0.2), 0.1 * i)
 	_jerry(k, m, Vector3(0.7, 1.12, 2.2), Color(0.32, 0.34, 0.24), 0.2)
-	# Sandbags round the mount on some: a wall across the bed behind the
-	# turntable's box, under the platform's swing, and along the left rail
-	# over the ammunition (the jerrycan has the right corner)
-	var lot := VehicleCloth.sack_lot(k)
-	var bags := VehicleCargo.kit(k, m, Vector3(0, 0.88, 2.26), 43)
-	if bags != null and bags.randf() < 0.6:
-		VehicleCloth.sandbags(k, m, Vector3(-0.56, 0.88, 2.26), Vector3(0.52, 0.88, 2.26), bags, lot, 2)
-		VehicleCloth.sandbags(k, m, Vector3(-0.82, 1.183, 1.72), Vector3(-0.82, 1.183, 2.42), bags, lot, 1 if bags.randf() < 0.5 else 2, true)
 	var t := k._pivot(m, px + Vector3(0, 0.33, 0))
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.04, 0), 0.46, 0.5, 0.08, "paint", g, 18)

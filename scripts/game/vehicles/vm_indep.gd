@@ -1060,15 +1060,6 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	VehicleEquipment.storage(k, m, Vector3(0.98, 0.95, -0.18), Vector3(0.6, 0.4, 0.42), cam, col, Vector3(0, -PI / 2, 0))
 	# the exhaust's silencer under the right side of the cab
 	VehicleFittings.silencer(k, m, Vector3(0.78, 0.8, -1.35), Vector3(0.2, 0.2, 0.6), "metal_dark")
-	# Sandbags laid on the front wings over the wheels on some, a third on
-	# top, where a mine under the front wheel blows up through the wing into
-	# the cab (as convoy drivers have done since Vietnam and Afghanistan); the
-	# Rebels' captured trucks more often than the army's.
-	var lot := VehicleCloth.sack_lot(k)
-	var bags := VehicleCargo.kit(k, m, Vector3(0, 1.445, -2.58), 43)
-	if bags != null and bags.randf() < (0.5 if team == 1 else 0.25):
-		for s: float in [-1.0, 1.0]:
-			VehicleCloth.sandbags(k, m, Vector3(s * 0.93, 1.445, -2.96), Vector3(s * 0.93, 1.445, -2.2), bags, lot, 2 if bags.randf() < 0.6 else 1)
 
 
 ## The flatbed on the chassis, on its runners; `sides` > 0 gives it dropsides
