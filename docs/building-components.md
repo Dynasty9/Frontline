@@ -154,6 +154,19 @@ a decor list of its own after the rest, so the town is as it was; vehicles and b
 other street furniture (`Decor.BREAKABLE`). Render the pieces with `--building-kinds=street_kit`; the town views
 include the crossroads and the square.
 
+The older pieces are `BuildingStreet`'s too:
+- **The square's fountain** (`fountain`): a basin of dressed stone in segments with a moulded lip, a pedestal to a
+  lower bowl, a stem to an upper bowl, the finial, weed at the foot. Decor draws the water in it, and in each bowl,
+  on its own.
+- **The bus shelter** (`bus_shelter`): a steel frame, glazed back and ends (the odd pane shot out), a curved roof
+  with its fascia, a bench of slats, a timetable case, the stop's flag.
+- **Litter bins** (`litter_bin`): a slatted drum on a post.
+- **Planters** (`planter`): a tapered concrete trough with bedding flowers round a clipped box ball.
+- **A town's name board** (`town_sign`): a yellow board with its name, a district board under it, enamelled faces
+  on bare galvanised backs.
+
+Render them with `--building-kinds=street_pieces`.
+
 ## Furniture
 
 A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it
@@ -335,6 +348,22 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## Crate stacks
+
+The cover crate stacks (structure `crates`) are `BuildingCargo.stack`, drawn inside the boxes their parts give for
+cover: variant 0 is one pallet load, variant 1 two loads side by side with a crate hoisted onto the left one.
+- **A load** is a low crate with two ammunition boxes on it, three layers of ammunition boxes (the top one laid
+  across to tie the stack), or a tall crate, each on its pallet; on the long stack a box is sometimes left on top
+  of the right-hand load.
+- **`shipping_crate`**: boards inside a frame of battens, a brace corner to corner across each long face, cleats
+  over the lid, two steel bands, and the lot number and this-way-up arrows stencilled on the ends (black on bare
+  pine; pale on the third painted olive drab).
+- **`ammo_box`**: sharp-edged painted boards, the lid a shade lighter, hasps and hinges, rope handles through end
+  cleats, the lot number and the yellow band of high explosive on the front.
+
+Each crate's battens, bands, ironwork, rope and stencil are one cached mesh per size, so a stack is a few dozen
+parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
+
 ## Who uses what
 
 | Component | Users |
@@ -351,6 +380,7 @@ Render them with `--building-kinds=bales`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingCargo.stack`, `shipping_crate`, `ammo_box`, `pallet_load`, `ammo_row` | Cover crate stacks, the town's supply dumps, the FOB's stores |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the

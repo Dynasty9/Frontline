@@ -63,6 +63,10 @@ var contact_offsets := [Vector3.ZERO, Vector3.ZERO]
 var contacts_sampled := false
 var previous_support: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]
 var previous_corrections := [Vector3.ZERO, Vector3.ZERO]
+var plant_yaw := [0.0, 0.0]
+var pivot_foot := -1
+var pivot_time := 0.0
+var pivot_from := Vector3.ZERO
 var plant_ready := [true, true]
 var plant_weights := [0.0, 0.0]
 
@@ -232,6 +236,7 @@ func reset() -> void:
 	crouch_drop = 0.0
 	pelvis_drop = 0.0
 	contacts_sampled = false
+	pivot_foot = -1
 	contact_offsets = [Vector3.ZERO, Vector3.ZERO]
 	contact_weights = [0.0, 0.0]
 	slope_normals = [Vector3.UP, Vector3.UP]
@@ -423,6 +428,7 @@ func advance(dt: float, velocity: Vector3, crouching: bool, grounded: bool, relo
 	if grounded and action != "rifle_jump":
 		_contacts(speed, dt)
 	else:
+		pivot_foot = -1
 		for foot in actor.feet: foot.locked = false
 		plant_ready = [true, true]
 		plant_weights = [0.0, 0.0]
@@ -618,6 +624,9 @@ func _contacts(speed: float, dt: float) -> void:
 	var poles: Array[Vector3] = []
 	var lower_pelvis := 0.0
 	var follow := 1.0 - exp(-16.0 * dt)
+	var yaw := actor.global_rotation.y
+	if speed > 0.25 or actor._transition_time < actor._transition_duration:
+		pivot_foot = -1
 	for side in 2:
 		var prefix := "Left" if side == 0 else "Right"
 		var ankle := actor.joint(prefix + "Foot")
@@ -640,7 +649,9 @@ func _contacts(speed: float, dt: float) -> void:
 			foot.locked = false
 			plant_ready[side] = true
 		elif idle > 0.0:
-			if not foot.locked: foot.point = support + Vector3(contact_offsets[side].x, 0, contact_offsets[side].z)
+			if not foot.locked:
+				plant_yaw[side] = yaw
+				foot.point = support + Vector3(contact_offsets[side].x, 0, contact_offsets[side].z)
 			foot.locked = true
 		elif support_lift > 0.065:
 			foot.locked = false
@@ -648,6 +659,7 @@ func _contacts(speed: float, dt: float) -> void:
 		# A low swing foot is not planted until its world motion slows near landing.
 		elif plant_ready[side] and ((support_lift < 0.025 and support_speed < maxf(0.8, speed * 0.75)) or (diagonal_weight > 0.99 and toe_lift < 0.005)):
 			# Plant the corrected foot where it is, not the raw clip underneath its release offset.
+			plant_yaw[side] = yaw
 			foot.point = support + Vector3(contact_offsets[side].x, 0, contact_offsets[side].z)
 			foot.locked = true
 			plant_ready[side] = false
@@ -655,6 +667,20 @@ func _contacts(speed: float, dt: float) -> void:
 			plant_weights[side] = 1.0
 		# Earlier diagonal toe contact needs more travel before stretch release.
 		var separation := Vector2(support.x - foot.point.x, support.z - foot.point.z).length()
+		# On a standing turn, replant one boot before the hips pull the other
+		# across it. Keep the supporting boot on its world-space contact.
+		var pivot_lift := 0.0
+		if pivot_foot == -1 and speed <= 0.25 and foot.locked and separation > 0.14 and absf(angle_difference(plant_yaw[side], yaw)) > PI / 12.0:
+			pivot_foot = side
+			pivot_time = 0.0
+			pivot_from = foot.point
+		if pivot_foot == side:
+			pivot_time = minf(1.0, pivot_time + dt / 0.17)
+			foot.point = pivot_from.lerp(support, smoothstep(0.0, 1.0, pivot_time))
+			pivot_lift = 0.055 * sin(PI * pivot_time)
+			if pivot_time >= 1.0:
+				plant_yaw[side] = yaw
+				pivot_foot = -1
 		if idle == 0.0 and separation > lerpf(0.28, 0.40, diagonal_weight): foot.locked = false
 		if crouch_weight > 0.5 and idle == 0.0 and foot.locked:
 			var hip := actor.joint(prefix + "UpLeg").origin
@@ -673,7 +699,7 @@ func _contacts(speed: float, dt: float) -> void:
 		var floor_y: float = actor.ground_height.call(goal) if actor.ground_height.is_valid() else actor.ground_y
 		# Keep a fast swing clear of the ground before it decelerates into contact.
 		var swing_clearance := 0.045 * smoothstep(maxf(0.8, speed * 0.75), maxf(1.4, speed * 1.5), support_speed) if not foot.locked else 0.0
-		goal.y = floor_y + sole_height + maxf(lift, swing_clearance) * (1.0 - idle * crouch_weight)
+		goal.y = floor_y + sole_height + pivot_lift + maxf(lift, swing_clearance) * (1.0 - idle * crouch_weight)
 		var offset: Vector3 = (goal - ankle.origin)
 		# Follow a planted toe quickly; ease released feet back to the authored swing.
 		var correction_speed := lerpf(4.0, 6.0, diagonal_weight) if foot.locked else 3.0
