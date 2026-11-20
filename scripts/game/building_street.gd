@@ -207,3 +207,127 @@ static func pram(k: BuildingKit, col: Color) -> void:
 			k.part(BuildingKit.ring(0.11, 0.135), "rubber", Mats.place(Vector3(sx * 0.24, 0.13, sz * 0.3), Vector3(0, 0, PI * 0.5)), Color(0.08, 0.08, 0.08), false)
 		k.rod(Vector3(sx * 0.18, 0.4, 0.38), Vector3(sx * 0.2, 0.95, 0.62), 0.012, "metal_dark", Color(0.6, 0.6, 0.6), 4, false)
 	k.rod(Vector3(-0.2, 0.95, 0.62), Vector3(0.2, 0.95, 0.62), 0.016, "metal_dark", Color(0.6, 0.6, 0.6), 4, false)
+
+
+## A bus shelter 3.2 m along x, its open front to -z (the kerb): a steel frame
+## on its posts, glazed back and ends (the odd pane shot out, a crazed one
+## left), a curved roof with its fascia, a bench of slats, a timetable case
+## and the stop's flag on a pole beside it, its route numbers on a white tile.
+static func bus_shelter(k: BuildingKit, rng: RandomNumberGenerator) -> void:
+	var frame := Color(0.28, 0.33, 0.36)
+	var L := 3.2
+	var D := 1.3
+	var H := 2.3
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			k.box(Vector3(0.07, H, 0.07), Vector3(sx * L * 0.5, H * 0.5, sz * D * 0.5), "metal_dark", frame)
+	k.box(Vector3(L, 0.06, 0.06), Vector3(0, 0.15, D * 0.5), "metal_dark", frame, Vector3.ZERO, false)
+	k.box(Vector3(L, 0.06, 0.06), Vector3(0, H - 0.05, D * 0.5), "metal_dark", frame, Vector3.ZERO, false)
+	# the glazing: two panes in the back, one in each end
+	var panes := [[Vector3(-L * 0.25, 0, D * 0.5), Vector2(L * 0.5 - 0.08, H - 0.35), 0.0], [Vector3(L * 0.25, 0, D * 0.5), Vector2(L * 0.5 - 0.08, H - 0.35), 0.0],
+		[Vector3(-L * 0.5, 0, D * 0.15), Vector2(D * 0.7 - 0.08, H - 0.35), PI * 0.5], [Vector3(L * 0.5, 0, D * 0.15), Vector2(D * 0.7 - 0.08, H - 0.35), PI * 0.5]]
+	for pn: Array in panes:
+		var roll := rng.randf()
+		var sz: Vector2 = pn[1]
+		var pk := k.at_point(pn[0], Vector3(0, pn[2], 0))
+		if roll < 0.15:
+			# shot out: a few shards left in the bottom of the frame
+			for i in 3:
+				pk.plate(Vector3(rng.randf_range(0.12, 0.3), rng.randf_range(0.08, 0.18), 0.008), Vector3(rng.randf_range(-sz.x * 0.4, sz.x * 0.4), 0.3, 0), "glass", Color(0.55, 0.6, 0.6), Vector3(0, 0, rng.randf_range(-0.4, 0.4)), false)
+			continue
+		pk.plate(Vector3(sz.x, sz.y, 0.01), Vector3(0, 0.2 + sz.y * 0.5, 0), "glass", Color(0.62, 0.68, 0.69) if roll > 0.3 else Color(0.74, 0.77, 0.77))
+		pk.plate(Vector3(sz.x, 0.05, 0.03), Vector3(0, 0.2, 0), "metal_dark", frame, Vector3.ZERO, false)
+	# the roof: a shallow curve of sheet, the fascia along its front
+	for i in 5:
+		var t := (i + 0.5) / 5.0
+		var z := lerpf(-D * 0.5 - 0.15, D * 0.5 + 0.1, t)
+		var y := H + 0.06 + 0.1 * sin(t * PI)
+		k.box(Vector3(L + 0.25, 0.03, (D + 0.25) / 5.0 + 0.01), Vector3(0, y, z), "metal_dark", frame.lightened(0.08), Vector3(-(cos(t * PI) * 0.32), 0, 0))
+	k.box(Vector3(L + 0.25, 0.2, 0.04), Vector3(0, H + 0.02, -D * 0.5 - 0.15), "paint", Color(0.15, 0.32, 0.55))
+	# the bench of slats on its brackets, against the back
+	for i in 3:
+		k.box(Vector3(L * 0.7, 0.03, 0.08), Vector3(0, 0.48, D * 0.5 - 0.12 - i * 0.1), "wood", Color(0.46, 0.34, 0.22))
+	for sx: float in [-1.0, 1.0]:
+		k.box(Vector3(0.04, 0.48, 0.3), Vector3(sx * L * 0.3, 0.24, D * 0.5 - 0.2), "metal_dark", frame, Vector3.ZERO, false)
+	# the timetable case on the back, the flag on its pole
+	k.box(Vector3(0.6, 0.8, 0.04), Vector3(L * 0.5 - 0.5, 1.45, D * 0.5 - 0.04), "metal_dark", frame)
+	k.plate(Vector3(0.52, 0.72, 0.005), Vector3(L * 0.5 - 0.5, 1.45, D * 0.5 - 0.065), "paint", Color(0.9, 0.9, 0.86))
+	k.cyl(0.035, 0.035, 2.7, Vector3(-L * 0.5 - 0.6, 1.35, -D * 0.5 + 0.2), "metal_dark", Color(0.5, 0.5, 0.5), Vector3.ZERO, 6)
+	k.cyl(0.25, 0.25, 0.03, Vector3(-L * 0.5 - 0.6, 2.55, -D * 0.5 + 0.2), "paint", Color(0.15, 0.32, 0.55), Vector3(PI * 0.5, 0, 0), 14)
+	k.plate(Vector3(0.36, 0.18, 0.035), Vector3(-L * 0.5 - 0.6, 2.18, -D * 0.5 + 0.2), "paint", Color(0.92, 0.92, 0.88))
+
+
+## A litter bin on its post: the open-topped drum with its rim, the bag
+## showing at the top, the post into the pavement.
+static func litter_bin(k: BuildingKit, col := Color(0.14, 0.24, 0.16)) -> void:
+	k.cyl(0.05, 0.05, 0.9, Vector3(0, 0.45, 0.22), "metal_dark", col.darkened(0.25), Vector3.ZERO, 6)
+	k.cyl(0.22, 0.2, 0.62, Vector3(0, 0.55, 0), "paint", col, Vector3.ZERO, 14)
+	k.cyl(0.24, 0.24, 0.05, Vector3(0, 0.88, 0), "paint", col.darkened(0.1), Vector3.ZERO, 14)
+	k.cyl(0.2, 0.2, 0.02, Vector3(0, 0.86, 0), "plain_dark", Color(0.06, 0.06, 0.06), Vector3.ZERO, 12, false)
+	for i in 6:
+		var a := TAU * i / 6.0
+		k.box(Vector3(0.02, 0.5, 0.012), Vector3(cos(a) * 0.212, 0.55, sin(a) * 0.212), "paint", col.lightened(0.08), Vector3(0, -a, 0), false)
+
+
+## A town's name board at the roadside: the yellow board with its black
+## border and name, a smaller board under it (the district), on two posts.
+static func town_sign(k: BuildingKit, rng: RandomNumberGenerator) -> void:
+	for x: float in [-0.85, 0.85]:
+		k.cyl(0.04, 0.04, 2.3, Vector3(x, 1.15, 0.03), "metal_dark", Color(0.5, 0.5, 0.5), Vector3.ZERO, 6)
+	# (the boards' backs bare galvanised sheet, their faces enamelled)
+	k.box(Vector3(2.0, 0.72, 0.03), Vector3(0, 1.9, 0), "steel", Color(0.6, 0.61, 0.6))
+	k.plate(Vector3(2.0, 0.72, 0.006), Vector3(0, 1.9, -0.018), "car_paint", Color(0.1, 0.1, 0.1))
+	k.plate(Vector3(1.9, 0.62, 0.006), Vector3(0, 1.9, -0.022), "car_paint", Color(0.95, 0.85, 0.2))
+	BuildingShops.lettering(k.at_point(Vector3(0, 1.93, -0.027)), 1.4, Color(0.08, 0.08, 0.08), rng, 1)
+	k.box(Vector3(1.4, 0.3, 0.025), Vector3(0, 1.32, 0), "steel", Color(0.6, 0.61, 0.6))
+	k.plate(Vector3(1.4, 0.3, 0.006), Vector3(0, 1.32, -0.015), "paint", Color(0.92, 0.91, 0.86))
+	BuildingShops.lettering(k.at_point(Vector3(0, 1.32, -0.02)), 1.0, Color(0.12, 0.12, 0.12), rng, 1)
+
+
+## A planter on the square: a tapered concrete trough on a plinth, bedding
+## flowers in it round a clipped box ball (BuildingPlanting), its rim stained.
+static func planter(k: BuildingKit, rng: RandomNumberGenerator) -> void:
+	k.box(Vector3(1.3, 0.08, 1.3), Vector3(0, 0.04, 0), "concrete", Color(0.52, 0.51, 0.48))
+	k.cyl(0.8 * sqrt(2.0) * 0.5 * 1.25, 0.66 * sqrt(2.0) * 0.5 * 1.25, 0.5, Vector3(0, 0.33, 0), "concrete", Color(0.62, 0.6, 0.56), Vector3(0, PI * 0.25, 0), 4)
+	k.box(Vector3(1.06, 0.06, 1.06), Vector3(0, 0.6, 0), "concrete", Color(0.66, 0.64, 0.6))
+	k.box(Vector3(0.92, 0.03, 0.92), Vector3(0, 0.58, 0), "earth", Color(0.28, 0.21, 0.15), Vector3.ZERO, false)
+	var flowers := [Color(0.88, 0.1, 0.1), Color(0.97, 0.45, 0.65), Color(0.97, 0.96, 0.92), Color(0.99, 0.8, 0.12), Color(0.6, 0.35, 0.85)]
+	var c: Color = flowers[rng.randi() % flowers.size()]
+	for i in 10:
+		var a := TAU * i / 10.0 + rng.randf_range(-0.12, 0.12)
+		var p := Vector3(cos(a) * 0.36, 0.66, sin(a) * 0.36)
+		k.part_with(Res.foliage_cards(false), Mats.leaf_cards(false), Transform3D(Basis.from_scale(Vector3(0.14, 0.09, 0.14)), p), Color(0.28, 0.45, 0.17), false)
+		for j in 3:
+			var q := p + Vector3(rng.randf_range(-0.07, 0.07), 0.08 + rng.randf_range(0.0, 0.04), rng.randf_range(-0.07, 0.07))
+			k.part(Res.sphere(0.5, 6), "paint", Transform3D(Basis.from_scale(Vector3(0.06, 0.04, 0.06)), q), (c if (i + j) % 3 != 0 else flowers[2]).lightened(rng.randf_range(-0.05, 0.08)), false)
+	# a clipped ball of box in the middle, darker than the bedding round it
+	k.part(Res.sphere(0.5, 10), "plain", Transform3D(Basis.from_scale(Vector3(0.44, 0.42, 0.44)), Vector3(0, 0.88, 0)), Color(0.14, 0.24, 0.09), true)
+	k.part_with(Res.foliage_cards(false), Mats.leaf_cards(false), Transform3D(Basis.from_scale(Vector3(0.24, 0.23, 0.24)), Vector3(0, 0.89, 0)), Color(0.26, 0.42, 0.15), false)
+
+
+## The square's fountain: a round basin of dressed stone (its kerb in
+## segments with a moulded lip), the water in it, a pedestal rising out of the
+## water to a lower bowl, a smaller upper bowl on a stem, the finial, water
+## spilling over the bowls' lips. The water's own material comes from
+## `water` (StandardMaterial3D), drawn as nodes by the caller.
+static func fountain(k: BuildingKit) -> void:
+	var stone := Color(0.64, 0.61, 0.55)
+	k.cyl(2.5, 2.55, 0.1, Vector3(0, 0.05, 0), "concrete", stone.darkened(0.1), Vector3.ZERO, 24)
+	# the basin's kerb in sixteen segments, a lip round its top
+	for i in 16:
+		var a := TAU * i / 16.0
+		var p := Vector3(cos(a), 0, sin(a)) * 2.4
+		k.box(Vector3(0.96, 0.5, 0.3), p + Vector3(0, 0.3, 0), "concrete", stone.darkened(0.02 * (i % 3)), Vector3(0, -a + PI * 0.5, 0))
+		k.box(Vector3(1.0, 0.08, 0.4), p + Vector3(0, 0.58, 0), "concrete", stone.lightened(0.05), Vector3(0, -a + PI * 0.5, 0))
+	# the pedestal, the lower bowl with its lip, the stem, the upper bowl, the finial
+	k.cyl(0.32, 0.42, 0.25, Vector3(0, 0.45, 0), "concrete", stone, Vector3.ZERO, 14)
+	k.cyl(0.22, 0.3, 1.05, Vector3(0, 1.1, 0), "concrete", stone, Vector3.ZERO, 14)
+	k.cyl(1.0, 0.3, 0.28, Vector3(0, 1.75, 0), "concrete", stone.lightened(0.03), Vector3.ZERO, 20)
+	k.cyl(1.04, 1.04, 0.06, Vector3(0, 1.91, 0), "concrete", stone.lightened(0.06), Vector3.ZERO, 20)
+	k.cyl(0.12, 0.16, 0.6, Vector3(0, 2.24, 0), "concrete", stone, Vector3.ZERO, 12)
+	k.cyl(0.5, 0.15, 0.18, Vector3(0, 2.6, 0), "concrete", stone.lightened(0.03), Vector3.ZERO, 16)
+	k.cyl(0.52, 0.52, 0.04, Vector3(0, 2.7, 0), "concrete", stone.lightened(0.06), Vector3.ZERO, 16)
+	k.cyl(0.05, 0.08, 0.3, Vector3(0, 2.86, 0), "concrete", stone, Vector3.ZERO, 8)
+	k.part(Res.sphere(0.09, 8), "concrete", Transform3D(Basis.IDENTITY, Vector3(0, 3.05, 0)), stone.lightened(0.05))
+	# green weed where the water's always been, round the bowls' foot
+	k.cyl(0.32, 0.32, 0.12, Vector3(0, 0.5, 0), "plain", Color(0.2, 0.28, 0.17), Vector3.ZERO, 14, false)
