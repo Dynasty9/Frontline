@@ -527,7 +527,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   they leapfrog, so nobody is ever in the open without a team covering him. The covering team's gunner puts a
   burst into the hedge or house where the enemy was last heard (*recon by fire*). Ordered to run (Shift) it
   just runs. A squad sent to hold somewhere a long way off gets there as a squad, then spreads into its
-  positions - and *clears* any house on that ground first: two men stack on the door, kick it in, go through
+  positions. On a long move, followers take nearby places relative to the leader’s next waypoint, including when a new order reverses their direction. The squad *clears* any house on that ground first: two men stack on the door, kick it in, go through
   (a grenade first only if someone's known to be inside) and call "Clear!".
 - **Near ambush.** Hit at 30 metres or less, a steady squad that isn't hopelessly outnumbered assaults straight
   into the ambush instead of lying in the killing zone.
@@ -587,6 +587,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (tier
   1) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
   Selecting a drone or recon vehicle shows its sight ring.
+- Jets and reconnaissance planes bank into curved approaches and departures. The A-10 eases into its climb.
 - **Every aircraft spots.** A jet on a bomb run sees 70 m round it as it flies, a gun run 55 m, and an orbiting
   gunship or armed drone the 70 m circle its sensor turret is watching (and the ground beneath it). So an air strike
   also shows you what's around the target, and the minimap draws each aircraft with the ground it can see.
@@ -697,7 +698,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
   floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
-  stalls, bollards), a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
+  stalls, bollards; the fountain a stone basin with two bowls, the planters concrete troughs of bedding flowers
+  round a clipped box ball), glazed bus shelters with their timetable and flag, slatted litter bins, a yellow name
+  board where each road comes into town, a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
 - Fences are built as the real ones are (`BuildingFences`), one bay between two posts, climbing with the ground.
   A house keeps one look: white or painted pickets, chestnut paling, or iron railings with spear heads on a dwarf
@@ -741,14 +744,20 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
   water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
-  its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
+  its clouds are reflected, more the flatter you look across it. Where something stands above the water on screen
+  - a bank, trees, a bridge, a boat (not flames or smoke: they're drawn after) - it's mirrored instead (a ray marched over the screen; looked down on
+  steeply, where calm water mirrors only a couple of percent, none is marched). Rivers run: a flow map baked from
+  their courses carries the ripples down the stream and round its bends, quick in mid-stream and slack under the
+  banks, with lanes of glassy water and strings of bubbles drifting with the current; ponds lie still. The sun
+  shines green through the thin tops of the sea's waves when it's behind them, and the bed is dimmed by the water
+  the sunlight came down through as well as the water looked through, so a river's channel goes dark. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
   gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
   back into the spreading foam. Boats ride the same waves the player sees (the
   CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
   Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
-  fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
-  streaks; Ultra a finer grid for the swell.
+  fewer waves on a coarser grid; Medium is the full surface; High adds the reflections, the light on the bed
+  and the wind's streaks; Ultra a finer grid for the swell and longer reflections.
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
@@ -769,14 +778,16 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
   supply. (Missions don't have them; the dumps use their own random numbers, so a seed's map is otherwise
   unchanged.)
-- Houses are rendered and painted, bare brick or rough stone, and dressed as they're built: a darker plinth and a
+- Houses are rendered and painted (nine old paint colours, from limewash to a faded pink or sage), bare brick or rough stone (three shades of each), and dressed as they're built: a darker plinth and a
   band under the eaves, sills and lintels in render, concrete or dressed stone (a keystone over stone windows),
   painted window frames with mullion and transom, panes whole, cracked to shards or shot out, louvred or boarded
   shutters on their hinges, door frames, steps, now and then a hood over the door, and double doors hanging open.
   Pitched roofs bear on the walls with a fascia, barge boards, gutters and downpipes, a round-tiled ridge and
   often a chimney with its pots; they're pitched differently, about a third are hipped (pyramids over square
   houses), and some are mended with a creased tarp weighted down with tyres and tied to the eave, holed, or have a skylight; moss and lichen
-  grow on the tiles, and flat roofs carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
+  grow on the tiles in uneven patches. Tiled roofs are weathered clay or concrete tile in five shades or slate and grey tile in three,
+  barns dull galvanised, rusted or red sheet; walls are dirty under the eaves and damp at the foot, with the odd run down from a gutter; brick is old red-brown, and stone is coursed rubble (courses of three heights, stones
+  of their own lengths and shades) in pale lime mortar. Flat roofs are felted black or green-grey, bare concrete or old asphalt, and carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
   water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
@@ -795,7 +806,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   and there a trampoline, all set dressing that a blast or a truck
   knocks over. On the walls are a house's services and the things by its door: meter boxes, outside taps
   with a hose on a hook, air conditioners on brackets or on a pad, satellite dishes on arms, and at the front
-  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: a fascia with the shop's name, a striped awning, and on the
+  door the house's number, a letterbox and a mat on the step. The shops by the square have fronts: display windows over panelled stall risers with their stock set out behind the glass, a fascia with the shop's name painted to match, a striped awning, and on the
   pavement what each kind of shop puts out (a greengrocer's produce, a cafe's tables, a newsagent's paper rack). All of it, and the military buildings' weatherboard, sheeting, roller shutters, north
   lights, masts and guys, drums, crates and pallets, comes from shared building components (see
   [building-components.md](building-components.md)).
@@ -1153,7 +1164,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   rotor is usually gone, and broken blade and torn panels lie strewn round her. Over deep water she ditches and sinks. The kill, its stats and the messages count at the moment she's hit.
 - **Boarding:** select infantry and right-click your truck, APC, Slammer or a landed helicopter: they climb in
   (as many as fit) and ride until they dismount or it arrives.
-- Tanks smash through walls, trees and cars. Small arms ricochet off them. Frontal rockets can bounce,
+- Tanks smash through walls, trees and cars. The tracks and hull corners break house walls on contact, bringing down the roof and leaving a path across the slab. Solid bridge parapets and headquarters buildings stop the hull. Small arms ricochet off them. Frontal rockets can bounce,
   and a blown track leaves the tank stranded until engineers repair it. Destroyed vehicles become wrecks you can use as cover.
   A destroyed vehicle burns out: over the best part of a minute the fire spreads across the hull from where it took
   hold (the engine deck, a helicopter's engines), leaving charred black steel, the paint burnt to a pale grey film
@@ -1228,7 +1239,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, HESCO walls and T-walls (Coalition), barricades (Rebels), barbed wire, minefields, tank traps,
   camouflage nets, ammo caches, watchtowers (see 85 m, 115 m with a lookout up; shoot over walls), and Rebel
-  tunnel entrances (move squads through the network or bring them back out with "Exit here").
+  tunnel entrances (move squads through the network or bring them back out with "Exit here"): a shaft dug down,
+  shored with timber round its mouth with a ladder into it, sandbagged, a sheet of corrugated iron propped over its
+  back against eyes overhead, its spoil heaped behind.
 
 **Base defenses**
 - **Build grid**: buildings and works sit on a 1 m grid at 45 degree headings; a building's walls land on grid
@@ -1371,10 +1384,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
   light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),
   Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off. Reflections are shut in with
-  the sky too (specular occlusion, after Frostbite): the probes' two bands give the share of sky seen in the
-  reflected direction, m0 + 3 m1.r for a glossy surface easing to the cosine's m0 + 2 m1.n for a rough one, and the
-  rest of the reflection shows the room's own bounce instead (Godot's RADIANCE), so wet floors indoors, under eaves
-  and in trenches stop mirroring the bright sky. Tree crowns are laid as leaves, sized to the tree the game grows (a
+  the sky too (specular occlusion): Godot's own cone-against-cone test (after Jimenez et al. 2016), which runs after
+  the battlefield's reflection probe, takes the visible sky's cone from AO (which carries the probes' share of sky) and
+  its axis from a bent normal, so every surface that reads the probes hands it theirs (`BENT_NORMAL_MAP`, in the
+  surface's tangent space, leaning back to its normal where the sky is seen nearly all round). Writing the reflection
+  into RADIANCE, as this first did, came before the reflection probe, which painted over it. Hulls parked under the
+  eaves, wet cobbles in an alley and windows across it stop mirroring the open sky, as do wet floors in
+  trenches. Tree crowns are laid as leaves, sized to the tree the game grows (a
   fir's cone in two tiers, a field tree's dome, an orchard tree's small one), three fifths of the light stopped a
   cube; the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it
   sit in a dimmer, greener shade. The occlusion itself is one grey factor on the ambient, which would take away
@@ -1389,8 +1405,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   so walls keep the glow in (the burning thing's own cubes aside: the flames fill its box), into the atlas's bottom
   block beside the heights; a light that comes, goes, moves a metre or changes by a quarter retraces only its own
   tiles, four a frame. It reaches the browser too, which has no fire lights of its own. The skinned riflemen, whose
-  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, so a
-  man in a room or a wood takes its shade. Vehicles and men shut out a little sky round their feet (after Unreal's
+  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, and the
+  procedural men's flat colours (`LightProbes.probe_surfaces`: every other soldier's uniform, face and kit, and the
+  distant men's baked poses copied from them) a twin that does the same; both go through `CloudShadow` like the
+  world's surfaces, so a man in a room or an alley has the sun cut and the fill light shut out with the sky as the
+  walls round him do, and in a wood takes its green shade, rather than standing in open-sky light. Vehicles and men shut out a little sky round their feet (after Unreal's
   capsule and Frostbite's box occlusion): every frame their footprints, rounded boxes for hulls (half-metre
   corners), darkest along the contact line under tracks and wheels and fading out over a pad of 1 to 1.5 m that
   grows with their height, and faint discs for men (fainter crouched, a longer patch lying down), are
@@ -1673,16 +1692,38 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   medium and grenade machine guns, autocannon, coaxial ports, rotary barrel clusters and missile launch
   tubes each have one builder, used by every family that carries them; muzzle markers and turret pivots
   stay where they were. Autocannon tubes step down from a thick chamber end, carry a barrel clamp and end in a
-  ported brake; a machine gun's ammunition can stands open beside it, its lid off, and the belt (brass
+  ported brake, a plain crown where the real gun has none (the M242), or a conical flash hider (the ZU-23, the
+  KPVT); a machine gun's ammunition can stands open beside it, its lid off, and the belt (brass
   rounds in blackened links) lies in the can's mouth and rises over the lip into the feedway; the .50 has its feed-cover latch and retracting handle, the cooling
   holes through its barrel support, its trunnion block and side-plate rivets and a flash hider flaring to the
-  muzzle; the 7.62s a slotted flash hider and front sight. The guns themselves are phosphated steel, near black and
+  muzzle, and spade grips that loop off its back plate round the butterfly trigger; the 7.62s are cut to an M240's
+  slim proportions, with a slotted flash hider and front sight, the gas block and the bipod folded under it; the
+  DShK carries its anti-aircraft ring sight. Gun shields with ballistic windows (the Humvee's O-GPK, the Abrams
+  loader's) hold their glass as real ones do, a block a hand thick clamped behind the plate, dark and green. The
+  guns themselves are phosphated steel, near black and
   matte, scuffed where hands and belts wear them. Each
   builder notes its gun, so the finished model lifts the machine gun onto a cradle the crew can lay. Turret race rings, sight heads, commander's cupolas, reactive armour bricks,
   rectangular hatches and bore evacuators are shared across the armour; helicopters share rotor masts and
   turbine exhausts, and aircraft and boats share red/green sidelights and dome lights. Trucks share fender
   sheets and saddle fuel tanks; rolled tarps are common stowage. See "Twenty shared components" in
   [the component guide](vehicle-components.md).
+- **Gun stations as the real ones are built**: each family's guns are the weapons it really carries and work
+  as their mounts do.
+  - *Remote weapon stations* elevate whole: the gun, its sensor head (thermal, day-camera and laser windows
+    under an armoured door) and its ammunition box ride one cradle, a chute of links arching over the yoke into
+    the feed. NATO's (CROWS, the Samson pair) carry the .50 and the Mk 19; CSAT's (Arbalet pattern) the Kord and
+    the AGS-17 with its finned barrel; the AAF's the .50 and the GMG with the box hung outboard.
+  - *Pintles and rings* carry open cans and belts on the side each gun feeds from (a PK from its right).
+  - *Tank roofs*: the Abrams loader's armoured gun shield with its windows, the Merkava's loader's and
+    commander's MAGs, the T-100's remote Kord on its cupola, the T-55's DShK with its ring sight.
+  - *Cannon mounts*: the Gepard-pattern velocity sensor behind the brake and the gun houses rising with the
+    35 mm, the Marshall's mantlet and coax rising with its 40 mm, the Rh 202's twin feed, coaxial guns in
+    armoured port collars.
+  - *Boats*: the SURC's after gun on a yoke behind an armoured shield, the trawler's DShK behind a scrap
+    shield, the patrol ship's .50s on braced stanchions with brass bags, the Mk 38 with its sight head.
+  - *Aircraft*: the Ghost Hawk's door guns on swing-out arms, feeding from inboard; the Little Birds' guns on
+    pylons with chutes; the gunships' guns through bolted port plugs and rubber boots, the 40 mm ending in the
+    Bofors flash hider.
 - **Second construction pass** (shared builders across `vehicle_cargo.gd`, `vehicle_aircraft.gd`,
   `vehicle_fittings.gd` and others): engine-deck grilles, track skirts and return rollers, smoke banks and
   lamp units are shared across the armour; trucks share cargo beds, box bodies with doors, roller shutters
@@ -1914,6 +1955,8 @@ Delta 1 - take objective, D4. Wilco.").
   It says who's coming on the net, or that nobody is free; the squads go back to the company after a few minutes.
 
 ### Imported rifleman and shared impacts
+
+When a soldier changes direction, the visible body finishes its outgoing stride and turns toward the new heading. The close-up skeleton and distant formation share the same motion. The host keeps the model within 32 cm of the simulated position, and clients use their existing position interpolation.
 
 The detailed rifleman uses imported rifle locomotion, a captured kneel-to-prone transition, contact IK, hand-attached weapons, moving reloads with a separate magazine, directional hit recovery, and a thirteen-body constrained ragdoll. Locally installed Male Injured Pack clips supply standing limping and dazed recovery with the rifle slung. Installed Talking, Laughing and Arm Stretching clips also replace the standing relaxed idles and recover to the armed pose; Rifle Idle supplies the armed lookout. Foot plants retain the visible boot position when acquiring contact. The shared motion and impact helpers also serve the procedural soldiers and tank. Damage and movement remain server-authoritative; the skin is presentation.
 

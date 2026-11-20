@@ -782,7 +782,11 @@ func sim(dt: float) -> void:
 			if VehicleBrain.applies(self):
 				VehicleBrain.think(self)
 		var hull_yaw := rotation.y
+		var before_drive := position
 		_drive(dt)
+		var crushes := is_tracked() and not is_light()
+		if crushes and (before_drive != position or hull_yaw != rotation.y):
+			_resolve_hull(before_drive, hull_yaw)
 		if b == "tank" and _target_ok():
 			var available := maxf(0.0, float(motion_profile().traverse) - absf(_traverse)) * dt
 			var correction := clampf(wrapf(rotation.y - hull_yaw, -PI, PI), -available, available)
@@ -797,7 +801,7 @@ func sim(dt: float) -> void:
 		if vdef.has("service"):
 			_service_tick(dt)
 		smash_t -= dt
-		if smash_t <= 0.0:
+		if not crushes and smash_t <= 0.0:
 			smash_t = 0.15
 			_smash()
 	var laid := _salvo > 0 or (vdef.has("art") and world.time - last_fire_t < 4.0)
@@ -1122,6 +1126,60 @@ func _face(dt: float) -> void:
 	rotation.y += step
 	if base() != "tank":
 		turret_yaw -= step  # tanks stabilize across every driving manoeuvre in sim()
+
+
+## Sweep the corners as well as the centre. A long tick, reversing or pivoting
+## can all put a track into a wall before the vehicle's navigation cell changes.
+func _resolve_hull(start: Vector3, start_yaw: float) -> void:
+	var size := _hull_size()
+	var half := Vector2(size.x, size.z) * 0.5
+	var travel := position.distance_to(start)
+	var nearby := world.structures_near((position + start) * 0.5, half.length() + travel * 0.5)
+	if nearby.is_empty():
+		return
+	var turn := wrapf(rotation.y - start_yaw, -PI, PI)
+	var steps := maxi(1, ceili((travel + absf(turn) * half.length()) / 0.5))
+	var previous := start
+	var previous_yaw := start_yaw
+	var crushed: Array[Structure] = []
+	for i in range(1, steps + 1):
+		var t := float(i) / steps
+		var next := start.lerp(position, t)
+		var c := Vector2(next.x, next.z)
+		var heading := start_yaw + turn * t
+		crushed.clear()
+		for st: Structure in nearby:
+			if st.gone or not Defs.obb_overlap(c, half, heading, Vector2(st.position.x, st.position.z), st.foot, st.yaw):
+				continue
+			var friendly := st.team == team and st.is_player_building()
+			if st.smashable and not st.indestructible and not friendly:
+				if st.skind != "rubble":
+					crushed.append(st)
+				continue
+			for part in st.nav_parts():
+				if part.v != Nav.SOLID or not Defs.obb_overlap(c, half, heading, part.c, part.h, part.yaw):
+					continue
+				if not st.indestructible and not friendly and st.skind in ["barracks", "factory", "research", "medic_tent", "dock"]:
+					crushed.append(st)
+					break
+				# A vehicle already intersecting a solid when placed can back out.
+				var old := Vector2(previous.x, previous.z)
+				if c.distance_squared_to(part.c) > old.distance_squared_to(part.c) and Defs.obb_overlap(old, half, previous_yaw, part.c, part.h, part.yaw):
+					continue
+				position = previous
+				rotation.y = previous_yaw
+				speed = 0.0
+				yaw_rate = 0.0
+				velocity = Vector3.ZERO
+				return
+		for st in crushed:
+			if st.smashable:
+				st.smash(self)
+			else:
+				st.take_damage(st.hp, self)
+			world.stat("smash")
+		previous = next
+		previous_yaw = heading
 
 
 func _smash() -> void:
