@@ -1,0 +1,39 @@
+{
+  "entry": "changelog/unreleased/smoke-shadows.md",
+  "title": "Smoke and dust cast shadows",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Smoke screens, dust clouds, fire columns, palls and road dust shade the ground, units and the sunlit haze beneath them, long and soft at golden hour.",
+  "medium": "still",
+  "stage": "Game battle map (--aivai town square) off-screen, frozen at 26 s with FL_DEBUG_AIR_FLIP=26 FL_DEBUG_AIR_FLIP_SHADOW=1 FL_DEBUG_AIR_FLIP_SHOT, shadow off and on in the same frozen frame; motion clip from --write-movie of the same stage.",
+  "rationale": "A shadow is a change in light on a still scene, so the evidence is the same frozen frame with the shadow off and on, OFF stacked over ON, at both sun heights the change matters for; a short clip shows the shadow following the drifting smoke without shimmer.",
+  "source_ref": "c6f3be8a on dines/awesome-ramanujan-ac61b5 (Godot 4.7.2 Forward+, Windows, RTX 3090). Crops and labels: PIL; WebM: VP9 via Playwright ffmpeg.",
+  "measurements": {
+    "golden_hour": "6.3% of the frame shadowed (light kept < 0.9); in it median 0.72, darkest 5% 0.38 of the unshadowed linear luminance; rest of frame 1.000",
+    "midday": "5.4% of the frame shadowed; median 0.76, darkest 5% 0.44; rest of frame 1.000",
+    "gpu": "map draw 0.011 ms (viewport GPU time, 1440p Ultra); per-pixel lookup ~0.02 ms (16x amplified build: +0.06/+0.12/+0.92 ms means over 3 interleaved runs, /16); whole-frame interleaved A/B over 6 runs +0.26 +/- 0.14 ms mean, within the shared GPU's noise"
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/smoke-shadows/golden-hour-off-on.jpg",
+      "sha256": "d1a98690f9667d6f9c9a8e65aad778d140af869b49808a22488abaa8dea35c8b",
+      "caption": "--mood=golden --aivai --seed=3 --focus=0,0 --focus-struct=town --zoom=55 --pitch=-35 --demo-support=smoke --demo-at=1, 1920x1080, Ultra preset (volumetric fog on); frames 45 (off) and 75 (on) of the flip, crop 960x540 at (640,160)."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/midday-off-on.jpg",
+      "sha256": "ece98ab13f94edf536dadab74825b23340cb2076e15ea5ddd3367a604a0e43bb",
+      "caption": "--mood=day --aivai --seed=3 --focus=0,0 --focus-struct=town --zoom=55 --pitch=-35 --demo-support=smoke --demo-at=1, 1920x1080, Ultra preset (volumetric fog on); frames 45 (off) and 75 (on) of the flip, crop 960x540 at (640,160)."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/golden-hour-drift.webm",
+      "sha256": "346257c335b351c97db62055bc6f78a49a2641468d129376214c7218711b0234",
+      "caption": "Seconds 12-24 of a 60 fps --write-movie at 1280x720 window (1600x900 frames), every 2nd frame (30 fps): --aivai --seed=3 --mood=golden --focus=0,0 --focus-struct=town --zoom=38 --pitch=-38 --demo-support=smoke --demo-at=1."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/golden-hour-drift.jpg",
+      "sha256": "cffd6388022cb03994b0edcfd04e298f0777e4549a35bcd9a9b2a1780b8cbf36",
+      "caption": "Frame at 20 s of the clip."
+    }
+  ],
+  "output": null
+}
