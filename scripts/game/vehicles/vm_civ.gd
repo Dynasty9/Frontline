@@ -426,9 +426,12 @@ static func _jerrycan(k: VehicleModels, parent: Node3D, pos: Vector3, c: Color, 
 
 
 
-## A loose tyre on its rim lying flat (spare), centre at pos.
-static func _spare(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, rot := Vector3.ZERO, hub_mat := "steel", hub_col = null) -> void:
-	VehicleWheels.spare(k, parent, pos, r, w, rot, hub_mat, hub_col, "road")
+## A loose tyre on its rim lying flat (spare), centre at pos. `against` is a
+## point on the door or panel the spare's back is carried against (its
+## carrier's mount): that face is built plain, as nobody sees it (see
+## VehicleWheels.spare); Vector3.INF finishes both faces.
+static func _spare(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, rot := Vector3.ZERO, hub_mat := "steel", hub_col = null, against := Vector3.INF) -> void:
+	VehicleWheels.spare(k, parent, pos, r, w, rot, hub_mat, hub_col, "road", against)
 
 
 # --- weapons ----------------------------------------------------------------------
@@ -863,7 +866,10 @@ static func _mb4wd(k: VehicleModels, team: int, seed: int, v: String) -> void:
 			_rod(k, m, Vector3(s * 0.72, bt, 0.52), Vector3(s * 0.72, bt, 1.0), pad, "coated", bar.lightened(0.02), 8)
 	# rear: spare wheel on the tailgate, bumper, plate; the fuel filler on the
 	# left quarter, its cap seated on the tub's side
-	_spare(k, m, Vector3(0, 1.08, 2.11), wr, 0.27, Vector3(PI / 2, 0, 0), "gunmetal_w", Color(0.25, 0.25, 0.24))
+	# (its face against the tailgate, where the carrier bolts it, is the
+	# plain one: nobody sees it; a wreck's, its tyre burnt off, shows its
+	# back through the rim, and keeps both)
+	_spare(k, m, Vector3(0, 1.08, 2.11), wr, 0.27, Vector3(PI / 2, 0, 0), "gunmetal_w", Color(0.25, 0.25, 0.24), Vector3.INF if k.wreck else Vector3(0, 1.08, 1.98))
 	VehicleWheels.carrier(k, m, Vector3(0, 1.08, 2.11), wr, 0.27, Vector3(PI / 2, 0, 0), "hub", Vector3(0, 1.08, 1.98))
 	# Most owners fit a vinyl cover over the tailgate spare: black, grey, tan
 	# or colour-matched, some with a printed band. (The paint picks it, since
