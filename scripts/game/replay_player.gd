@@ -440,6 +440,8 @@ func _valid_props(kind: String, values: Dictionary, full: bool) -> bool:
 		prop_types.structure.merge({"wreck_turret_yaw": 0.0, "bent_skirts": 0,
 			"wreck_finish": {}, "turret_off": false})
 		prop_types.structure["look"] = 0  # (a wing's roof: the roof whose looks it shares)
+		prop_types.structure["entry"] = 0  # (a furnished floor: the wall its door is in)
+		prop_types.structure["shop"] = false  # (a shop's walls: fitted out as a shop's)
 	var schema: Dictionary = prop_types.get(kind, {})
 	for key in values:
 		if key == "toss":
@@ -563,7 +565,7 @@ func _valid_map(value: Dictionary) -> bool:
 			return false
 		if not item[1].is_finite() or item[1].length() > 100000 or not is_finite(item[2]):
 			return false
-		if item[0] in ["walk", "curb", "junction", "drop", "awning", "fence", "garden", "soft", "drive", "path", "pave", "lot_pave"] and not item[3] is Vector3:
+		if item[0] in ["walk", "walk_corner", "curb", "junction", "drop", "awning", "fence", "garden", "soft", "drive", "path", "pave", "lot_pave"] and not item[3] is Vector3:
 			return false
 		if item[0] in ["zebra", "stall", "hay"] and item[3] != null and not (item[3] is int or item[3] is float):
 			return false

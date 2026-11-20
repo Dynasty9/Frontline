@@ -148,6 +148,15 @@ func plate(size: Vector3, p: Vector3, kind: String, col: Variant = null, rot := 
 	part(plain(size), kind, Mats.place(p, rot), col, shadow)
 
 
+## A plain box of any size: one unit box stretched to it, for the many small
+## things of sizes picked at random (goods on a shelf, books, bales). Every
+## size box() or plate() is asked for makes and keeps a mesh of its own, and
+## box()'s are chamfered: thousands of vertices a shelf, and a cache that
+## only grows.
+func block(size: Vector3, p: Vector3, kind: String, col: Variant = null, rot := Vector3.ZERO, shadow := true) -> void:
+	part(plain(Vector3.ONE), kind, Mats.place(p, rot, size), col, shadow)
+
+
 func cyl(r_top: float, r_bottom: float, h: float, p: Vector3, kind: String, col: Variant = null, rot := Vector3.ZERO, segs := 8, shadow := true) -> void:
 	part(Res.cyl(r_top, r_bottom, h, segs), kind, Mats.place(p, rot), col, shadow)
 

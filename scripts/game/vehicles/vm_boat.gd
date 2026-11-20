@@ -454,7 +454,8 @@ static func _outboard(k: VehicleModels, parent: Node3D, pos: Vector3, s: float, 
 	# swivel bracket and the leg, a streamlined strut down to the gearcase
 	k._box(mo, Vector3(0.16 * s, 0.3 * s, 0.12 * s), Vector3(0, -0.1 * s, 0.07 * s), low, lcol)
 	var c := 0.36 * s
-	k._add(mo, VehicleModels.solid([_ry(_foil(0.17 * s, c, 0.04 * s), 0.0), _ry(_foil(0.1 * s, c * 0.85, 0.08 * s), -leg - 0.07 * s)], key + "_leg"), low, lcol, Vector3.ZERO)
+	# (a cast leg, shaded round its streamlined section, crisp at its trailing edge)
+	k._add(mo, VehicleProfiles.loft([_ry(_foil(0.17 * s, c, 0.04 * s), 0.0), _ry(_foil(0.1 * s, c * 0.85, 0.08 * s), -leg - 0.07 * s)], 50.0), low, lcol, Vector3.ZERO)
 	# anti-ventilation plate, the gearcase torpedo, skeg and propeller
 	k._box(mo, Vector3(0.34 * s, 0.018, 0.42 * s), Vector3(0, -leg, 0.28 * s), low, lcol)
 	k._add(mo, Res.sphere(0.5, 14), low, lcol, Vector3(0, -leg - 0.1 * s, 0.27 * s), Vector3.ZERO, Vector3(0.15 * s, 0.15 * s, 0.6 * s))
@@ -462,14 +463,17 @@ static func _outboard(k: VehicleModels, parent: Node3D, pos: Vector3, s: float, 
 	k._box(mo, Vector3(0.05, 0.05, 0.1) * s, Vector3(0, -leg - 0.035 * s, 0.42 * s), "gunmetal_w", null, Vector3.ZERO, false)
 	_prop(k, mo, Vector3(0, -leg - 0.1 * s, 0.6 * s), 0.17 * s, 3, "steel", Color(0.48, 0.48, 0.47))
 	# the lower cowl (apron), the cowling with its parting line and air intake
-	k._box(mo, Vector3(0.42 * s, 0.17 * s, 0.6 * s), Vector3(0, 0.04 * s, 0.29 * s), low, lcol)
+	# (moulded like the cowling over it, its corners rounded the same way)
+	k._add(mo, VehicleProfiles.loft([_ry(_rnd(0.4 * s, 0.58 * s, 0.29 * s, 0.07 * s, 0.14 * s), -0.045 * s), _ry(_rnd(0.42 * s, 0.6 * s, 0.29 * s, 0.08 * s, 0.15 * s), 0.125 * s)], 50.0), low, lcol, Vector3.ZERO)
 	var w := 0.5 * s
 	var l := 0.74 * s
 	var h := 0.6 * s
 	var zc := 0.3 * s
 	var y0 := 0.12 * s
-	k._add(mo, VehicleModels.solid([_ry(_rnd(w, l, zc, 0.1 * s, 0.2 * s), y0), _ry(_rnd(w * 1.03, l * 1.02, zc + 0.01 * s, 0.11 * s, 0.21 * s), y0 + h * 0.55),
-		_ry(_rnd(w * 0.94, l * 0.96, zc + 0.03 * s, 0.1 * s, 0.2 * s), y0 + h * 0.86), _ry(_rnd(w * 0.7, l * 0.78, zc + 0.06 * s, 0.08 * s, 0.15 * s), y0 + h)], key + "_cowl"), cowl, ccol, Vector3.ZERO)
+	# (a moulded cowling: shaded round its corners and over its shoulder into
+	# the top, as the light rolls over a real one; flat facets read as a box)
+	k._add(mo, VehicleProfiles.loft([_ry(_rnd(w, l, zc, 0.1 * s, 0.2 * s), y0), _ry(_rnd(w * 1.03, l * 1.02, zc + 0.01 * s, 0.11 * s, 0.21 * s), y0 + h * 0.55),
+		_ry(_rnd(w * 0.94, l * 0.96, zc + 0.03 * s, 0.1 * s, 0.2 * s), y0 + h * 0.86), _ry(_rnd(w * 0.7, l * 0.78, zc + 0.06 * s, 0.08 * s, 0.15 * s), y0 + h)], 50.0), cowl, ccol, Vector3.ZERO)
 	k._add(mo, VehicleModels.solid([_ry(_rr(w + 0.014, l + 0.014, zc, 0.1 * s, 0.17 * s), y0 + 0.015), _ry(_rr(w + 0.014, l + 0.014, zc, 0.1 * s, 0.17 * s), y0 + 0.05 * s)], key + "_band"), low, lcol, Vector3.ZERO)
 	k._box(mo, Vector3(w * 0.42, 0.05 * s, 0.03), Vector3(0, y0 + h * 0.8, zc + l * 0.5 + 0.01), "gunmetal_w", null, Vector3.ZERO, false)
 	return mo
@@ -546,8 +550,8 @@ static func _zodiac(k: VehicleModels, team: int) -> void:
 		var pz := 0.35 if s > 0 else -0.05
 		_rod(k, m, Vector3(s * 0.36, 0.25, pz + 0.75), Vector3(s * 0.36, 0.25, pz - 0.55), 0.016, "paint", Color(0.2, 0.21, 0.19), 6, true)
 		k._box(m, Vector3(0.15, 0.02, 0.4), Vector3(s * 0.36, 0.25, pz - 0.75), "paint", Color(0.2, 0.21, 0.19))
-	k._box(m, Vector3(0.42, 0.32, 0.52), Vector3(-0.12, 0.39, 0.35), "canvas", Color(0.33, 0.35, 0.25), Vector3(0, 0.18, 0))
-	k._box(m, Vector3(0.36, 0.1, 0.3), Vector3(-0.1, 0.57, 0.27), "canvas", Color(0.3, 0.32, 0.23), Vector3(0, 0.18, 0))
+	# (a soft pack slumped on the floorboards, its lid strapped over, not a crate)
+	VehicleCloth.bag(k, m, Vector3(0.42, 0.42, 0.52), Vector3(-0.12, 0.44, 0.35), "canvas", Color(0.33, 0.35, 0.25), Vector3(0, 0.18, 0))
 	k._add(m, Res.capsule(0.13, 0.62, 12), "rubber", Color(0.1, 0.1, 0.1), Vector3(0.15, 0.36, -0.45), Vector3(0, 0.35, PI / 2))
 	# the bow's towing ring and grab handle
 	k._add(m, Res.torus(0.025, 0.05), "gunmetal_w", null, Vector3(0, 0.33, -2.36), Vector3(0, 0, PI / 2))
@@ -1026,6 +1030,13 @@ static func _surc(k: VehicleModels, team: int, csat: bool) -> void:
 		VehicleFittings.wiper(k, m, Vector3(s * 0.2, 2.06, -2.34), Vector3(s * 0.12, 2.42, -1.78), Vector3.RIGHT, Vector3(0, 0.56, -0.36), 0.44)
 		for z in [-0.9, 0.2]:
 			k._box(m, Vector3(0.012, 0.7, 0.02), Vector3(s * 1.205, 1.62, z), "gunmetal_w", null, Vector3(0, 0, s * 0.04), false)
+		# the boat's number on the cabin's armoured sides between the plate
+		# seams (the hull's topsides are too low and tucked under the fender
+		# to carry it), white on the navy's grey, black on CSAT's sand: its
+		# own from the seed, a fixed one on scenery, burnt off a wreck (the
+		# wall leans in 0.04 rad, the number with it)
+		var hull_no := VehicleMarkings.tactical_number(k.kit_seed if k.kit_seed >= 0 else 7, ["123456789", "0123456789"], 5)
+		VehicleMarkings.face_text(k, m, hull_no, 0.3, Vector3(s * 1.205, 1.6, -0.35), Vector3(0, 0, -s), Vector3(s, 0.04, 0), Color(0.12, 0.12, 0.11) if csat else Color(0.84, 0.84, 0.8), "hull", 0.85, 0.008)
 		# side lights on the cabin's shoulders, the team panel aft of them
 		VehicleFittings.nav_light(k, m, Vector3(s * 1.13, 1.9, -1.45), Vector3(0.05, 0.08, 0.14), s)
 		k._team_mark(m, team, Vector3(s * 1.21, 1.62, 0.75), Vector3(0.012, 0.24, 0.5))
@@ -1202,21 +1213,24 @@ static func _scooter(k: VehicleModels, seed: int) -> void:
 		var by := _top(st) - 0.01
 		var hw := _beam(st) + 0.012 - 0.05 * clampf((float(zq[0]) + 1.6) / 0.6, 0.0, 1.0)
 		hood.append(_dome(hw, by, maxf(float(zq[1]) - by, 0.01), st[0], 2.2, 14))
-	k._add(m, VehicleModels.solid(hood, "boat_pwc_hood"), hm, liv, Vector3.ZERO)
+	# (a moulded shell: shaded round over its dome and along it, where flat
+	# facets read as a cut gemstone; the joint to the deck stays crisp)
+	k._add(m, _moulded(hood, "boat_pwc_hood", 40.0), hm, liv, Vector3.ZERO)
 	# the pedestal and the stepped three-place saddle on it
 	var ped := []
 	for q in [[-0.5, 0.26, 0.66], [-0.2, 0.27, 0.68], [0.6, 0.27, 0.68], [0.98, 0.24, 0.64], [1.1, 0.18, 0.56]]:
 		var w: float = q[1]
 		ped.append(_rz([w, 0.36, w + 0.01, 0.5, w - 0.04, q[2], -w + 0.04, q[2], -w - 0.01, 0.5, -w, 0.36], q[0]))
-	k._add(m, VehicleModels.solid(ped, "boat_pwc_ped"), hm, liv, Vector3.ZERO)
+	k._add(m, _moulded(ped, "boat_pwc_ped", 40.0), hm, liv, Vector3.ZERO)
 	var seat1 := []
 	for q in [[-0.47, 0.15, 0.74], [-0.39, 0.215, 0.785], [0.12, 0.225, 0.795], [0.24, 0.2, 0.775]]:
 		seat1.append(_cushion(q[1], 0.63, q[2], q[0]))
-	k._add(m, VehicleModels.solid(seat1, "boat_pwc_seat1"), "plain_dark", dark, Vector3.ZERO)
+	# (the saddles are padded vinyl: shaded round across their crowns and ends)
+	k._add(m, _moulded(seat1, "boat_pwc_seat1", 50.0), "plain_dark", dark, Vector3.ZERO)
 	var seat2 := []
 	for q in [[0.16, 0.2, 0.815], [0.28, 0.23, 0.85], [0.86, 0.23, 0.85], [0.99, 0.17, 0.805]]:
 		seat2.append(_cushion(q[1], 0.63, q[2], q[0]))
-	k._add(m, VehicleModels.solid(seat2, "boat_pwc_seat2"), "plain_dark", dark, Vector3.ZERO)
+	k._add(m, _moulded(seat2, "boat_pwc_seat2", 50.0), "plain_dark", dark, Vector3.ZERO)
 	for s in [-1.0, 1.0]:
 		# footwell mats
 		k._box(m, Vector3(0.2, 0.012, 1.45), Vector3(s * 0.4, _sheer(p, 0.25) + 0.004, 0.35), "plain_dark", Color(0.22, 0.22, 0.22))
@@ -1255,6 +1269,16 @@ static func _scooter(k: VehicleModels, seed: int) -> void:
 	VehicleFittings.filler(k, m, Vector3(0.2, 0.83, -1.05), 0.035, Basis.from_euler(Vector3(0.3, 0, -0.3)) * Vector3.UP, "plain_dark", dark)
 	# the hood's storage hatch seam
 	k._box(m, Vector3(0.008, 0.01, 0.42), Vector3(0, 0.905, -0.98), "plain_dark", dark, Vector3(0.24, 0, 0), false)
+
+
+## A moulded shell lofted through `rings` (VehicleProfiles.loft: shaded round
+## across bends gentler than `crease` degrees) and kept in VehicleModels'
+## cache under `key`, as VehicleModels.solid keeps the faceted one, so the
+## Field Manual and the fixtures still find the part by its name.
+static func _moulded(rings: Array, key: String, crease: float) -> ArrayMesh:
+	if not VehicleModels._cache.has(key):
+		VehicleModels._cache[key] = VehicleProfiles.loft(rings, crease)
+	return VehicleModels._cache[key]
 
 
 ## A saddle cross-section ring: half-width w, from y0 up to y1, rounded.
