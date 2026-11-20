@@ -1074,7 +1074,7 @@ across the roster at seed 3, every model within +5.8% (the BTR, its wheel wells 
   `VmCiv._atv_wheel` is a dished 12-inch rim; car seat cloth is lighter.
 - **Cloth, loads and seats**: `VehicleCloth._tilt_meshes` lays a darker chafing strip over each inner bow and an eave
   band, `_tilt` fades each roof width by its own amount (`ROOF_FADES`) and binds the ends in a cached hem;
-  `VehicleCloth.roof_net` rolls and straps two cab-roof nets in three with garnish showing; `VehicleCab.seat` gives
+  `VehicleCab.seat` gives
   full-height seats inward-turned bolsters and a head section; `VehicleCargo.crate_stack` gives wooden crates sharp
   edges, plank joints, cleat handles and a small stencil, and lays one strapped pallet in five under a PVC tarp;
   `shelter` puts ISO corner castings on rounded roofs and low square vents; `VmBoat._round_tube` rounds the tubes
@@ -1158,7 +1158,7 @@ count (-0.02%): the plainer spares pay for the perforated decks (up to +3.1% on 
   that mirrored the sky. A tilt's own rolls keep their steel roller buckles.
 - **Sandbags**: `VehicleCloth._sack`'s top is pressed flat with square shoulders, not a loaf's dome; every sack is
   matt `canvas` (woven polypropylene included), and the poly lot's white and sand are dirtied to a mid grey and
-  a duller sand, so a wall of them is no longer the brightest thing on a cab.
+  a duller sand, so the gun trawler's parapet is no longer the brightest thing on its deck.
 - **Bedrolls**: `VmCore._bedroll` builds a live roll in the `nylon` finish and keeps its colour to a dull tan's
   saturation, so a coyote roll on a tank's bustle no longer turns terracotta in the sun (a wreck's stays canvas).
 - **Perforated decks**: `VehicleFittings._perforated` punches the cover all over, 6.5 cm apart in staggered rows

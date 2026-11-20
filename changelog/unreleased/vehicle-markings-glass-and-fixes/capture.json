@@ -12,7 +12,7 @@
     1600,
     9900
   ],
-  "composition": "Each row: the same studio render of before_ref and of this change, cropped alike to the model (or to `crop`, in source pixels, widened to 16:9) and resized to 800x450, before left, after right, short labels. JPEG quality 80. Both columns rendered in one roster pass each from checkouts of before_ref and of this change.",
+  "composition": "Each row: the same studio render of before_ref and of this change, cropped alike to the model (or to `crop`, in source pixels, widened to 16:9) and resized to 800x450, before left, after right, short labels. JPEG quality 80. Both columns rendered in one roster pass each from checkouts of before_ref and of this change. The rebels' pickups lost their sandbags, and crews their camouflage nets, before merge: the technical's row was rendered again from both refs with the sandbags taken off.",
   "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<every roster kind> [--surface-flight] --surface-seed=3 --surface-out=<outside-repo-directory>",
   "shots": [
     {

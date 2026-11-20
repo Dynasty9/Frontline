@@ -9,11 +9,11 @@
   "sources": [
     {
       "file": "changelog/unreleased/vehicle-markings-glass-and-fixes/comparison.jpg",
-      "sha256": "d0990b1aa2a649ca0e52aaac2327d56f005931e5894b9787cb38f9eb203505a6"
+      "sha256": "770383305e75da1b7e13423be702fa2112f5c2e83eab694fa6df49be5c179cb4"
     },
     {
       "file": "changelog/unreleased/vehicle-markings-glass-and-fixes/capture.json",
-      "sha256": "d515e91eee5815670f3ab2d4675ae3c5cbb106ccbd0cb2c2ee27faaf708c3092"
+      "sha256": "2f1569a80567a2bedec63d1326b6b3adf81d1e4c41c35e306f9e9e04d54d00c8"
     }
   ],
   "output": null

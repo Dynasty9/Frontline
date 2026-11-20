@@ -9,11 +9,11 @@
   "sources": [
     {
       "file": "changelog/unreleased/vehicle-crews-arches-and-tarps/comparison.jpg",
-      "sha256": "90a452a5a4866e3cb632cb297389399a6f42e000269ca45c6bb8e56f719d0b05"
+      "sha256": "3d8ce36881d6410f31e90f08c1059385ef6bcb432797459b2b0fb0ef07e51d8c"
     },
     {
       "file": "changelog/unreleased/vehicle-crews-arches-and-tarps/capture.json",
-      "sha256": "fff0289d8844141a6182684a1240910a6210ada87d167c6e9463fbd2fafa8fb2"
+      "sha256": "ecd407f68a251953c0cab895d15abded2a9d877836b01189d37aa71fb747520d"
     }
   ],
   "output": null

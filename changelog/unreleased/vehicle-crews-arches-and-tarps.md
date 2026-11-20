@@ -5,7 +5,7 @@ kind = "improved"
 
 [[screenshots]]
 file = "comparison.jpg"
-caption = "Matched studio views: before on the left, after on the right. The Little Bird, Ghost Hawk and Huron cockpits, a Buzzard from above, the Marshall and BTR wheel arches, a Leopard 2 and a Strider from above, a Leopard 2's slat cages, an SUV, a tractor, a technical, a HEMTT from above, a Zamak's cab, a Prowler from above, a HEMTT's load, a RHIB, the Xi'an, a Marshall from above, a Prowler's seats, a pickup, a Bobcat and a Kamysh from above, a T-55, a Ghost Hawk in flight, a Tempest's load, an SUV, a Namer from above, a HEMTT's cab and a quad bike."
+caption = "Matched studio views: before on the left, after on the right. The Little Bird, Ghost Hawk and Huron cockpits, a Buzzard from above, the Marshall and BTR wheel arches, a Leopard 2 and a Strider from above, a Leopard 2's slat cages, an SUV, a tractor, a technical, a HEMTT from above, a Prowler from above, a HEMTT's load, a RHIB, the Xi'an, a Marshall from above, a Prowler's seats, a pickup, a Bobcat and a Kamysh from above, a T-55, a Ghost Hawk in flight, a Tempest's load, an SUV, a Namer from above, a HEMTT's cab and a quad bike."
 +++
 
 - Every helicopter shows its crew through clear cockpit glass, in helicopter seats with an instrument panel
