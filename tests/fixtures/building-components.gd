@@ -372,6 +372,13 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A field hospital (the medic tent) stands its tent where its part is, the
+	# stretchers and stores by its door and the flag beside it, under 4.3 m.
+	for side in 2:
+		var mt := Structure.preview_model("medic_tent", side)
+		var mtb := _bounds(mt, Transform3D.IDENTITY)
+		check(mt.get_child_count() > 0 and mtb.size.x <= 12.5 and mtb.size.z <= 7.8 and mtb.position.y >= -0.15 and mtb.end.y <= 4.4, "a field hospital keeps to its pitch (%d: %s)" % [side, mtb])
+		mt.free()
 	# The street pieces keep to their footprints: the fountain within its
 	# basin, the bus shelter over its pavement (its stop's flag the top of it),
 	# a planter (its trough a square turned on its corner: its bounds are the
@@ -403,6 +410,13 @@ func _ready() -> void:
 	var rpb := _bounds(rp, Transform3D.IDENTITY)
 	check(rp.get_child_count() > 0 and rpb.size.x <= 10.5 and rpb.size.z <= 9.5 and rpb.position.y >= -0.05 and rpb.end.y < 9.5, "a research post keeps to its plot (%s)" % rpb)
 	rp.free()
+	# The water tower stands on its piers within its footprint, its finial at
+	# 13.5 m or so.
+	var towk := kit()
+	BuildingLandmarks.water_tower(towk, towk.rng)
+	var towb := _bounds(towk.sink.root, Transform3D.IDENTITY)
+	check(towb.size.x <= 6.5 and towb.size.z <= 6.4 and towb.position.y >= -0.01 and towb.end.y > 13.0 and towb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % towb)
+	towk.sink.root.free()
 	# A tunnel's mouth keeps to its 3 m plot, its shaft going down below it.
 	var tn := Structure.preview_model("tunnel", 1)
 	var tnb := _bounds(tn, Transform3D.IDENTITY)

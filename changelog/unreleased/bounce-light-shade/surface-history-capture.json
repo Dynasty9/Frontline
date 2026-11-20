@@ -1,0 +1,47 @@
+{
+  "before_source": "5aac3f1d7aefd5a0a40767fc48c7cd2233ac7b0a",
+  "after_source": "959238ed7cf444d4a3ede7d63936c29c0ff4b301",
+  "stage_sha256": "0249016777a846be7448453e26b5a77f4984035c34b2d3f1d2a1b7e982a81ffb",
+  "godot": "4.7.2.stable.official.ed1daf0bf",
+  "renderer": "Forward+",
+  "device": "Vulkan 1.4.305 - llvmpipe (LLVM 19.1.7, 256 bits)",
+  "mesa": "25.0.7-2+deb13u1",
+  "display": "Xvfb :99 -screen 0 1280x720x24 -nolisten tcp",
+  "source_resolution": [
+    960,
+    540
+  ],
+  "fps": 30,
+  "seed": 3,
+  "preset": "high",
+  "postprocessing": "Whole-frame scaling and labels outside the game frame only; no exposure adjustment or colour grading.",
+  "timing": "Fixed simulation fps; software rendering and PNG capture do not establish GPU performance. One renderer at a time in the 16 GiB cgroup.",
+  "capture_setup_file": "cloud-render-setup.txt",
+  "scenario": "tank",
+  "mood": "day",
+  "poses": "close:tank:10:auto:2.4;command:tank:55:auto:2.4",
+  "pan": "1,0,60",
+  "capture_at_seconds": 1,
+  "modes": "ssgi2",
+  "scope": "Isolated surface-history fix, predating concurrent head 556c978c.",
+  "warnings": "Asset UID fallbacks. Capture harness indexes past final pose during deferred quit after all 120 frames and camera records were saved; final harness disables processing before quit.",
+  "interpretation": "Subtle correction; repeated baseline frame 3 varied about 0.04 RGB levels on average. Do not attribute every pixel difference to this fix. The production-shader regression isolates rejection behaviour.",
+  "encoded_resolution": [
+    1600,
+    486
+  ],
+  "duration_seconds": 4,
+  "audio": "silent",
+  "renderer_setup": "Workspace-only rendering setup, 2026-11-18\nGodot: /workspace/frontline-tools/godot/Godot_v4.7.2-stable_linux.x86_64\nDebian packages extracted with dpkg-deb -x into /workspace/frontline-tools/runtime:\nmesa-vulkan-drivers 25.0.7-2+deb13u1\nxvfb and xserver-common 2:21.1.16-1.3+deb13u3\nlibxfont2 1:2.0.6-1+deb13u1\nNo system packages installed; no local Windows access.\n\nDisplay command:\n/workspace/frontline-tools/runtime/usr/bin/Xvfb :99 -screen 0 1280x720x24 -nolisten tcp\n\nEnvironment:\nDISPLAY=:99\nVK_DRIVER_FILES=/workspace/frontline-tools/runtime/usr/share/vulkan/icd.d/lvp_icd.json\nLD_LIBRARY_PATH=/workspace/frontline-tools/runtime/usr/lib/x86_64-linux-gnu\nXDG_DATA_HOME=/workspace/frontline-tools/data\nXDG_CACHE_HOME=/workspace/frontline-tools/cache\nXDG_CONFIG_HOME=/workspace/frontline-tools/config\nGALLIVM_PERF=nopt\n\nGodot arguments: --audio-driver Dummy --rendering-method forward_plus --resolution 960x540 --fixed-fps 30\nUse a windowed offscreen game, not --headless (headless has no RenderingDevice).\nGodot reports:\nVulkan 1.4.305 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 19.1.7, 256 bits)\nCompatibility reports:\nOpenGL API 4.5 (Core Profile) Mesa 25.0.7-2+deb13u1 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 19.1.7, 256 bits)\n\nTiming limitations: no /dev/dri or /dev/nvidia device, including outside the sandbox.\nCold startup/scene compilation takes several minutes; first valid frame can take over ten minutes.\nTank frames took approximately seven seconds each with two concurrent renders; full-town weather is slower.\nActual cgroup memory.max is 17179869184 (16 GiB). Two simultaneous renders plus an import caused two OOM kills.\nRun exactly one renderer at a time and complete imports before capture; monitor memory.current and memory.events.\nFixed 30 fps is simulation/capture time, not wall-clock rendering throughput.\nGALLIVM_PERF=nopt disables LLVM optimizations to shorten compilation; unsuitable for hardware performance conclusions.\nKeep capture separate from any performance test. Hardware renderer cost remains unmeasured.\n",
+  "camera_match": "Identical pose sequence and numeric camera records within 1e-5; verified before encoding.",
+  "files": {
+    "webm": {
+      "sha256": "b4419c9e29eec2db34cee2946d93a13232203155cc3720761fdf3231be6c75b0",
+      "bytes": 2454803
+    },
+    "jpg": {
+      "sha256": "2fed8e6981eb4827e2df479073e9cd268ee09bd09ae37b6763a8efdc1e69ed89",
+      "bytes": 145903
+    }
+  }
+}
