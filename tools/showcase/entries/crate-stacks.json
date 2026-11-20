@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/crate-stacks.md",
+  "summary": "The crates soldiers take cover behind are now stacked like real stores: framed shipping crates with braces, steel bands and stencilled lot numbers, and olive ammunition boxes with rope handles and hasps, each load on its pallet.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn (crates:-1:0, crates:-1:1, ids via a scratch spec)",
+  "rationale": "Appearance change of a cover structure: matched studio stills before and after, and a grid of six seeded stacks to show the loads vary.",
+  "source_ref": "b43fd9b61135e2eb62597ffeb98c1dc6a399e312",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/crate-stacks/comparison.jpg",
+      "sha256": "40fd538ebd132a6658a0c5edad9f2af3bc7eae0f3cbd6908c5cf4bba248fb588"
+    },
+    {
+      "file": "changelog/unreleased/crate-stacks/loads.jpg",
+      "sha256": "20e311e095e4a63704a1401d1ee10be164ea1f9e270be0d100444a49cfc80918"
+    }
+  ],
+  "output": null
+}

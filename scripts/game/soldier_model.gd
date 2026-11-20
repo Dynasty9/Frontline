@@ -288,6 +288,11 @@ func build(utype: String, team: int, seed: int) -> void:
 				for c in j.get_children():
 					if c is MeshInstance3D:
 						(c as MeshInstance3D).set_instance_shader_parameter(&"pofs", cut)
+	# the flat colours left (the uniform, the face, the kit not on the shared
+	# surfaces) read the light probes too: a man in a room, an alley or a wood
+	# takes its dim, tinted ambient, not the open sky's (the distant men's baked
+	# poses copy these meshes, so they do as well)
+	LightProbes.probe_surfaces(self)
 	var use_skin := utype == "rifleman" or ((medical_band != null or utype in ["mortar_gunner", "fighter"]) and InfantryAssets.gameplay_model == InfantryAssets.SWAT)
 	var skin_world: World = host_world if host_world != null else (get_parent().world if get_parent() is Soldier else null)
 	if use_skin and is_inside_tree() and skin_world != null and not InfantryAssets.gameplay_model.is_empty():

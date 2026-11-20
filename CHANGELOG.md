@@ -4,6 +4,162 @@ Every release of Frontline, newest first. The game updates itself; downloads, an
 are on [the website](https://web-production-5a4c1.up.railway.app/changelog/). Each change is written up in [`changelog/`](changelog/) as part of
 the pull request that makes it.
 
+## v2.0.2: Rooms and narrow spaces take their skylight from the world round them
+
+*18 November 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v2.0.2)
+
+### New
+
+#### Rooms and narrow spaces take their skylight from the world round them
+
+Light probes work out how much sky every room, wall foot, wood and street can see. Rooms stay dim indoors with their roof lifted, wet floors under a roof stop mirroring the sky, woods sit in a green shade, fires glow on the ground round them, and open ground looks as before.
+
+[Watch: The same frame with the probes switched off and on every second: the room goes indoors, its shade lifted by warm bounce.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.2) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.2/light-probes/room-flicker.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **Shade from the sky:** the foot of walls and the ground between houses see less of the sky than open ground,
+  so they take less skylight and less of the cool fill light. Open fields and roof tops look as before.
+- **Bounced light:** a sunlit patch on a floor or wall throws warm light into the shade round it, so a room's
+  dark corners are dim, not black.
+- **Reflections know what's overhead:** wet floors indoors, under eaves and in trenches no longer mirror the bright
+  sky they can't see; they reflect the room round them instead.
+- **Woods:** under the trees the ground, the grass and ferns on it and the soldiers sit in a dimmer, green-tinted shade.
+- **Fires and street lamps** throw a little warm light on the walls and ground round them, past where their own
+  light reaches, but not through walls. In the browser, which has no fire lights, this is the glow fires give.
+- **No light through walls:** the floor along a wall indoors and the top of a wall no longer pick up light from
+  the other side.
+- **It keeps up with the battle:** houses blown down, trees felled or burnt, doors flung open, trenches dug and
+  new craters change the probes round them within a moment. A fresh crater's bowl sits in a little shade of its own.
+- **Follows the time of day:** with Time passes on, the light bounced round rooms and streets dims and reddens with
+  the evening and follows the sun across the sky, smoothly, with no visible steps. Rooms at dusk stay dim, not black.
+- **Vehicles and soldiers shade the ground:** a parked tank or truck sits in a soft dark pool of its own, and a
+  standing soldier in a faint one.
+- **Rooms read as indoors:** when soldiers go in and the roof lifts away, the room no longer stands in full
+  sunlight. The probes know it's a room and keep it dim, lit by its windows, door and the light bouncing in.
+- **Light probes** in Settings › Graphics: **High** (from the High preset up), **Low** (only the shade from the
+  sky; the Medium preset and the browser) or **Off** (the Low preset).
+
+![Midday, a room seen through its lifted roof. Left, without and with the probes: with them the room reads as indoors, and its sunlit patch bounces warm light into the shade. Right, what the probes see (the share of sky each surface sees; dark is shut in) and the difference they make, four times over (darker where they take light, warmer where the bounce adds it).](changelog/v2.0.2/light-probes/room-under-roof.jpg)
+
+![The same room in the rain. Without the probes its wet tiles mirror the grey sky over the roof; with them a reflection shows the sky only where the sky can be seen, so the floor indoors goes dark and wet.](changelog/v2.0.2/light-probes/wet-room-rain.jpg)
+
+![The edge of a wood at midday, time frozen so only the light changes. Under the trees the ground, the ferns and the men sit in a dimmer, greener shade; the open meadow beside them is unchanged.](changelog/v2.0.2/light-probes/wood-edge.jpg)
+
+![Fires at night: a burning hedge and a grass fire. With the probes their light reaches past their own glow, warming the ground several metres round them (about half as bright again round the grass fire); walls keep it in.](changelog/v2.0.2/light-probes/fire-glow-night.jpg)
+
+![Parked vehicles on an overcast day. With the probes each sits in a soft contact shadow, darkest under its tracks and wheels and fading out a metre or so round it; the deck and roof still see the sky.](changelog/v2.0.2/light-probes/tank-shade.jpg)
+
+![A fresh shell crater: its bowl sees a little less of the sky than the field round it, so it reads as a hollow.](changelog/v2.0.2/light-probes/crater.jpg)
+
+![The same room at golden hour: the low sun across the far wall is cut back, the shaded walls and floor warm with its bounce, and the grass in the house's shade by its walls darkens a little. The difference panel, four times over around mid grey (grey is no change), shows all three.](changelog/v2.0.2/light-probes/room-golden-hour.jpg)
+
+[Watch: With Time passes on, a room and a street from late afternoon into dusk, the clock run sixty times over: the light bounced into the room dims and reddens with the evening, smoothly, with no steps as the probes follow the sun.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.2) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.2/light-probes/dusk-timelapse.webm))
+
+[Watch: A house blown down, the game beside the probe term: within a second the probes are traced again, and the open floor gets its sky and sun back.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.2) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.2/light-probes/destroyed-house.webm))
+
+</details>
+
+### Improved
+
+#### Machine guns fed from open cans
+
+A mounted machine gun's ammunition can is open now, and its belt of brass rounds runs out of it and into the gun, instead of three rounds floating over a shut lid.
+
+![Before and now, close up: a technical's heavy machine gun, an Offroad's .50 and the MB 4WD's light machine gun. The can was shut with a few rounds hovering over its lid; now its lid is off and the belt lies in it, rising over the lip into the gun's side.](changelog/v2.0.2/gun-belts/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- **Belts:** every machine gun with a can beside it, from the .50s and DShKs to the 7.62s, is fed by a belt of brass rounds in blackened links. The belt lies folded in the can's mouth, then rises over the lip into the feedway in the gun's side.
+- **Cans:** the can on a gun has its lid off, as gunners leave it so the belt runs freely. Cans stowed in a truck bed stay shut.
+- **DShK:** its rear sight stands on the feed cover instead of floating above the gun, and its wooden spade grips are shaped to the hand rather than ending flat like pegs.
+
+</details>
+
+#### Gravel roads, dirt tracks and weathered bridge decks
+
+Country gravel, earth supply tracks and paved bridge decks have distinct surfaces, with worn wheel paths, natural shoulders and cleaner joins.
+
+![Country gravel up close: photographed aggregate, wheel wear, dirt shoulders and roadside markers.](changelog/v2.0.2/roadside-verges/gravel.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- Photographed worn road and coarse gravel surfaces replace the smooth sand strip. Compacted wheel tracks contrast with loose aggregate, while narrow patches of grass survive between them.
+- Irregular road edges expose darker soil before meeting the grass. Rain darkens the fines and collects in the wheel tracks.
+- Sparse reflector posts and small loose stone deposits frame country routes while keeping junctions, buildings and water clear.
+- Road surfaces follow the ground in shorter panels, with a shallow crown on unpaved routes. Town kerbs and the driving width stay the same.
+- Supply tracks have darker earth and two compacted wheel ruts, with a wider, broken strip of grass between them.
+- Bridge decks use weathered asphalt and worn road paint, with expansion joints. Gravel no longer overlaps the deck in jagged wedges, and the bridge surface responds to rain.
+- Dust trails onto town paving at gravel entrances; concrete driveways are divided by fine slab joints.
+
+![The original gravel upgrade, now at full width: matched before and after views of the road surface.](changelog/v2.0.2/roadside-verges/comparison.jpg)
+
+![Supply tracks before and after this pass: compacted earth, two wheel ruts and a broken grassy centre.](changelog/v2.0.2/roadside-verges/supply-track.jpg)
+
+![Bridge before and after: weathered asphalt, worn edge lines, expansion joints and gravel ending cleanly at the deck.](changelog/v2.0.2/roadside-verges/bridge.jpg)
+
+![Loose fines trail from the gravel onto town asphalt; kerbs, drains, repairs and worn markings frame the street.](changelog/v2.0.2/roadside-verges/town-entrance.jpg)
+
+</details>
+
+#### Trenches fitted out, with dugouts to shelter in
+
+Finished trenches are sandbagged and revetted, with ladders and dugout entrances. Squads shelter in their dugouts under shellfire and stand to when it lifts.
+
+[Watch: Rebel fighters on the fire step come under mortar fire, run along the trench to their dugout leaving a sentry, then stand to when the barrage lifts. Played at 1.5x speed; the mortar barrage is a controlled demonstration.](https://web-production-5a4c1.up.railway.app/changelog/#v2.0.2) ([Direct WEBM](https://raw.githubusercontent.com/Dynasty9/Frontline/main/changelog/v2.0.2/trench-fittings/dugout.webm))
+
+<details>
+<summary>Explore this change</summary>
+
+- **Parapets:** the front of every fire bay is faced with a low wall of sandbags, two bags high, in the same earth-caked hessian as the ground around them.
+- **Revetment:** walls are held up with planks behind posts, or on some sections corrugated iron on pickets.
+- **Along the bays:** scaling ladders against the front wall, ammunition boxes on the fire step and the field telephone line along the back wall.
+- **Dugouts:** some rear bays lead down to a dugout through a timber door frame in the back wall, with a gas blanket rolled over the door. Shelled squads go below, leaving a sentry on the parapet, and are back on the fire step when the barrage lifts, the enemy comes within 90 m, or you give them an order. A shell that brings the section down buries the entrance, and the men dig themselves out hurt. Right-click a dugout's doorway to send a squad below yourself; it stays there until you order it out or the enemy comes on.
+- **Manning the line:** a squad told to defend a trench line spreads along the fire steps of the bays facing the enemy, and moving along a trench no longer cuts corners over the parapet.
+
+![The same trench before and after, same seed and camera: a low sandbag parapet along the front of each fire bay, plank and corrugated-iron revetment, ladders and ammunition on the fire step.](changelog/v2.0.2/trench-fittings/comparison.jpg)
+
+![Close up: a dugout entrance with its gas blanket, a machine-gun bay on the trench's front lip, corrugated-iron revetment, and the fire bays from above.](changelog/v2.0.2/trench-fittings/details.jpg)
+
+</details>
+
+#### Camouflage nets, bolted armour and weather you can see
+
+Crews carry camouflage nets and branches; armour gets welded edges, bolted modules, stowage baskets and gun covers; paint varies plate to plate and gathers dust and grime you can see from the battle camera; car roofs stop flashing white; helicopters get shaped tails; boats get wet waterlines and rust.
+
+![Matched studio views: before on the left, after on the right. A pickup, the T-55, a BTR, the Centauro, a HEMTT workshop, the Leopard 2, the T-100, the Mohawk, a Warrior whose crew has camouflaged it, a HEMTT's tyres and the gun trawler.](changelog/v2.0.2/vehicle-nets-armour-and-weathering/comparison.jpg)
+
+<details>
+<summary>Explore this change</summary>
+
+- About half the tanks, carriers and trucks carry their crew's camouflage: a net bundled into a basket or
+  thrown over a bin, and cut branches laid along the loads, in green or sand to match the paint. Which
+  vehicles, and how heavily, changes from vehicle to vehicle.
+- Armour edges are chamfered and welded on NATO, CSAT and independent tanks and carriers, so their roofs
+  catch a line of light instead of ending in a knife edge. The Leopard 2's add-on armour is separate bolted
+  modules, and the T-100's roof bricks sit on the turret instead of hanging off its edge. Here and there a
+  brick is a mismatched replacement.
+- Turrets carry open stowage baskets with kit inside, decks have dark non-slip walkways, and main guns wear
+  a canvas cover where they leave the turret. The T-55's fuel tanks are painted and its loader's hatch is
+  open. BTR window shutters are hinged visors, and some crews drive with them closed. The Bradley's exhaust
+  is a grille.
+- Paint varies from plate to plate. Dust gathers on decks and roofs, and grime streaks the sides, at a size
+  you can see from the battle camera. Rounded edges show worn highlights.
+- Car and pickup roofs show their paint instead of a white flash. HEMTT workshop and ambulance roofs show
+  panels, lifting eyes and air-conditioning units.
+- Military trucks roll on mud tyres with chunky lugs. Spare track links hang in short runs. Mudflaps hang
+  their own way, and some are torn. Crates carry stencils. Canvas tilts sag between their bows.
+- Helicopter tails and stub wings are shaped like wings instead of planks. Cowlings have chamfered edges and
+  access panels, with a patchwork of refitted panels that differs from airframe to airframe. Oil and exhaust
+  streak the fuselages, and serial numbers vary.
+- Boats are dark and wet at the waterline. Rust runs from the trawler's scuppers and portholes, its funnel is
+  sooty, and boats carry registration numbers.
+
+</details>
+
 ## v2.0.1: Choose how good the AI is
 
 *17 November 2026* · [Release on GitHub](https://github.com/Dynasty9/Frontline/releases/tag/v2.0.1)

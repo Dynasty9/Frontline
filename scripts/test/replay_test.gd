@@ -37,6 +37,19 @@ func _run() -> void:
 	world.despawn(transient)
 	_check_capture(world)
 	world.execute_cmd(1, {"t": "move", "squads": [1], "pos": Vector3(0, 0, -20)})
+	var wreck_props := {}
+	if main.args.has("replay-wrecks"):
+		while world.time < 4.0:
+			await get_tree().physics_frame
+		for kind in ["tank", "slammer", "technical"]:
+			var at := Vector3(70 + wreck_props.size() * 30, 0, 70)
+			var vehicle: Vehicle = world.spawn("vehicle", {"vkind": kind, "team": 0, "pos": at})
+			vehicle.brew_up_next = 1
+			vehicle.take_damage(vehicle.max_hp * 3.0, null)
+			for wreck: Structure in world.structures:
+				if wreck.skind == "wreck" and wreck.vk == kind and wreck.position.distance_to(at) < 1.0:
+					wreck_props[wreck.eid] = wreck.get_props().duplicate(true)
+		check(wreck_props.size() == 3, "gameplay destruction produces all three wrecks")
 	while world.time < 22:
 		await get_tree().physics_frame
 	_check_capture(world)
@@ -68,6 +81,7 @@ func _run() -> void:
 		check(MapDims.N == int(main.args.get("map-size", 1024)), "seek restores recorded map dimensions")
 		check(is_equal_approx(main.world.time, target), "seek restores the clock")
 		check(main.world.terrain.landform.heights == saved_landform, "seek restores exact terrain elevations")
+		_check_wrecks(wreck_props, target)
 		var states: Array = [player.chunk.checkpoint]
 		for state in player.chunk.frames:
 			if float(state.time) <= target:
@@ -88,6 +102,18 @@ func _run() -> void:
 		for id in positions:
 			check(main.world.entities[id].net_pos.is_equal_approx(positions[id]), "soldier state matches recording after seek")
 		check(not main.world.srv and main.world.local_team == -1, "viewer has no authority")
+	if not wreck_props.is_empty():
+		player = main.open_replay(path)
+		while player.busy:
+			await get_tree().process_frame
+		check(not player.failed, "reopens saved wreck recording")
+		player.speed = 0
+		await player.seek(15.0)
+		_check_wrecks(wreck_props, 15.0)
+		for props: Dictionary in wreck_props.values():
+			check(player._valid_props("structure", props, true), "accepts produced wreck properties")
+		for bad in [{"team": 0, "seed": 1}, {"team": 5, "seed": 1, "since": 2.0}, {"team": 0, "seed": 1, "since": INF}]:
+			check(not player._valid_props("structure", {"wreck_finish": bad}, false), "rejects malformed wreck finish")
 	var first: Dictionary = player.decode(await player.fetch_json("/chunks/0"))
 	check(not first.commands.is_empty() and first.commands[0].command.t == "move", "tick-ordered commands recorded")
 	check(player.decode({"size": 999999999, "data": "AA=="}).is_empty(), "rejects oversized decoding")
@@ -140,3 +166,15 @@ func _packet_records(packets: Array) -> Dictionary:
 			result[id] = packet.slice(offset + 5, offset + 5 + size)
 			offset += 5 + size
 	return result
+
+
+func _check_wrecks(expected: Dictionary, at: float) -> void:
+	for id in expected:
+		var wreck = main.world.entities.get(id)
+		if at < 4.0:
+			check(wreck == null, "rewind before destruction removes wreck")
+			continue
+		check(wreck is Structure, "seek restores destroyed vehicle")
+		if wreck is Structure:
+			for key in ["wreck_finish", "turret_off", "wreck_turret_yaw", "bent_skirts"]:
+				check(wreck.get_props().get(key) == expected[id].get(key), "seek restores " + key)
