@@ -88,10 +88,10 @@ func _check_shaders() -> void:
 		assert(fern.contains("AO *= probe_v_k;"), "the wood's undergrowth reads them too")
 		assert(not vgrass.contains("__LOCAL__") and not s.contains("__LOCAL__"), "every placeholder filled in")
 	var px := LightProbes.PIXEL
-	# reflections shut in with the sky: the probes' bands in the reflected direction
-	# take the sky out of a reflection (RADIANCE), the room's own light in its place
+	# reflections shut in with the sky: the probes' bent normal handed to Godot's own
+	# specular occlusion, which comes after the reflection probe (RADIANCE doesn't)
 	var use := LightProbes.PIXEL_USE
-	assert(use.contains("RADIANCE = vec4(probe_lb * PROBE_SPEC_ROOM, 1.0 - probe_so);") and use.contains("reflect(-probe_v, probe_n)"))
+	assert(use.contains("BENT_NORMAL_MAP = vec3(dot(probe_bv, TANGENT), dot(probe_bv, BINORMAL), dot(probe_bv, NORMAL))") and not use.contains("RADIANCE ="))
 	# light leaks: a pixel leaves out the probes with a wall between, on High
 	assert(px.contains("global uniform sampler2DArray probe_voxels") and px.contains("col = probe_side(col, p, base, ps, t_lo, t_hi);"))
 	# the fires' glow, from the atlas's bottom block
@@ -106,11 +106,42 @@ func _check_shaders() -> void:
 	# the skinned soldiers read the probes too, through their own copy of the imported material
 	var skin_src := LightProbes.SKIN_SHADER
 	var skin := LightProbes.inject(skin_src)
-	assert(skin.contains("vec4 probe_light(") and skin.contains("AO *= probe_k.x;") and skin.contains("RADIANCE = vec4("))
+	assert(skin.contains("vec4 probe_light(") and skin.contains("AO *= probe_k.x;") and skin.contains("BENT_NORMAL_MAP ="))
 	var std := StandardMaterial3D.new()
 	std.albedo_color = Color(0.5, 0.6, 0.7)
 	var sm := LightProbes.skin_material(std)
 	assert(sm.get_shader_parameter("albedo") == Color(0.5, 0.6, 0.7), "the soldier keeps his colour")
+	# ...and through CloudShadow, as the world's surfaces are: its light() cuts the
+	# sun in a room and shuts the fill light out with the sky (with the setting on)
+	assert(CloudShadow.shader(LightProbes.SKIN_SHADER, CloudShadow.PROBES, true).contains("probe_fill"), "a man's fill light is shut out as the walls' is")
+	assert(not CloudShadow.shader(LightProbes.SKIN_SHADER, CloudShadow.PROBES, true).contains("(the probes' terms)"))
+	# the procedural men's flat colours get a twin that reads the probes; glass,
+	# glows without light and textured kit are left alone, and a shared one is
+	# swapped once
+	var body := MeshInstance3D.new()
+	body.mesh = BoxMesh.new()
+	var cloth := StandardMaterial3D.new()
+	cloth.albedo_color = Color(0.3, 0.32, 0.2)
+	cloth.roughness = 0.8
+	body.material_override = cloth
+	var lens := MeshInstance3D.new()
+	lens.mesh = BoxMesh.new()
+	var clear := StandardMaterial3D.new()
+	clear.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	lens.material_override = clear
+	var twin := MeshInstance3D.new()
+	twin.mesh = BoxMesh.new()
+	twin.material_override = cloth
+	var man := Node3D.new()
+	for c in [body, lens, twin]:
+		man.add_child(c)
+	LightProbes.probe_surfaces(man)
+	assert(body.material_override is ShaderMaterial and (body.material_override as ShaderMaterial).get_shader_parameter("albedo") == Color(0.3, 0.32, 0.2))
+	assert(is_equal_approx(float((body.material_override as ShaderMaterial).get_shader_parameter("roughness")), 0.8))
+	assert(lens.material_override == clear, "see-through stays as it was")
+	assert(twin.material_override == body.material_override, "a shared colour is swapped once")
+	assert((body.material_override as ShaderMaterial).shader.code.contains("vec4 probe_light("))
+	man.free()
 	assert(LightProbes.BAKE_SHADER.contains("shader_type canvas_item;"))
 	# the atlas layout the pixels read is the one the bake writes
 	assert(LightProbes.ATLAS == Vector2i(4096, 1536))
