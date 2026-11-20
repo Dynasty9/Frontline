@@ -128,12 +128,19 @@ func capture() -> void:
 			if piece[0] == "hay":
 				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
 				break
-		# the near side's headquarters, from the battle's side of it
-		for st in world.structures:
-			if st.skind == "depot" and st.team == 0:
-				views.append(["hq", st.position, 24.0, -42.0, float(st.yaw) + PI + 0.6])
-				break
 		print("CAPTURE town bounds=", town)
+	if "--capture-set=hq" in OS.get_cmdline_user_args():
+		# each side's HQ as its own commander first sees it (the battle starts
+		# looking out from its lines: the HQ's yaw), closer from that side, from
+		# the enemy's side, and from straight above (its back to the bottom)
+		views = []
+		for st in world.structures:
+			if st.skind == "depot":
+				var hq := "hq%d-" % st.team
+				views.append([hq + "command", st.position, 50.0, -52.0, float(st.yaw)])
+				views.append([hq + "rear", st.position, 26.0, -36.0, float(st.yaw) + 0.55])
+				views.append([hq + "front", st.position, 26.0, -36.0, float(st.yaw) + PI + 0.55])
+				views.append([hq + "plan", st.position, 34.0, -89.0, float(st.yaw)])
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
 	if "--capture-set=fortifications" in OS.get_cmdline_user_args():

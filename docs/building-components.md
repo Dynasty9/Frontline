@@ -328,25 +328,41 @@ would show the block behind. Door leaves that swing are built in their own hinge
 
 ## Headquarters
 
-A side's HQ (Structure `depot`) is drawn by `BuildingDepot.compound` where its three solid parts stand:
+A side's HQ (Structure `depot`) is drawn by `BuildingDepot.compound` where its three solid parts stand. It faces the
+way the battle puts it: twelve metres in from its own edge of the map, the enemy ahead (-z), its back to the map's
+edge (+z), and the road up from the rear running past its +x side (`TownGen.build_roads`). So its wall and the
+command post's slits face the enemy, and its gate, vehicle park, the command post's door and the flag face the rear
+and the road, where traffic comes from and where the side's own commander first looks at it from (the battle opens
+on the HQ's yaw).
 - **Two 20-foot containers** (`BuildingDepot.container`, an ISO 1C box 6.06 by 2.44 by 2.59 m) on sleepers either side
-  of a yard. Each has corrugated walls between the frame's corner posts and rails, a casting at each corner, forklift
-  pockets, and doors with four locking bars and their number plate. One is fitted out as the signals office: a
-  window with its shutter, an air conditioner, a cable run and aerials on the roof, steps to the door. A regular
-  army's are olive, tan or grey (`ARMY`), a militia's rust, faded blue, teal or a grey-white off the docks
-  (`COMMERCIAL`).
-- **The command post** (`BuildingDepot.command_post`): precast panels under a slab, two courses of sandbags round
-  its roof, vision slits with steel shutters, the steel door behind a sandbagged blast wall, a guyed mast on the
-  roof. Sandbags are `BuildingDepot.sandbags`, laid in courses of Structure's filled-sack mesh with the joints
-  broken.
-- **The yard:** the generator (`BuildingDepot.generator`), a camouflage net on guyed poles (`BuildingDepot.net`,
-  its own node, since netting doesn't bake), crated stores on pallets, fuel drums and jerrycans, a map table with
-  the set, the flag on its pole.
-- **The front:** a line of posts and chain, a striped barrier and a sign at the gate (`BuildingDepot.boom`).
+  of the yard. Each has corrugated walls between the frame's corner posts and rails, a casting at each corner,
+  forklift pockets, and doors with four locking bars and their number plate. The left one is the signals office,
+  turned so its window with its shutter, air conditioner and cable run face the generators behind it, aerials on its
+  roof. The right one is the stores, its doors towards the gate. A regular army's are olive, tan or grey (`ARMY`), a
+  militia's rust, faded blue, teal or a grey-white off the docks (`COMMERCIAL`).
+- **The command post** (`BuildingDepot.command_post`): precast panels under a slab, two courses of sandbags round its
+  roof, vision slits with steel shutters (two towards the enemy), a guyed mast and a satellite dish weighted with
+  sandbags on the roof. Its steel door is at the back behind a sandbagged blast wall open towards the vehicle park,
+  with the side's board beside it and a floodlight over it. Sandbags are `BuildingDepot.sandbags`, laid in courses
+  of Structure's filled-sack mesh with the joints broken.
+- **The front:** a wall facing the enemy just out from the yard, with returns back along both sides to the
+  containers' ends. An army's is HESCO (`BuildingDepot.hesco`, MIL 1 cells, one cached mesh per surface for a
+  whole run); a militia's is runs of sandbags (`bag_run`, cached) with earth-filled drums between them.
+- **The yard** behind it, under a camouflage net draped from its spreaders down onto the wall's top and down its open
+  sides (`BuildingDepot.net`, its own node, since netting doesn't bake): the map table with the set and benches, a
+  board of maps, the radio desk along the stores, crated stores, rations and water on pallets.
+- **The power**, behind the signals office: two generators on a concrete pad (`generator`), cables along the ground
+  (`ground_cable`) to a distribution board on the command post and into the office, fuel drums on a spill pallet,
+  jerrycans, an extinguisher, and the long-range biconical aerial (`bicone`).
+- **The entry**, behind the stores off the road: the drive in, a barrier across the lane (`boom`), the guard's booth
+  sandbagged on its outward sides (`guard_post`), a stop board facing the road, a concrete barrier (`jersey`; drums
+  for a militia) between the wall's end and the gate, and the vehicle park on a hardstand with wheel stops, a water
+  trailer (`water_trailer`) and a light tower (`light_tower`). The flag stands by the command post's door.
 
 The parts stay as they were, so the HQ plays the same; its model is baked. Render both sides' with
-`--building-kinds=depot:0,depot:1` in the studio stage (add `--building-rear` for the other side), and the
-near side's in the map with the `hq` view of `--capture-set=town`.
+`--building-kinds=depot:0,depot:1` in the studio stage (add `--building-rear` for the side its commander sees), and
+both in the map with `--capture-set=hq` of `tests/fixtures/environment-views.gd`: each from its commander's opening
+view, closer from the same side, from the enemy's side and from above.
 
 ## The field hospital
 

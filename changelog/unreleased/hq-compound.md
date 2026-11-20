@@ -1,20 +1,18 @@
 +++
 title = "Each side's HQ is a compound, not three boxes"
-summary = "A side's HQ is two shipping containers either side of a yard under a camouflage net, a sandbagged command post behind them, and posts and chain with a barrier at the gate."
+summary = "A side's HQ is a working compound: a wall facing the enemy, a yard under a camouflage net between two shipping containers, a sandbagged command post, and a guarded gate and vehicle park on the road side, facing your own lines."
 kind = "improved"
-
-[[videos]]
-file = "command-and-orbit.webm"
-poster = "command-and-orbit.jpg"
-caption = "The HQ entry and yard net in the offline showroom, before and after; command view then close orbit."
 
 [[screenshots]]
 file = "comparison.jpg"
-caption = "The Coalition's HQ in the map, and both sides' HQs, before and after"
+caption = "The Coalition's HQ before and after: from your own lines as the battle opens, closer from the same side, and from the enemy's side; then the Rebels' from their side"
 +++
 
-- **Two shipping containers**, framed and cast-cornered, their doors barred. One is the stores; the other is fitted out as the signals office, with a window, an air conditioner and aerials on its roof. The Coalition's are olive, tan or grey. The Rebels' are rusty, faded commercial ones off the docks.
-- **A precast command post** stands behind them, sandbagged round its roof, with shuttered vision slits, a steel door behind a sandbag blast wall, and a guyed mast.
-- **Under a camouflage net** in the yard are crated stores, fuel drums, jerrycans and a map table with a radio set. Beside them are the generator and the flag on its pole.
-- **Along the front**, posts and chain run either side of a striped barrier and a sign at the gate.
+- **It faces the right way.** The wall and the command post's slits face the enemy. The gate, the vehicle park, the command post's door and the flag face your own lines and the road up from the rear, so the battle opens on its working side.
+- **The front:** a HESCO wall runs across it and back along both sides. The Rebels' is sandbags with oil drums between them.
+- **The yard** behind the wall lies under a camouflage net draped down onto it, with the map table and a board of maps, the radio desk, crated stores, rations and water.
+- **Two shipping containers** frame the yard. One is the signals office, with a window, an air conditioner and aerials; the other is the stores. The Coalition's are olive, tan or grey. The Rebels' are rusty, faded ones off the docks.
+- **The command post** behind them is precast concrete, sandbagged round its roof, with a mast and a satellite dish on top and its door at the back behind a sandbag blast wall.
+- **Power and signals:** two generators with their fuel and cables, and a tall long-range aerial.
+- **The gate** off the road has a barrier, a sandbagged guard booth and a stop board. Inside it are the vehicle park, a water trailer and a light tower.
 - The HQ plays exactly as before. Only how it looks has changed.

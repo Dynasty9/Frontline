@@ -373,12 +373,18 @@ func _ready() -> void:
 		rk.sink.root.free()
 
 	# A side's HQ stands its containers and command post where its parts are,
-	# within its compound (the posts along its front, the mast and the flag
-	# above, the net's guy pegs driven into the ground), for either side.
+	# turned the way the battle puts it: its wall out in front (-z, towards
+	# the enemy), its gate on the road's side (+x), its drive in running out
+	# to the road's edge (11.6 m: TownGen.build_roads lays the road 14 m out)
+	# and nothing past it, nor past the security fence along its back (8.5 m:
+	# TownGen.military_fences). The masts, the long-range aerial and the flag
+	# are the top of it, its guys' pickets driven in the bottom. Either side.
 	for side in 2:
 		var hq := Structure.preview_model("depot", side, 0)
 		var hqb := _bounds(hq, Transform3D.IDENTITY)
-		check(hq.get_child_count() > 0 and hqb.size.x <= 18.5 and hqb.size.z <= 13.5 and hqb.position.y >= -0.15 and hqb.end.y < 12.0, "a side's HQ keeps to its compound (%d: %s)" % [side, hqb])
+		check(hq.get_child_count() > 0 and hqb.position.x >= -10.5 and hqb.end.x <= 11.65 and hqb.position.z >= -7.0 and hqb.end.z <= 8.5
+			and hqb.position.y >= -0.2 and hqb.end.y < 12.0, "a side's HQ keeps to its compound (%d: %s)" % [side, hqb])
+		check(hqb.position.z <= BuildingDepot.FRONT_Z - 0.4, "its wall stands out in front of it, towards the enemy (%d: %s)" % [side, hqb])
 		hq.free()
 	# A field hospital (the medic tent) stands its tent where its part is, the
 	# stretchers and stores by its door and the flag beside it, under 4.3 m.

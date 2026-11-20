@@ -1241,11 +1241,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   over the last two minutes) and how many towns you hold; beside the FOB lines, a line of its own (stock, rate,
   where its trucks go) for each town being taken or whose trucks aren't getting through, and the quiet ones in
   one line once there are more than a couple. The order of battle moves down to make room.
-- Each side's HQ is a compound: two shipping containers either side of a yard (the stores, and the signals
-  office with its window, air conditioner and aerials), a precast command post sandbagged round its roof behind
-  them, a camouflage net over the yard with the stores, fuel and a map table under it, the generator, the flag,
-  and a line of posts and chain along its front with a striped barrier at the gate. A regular army's containers
-  are olive, tan or grey; a militia's are rusty, faded commercial ones.
+- Each side's HQ is a compound facing the way the battle puts it: a wall towards the enemy (HESCO for the
+  Coalition, sandbags and drums for the Rebels), a yard behind it under a camouflage net between two shipping
+  containers (the signals office and the stores), a precast command post sandbagged round its roof with a mast
+  and a satellite dish, two generators and a long-range aerial behind the office, and on the road side the gate
+  (barrier, guard booth, stop board) with the vehicle park inside it. The command post's door, the gate and the
+  flag face the rear, where the traffic comes from and the side's commander first looks from. A regular army's
+  containers are olive, tan or grey; a militia's are rusty, faded commercial ones.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, HESCO walls and T-walls (Coalition), barricades (Rebels), barbed wire, minefields, tank traps,
   camouflage nets, ammo caches, watchtowers (see 85 m, 115 m with a lookout up; shoot over walls), and Rebel
