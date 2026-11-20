@@ -102,6 +102,7 @@ func _ready() -> void:
 		l.light_volumetric_fog_energy = 40.0  # (a flash blooms in mist, haze and smoke)
 		l.visible = false
 		l.add_to_group(&"fx_light")
+		l.set_meta(&"air_flash", true)  # (AirLights hears of its flashes as they happen)
 		add_child(l)
 		_lights.append([l, 0.0])
 
@@ -191,6 +192,10 @@ func _process(dt: float) -> void:
 	world.vp("gunfx", _t0u)
 
 
+func _air() -> AirLights:
+	return world.atmo.air.lights if world.atmo and world.atmo.air else null
+
+
 func ground_y(p: Vector3) -> float:
 	return world.ground_y(p)
 
@@ -207,6 +212,9 @@ func tracer(from: Vector3, to: Vector3, col: Color, length := 6.0, width := 0.04
 	if from.distance_squared_to(to) < 0.0025 or speed <= 0.0:
 		return
 	_tr.put(Transform3D(Basis(to - from, Vector3(length, width, speed), Vector3.ZERO), from), col, Color(_t0() + delay, ignition, randf(), 0.0))
+	var air := _air()
+	if air:
+		air.tracer(from, to, col, length, speed, _t0() + delay, ignition)
 
 
 ## A burst of light facing the camera (a muzzle seen end-on, a glint).
@@ -329,8 +337,14 @@ func blast_fragments(p: Vector3, size: float, kind: String, ground: bool, detail
 ## A flash lighting up what's round it for a moment (the same gun firing
 ## again keeps its light).
 func light(p: Vector3, energy: float, rng_m: float) -> void:
-	if Settings.fx_mult() < 0.5 or _lights.is_empty():
-		return  # (low effects, or the browser build: no lights)
+	if Settings.fx_mult() < 0.5:
+		return
+	# (the gun's own smoke and the air round it catch the flash, in the browser too)
+	var air := _air()
+	if air:
+		air.flash(p, HOT, energy * (vfx.fire_light if vfx else 1.0), rng_m * 1.5, 38.0)
+	if _lights.is_empty():
+		return  # (the browser build: no lights)
 	var e: Array = []
 	for x in _lights:
 		if float(x[1]) > 0.0 and (x[0] as OmniLight3D).global_position.distance_squared_to(p) < 4.0:
@@ -821,6 +835,9 @@ varying float v_seed;
 varying float v_heat;
 varying float wall_clearance;
 varying vec3 v_ls;  // towards the sun in the sprite's own frame: across it, and (z) towards the camera
+varying vec3 v_air;  // the battle's lights on this puff (AirLights)
+varying vec3 v_al;  // and where they come from, in the sprite's own frame
+#include "res://scripts/game/air_lights.gdshaderinc"
 
 void vertex() {
 	vec3 o = MODEL_MATRIX[3].xyz;
@@ -837,6 +854,8 @@ void vertex() {
 	v_heat = 0.0;
 	wall_clearance = 1.0;
 	v_ls = vec3(0.0, 0.0, 1.0);
+	v_air = vec3(0.0);
+	v_al = vec3(0.0, 0.0, 1.0);
 	if (age >= 0.0 && age < life) {
 		float u = age / life;
 		float k = max(sz.z, 0.05);
@@ -861,6 +880,15 @@ void vertex() {
 		v_heat = mo.z > 0.0 ? pow(clamp(1.0 - age / mo.z, 0.0, 1.0), 1.5) : 0.0;
 		vec3 lv = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
 		v_ls = vec3(lv.x * rc.x + lv.y * rc.y, -lv.x * rc.y + lv.y * rc.x, lv.z);
+		int nl = int(air_light_info.x);
+		if (nl > 0) {
+			vec3 ad;
+			v_air = air_light(p, nl, ad) * air_light_info.w;
+			vec3 av = mat3(VIEW_MATRIX) * ad;
+			float al = length(av);
+			av = al > 1e-5 ? av / al : vec3(0.0, 0.0, 1.0);
+			v_al = vec3(av.x * rc.x + av.y * rc.y, -av.x * rc.y + av.y * rc.x, av.z);
+		}
 	}
 	VERTEX = (VIEW_MATRIX * vec4(wp, 1.0)).xyz;
 }
@@ -894,6 +922,13 @@ void fragment() {
 	float rim = pow(max(-v_ls.z, 0.0), 2.0) * (1.0 - smoothstep(0.0, 0.45, d)) * 0.6;
 	// (the thick of it a little darker: it shades itself from the sky too)
 	vec3 col = v_col.rgb * (sun_col * sun_energy * (lit * 0.9 + rim) + amb_col * amb_energy) * (1.0 - 0.22 * d * d);
+	if (v_air.r + v_air.g + v_air.b > 1e-3) {
+		// a flash, a fire or a tracer close by: lit through from its side, the
+		// thin edges glowing where it's behind
+		float da = density(p + v_al.xy * 0.45, v_u, v_seed);
+		float la = exp(-mix(da, d, abs(v_al.z) * 0.6) * mix(2.0, 0.4, v_al.z * 0.5 + 0.5));
+		col += v_col.rgb * v_air * (0.35 + la);
+	}
 	float fade = smoothstep(0.0, 0.03, v_u) * (1.0 - smoothstep(0.25, 1.0, v_u));
 	float a = smoothstep(0.0, 0.85, d) * v_col.a * fade * smoothstep(0.0, 0.18, wall_clearance);
 	if (v_heat > 0.0) {

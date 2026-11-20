@@ -625,7 +625,8 @@ var _sd_i := 0
 ## camera's focus - earth, stone, sandbags, wood, leaves, steel, a man - from
 ## a little way off (no damage). --shot-demo=hmg fires that gun only;
 ## --shot-demo-every=1.5 fires a volley at all of them at once that often;
-## --shot-demo-cannon also fires a tank gun now and then.
+## --shot-demo-cannon also fires a tank gun now and then; --shot-demo-range=M
+## fires from M metres back (tracers' streaks at night).
 func _shot_demo() -> void:
 	if world.time < _sd_next or world.cam == null:
 		return
@@ -640,7 +641,7 @@ func _shot_demo() -> void:
 	for i: int in pick:
 		var x := (i - 3) * 2.2
 		var to := c + Vector3(x + randf_range(-0.3, 0.3), 0.0 if i == 0 else randf_range(0.6, 1.2), -3.0 + randf_range(-0.3, 0.3))
-		var from := c + Vector3(x * 0.4 + (4.0 if i % 2 == 0 else -4.0), 1.3, 6.0)
+		var from := c + Vector3(x * 0.4 + (4.0 if i % 2 == 0 else -4.0), 1.3, float(args.get("shot-demo-range", 6.0)))
 		fx.play([fx.SHOT, from, to, kinds[i], snd, -1])
 	_sd_i += 1
 	if args.has("shot-demo-cannon") and (every > 0.5 or _sd_i % 40 == 0):

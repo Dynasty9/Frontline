@@ -4,8 +4,8 @@ extends Node
 ## none of the dust off wet ground), everything drifting downwind as a whole
 ## and thinning away, close-up smoke plumes merging and clearing, vehicles'
 ## dust by the ground they drive on and the trails it leaves, headlights after
-## dark, the far rain's curtains, and the air layers' shaders carrying what
-## they need.
+## dark, the far rain's curtains, the battle's lights picked for the smoke and
+## the fog, and the air layers' shaders carrying what they need.
 
 
 ## A stand-in for the World the grid reads: a valley running north-south
@@ -84,9 +84,10 @@ func check() -> void:
 	_check_trails()
 	_check_headlights()
 	_check_curtains()
+	_check_air_lights()
 	_check_shaders()
 	MapDims.configure(1024)
-	print("AIR LAYERS passed: size, hollows, rain bands, blasts, drift, plumes, vehicle dust, trails, headlights, rain curtains, shaders")
+	print("AIR LAYERS passed: size, hollows, rain bands, blasts, drift, plumes, vehicle dust, trails, headlights, rain curtains, battle lights, shaders")
 	get_tree().quit()
 
 
@@ -354,11 +355,63 @@ func _check_curtains() -> void:
 	cam.queue_free()
 
 
+## The battle's lights in the air: what the camera can see is picked, the
+## tracers (which glow in the fog) first, never more than the budget, and the
+## flashes die away.
+func _check_air_lights() -> void:
+	var effects: int = Settings.v.effects
+	Settings.v.effects = 2
+	var w := FakeWorld.new()
+	var cam := Camera3D.new()
+	add_child(cam)
+	cam.position = Vector3(0, 10, 30)  # (looking down -z)
+	w.cam = FakeCam.new()
+	w.cam.cam = cam
+	var al := AirLights.new()
+	add_child(al)
+	al.setup(w)
+	var hot := Color(1.0, 0.7, 0.35)
+	al.flash(Vector3(0, 1, 0), hot, 6.0, 16.0, 7.0)
+	al.flash(Vector3(0, 1, 200), hot, 6.0, 16.0, 7.0)  # behind the camera
+	al.flash(Vector3(0, 1, -600), hot, 6.0, 16.0, 7.0)  # too far to matter
+	al.tick(0.02, 0.0)
+	assert(al.count == 1 and al.fog_count == 0, "only the burst in view is picked (%d)" % al.count)
+	al.flash(Vector3(0.5, 1, 0), hot, 9.0, 16.0, 7.0)
+	al.tick(0.0, 0.0)
+	assert(al.count == 1, "a gun firing again keeps its flash rather than adding one")
+	# a tracer 40 m along a 100 m flight: a line in the fog, first in the list
+	al.tracer(Vector3(-50, 1, 0), Vector3(50, 1, 0), Color(1.0, 0.2, 0.07, 9.0), 9.0, 800.0, 0.0, 0.0)
+	al.tick(0.0, 0.05)
+	assert(al.count == 2 and al.fog_count == 1, "the tracer glows in the fog (%d, %d)" % [al.count, al.fog_count])
+	assert(al._buf[al._slot(0, 7)] == 1.0 and is_equal_approx(al._buf[al._slot(0, 0)], -10.0), "first, a line, its head 40 m along")
+	for i in 40:
+		al.flash(Vector3(i * 3.0 - 60.0, 1, -i * 2.0), hot, 3.0, 10.0, 7.0)
+	al.tick(0.0, 0.05)
+	assert(al.count == AirLights.MAX, "never more than the budget (%d)" % al.count)
+	for i in 90:
+		al.tick(1.0 / 30.0, 0.05 + i / 30.0)
+	assert(al.count == 0 and al._flashes.is_empty() and al._tracers.is_empty(), "the flashes die away and the tracer lands (%d)" % al.count)
+	al.on = false
+	al.flash(Vector3(0, 1, 0), hot, 6.0, 16.0, 7.0)
+	al.tick(0.0, 3.0)
+	assert(al.count == 0, "switched off, nothing lights the air")
+	Settings.v.effects = effects
+	for n in [al, cam]:
+		n.queue_free()
+
+
 func _check_shaders() -> void:
 	var air := MapDims.shader(AirLayers.AIR_SHADER.replace("// CLOUD_SHADOW", CloudShadow.PATTERN))
 	assert(air.begins_with("\nshader_type fog;") and air.contains("float terrain_height(") and air.contains("float cloud_sun("), "the air's fog shader has its helpers")
 	assert(not air.contains("__MAP_"), "the map's size is filled in")
 	assert(SmokePlumes.SHADER.contains("shader_type fog;") and SmokePlumes.SHADER.contains("UVW") and SmokePlumes.SHADER.contains("EMISSION"), "the plumes' fog shader, glowing")
+	var flipbooks: Array[String] = []
+	for f in ["blast_flipbook", "flare_smoke"]:
+		flipbooks.append((load("res://scripts/shaders/%s.gdshader" % f) as Shader).code)
+	for code in [AirLayers.AIR_SHADER, SmokePlumes.SHADER, Vfx.SMOKE_SHADER, GunFx.PUFF_SHADER] + flipbooks:
+		assert(code.contains('#include "%s"' % AirLights.INCLUDE) and code.contains("air_light(") and code.contains("air_light_info"), "every smoke and fog shader takes the battle's lights")
+	var inc := FileAccess.get_file_as_string(AirLights.INCLUDE)
+	assert(inc.contains("vec3 air_light(vec3 p, int n, out vec3 dir)") and inc.contains("global uniform sampler2D air_lights") and inc.contains("float air_light_glow("), "the lights' shader code")
 	assert(air.contains("low_d") and air.contains("terrain_height(deform_tex, (p.xz + dir * d"), "the low haze and the ridges' shafts")
 	assert(DustTrails.SHADER.contains("shader_type fog;") and DustTrails.SHADER.contains("UVW"), "the dust trails' fog shader")
 	assert(RainCurtains.SHADER.contains("shader_type spatial;") and not RainCurtains.SHADER.contains("hint_depth_texture"), "the curtains draw the same under both renderers")

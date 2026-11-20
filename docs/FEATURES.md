@@ -1420,6 +1420,18 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   over a 3.6 km tile that drifts with the clouds and wraps round the camera, none within 360 m, where the falling
   streaks are): soft veils, uneven across, feathered into the cloud base and slanted by the wind, some trailing off
   before they reach the ground, under both renderers.
+  The battle's own lights light the smoke too (`air_lights.gd`): the smoke is drawn unshaded, so the engine's lights
+  never reach it, and each frame the sixteen lights that matter most to the camera (shell and muzzle flashes dying
+  away as their lights do, burning wrecks and houses, flares, the nearest street lamps, and tracers in flight, scored
+  by brightness, reach and distance, the nearest 24 steady lights looked at) go into a small texture every smoke
+  shader reads. The puffs are lit per vertex from the side the light is on, so a shell bursting among the smoke of
+  the last ones lights it from inside, a burning wreck lights the smoke drifting past it, and a muzzle flash lights
+  the gun's own smoke. A tracer is a line of light the fog's grid can't take from a light, so the fog volumes (the air
+  layers and the plumes) add the eight brightest tracers' streaks themselves, as thick as the air they fly through:
+  faint in the night's haze, brighter through mist and smoke. The browser, with no volumetric fog and no flash lights,
+  still lights its smoke this way. It costs well under a tenth of a millisecond of the GPU at 1600x900
+  (`FL_DEBUG_AIR_FLIP_LIGHTS` flips it in a frozen moment; with `FL_DEBUG_AIR_AB` it times the frame with and without;
+  `FL_DEBUG_AIR_LIGHTS=K` prints what's lit and thickens the streaks K times).
 - **Light probes** (`light_probes.gd`): a grid of probes over the whole battlefield, one every 2 m at eight heights
   2 m apart following the ground, records how much sky each point sees, from which way, and the mean light off
   whatever hides the rest. Streets, courtyards, trench floors and the foot of walls take less skylight than open

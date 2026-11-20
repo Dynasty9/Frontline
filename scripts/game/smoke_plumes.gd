@@ -213,6 +213,7 @@ uniform vec3 cam_pos = vec3(0.0);
 uniform float sun_k = 1.0;  // the smoke's brightness against the sun's strength in the fog
 uniform float flash = 0.0;  // a burst close by, this instant
 uniform vec3 flash_at = vec3(0.0);
+#include "res://scripts/game/air_lights.gdshaderinc"
 
 void fog() {
 	vec3 u = UVW;
@@ -246,5 +247,11 @@ void fog() {
 	float fd = distance(p, flash_at);
 	e += vec3(1.0, 0.7, 0.42) * flash * 40.0 / (1.0 + fd * fd * 0.04);
 	EMISSION = e * DENSITY;
+	// and the tracers' streaks through it (AirLights)
+	int nl = int(air_light_info.y);
+	if (nl > 0 && DENSITY > 1e-6) {
+		vec3 ld;
+		EMISSION += air_light(p, nl, ld) * air_light_glow(DENSITY);
+	}
 }
 """

@@ -37,6 +37,9 @@ varying vec3 sky_negative;
 varying float elevation;
 varying float world_scale;
 varying vec4 animation; // frame, late fade, earth shade, earth density
+varying vec3 v_air; // the battle's lights on the cloud here (AirLights)
+varying vec3 v_al; // and where they come from, in the cloud's own frame
+#include "res://scripts/game/air_lights.gdshaderinc"
 
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 #define NDC_Z(d) ((d) * 2.0 - 1.0)
@@ -103,6 +106,20 @@ void vertex() {
 	vec3 horizon = (vec3(1.0) - sky_weights) * 0.09;
 	sky_positive = (vec3(0.25) + sky_sign * 0.75) * sky_weights + horizon;
 	sky_negative = (vec3(1.0) - sky_sign * 0.75) * sky_weights + horizon;
+	// A burst inside the cloud, or another close by, lights it from that side.
+	v_air = vec3(0.0);
+	v_al = vec3(0.0, 0.0, 1.0);
+	int nl = int(air_light_info.x);
+	if (nl > 0) {
+		vec3 ad;
+		v_air = air_light((billboard * vec4(VERTEX, 1.0)).xyz, nl, ad) * air_light_info.w;
+		vec3 av = mat3(VIEW_MATRIX) * ad;
+		float al = length(av);
+		av = al > 1e-5 ? av / al : vec3(0.0, 0.0, 1.0);
+		av.xy = av.xy * turn;
+		av.x *= mirror;
+		v_al = av;
+	}
 }
 
 vec2 cell_uv(vec2 uv, float frame, float view) {
@@ -159,6 +176,10 @@ void fragment() {
 	vec3 color = tint * (sun_col * sun_energy * sunlight + amb_col * amb_energy * (0.16 + sky * 0.55));
 	// The dense earth core stays darker than dust at the sunlit perimeter.
 	color *= animation.z * (1.0 - 0.26 * ground_dust * alpha * (1.0 - clamp(sunlight, 0.0, 1.0)));
+	if (v_air.r + v_air.g + v_air.b > 1e-3) {
+		float air_lit = dot(mix(n.rgb, p.rgb, step(vec3(0.0), v_al)), v_al * v_al) / max(alpha, 0.003);
+		color += tint * v_air * (1.0 + 2.0 * air_lit) * animation.z;
+	}
 	if (fuel > 0.0) {
 		float heat = clamp(n.a / max(alpha, 0.003), 0.0, 1.0) * fuel;
 		vec3 fire_color = mix(vec3(0.55, 0.045, 0.004), vec3(1.0, 0.3, 0.025), smoothstep(0.02, 0.35, heat));

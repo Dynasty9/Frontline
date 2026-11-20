@@ -72,6 +72,7 @@ func _ready() -> void:
 		l.shadow_enabled = false
 		l.light_volumetric_fog_energy = 40.0  # (a burst's flash blooms in mist, haze and smoke)
 		l.add_to_group(&"fx_light")  # (Atmosphere may lend it a shadow: Shadows from fire and flares)
+		l.set_meta(&"air_flash", true)  # (AirLights hears of its flashes as they happen)
 		add_child(l)
 		_lights.append(l)
 
@@ -328,6 +329,10 @@ func _flash(p: Vector3, life: float, size: float) -> void:
 
 
 func _light(p: Vector3, energy: float, rng_m: float) -> void:
+	# (the smoke and the air round it light up with it, in the browser too)
+	var air: AirLights = world.atmo.air.lights if world.atmo and world.atmo.air else null
+	if air:
+		air.flash(p + Vector3(0, 1.5, 0), Color(1.0, 0.7, 0.35), energy, rng_m, 7.0)
 	if _lights.is_empty():
 		return
 	var l: OmniLight3D = _lights[_light_i]
