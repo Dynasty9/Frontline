@@ -167,10 +167,12 @@ static func _laps(k: BuildingKit, run: float, slope: float, c: Vector3, ang: flo
 ##   material, col  the parapet's (the walls')        parapet  its height (0.55; 0 for none)
 ##   scuppers       how many (2)                        wall_face  half-depth to the walls' faces (W/2 + 0.2)
 ##   hatch          a roof hatch
+##   deck           what the deck is covered in, its colour (BuildingMaterials.deck_color; the bare deck)
 static func flat(k: BuildingKit, L: float, W: float, y: float, opts := {}) -> void:
 	var material: String = opts.get("material", "plaster")
 	var col: Color = opts.get("col", BuildingMaterials.color(material))
-	k.box(Vector3(L + 0.1, 0.2, W + 0.1), Vector3(0, y + 0.1, 0), "roof_concrete")
+	var deck: Color = opts.get("deck", BuildingMaterials.color("roof_concrete"))
+	k.box(Vector3(L + 0.1, 0.2, W + 0.1), Vector3(0, y + 0.1, 0), "roof_concrete", deck)
 	var ph: float = opts.get("parapet", 0.55)
 	if ph <= 0.0:
 		k.plate(Vector3(L + 0.16, 0.07, W + 0.16), Vector3(0, y + 0.22, 0), "concrete", Color(0.5, 0.49, 0.46), Vector3.ZERO, true)
@@ -199,7 +201,7 @@ static func flat(k: BuildingKit, L: float, W: float, y: float, opts := {}) -> vo
 		k.plate(Vector3(0.88, 0.04, 0.88), hp + Vector3(0, 0.3, 0), "metal_dark", Color(0.3, 0.32, 0.3), Vector3.ZERO, true)
 	var wear: RandomNumberGenerator = opts.get("wear", null)
 	if wear != null:
-		flat_wear(k, L - 0.26, W - 0.26, y + 0.2, wear)
+		flat_wear(k, L - 0.26, W - 0.26, y + 0.2, wear, deck)
 
 
 ## Years on a flat roof `L` by `W` inside its parapets, its deck at `y`: dark
@@ -207,10 +209,13 @@ static func flat(k: BuildingKit, L: float, W: float, y: float, opts := {}) -> vo
 ## leaks, moss in the angle along a parapet, a vent pipe or two. The stains
 ## are BuildingWeathering.stain on the deck (its own surface, so they fade
 ## into it).
-static func flat_wear(k: BuildingKit, L: float, W: float, y: float, rng: RandomNumberGenerator) -> void:
+## `cover` is the deck's colour, so the stains fade into it and the patches
+## are of the same stuff, newer.
+static func flat_wear(k: BuildingKit, L: float, W: float, y: float, rng: RandomNumberGenerator, cover := Color(0.52, 0.5, 0.47)) -> void:
 	# the deck as a face: x along, face y toward -z, out of it up
 	var deck := k.at_point(Vector3(0, y, 0), Vector3(-PI * 0.5, 0, 0))
-	var white := func(_p: Vector2) -> Color: return Color(1, 1, 1)
+	var tint := Mats.tint_for("roof_concrete", cover)
+	var white := func(_p: Vector2) -> Color: return tint
 	for i in rng.randi_range(1, 3):
 		var r := rng.randf_range(0.6, 1.4)
 		var c := Vector2(rng.randf_range(-L * 0.5 + r, L * 0.5 - r), rng.randf_range(-W * 0.5 + r, W * 0.5 - r))
@@ -224,7 +229,7 @@ static func flat_wear(k: BuildingKit, L: float, W: float, y: float, rng: RandomN
 	for i in rng.randi_range(0, 2):
 		var s := Vector2(rng.randf_range(0.8, 2.0), rng.randf_range(0.6, 1.4))
 		var p := Vector3(rng.randf_range(-L * 0.5 + s.x * 0.6, L * 0.5 - s.x * 0.6), 0.004 + i * 0.002, rng.randf_range(-W * 0.5 + s.y * 0.6, W * 0.5 - s.y * 0.6))
-		k.plate(Vector3(s.x, 0.006, s.y), Vector3(p.x, y + p.y, p.z), "roof_concrete", Color(0.36, 0.36, 0.35).lightened(rng.randf_range(0.0, 0.2)), Vector3(0, rng.randf_range(-0.08, 0.08) + (PI * 0.5 if rng.randf() < 0.3 else 0.0), 0))
+		k.plate(Vector3(s.x, 0.006, s.y), Vector3(p.x, y + p.y, p.z), "roof_concrete", cover.darkened(0.3).lightened(rng.randf_range(0.0, 0.2)), Vector3(0, rng.randf_range(-0.08, 0.08) + (PI * 0.5 if rng.randf() < 0.3 else 0.0), 0))
 	if rng.randf() < 0.6:
 		# moss along the foot of one parapet
 		var along := L if rng.randf() < 0.5 else W

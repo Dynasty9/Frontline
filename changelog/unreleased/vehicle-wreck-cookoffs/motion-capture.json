@@ -1,0 +1,57 @@
+{
+  "source_ref": "c58befc56cb31112f6cbcc60086c28d4464bd05d",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "capture_fixture": "tests/fixtures/vehicle-wreck-clips.gd",
+  "capture_fixture_sha256": "1a6b028fcf019aff71f160a01a2baa6c9e15052139902de1cb411669ada0e46d",
+  "engine": "Godot 4.7.2 stable Linux",
+  "display": "Workspace-only Xvfb with TCP disabled; separate displays for concurrent captures",
+  "renderer": "gl_compatibility / Mesa 25.0.7 llvmpipe LLVM 19.1.7 (software)",
+  "command": "Godot_v4.7.2-stable_linux.x86_64 --path REPO --audio-driver Dummy --rendering-method gl_compatibility --resolution 960x540 --fixed-fps 15 res://tests/fixtures/vehicle-wreck-clips.tscn -- --motion=close_OR_wide --preset=medium --capture-fps=15 --kinds=slammer --frames=OUTPUT --label=MAIN_OR_AFTER",
+  "scenario": "Actual showroom battlefield, seed 712, day, map size 1024; spawned Slammer destroyed through Vehicle.take_damage(max_hp * 3, null). After build forces the host cook-off flag. Main has no detached-turret feature.",
+  "camera": {
+    "fov": 40,
+    "origin": [
+      40,
+      "terrain height",
+      50
+    ],
+    "close_offset": [
+      18,
+      14,
+      23
+    ],
+    "wide_offset": [
+      28,
+      35,
+      45
+    ],
+    "look_at_offset": [
+      0,
+      1,
+      0
+    ]
+  },
+  "settings": {
+    "preset": "medium",
+    "depth_of_field": false,
+    "capture_fps": 15,
+    "simulation_fps": 15,
+    "audio": "none"
+  },
+  "sequence": "Main close (5 seconds), after close (5 seconds), after at gameplay distance (5 seconds). Destruction at one second into each segment. Captured simulation time plays at normal speed; no time acceleration. Close comparison uses identical camera, seed, lighting, preset and timing.",
+  "scope": "Real engine/gameplay destruction, not a mock. This clip demonstrates turret motion, settling and camera readability; it is not proof of replay compatibility. Separate actual gameplay recording seek/reopen and host/client tests pass.",
+  "limits": "Software capture is not a performance measurement. This published Compatibility clip does not establish Forward+ parity or hardware performance. Separate renderer checks are reported in the PR. Earlier appearance sheets are retained with their original provenance.",
+  "verification": {
+    "decoded_frames": 225,
+    "duration_seconds": 15,
+    "bytes": 2394762,
+    "full_decode": "passes",
+    "capture_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "runtime_script_errors": 0,
+    "shutdown_diagnostics": "Both main and the PR log renderer resource-cleanup errors after the motion-complete marker. These baseline teardown diagnostics remain unresolved; they are not a clean-shutdown claim."
+  }
+}

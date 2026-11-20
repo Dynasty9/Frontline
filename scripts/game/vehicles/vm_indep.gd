@@ -314,9 +314,12 @@ static func _sensor_head(k: VehicleModels, p: Node3D, pos: Vector3, cam: String,
 	k._box(p, Vector3(0.12, 0.2, 0.12) * sc, pos + Vector3(0, -0.2, 0.02) * sc, "gunmetal_w")
 
 
-## A remote weapon station (FLW-style): a turntable, the cradle between two
-## yoke arms with the 12.7 mm HMG or the 40 mm GMG, the ammunition box on one
-## side and the sight on the other. Sets k.turret and k.mg_tip.
+## A remote weapon station (the FLW 200 pattern): a turntable, the cradle on
+## a cross shaft between two yoke arms with the 12.7 mm HMG or the 40 mm GMG,
+## and the elevating mass the station lays as one: the gun's ammunition box
+## hung outboard on its left, the belt's chute arched over into the feed, and
+## the sensor head (the day camera's window over the thermal imager's round
+## lens) on its right, each on a stub of the shaft. Sets k.turret and k.mg_tip.
 static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gmg: bool, cam: String, col, sc := 1.0) -> void:
 	var t := k._pivot(p, pos)
 	k.turret = t
@@ -325,20 +328,48 @@ static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gmg: bool, cam: Str
 	for s: float in [-1.0, 1.0]:
 		k._box(t, Vector3(0.06, 0.3, 0.26) * sc, Vector3(s * 0.2, 0.38, 0.0) * sc, cam, col)
 	k._cyl(t, 0.05 * sc, 0.05 * sc, 0.46 * sc, Vector3(0, 0.44, 0) * sc, Z90, "gunmetal_w", null, 10, false)
-	# the sight box on the right (the day camera's window over the thermal
-	# imager's round lens), the ammo box on the left
-	VehicleMounts.sight(k, t, Vector3(0.34, 0.46, -0.05) * sc, Vector3(0.16, 0.2, 0.3) * sc, [Rect2(Vector2(0, 0.02) * sc, Vector2(0.11, 0.09) * sc)], cam, col)
-	k._cyl(t, 0.035 * sc, 0.035 * sc, 0.02 * sc, Vector3(0.34, 0.39, -0.205) * sc, X90, "glass", null, 10, false)
+	# the gun's own pivot where its receiver was, so it lays about the same point
+	var g := k._pivot(t, Vector3(0, 0.46, 0.0 if gmg else 0.02) * sc)
+	var length := 0.78 if gmg else 1.56
+	var ammo := Color(0.3, 0.33, 0.23)
 	if gmg:
 		# HK GMG: a squat receiver, a short thick barrel, the big belt box
-		VehicleWeapons.gmg(k, t, Vector3(0, 0.46, 0.0) * sc, Vector3(0, 0.46, -0.78) * sc, sc, -1.0, false, "gunmetal_w", Color(0.3, 0.33, 0.23), 0.36)
-		k.mg_tip = k._tip(t, Vector3(0, 0.46, -0.78) * sc)
+		VehicleWeapons.gmg(k, g, Vector3.ZERO, Vector3(0, 0, -length) * sc, sc, -1.0, false, "gunmetal_w", ammo, 0.36)
 	else:
 		# M2: the long receiver, the barrel with its carrying handle, flash
-		# hider; its ammunition box is the station's, hung outboard of the yoke
-		VehicleWeapons.hmg(k, t, Vector3(0, 0.46, 0.02) * sc, Vector3(0, 0.46, -1.54) * sc, sc, 0.0)
-		k._box(t, Vector3(0.17, 0.22, 0.3) * sc, Vector3(-0.32, 0.44, 0.04) * sc, "paint", Color(0.3, 0.33, 0.23))
-		k.mg_tip = k._tip(t, Vector3(0, 0.46, -1.54) * sc)
+		# hider; its box is the station's, chuted over the yoke into the feed
+		VehicleWeapons.hmg(k, g, Vector3.ZERO, Vector3(0, 0, -length) * sc, sc, 0.0)
+		VehicleFittings.ammo_can(k, g, Vector3(-0.32, -0.03, 0.02) * sc, ammo, Vector3.ZERO, Vector3(0.17, 0.24, 0.32) * sc)
+		var a := Vector3(-0.26, 0.1, -0.06) * sc
+		var m := Vector3(-0.16, 0.135, -0.03) * sc
+		var f := Vector3(-0.09, 0.075, -0.01) * sc
+		for leg: Array in [[a, m], [m, f]]:
+			_strip(k, g, leg[0], leg[1], Vector2(0.09, 0.026) * sc, "metal_dark", Color(0.12, 0.12, 0.11))
+		k._cyl(g, 0.018 * sc, 0.018 * sc, 0.1 * sc, m, X90, "metal_dark", Color(0.12, 0.12, 0.11), 8, false)
+	# the shaft's stubs out through the arms to the box and the sensor head
+	for s: float in [-1.0, 1.0]:
+		k._cyl(g, 0.032 * sc, 0.032 * sc, 0.1 * sc, Vector3(s * 0.25, -0.02, 0.0) * sc, Z90, "gunmetal_w", null, 10, false)
+	VehicleMounts.sight(k, g, Vector3(0.34, 0.0, -0.07) * sc, Vector3(0.16, 0.2, 0.3) * sc, [Rect2(Vector2(0, 0.02) * sc, Vector2(0.11, 0.09) * sc)], cam, col)
+	k._cyl(g, 0.035 * sc, 0.035 * sc, 0.02 * sc, Vector3(0.34, -0.07, -0.225) * sc, X90, "glass", null, 10, false)
+	k.gun_assembly(g, Vector3(0, 0, -length) * sc)
+	k.mg_tip = k._tip(t, Vector3(0, 0.46, -0.78 if gmg else -1.54) * sc)
+
+
+## A flat strip from a to b, `size` its width (along `across`) and
+## thickness: a feed chute's run of links.
+static func _strip(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, size: Vector2, mat: String, col = null, across := Vector3.BACK) -> void:
+	var y := (b - a).normalized()
+	var x := across
+	var z := x.cross(y).normalized()
+	x = y.cross(z).normalized()
+	k._add(p, Res.box(Vector3(size.x, a.distance_to(b), size.y)), mat, col, (a + b) * 0.5, Basis(x, y, z).get_euler(), Vector3.ONE, false)
+
+
+## The armoured port a coaxial machine gun's barrel leaves its gun mask by:
+## a collar round the barrel standing proud of the mask's face at `at`.
+static func _coax_port(k: VehicleModels, p: Node3D, at: Vector3, radius: float) -> void:
+	k._cyl(p, radius * 2.6, radius * 2.4, 0.04, at + Vector3(0, 0, -0.02), X90, "gunmetal_w", null, 12)
+	k._cyl(p, radius * 1.5, radius * 1.5, 0.012, at + Vector3(0, 0, -0.044), X90, "metal_dark", null, 10, false)
 
 
 ## A slat cage panel: top and bottom rails, end posts and the vertical slats,
@@ -451,10 +482,13 @@ static func _mora(k: VehicleModels, team: int, seed := 0) -> void:
 	var tt := [-0.42, -0.88, 0.42, -0.88, 0.86, -0.5, 0.93, 0.85, 0.72, 1.04, -0.72, 1.04, -0.93, 0.85, -0.86, -0.5]
 	k._add(t, _armour([_ring(tb, 0.06), _ring(tt, 0.74)], "indep_mora_tur", 0.06), cam, col, Vector3.ZERO)
 	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.38, Vector3(1.1, 0.06, 0.95), Vector3(1.05, 0.06, -0.72), Vector3(0.86, 0.74, -0.5), Vector3(0.93, 0.74, 0.85), Vector2(0.39, 0.43), VehicleMarkings.STENCIL_AAF)
-	VehicleMounts.mantlet(k, t, Vector3(0.36, 0.4, 0.4), Vector3(0, 0.4, -1.18), cam, col)
+	# one gun mask carries the RARDEN and, on its left, the coaxial chain
+	# gun, whose barrel leaves the mask's face through an armoured port
+	VehicleMounts.mantlet(k, t, Vector3(0.66, 0.42, 0.4), Vector3(-0.15, 0.37, -1.18), cam, col)
 	VehicleWeapons.autocannon(k, t, Vector3(0, 0.4, -1.3), Vector3(0, 0.4, -4.11), Vector2(0.075, 0.5), Vector2(0.045, 0.045), Vector2(0.065, 0.22))
 	k.mg_tip = k._tip(t, Vector3(0, 0.4, -4.14))
 	VehicleWeapons.coax(k, t, Vector3(-0.3, 0.3, -1.45), 0.5, 0.02)
+	_coax_port(k, t, Vector3(-0.3, 0.3, -1.38), 0.02)
 	# gunner's sight left, the commander's sight right, two hatches
 	VehicleMounts.sight(k, t, Vector3(-0.45, 0.8, -0.42), Vector3(0.32, 0.2, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.24, 0.11))], cam, col)
 	VehicleMounts.sight(k, t, Vector3(0.48, 0.92, -0.22), Vector3(0.26, 0.15, 0.28), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.09))], cam, col, Vector3(0.14, 0.16, 0.19))
@@ -707,13 +741,28 @@ static func _nyx(k: VehicleModels, team: int, kind: String, seed := 0) -> void:
 	k._add(t, _armour([_ring(_oct(-0.42, 0.42, -0.5, 0.45, 0.14), 0.0), _ring(_oct(-0.36, 0.36, -0.38, 0.4, 0.12), 0.3)], "indep_nyx_mount", 0.03), cam, col, Vector3(0, 0.08, 0))
 	match kind:
 		"ac":
-			# the Rh 202 in its cradle on top, ammunition boxes either side, a sight
+			# the Rh 202 in its cradle on top: its long receiver under the top
+			# cover, and at the receiver's front the dual feeder, wider than the
+			# gun, which takes a belt from each side - high explosive from one
+			# box, armour piercing from the other, the gunner choosing between
+			# them shot by shot - each belt in its chute from its box beside the
+			# receiver; a sight
 			VehicleMounts.mantlet(k, t, Vector3(0.26, 0.2, 0.66), Vector3(-0.04, 0.47, -0.08), cam, col)
 			VehicleMounts.receiver(k, t, Vector3(0.18, 0.18, 0.84), Vector3(-0.04, 0.6, -0.02))
+			k._add(t, BevelMesh.make(Vector3(0.185, 0.035, 0.4), 0.008), "gunmetal_w", null, Vector3(-0.04, 0.7, 0.1))
+			k._add(t, BevelMesh.make(Vector3(0.28, 0.13, 0.2), 0.012), "gunmetal_w", null, Vector3(-0.04, 0.63, -0.3))
 			VehicleWeapons.autocannon(k, t, Vector3(-0.04, 0.58, -0.42), Vector3(-0.04, 0.58, -2.36), Vector2(0.06, 0.4), Vector2(0.032, 0.032), Vector2(0.05, 0.16))
 			k.mg_tip = k._tip(t, Vector3(-0.04, 0.58, -2.38))
+			var ammo := Color(0.3, 0.33, 0.23)
 			for s: float in [-1.0, 1.0]:
-				k._box(t, Vector3(0.16, 0.24, 0.38), Vector3(-0.04 + s * 0.22, 0.56, 0.1), "paint", Color(0.3, 0.33, 0.23))
+				var bx: float = -0.04 + s * 0.23
+				VehicleFittings.ammo_can(k, t, Vector3(bx, 0.55, 0.1), ammo, Vector3.ZERO, Vector3(0.16, 0.24, 0.38))
+				k._box(t, Vector3(0.006, 0.06, 0.12), Vector3(-0.04 + s * 0.141, 0.64, -0.3), "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+				var a := Vector3(bx - s * 0.03, 0.69, -0.04)
+				var arch := Vector3(-0.04 + s * 0.19, 0.72, -0.2)
+				var f := Vector3(-0.04 + s * 0.155, 0.66, -0.3)
+				for leg: Array in [[a, arch], [arch, f]]:
+					_strip(k, t, leg[0], leg[1], Vector2(0.08, 0.024), "metal_dark", Color(0.12, 0.12, 0.11), Vector3.RIGHT)
 			VehicleMounts.sight(k, t, Vector3(0.3, 0.5, -0.28), Vector3(0.16, 0.18, 0.24), [Rect2(Vector2(0, 0.02), Vector2(0.1, 0.08))], cam, col)
 			k._cyl(t, 0.2, 0.2, 0.05, Vector3(0.18, 0.4, 0.25), Vector3.ZERO, cam, col, 12)
 		"at":
@@ -832,10 +881,13 @@ static func _gorgon(k: VehicleModels, team: int, seed := 0) -> void:
 	var tb := [-0.5, -1.12, 0.5, -1.12, 0.96, -0.7, 1.0, 0.78, 0.8, 1.08, -0.8, 1.08, -1.0, 0.78, -0.96, -0.7]
 	var tt := [-0.4, -0.86, 0.4, -0.86, 0.8, -0.55, 0.85, 0.7, 0.66, 0.94, -0.66, 0.94, -0.85, 0.7, -0.8, -0.55]
 	k._add(t, _armour([_ring(tb, 0.05), _ring(tt, 0.58)], "indep_gorg_tur", 0.05), cam, col, Vector3.ZERO)
-	VehicleMounts.mantlet(k, t, Vector3(0.42, 0.34, 0.32), Vector3(0, 0.32, -1.12), cam, col)
+	# one gun mask carries the cannon and, on its right, the coax, whose
+	# barrel leaves the mask's face through an armoured port
+	VehicleMounts.mantlet(k, t, Vector3(0.66, 0.36, 0.32), Vector3(0.12, 0.31, -1.12), cam, col)
 	VehicleWeapons.autocannon(k, t, Vector3(0, 0.32, -1.25), Vector3(0, 0.32, -4.4), Vector2(0.085, 0.5), Vector2(0.05, 0.05), Vector2(0.075, 0.2))
 	k.mg_tip = k._tip(t, Vector3(0, 0.32, -4.42))
 	VehicleWeapons.coax(k, t, Vector3(0.26, 0.24, -1.3), 0.4, 0.02)
+	_coax_port(k, t, Vector3(0.26, 0.24, -1.28), 0.02)
 	for s: float in [-1.0, 1.0]:
 		# the Titan tube on its bracket
 		k._box(t, Vector3(0.22, 0.12, 0.3), Vector3(s * 0.98, 0.36, -0.15), "gunmetal_w")
