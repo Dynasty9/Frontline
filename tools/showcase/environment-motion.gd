@@ -39,6 +39,11 @@ func capture() -> void:
 		"town":
 			views = [["Photographed surfaces and door paths", Vector3(-30,0,-12), 35.0, -50.0, 0.7],
 				["Town plots and connected streets", Vector3.ZERO, 190.0, -40.0, 0.7]]
+		"church":
+			for st in world.structures:
+				if st.skind == "church":
+					views = [["Church entrances from the road", st.position, 48.0, -30.0, st.yaw + PI + 0.6],
+						["Churchyard at command height", st.position, 75.0, -55.0, st.yaw + PI + 0.6]]
 		"square":
 			views = [["Bench and fence support clearance", Vector3(-1, 0, 12), 10.0, -26.0, 2.6]]
 			for piece: Array in world.decor:
