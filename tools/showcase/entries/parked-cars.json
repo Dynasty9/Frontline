@@ -1,19 +1,19 @@
 {
   "entry": "changelog/unreleased/parked-cars.md",
-  "summary": "The main streets by the shops have parking bays marked out at the kerb, some with the cars people left there when the fighting came, and every car is cover.",
+  "summary": "The town's main streets are wider, with a parking lane down each side marked off from the two traffic lanes, and bays in them by the shops where some cars were left when the fighting came. Every car is cover.",
   "medium": "still",
   "stage": "tests/fixtures/environment-views.gd (town); main.gd off-screen screenshot",
-  "rationale": "Appearance change: matched seed-3 cameras show the town from the battle camera, the square and the main streets off it, and a closer view of a run of bays by the shops.",
-  "source_ref": "55cd82b4ae38754cc0e2666f8a0e47222c7f2a89",
-  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
+  "rationale": "Appearance change: matched seed-3 cameras show the town from the battle camera, the square and the wider main streets off it, and a closer view of a parking lane with its bays by the square.",
+  "source_ref": "fc3c27314e171bc255f2edd36e34d260ae9fb08c",
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
   "sources": [
     {
       "file": "changelog/unreleased/parked-cars/comparison.jpg",
-      "sha256": "c7e228c744e9a361e6d0d756be867e130e55eb9297c81bdbbd537cd8a3af7e6b"
+      "sha256": "a51c50d9a21b09e919795a3c9f21534c88c3cd18dd294694714105a2ac5580a0"
     },
     {
       "file": "changelog/unreleased/parked-cars/capture.json",
-      "sha256": "475e68583dd12317c828552e103a45a5cbf49e1a000c1f0f19af14a0a3850ef8"
+      "sha256": "58781fce10e82270a6091eedfd2d590f4d3a1a8e5ec6add791e3c73a1717a369"
     }
   ],
   "output": null

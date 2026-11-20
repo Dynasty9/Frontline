@@ -1,6 +1,6 @@
 {
-  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
-  "source_ref": "55cd82b4ae38754cc0e2666f8a0e47222c7f2a89",
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+  "source_ref": "fc3c27314e171bc255f2edd36e34d260ae9fb08c",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "renderer": "forward_plus",
   "resolution": [
@@ -45,8 +45,8 @@
   ],
   "review": {
     "file": "review.jpg",
-    "before": "this branch as it was before the bays (aabab6eb, cars along every kerb), on the same main: the source with the bays commit reverted",
+    "before": "this branch before the parking lanes (bays painted at the kerb on the old 5.8 m streets): the source with ccc028e6 reverted",
     "after": "source_ref"
   },
-  "notes": "Before and after are the same seed-3 battle map, same cameras, no retouching. Each half is scaled to 792 px wide on the sheet. comparison.jpg is main against this change; review.jpg, for the pull request, is the earlier version of this change (cars along every kerb) against this one."
+  "notes": "Before and after are the same seed-3 battle map, same cameras, no retouching. Each half is scaled to 792 px wide on the sheet. comparison.jpg is main against this change; review.jpg, for the pull request, is the earlier version of this change (bays at the kerb taking half a lane) against this one (a parking lane down each side of the main streets)."
 }
