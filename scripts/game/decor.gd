@@ -550,23 +550,19 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				var z := -wd * 0.5 + (i + 0.5) * wd / n
 				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "road_paint", Vector3(0, 0.044, z), Color(0.95, 0.95, 0.93), Vector3.ZERO, false, true)
 		"lamp":
+			# a street lamp (BuildingKerbside): a village's on a wooden pole, or a
+			# town's steel column; its lens glows where its head hangs
+			var lk := BuildingKit.baked(_bake, rng, _at)
 			if ex == 1:
-				_m(Res.cyl(0.08, 0.12, 6.0, 8), "wood_dark", Vector3(0, 3.0, 0))
-				_m(Res.box(Vector3(1.0, 0.07, 0.07)), "wood_dark", Vector3(0.5, 5.6, 0))
-				_m(Res.cyl(0.07, 0.3, 0.22, 10), "metal_dark", Vector3(1.0, 5.45, 0), Color(0.22, 0.25, 0.22))
+				BuildingKerbside.pole_lamp(lk)
 				_lens(h, Vector3(0.36, 0.04, 0.36), Vector3(1.0, 5.33, 0))
 			else:
-				_m(Res.cyl(0.17, 0.21, 0.45, 10), "metal_dark", Vector3(0, 0.22, 0))
-				_m(Res.cyl(0.055, 0.095, 6.2, 8), "metal_dark", Vector3(0, 3.1, 0), Color(0.3, 0.32, 0.32))
-				_m(Res.box(Vector3(1.5, 0.07, 0.07)), "metal_dark", Vector3(0.72, 6.16, 0), Color(0.3, 0.32, 0.32), Vector3(0, 0, 0.08))
-				_m(Res.box(Vector3(0.64, 0.14, 0.3)), "metal_dark", Vector3(1.44, 6.14, 0), Color(0.3, 0.32, 0.32))
+				BuildingKerbside.column(lk)
 				_lens(h, Vector3(0.52, 0.04, 0.24), Vector3(1.44, 6.05, 0))
 		"lamp_deco":
-			_m(Res.cyl(0.12, 0.16, 0.5, 10), "metal_dark", Vector3(0, 0.25, 0), Color(0.12, 0.16, 0.13))
-			_m(Res.cyl(0.05, 0.07, 3.4, 8), "metal_dark", Vector3(0, 1.95, 0), Color(0.12, 0.16, 0.13))
-			_m(Res.cyl(0.22, 0.12, 0.12, 8), "metal_dark", Vector3(0, 4.12, 0), Color(0.12, 0.16, 0.13))
-			_m(Res.cyl(0.04, 0.24, 0.16, 8), "metal_dark", Vector3(0, 4.7, 0), Color(0.12, 0.16, 0.13))
-			_lens(h, Vector3(0.3, 0.42, 0.3), Vector3(0, 4.4, 0))
+			# the square's lanterns (BuildingKerbside)
+			BuildingKerbside.lantern_post(BuildingKit.baked(_bake, rng, _at))
+			_lens(h, Vector3(0.26, 0.42, 0.26), Vector3(0, 4.3, 0))
 		"pole":
 			_m(Res.cyl(0.11, 0.16, 8.4, 8), "wood_dark", Vector3(0, 4.2, 0), Color(0.3, 0.24, 0.17))
 			_m(Res.box(Vector3(0.12, 0.11, 2.0)), "wood_dark", Vector3(0, 7.45, 0), Color(0.3, 0.24, 0.17))
@@ -577,18 +573,16 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			if ex == 1:
 				_m(Res.cyl(0.27, 0.27, 0.85, 12), "paint", Vector3(0.38, 6.3, 0), Color(0.5, 0.52, 0.48))
 		"hydrant":
-			_m(Res.cyl(0.12, 0.14, 0.62, 10), "paint", Vector3(0, 0.31, 0), Color(0.7, 0.12, 0.08), Vector3.ZERO, false)
-			_m(Res.sphere(0.13, 8), "paint", Vector3(0, 0.62, 0), Color(0.7, 0.12, 0.08), Vector3.ZERO, false)
-			_m(Res.cyl(0.05, 0.05, 0.36, 6), "paint", Vector3(0, 0.42, 0), Color(0.75, 0.7, 0.6), Vector3(0, 0, PI * 0.5), false)
+			# (BuildingKerbside)
+			BuildingKerbside.hydrant(BuildingKit.baked(_bake, rng, _at))
 		"bin":
 			# (BuildingStreet)
 			BuildingStreet.litter_bin(BuildingKit.baked(_bake, rng, _at))
 		"bench":
 			_bench(Vector3.ZERO)
 		"sign_stop":
-			_m(Res.cyl(0.035, 0.035, 2.3, 6), "metal_dark", Vector3(0, 1.15, 0), Color(0.5, 0.5, 0.5))
-			_m(Res.cyl(0.39, 0.39, 0.02, 8), "paint", Vector3(0, 2.15, -0.03), Color(0.9, 0.9, 0.88), Vector3(PI * 0.5, 0, 0))
-			_m(Res.cyl(0.35, 0.35, 0.02, 8), "paint", Vector3(0, 2.15, -0.05), Color(0.72, 0.08, 0.06), Vector3(PI * 0.5, 0, 0))
+			# (BuildingKerbside)
+			BuildingKerbside.stop_sign(BuildingKit.baked(_bake, rng, _at), rng)
 		"sign_town":
 			# (BuildingStreet)
 			BuildingStreet.town_sign(BuildingKit.baked(_bake, rng, _at), rng)
@@ -624,9 +618,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			# a market stall (BuildingSquare): its striped canopy, the produce
 			BuildingSquare.stall(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 0, rng)
 		"transformer":
-			_m(Res.box(Vector3(1.1, 1.4, 0.6)), "paint", Vector3(0, 0.7, 0), Color(0.3, 0.4, 0.3))
-			_m(Res.box(Vector3(1.2, 0.06, 0.7)), "paint", Vector3(0, 1.43, 0), Color(0.26, 0.34, 0.26))
-			_m(Res.box(Vector3(0.22, 0.2, 0.01)), "paint", Vector3(0, 1.0, -0.31), Color(0.95, 0.8, 0.1), Vector3.ZERO, false)
+			# the electricity board's cabinet (BuildingKerbside)
+			BuildingKerbside.cabinet(BuildingKit.baked(_bake, rng, _at))
 		"awning":
 			# a shop's front (BuildingShops): its fascia and name, the awning
 			var a3: Vector3 = ex
@@ -713,8 +706,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				"barrow":
 					BuildingFarm.barrow(fk, int(ex) if ex != null else 0)
 		"mailbox":
-			_m(Res.box(Vector3(0.07, 1.0, 0.07)), "wood_dark", Vector3(0, 0.5, 0), null, Vector3.ZERO, false)
-			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)
+			# a farm's or a cottage's mailbox on its post (BuildingKerbside)
+			BuildingKerbside.mailbox(BuildingKit.baked(_bake, rng, _at), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], rng.randf() < 0.3)
 		"soft":
 			var s2: Vector3 = ex
 			# poured rubber crumb, in the colours councils buy it in (chosen
