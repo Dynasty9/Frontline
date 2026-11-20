@@ -324,6 +324,11 @@ func _subject(kind: String) -> Node3D:
 				bp.call("sandpit", pk.at_point(Vector3(-3.8, 0, -2.4)), pr)
 				bp.call("seesaw", pk.at_point(Vector3(0, 0, 0.2), Vector3(0, PI * 0.5, 0)), cols[2])
 				bp.call("roundabout", pk.at_point(Vector3(0.2, 0, -3.4)), cols)
+				if bp.get_script_method_list().any(func(m: Dictionary) -> bool: return m["name"] == "spring_rider"):
+					# (and its spring riders, where it has them)
+					bp.call("spring_rider", pk.at_point(Vector3(-1.3, 0, 3.6), Vector3(0, PI * 0.5, 0)), 0, pr)
+					bp.call("spring_rider", pk.at_point(Vector3(-0.1, 0, 3.3), Vector3(0, PI * 0.5, 0)), 1, pr)
+					bp.call("spring_rider", pk.at_point(Vector3(5.4, 0, 0.6), Vector3(0, PI * 0.5, 0)), 2, pr)
 			return play
 		"shop_rooms":
 			# two shops with their roofs off, as when men are inside (as they

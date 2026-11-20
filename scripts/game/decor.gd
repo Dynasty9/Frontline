@@ -33,6 +33,7 @@ const BREAKABLE := {
 	"swing": [Vector3(3.5, 2.5, 1.6), 150.0], "slide": [Vector3(3.2, 1.9, 0.8), 120.0],
 	"climber": [Vector3(2.0, 1.9, 2.0), 120.0], "seesaw": [Vector3(3.4, 0.7, 0.4), 60.0],
 	"roundabout": [Vector3(2.2, 1.0, 2.2), 150.0], "statue": [Vector3(1.8, 4.5, 1.8), 2000.0],
+	"spring_rider": [Vector3(1.1, 1.1, 0.35), 40.0],
 	"traffic_light": [Vector3(0.5, 3.4, 0.5), 120.0], "phone_box": [Vector3(1.0, 2.6, 1.0), 300.0],
 	"post_box": [Vector3(0.55, 1.4, 0.55), 200.0], "ad_column": [Vector3(1.4, 2.9, 1.4), 600.0],
 	"hoarding": [Vector3(5.0, 3.8, 0.6), 150.0], "street_name": [Vector3(0.9, 2.6, 0.9), 20.0],
@@ -719,7 +720,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			BuildingPlay.swings(BuildingKit.baked(_bake, rng, _at), PAINT[rng.randi() % PAINT.size()], rng.randf() < 0.6)
 		"slide":
 			# (BuildingPlay)
-			BuildingPlay.slide(BuildingKit.baked(_bake, rng, _at), PAINT[rng.randi() % PAINT.size()], PAINT[rng.randi() % PAINT.size()])
+			# (its panels never the frame's colour)
+			var frame := rng.randi() % PAINT.size()
+			BuildingPlay.slide(BuildingKit.baked(_bake, rng, _at), PAINT[frame], PAINT[(frame + 1 + rng.randi() % (PAINT.size() - 1)) % PAINT.size()])
 		"climber":
 			# (BuildingPlay)
 			BuildingPlay.climber(BuildingKit.baked(_bake, rng, _at), PAINT[rng.randi() % PAINT.size()])
@@ -732,6 +735,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"roundabout":
 			# (BuildingPlay)
 			BuildingPlay.roundabout(BuildingKit.baked(_bake, rng, _at), [PAINT[0], PAINT[1], PAINT[2], PAINT[3]])
+		"spring_rider":
+			# (BuildingPlay)
+			BuildingPlay.spring_rider(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 0, rng)
 		"water_tower":
 			# the town's water tower (BuildingLandmarks)
 			BuildingLandmarks.water_tower(BuildingKit.baked(_bake, rng, _at), rng)

@@ -412,20 +412,63 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
-	# A playground's equipment keeps to the room the playground gives it.
-	var plays := [[func(k: BuildingKit): BuildingPlay.swings(k, Color.BLUE, true), Vector3(3.75, 2.55, 1.85)],
-		[func(k: BuildingKit): BuildingPlay.slide(k, Color.RED, Color.YELLOW), Vector3(3.9, 2.95, 1.0)],
-		[func(k: BuildingKit): BuildingPlay.climber(k, Color.GREEN), Vector3(2.4, 1.75, 2.4)],
-		[func(k: BuildingKit): BuildingPlay.seesaw(k, Color.YELLOW), Vector3(3.8, 1.2, 0.7)],
-		[func(k: BuildingKit): BuildingPlay.sandpit(k, k.rng), Vector3(3.0, 0.4, 3.0)],
-		[func(k: BuildingKit): BuildingPlay.roundabout(k, [Color.RED, Color.BLUE]), Vector3(2.3, 1.05, 2.3)]]
-	for pl: Array in plays:
+	# A playground's equipment keeps to the room the playground gives it
+	# (the slide's tower is wider than its chute: the layout leaves it the
+	# room either side), and stays a few parts a piece.
+	var plays := {"swing": [func(k: BuildingKit): BuildingPlay.swings(k, Color.BLUE, true), Vector3(3.75, 2.55, 1.85)],
+		"slide": [func(k: BuildingKit): BuildingPlay.slide(k, Color.RED, Color.YELLOW), Vector3(3.9, 2.95, 1.45)],
+		"climber": [func(k: BuildingKit): BuildingPlay.climber(k, Color.GREEN), Vector3(2.4, 1.75, 2.4)],
+		"seesaw": [func(k: BuildingKit): BuildingPlay.seesaw(k, Color.YELLOW), Vector3(3.8, 1.2, 0.7)],
+		"sandbox": [func(k: BuildingKit): BuildingPlay.sandpit(k, k.rng), Vector3(3.0, 0.6, 3.0)],
+		"roundabout": [func(k: BuildingKit): BuildingPlay.roundabout(k, [Color.RED, Color.BLUE]), Vector3(2.3, 1.05, 2.3)],
+		"spring_rider": [func(k: BuildingKit): BuildingPlay.spring_rider(k, 0, k.rng), Vector3(1.25, 1.2, 0.4)],
+		"duck": [func(k: BuildingKit): BuildingPlay.spring_rider(k, 1, k.rng), Vector3(1.25, 1.2, 0.4)]}
+	var pg_boxes := {}
+	for pg_kind: String in plays:
+		var pl: Array = plays[pg_kind]
 		var plk := kit()
 		(pl[0] as Callable).call(plk)
 		var plb := _bounds(plk.sink.root, Transform3D.IDENTITY)
 		var pll: Vector3 = pl[1]
-		check(plb.size.x <= pll.x and plb.size.z <= pll.z and plb.end.y <= pll.y and plb.position.y >= -0.05, "a playground's piece keeps to its room (%s, %s)" % [plb, pll])
+		check(plb.size.x <= pll.x and plb.size.z <= pll.z and plb.end.y <= pll.y and plb.position.y >= -0.05, "a playground's piece keeps to its room (%s: %s, %s)" % [pg_kind, plb, pll])
+		check(plk.sink.parts <= 12, "a playground's piece is a few parts (%s: %d)" % [pg_kind, plk.sink.parts])
+		pg_boxes[pg_kind] = plb
 		plk.sink.root.free()
+	# ...and on any lot a playground is given (TownGen.playground_layout),
+	# no piece stands in another, in the railings, or on the benches and bin
+	# inside the gate
+	for pg_w: float in [13.0, 14.5, 17.0]:
+		for pg_depth: float in [14.5, 11.0, 9.4]:
+			var pg_rects := []
+			for pg_piece: Array in TownGen.playground_layout(pg_w, pg_depth):
+				var pg_b: AABB = pg_boxes[pg_piece[0]]
+				var pg_at: Vector2 = pg_piece[1]
+				# (in the lot's frame: x along the street, y into the lot; a
+				# piece turned "n" runs its own x into the lot)
+				var pg_r := Rect2(pg_at.x + pg_b.position.x, pg_at.y - pg_b.end.z, pg_b.size.x, pg_b.size.z)
+				if pg_piece[2] == "n":
+					pg_r = Rect2(pg_at.x - pg_b.end.z, pg_at.y + pg_b.position.x, pg_b.size.z, pg_b.size.x)
+				elif pg_piece[2] == "n_back":
+					pg_r = Rect2(pg_at.x - pg_b.end.z, pg_at.y - pg_b.end.x, pg_b.size.z, pg_b.size.x)
+				pg_rects.append([pg_piece[0], pg_r, pg_piece[0] in ["climber", "roundabout"]])
+			var pg_inside := Rect2(-pg_w * 0.5 + 0.35, -pg_depth * 0.5 + 0.35, pg_w - 0.7, pg_depth - 0.7)
+			var pg_gate := [Rect2(pg_w * 0.25 - 0.95, -pg_depth * 0.5 + 1.1, 1.9, 0.6), Rect2(-pg_w * 0.25 - 0.95, -pg_depth * 0.5 + 1.1, 1.9, 0.6),
+				Rect2(-0.3, -pg_depth * 0.5 + 0.9, 0.6, 0.6)]
+			for pg_i in pg_rects.size():
+				var pg_a: Array = pg_rects[pg_i]
+				check(pg_inside.encloses(pg_a[1]), "a playground's %s keeps inside its railings (%s x %s)" % [pg_a[0], pg_w, pg_depth])
+				for pg_g: Rect2 in pg_gate:
+					check(not pg_g.intersects(pg_a[1]), "a playground's %s keeps off the benches by the gate (%s x %s)" % [pg_a[0], pg_w, pg_depth])
+				for pg_j in range(pg_i + 1, pg_rects.size()):
+					var pg_c: Array = pg_rects[pg_j]
+					var pg_ra: Rect2 = pg_a[1]
+					var pg_rc: Rect2 = pg_c[1]
+					var pg_apart := not pg_ra.intersects(pg_rc)
+					if pg_a[2] and pg_c[2]:
+						# (two round things: their circles)
+						pg_apart = pg_ra.get_center().distance_to(pg_rc.get_center()) > (pg_ra.size.x + pg_rc.size.x) * 0.5
+					check(pg_apart, "a playground's %s and %s stand apart (%s x %s)" % [pg_a[0], pg_c[0], pg_w, pg_depth])
+
 	# A side's HQ stands its containers and command post where its parts are,
 	# turned the way the battle puts it: its wall out in front (-z, towards
 	# the enemy), its gate on the road's side (+x), its drive in running out

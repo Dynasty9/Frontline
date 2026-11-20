@@ -157,8 +157,10 @@ func generate() -> void:
 		var dumps := world.rules.town_list.filter(func(t: Structure) -> bool: return t.variant == 1)
 		tg.military_fences(r.depots, dumps)
 	tg._road_verges()
-	# (the farmyards' kit last of all: everything before it lies as it did)
+	# (the farmyards' kit last of all: everything before it lies as it did;
+	# the playgrounds' spring riders after it)
 	tg.farmyards()
+	tg.playground_riders()
 	_spawn_late()
 	world.set_decor(tg.decor, tg.rect)
 

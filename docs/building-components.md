@@ -402,17 +402,30 @@ would show the block behind. Door leaves that swing are built in their own hinge
 
 ## The playground
 
-A town playground's equipment is `BuildingPlay`'s, in round steel tube painted bright:
-- **Swings** (`swings`): an A-frame at each end, two seats on galvanised chains (`chain`), one of them often a
-  toddler's cradle seat.
-- **A slide** (`slide`): a tower with a deck, guard rails and a little roof, a ladder of round rungs, and a steel
-  chute between raised sides to its run-out.
-- **A climbing dome** (`climber`), its rungs in rings.
-- **A seesaw** (`seesaw`) on a sprung pivot, with seats, grab handles and a tyre half sunk under each end.
-- **A sandpit** (`sandpit`) in timber kerbs with a seat board, the sand heaped and dug, a bucket and spade in it.
-- **A roundabout** (`roundabout`), its painted disc with steel strips and grab rails.
+A town playground's equipment is `BuildingPlay`'s, built as councils buy it: heavy round steel tube painted
+bright (a swing's top beam is 114 mm tube, its legs 89 mm, so the frames still read from the battle camera),
+moulded panels in a second colour, galvanised chain and fittings, a stainless chute, rubber seats:
+- **Swings** (`swings`): an A-frame at each end clamped to the top beam, bearing hangers, two seats on galvanised
+  chain, one of them often a toddler's cradle seat with its leg holes.
+- **A tower slide** (`slide`): four posts, a deck 1.2 m up, moulded side panels with portholes and a pitched roof, a
+  ladder with hand loops at the top, a bar over the chute to make children sit, and a stainless chute in coloured
+  sides falling at 36 degrees to a run-out on its own legs.
+- **A climbing dome** (`climber`): a geodesic of 48 mm tube on cast hubs, a few of its triangles filled with panels.
+- **A seesaw** (`seesaw`): a box-section beam on a pivot frame, moulded seats and hoop handles, and under each seat
+  a tyre half sunk in the ground for that end to come down on.
+- **A sandpit** (`sandpit`): sleeper kerbs with a seat board and corner seats, the sand raked level and dug (one of
+  four ways), castles turned out of the bucket, the bucket and a spade stuck in it.
+- **A roundabout** (`roundabout`): a disc in segments of two colours inside a galvanised rim, a skirt under it, a
+  hub with six arms bent down to the deck and tied by a ring.
+- **Spring riders** (`spring_rider`): a horse or a duck cut from thick board on a coil spring.
 
-Render them with `--building-kinds=playground`.
+Each piece is a few cached parts (one per colour and surface), built once a game in script (`BuildingPlay.Geo`:
+bent tube, swept chutes, slabs) and tinted where it stands. `TownGen.playground_layout` sets them out on the
+lot: swings and slide at the back, sandpit, dome and roundabout in front behind the benches, the seesaw between;
+on a narrow or shallow lot the rows close up and the dome stands off along the street, and the fixture checks
+that no piece stands in another, the railings or the benches on any lot a playground can be given. The spring
+riders are put down after everything else in the town (`TownGen.playground_riders`), so every older piece keeps its
+look. Render them with `--building-kinds=playground`.
 
 ## Headquarters
 
