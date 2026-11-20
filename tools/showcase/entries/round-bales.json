@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/round-bales.md",
+  "summary": "Round straw and silage bales on the farms.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd (FL_ONLY_VIEW); tools/showcase/building-surfaces.tscn (bales)",
+  "rationale": "Appearance change: a farm's bales in the map from the same camera, and both kinds in the studio.",
+  "source_ref": "5cd7e0c28d7783cae32aa68e3e8524dffc9584da",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/round-bales/comparison.jpg",
+      "sha256": "8dfee2ce1ac8b8c168c53dd27330007bbd0240ab629a5fe1d5f32a7891f4acb4"
+    },
+    {
+      "file": "changelog/unreleased/round-bales/bales.jpg",
+      "sha256": "43b175981d544e7d29b19e2ec6afdb6622b720bf43fef1fe37f3fb0fc78cfeed"
+    },
+    {
+      "file": "changelog/unreleased/round-bales/capture.json",
+      "sha256": "6d477df9b2184ab74dda2e9d37130574eb963eef20dbc3706a758c5839ee4f97"
+    }
+  ],
+  "output": null
+}
