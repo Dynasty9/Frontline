@@ -327,6 +327,6 @@ The final view includes a small matched grazing-light sweep.
 Use the same capture script on both source revisions and set `FL_CAPTURE_REF`.
 The fixed cameras do not depend on model bounds. `review-capture.json` records
 every camera and light transform, exposure, renderer and seed; each view also
-saves an early checkpoint. This is a preview fixture built by the game's model
-code, without a world or simulation. Label it as a fixture, preserve existing
+saves an early checkpoint. This preview fixture uses the game's model code, without a world or
+simulation. Label it as a fixture, preserve existing
 stills, and keep raw frames outside Git.
