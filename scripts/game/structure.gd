@@ -1600,6 +1600,10 @@ func _church_roof(rng: RandomNumberGenerator, ci: int) -> void:
 	BuildingRoofs.gable(rk, L, W, h, 50.0, 0.35, "roof_tile", CHURCH_SLATE,
 		{"gable_material": "church", "gable_col": wall, "trim": Color(0.2, 0.2, 0.21), "gable_inset": -0.07, "gutters": not chancel,
 		"downpipes": [[L * 0.5 - 0.6, 1.0], [-(L * 0.5 - 0.6), -1.0]], "wall_face": W * 0.5 + 0.2, "wall_face_x": L * 0.5 + 0.2})
+	# (its snow, SnowRoof: the lips along its eaves, as a house's; a church
+	# isn't heated through the week, so no icicles hang from it)
+	_roof_form = {"L": L, "W": W, "h": h, "pitch": 50.0, "fx": L * 0.5 + 0.2, "fz": W * 0.5 + 0.2, "hipped": false, "barn": false,
+		"cold": true, "ang": PI * 0.5}
 	# a stone cross on the east gable of each
 	var apex := Vector3(0, h + (W * 0.5) * tan(deg_to_rad(50.0)) + 0.05, L * 0.5 + 0.1)
 	k.box(Vector3(0.12, 0.9, 0.12), apex + Vector3(0, 0.45, 0), "stone", CHURCH_DRESS)
@@ -2121,6 +2125,8 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		var fz := W * 0.5 + 0.2
 		roof_pitch = pitch
 		roof_hipped = hipped
+		_roof_form = {"L": L, "W": W, "h": h, "pitch": pitch, "fx": fx, "fz": fz, "hipped": hipped, "barn": barn,
+			"ang": 0.0 if long_x else PI * 0.5, "th": BuildingMaterials.value(covering, "thickness", 0.09)}
 		var ropts := {"gable_material": material, "gable_col": wall_col, "trim": trim, "gable_inset": -0.07, "gutters": true,
 			"downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": fz, "wall_face_x": fx}
 		var rise := BuildingRoofs.hip(k, L, W, h, pitch, 0.35, covering, tint, ropts) if hipped else BuildingRoofs.gable(k, L, W, h, pitch, 0.35, covering, tint, ropts)
@@ -2151,6 +2157,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			foot -= 0.05
 			BuildingFittings.chimney(k, Vector3(cx, foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
 				"brick", Res.vary(BuildingMaterials.color("brick"), 0.08, rng))
+			_roof_form["chimney"] = Vector3(cx, 0, z)
 			if aerial:
 				# lashed to the stack, above its pots
 				BuildingFurnishings.aerial(k, Vector3(cx + 0.33, h + rise - 0.4, z), 1.9, life.randf_range(-0.6, 0.6))
@@ -2218,6 +2225,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		var flat_wear := RandomNumberGenerator.new()
 		flat_wear.seed = rng.seed ^ 0x6a7e5d
 		roof_pitch = 0.0
+		_roof_form = {"flat": true, "L": L, "W": W, "h": h, "ang": 0.0 if long_x else PI * 0.5}
 		# (what it's covered in, from a stream of its own too: the wing's
 		# roof the house's)
 		var covering := RandomNumberGenerator.new()
@@ -2241,6 +2249,14 @@ var _roof_t := 0.0
 ## it's hipped rather than gabled.
 var roof_pitch := -1.0
 var roof_hipped := false
+## (view) The roof's form as its model was built, for the snow on it
+## (SnowRoof.cap): its size, pitch, the kit's turn, its chimney.
+var _roof_form := {}
+## (view) The roof's snow as Structure._snow_roof dressed it: its snow_k
+## (how much it holds, how warm the house is, its chimney; Mats SURFACE),
+## and the lip along its eaves (SnowRoof).
+var _snow_k := Vector4.ZERO
+var _snow_cap: MeshInstance3D
 
 
 ## A roof is hidden while anyone is inside (so you can see your men), and
@@ -2258,6 +2274,39 @@ func _roof_view(dt: float) -> void:
 			break
 	if model.visible == inside:
 		model.visible = not inside
+	if world.atmo and world.atmo.snow_cover > 0.0 and not _roof_form.is_empty() and not burnt and (_snow_cap == null or not is_instance_valid(_snow_cap) or _snow_cap.get_parent() != model) and SnowRoof.turn():
+		_snow_roof()
+
+
+## (view) Dresses the roof for the snow, the first time it lies on it: how
+## much this one holds (one roof more than the next; a barn's cold, so a full
+## coat), whether the house under it is lived in and warm (more than half
+## are: its snow thaws in wet patches and bare round the chimney, icicles
+## hang from its eaves), and the snow's lip along the eaves (SnowRoof).
+func _snow_roof() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = ((look if look > 0 else eid) * 7919 + variant) ^ 0x5a0f11
+	var barn: bool = _roof_form.get("barn", false)
+	var heat := 0.0
+	if not barn and not _roof_form.get("cold", false) and rng.randf() < 0.55:
+		heat = rng.randf_range(0.5, 1.0)
+	var carry := 1.3 if barn else rng.randf_range(0.95, 1.25)
+	var stack := Vector2(10000, 10000)
+	if _roof_form.has("chimney") and heat > 0.0:
+		var at: Vector3 = position + Basis(Vector3.UP, yaw) * (Basis(Vector3.UP, float(_roof_form.ang)) * (_roof_form.chimney as Vector3))
+		stack = Vector2(at.x, at.z)
+	_snow_k = Vector4(carry, -(1.0 + heat * 0.99), stack.x, stack.y)
+	for mi in Mats.snow_parts(model):
+		Mats.set_inst(mi, &"snow_k", _snow_k)
+	if _snow_cap and is_instance_valid(_snow_cap):
+		_snow_cap.queue_free()
+	_snow_cap = MeshInstance3D.new()
+	_snow_cap.mesh = SnowRoof.cap(_roof_form, heat, carry, yaw, rng)
+	_snow_cap.material_override = SnowRoof.material()
+	_snow_cap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_snow_cap.rotation.y = float(_roof_form.ang)
+	model.add_child(_snow_cap)
+	Mats.set_inst(_snow_cap, &"snow_k", _snow_k)
 
 
 ## Lays the model at its tilt, resting on the ground (on its side, on its roof...).
@@ -3444,11 +3493,30 @@ func _burn_view() -> void:
 			_fire_fx = world.fx.vfx.make_fire(box[1], smoke, skind == "wreck" and _wreck_engine_deck.is_finite())
 			world.fx.vfx.add_child(_fire_fx)
 			_fire_fx.global_transform = Transform3D(Basis(Vector3.UP, yaw), to_global(box[0]))
+			_fire_fx.set_meta(&"melts", self)  # (its heat melts the snow off it: SnowMelt)
 		world.fx.vfx.set_fire(_fire_fx, burn)
 	elif _fire_fx and was > 0:
 		# out: it smoulders a while, then the smoke thins away
 		world.fx.vfx.smoulder(_fire_fx, 150.0 if skind == "wreck" else (45.0 if skind in ["rubble", "car"] else 30.0))
 		_fire_fx = null
+
+
+## (view) In the snow, the heat of its own fire melting the snow off it
+## (`melted` 1: all of it): a burning roof or wreck goes bare, and whitens
+## again only slowly, as the ground round it does (SnowMelt).
+func melt_snow(melted: float) -> void:
+	if model == null or not is_inside_tree():
+		return
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
+	# (a roof keeps what the snow made of it, Structure._snow_roof: only how
+	# much is left on it goes down)
+	var k := _snow_k if _snow_k != Vector4.ZERO else Vector4(1.0, 0.0, 10000.0, 10000.0)
+	k.x *= 1.0 - melted
+	for mi in Mats.snow_parts(model):
+		Mats.set_inst(mi, &"snow_k", k)
+	if _snow_cap and is_instance_valid(_snow_cap):
+		Mats.set_inst(_snow_cap, &"snow_k", k)
 
 
 ## (view) While it burns it chars, and the char glows with embers.

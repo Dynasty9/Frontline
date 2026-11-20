@@ -55,6 +55,7 @@ const MOOD_AIR := {
 	"night": [0.12, 0.6, 0.0, 0.0],
 	"rain": [0.2, 0.45, 0.85, 0.0],
 	"hazy": [0.08, 0.25, 0.0, 0.32],
+	"snow": [0.06, 0.28, 0.0, 0.0],  # (the snow lies over the dust)
 }
 
 var world
@@ -309,7 +310,7 @@ func _sources(dt: float) -> void:
 		_was[v.eid] = p
 		seen[v.eid] = true
 		var speed := Defs.flat(p - was).length() / dt
-		if speed < 3.0 or wet > 0.6 or mood == "rain":
+		if speed < 3.0 or wet > 0.6 or mood == "rain" or mood == "snow":
 			continue
 		var k := dust_of(p) * (1.0 - wet) * clampf((speed - 3.0) / 9.0, 0.0, 1.0) * (1.3 if v.weight() >= 2 else 1.0)
 		if k < 0.05:
