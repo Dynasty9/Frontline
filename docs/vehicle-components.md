@@ -857,6 +857,190 @@ and a distant glass instance: the M35 (27 to 39 nodes, 19 to 31 meshes) and the 
   `free_spans` and hangs them the same way (the Abrams and Bradley). VmCore's guns call
   `VehicleMounts.gun_boot`. All of it leaves wrecks as they were.
 
+### Thirteenth pass: canvas, soft kit and fabric finishes
+
+Five agents (tilts and tarps; soft kit; fabric finishes, straps and lashings; and the parts that still looked
+worst on ground vehicles, and on aircraft and boats) each closed seven to eleven gaps, with each model held
+within +6% vertices. Nodes and meshes are unchanged on every model; vertices rise 0.22% across the roster at
+seed 3, at most 4.4% (the Scorcher, for its 45 bags). About 18 kit-carrying models gain one to three surfaces
+from the new fabric kinds.
+
+- **Tilts** (`VehicleCloth.canopy` hands non-wrecks to `_tilt` / `_tilt_section` / `_tilt_meshes`): one draped
+  sheet per section that sags up to 5 cm between the bows (most on the roof), with faint fold creases and soft
+  upright folds in the side curtains, normals from the cloth's own shape. The hem is bound and laced in a W
+  from eyes about 45 cm apart to hooks 7 cm lower (`_cord`), scalloping up between eyes. Each bay's width has
+  its own UVs (stitching runs round it); the roof is paler (`SUN_FADED`) than the sides; from the kit seed about
+  half of crews' tilts have one width in another shade, about 36% roll one or both curtains to the eaves (the
+  bow uprights, benches and a dark liner show), and rear flaps are rolled or laced. The HEMTT's bow bands, the
+  M35's bow plates and the Zamak's hoop boxes are gone. `load_cover` takes the shape of boxes under a tarp.
+  A wreck keeps the old panels.
+- **Soft kit** (`VehicleCloth.bag`, `_bag(..., lid)`, `_shell`, `_soft`, `_round`, `_duffel`, `_welt`, `_lid`;
+  `_roll`, `_roll_meshes`, `_roll_point`; `VmCore._bedroll`): bags bulge across their faces with a flat base and
+  a domed top, each face with its own UVs so seams show; welts are one cached cord; straps follow the shell, half
+  sunk. About half of squarish tall bags get a rucksack lid with two front straps, facing out; bags long in plan
+  are duffels gathered by a drawstring. About half of a crew's kit is nylon (`"fabric"`), black kit sometimes
+  rubberised (`"boot"`). Rolls flatten 12% on top, pinch under each strap, show a lap edge and dished, spiral
+  ends. Wrecks keep the old geometry, materials and random draws.
+- **Fabric finishes** (`VehicleMaterials.PROFILES` and `profile()`): `webbing` (a satin twill three times finer
+  than canvas), `nylon` (for `fabric` and `nylon`), `coated` (for `coated`, `boot`, and every canvas kind on
+  the marine family: PVC that barely shows its weave), `rope` (coarse and matte); plain `canvas` stays cotton
+  duck ashore. `VehicleCloth.strap(k, parent, points, width, col, across, thick, material)`,
+  `ratchet(k, parent, at, out, up, width, col, metal, tail)` and `rope(k, parent, points, radius, col, knots)`.
+  `VehicleCargo.restraints` (appended `corner`) folds each strap over the box's bevel with one seeded ratchet and
+  flat hooks; civilian loads are roped with a trucker's hitch (`KIT_ROPE`); 30% of a crew's straps come from
+  another lot.
+- **Ground**: trim on VmCiv cars (and the technicals) is `plain_dark` plastic; technicals, FIA trucks and the
+  fielded off-roaders take `paint`'s worn service finish (`VmCiv._glasshouse(..., mat)`); the quad bike is
+  plastic and vinyl; `VmCiv._mb_top(..., seed)` varies the soft top; the vans' roofs carry two pressed ribs; the
+  M35's bonnet has its centre hinge; steps hang on brackets (M35, technical, tractor, M-ATV, the HEMTT
+  ambulance's platform).
+- **Air and sea**: `VmBoat._outboard` rolls its shoulder into a domed lid; `VmShips._heap_fit` keeps the
+  trawler's net heaps inside the bulwarks and its floats seated; the SDV's duct is a smooth ring with the fins
+  ending in it; `VmBoat._life_jacket` (seeded colours, none on wrecks); `VehicleRotors.main`'s forks, pins and
+  bolts are dull dark steel; the Little Bird's bench pads are nylon.
+
+### Fourteenth pass: fabrics put to use, seats, covers and cabins
+
+Five agents (the new fabrics put to use; seats, cabs and cockpits; covers and recognition panels; a second sweep of
+ground vehicles; and of aircraft and boats) each closed five to ten gaps. Nodes and meshes are unchanged on every
+model; vertices rise 0.33% across the roster at seed 3, at most 6.0% (the Neophron's two fitted cockpits). Models
+gain a surface or two where a part moved onto its own cloth (webbing ties, rope, coated vinyl, a harness).
+
+- **Fabrics in use**: `VehicleMounts.gun_boot`'s pleats are `"coated"` and its tie bands `"webbing"`; `VmCiv._mb_top`'s
+  black and khaki tops are vinyl; `VmBoat._tube_kit`'s grab line, `VehicleMarine.fender`'s lines, `VmShips._coil`
+  and the trawler's nets are `"rope"`; fenders default to `"coated"` PVC and life rings are PVC. The Tempest's tilt
+  straps and the Zamak's tail ties are `VehicleCloth.strap` webbing laid on the cloth; `VehicleCloth.load_cover`'s
+  lashings are 50 mm webbing; `_tilt`'s rolled-curtain bands fit the roll's flattened section;
+  `VehicleCargo._handle_clear` slides a crate handle clear of its strap or drops it. Every part moved keeps its
+  old cloth on wrecks, so it still burns away.
+- **Seats, cabs and cockpits**: `VmPlane.cockpit` seats the pilot in a pressed ejection seat with an olive nylon
+  cushion, guide rails, headbox and firing handle, webbing harness, a rubber oxygen mask and hose, side consoles
+  with a throttle, under a matte black glareshield; the default suit is sage nylon. `VehicleCab.interior(...,
+  rear)` seats crews on `"coated"` vinyl (canvas on wrecks), with a rolled dash, the shared `steering_wheel` and a
+  gear lever; `VmCiv._glasshouse` puts the dash at the foot of the windscreen, the seats at real depth and a rear
+  bench in four-door cars, and picks the seat cloth from four trims by the kit seed (or by the paint, for parked
+  cars).
+- **Covers** (`VehicleEquipment`): `recognition_panel(k, parent, center, rot, folded, chance)` lays a VS-17 panel
+  (1.83 x 0.61 m of fluorescent orange or cerise nylon, or folded in half, creased, tied at the corners with rope)
+  on 40% of crews from the kit seed: M-ATV, Marshall, HEMTT (on its cab roof), Humvee, Bradley, Leopard 2
+  and Zamak. `wheel_cover` (a vinyl cover over an outside spare), `bed_cover` (a tonneau on bows with a snap-rail
+  edge), `sunshade` (a pleated shade inside the windscreen), and tarp-roped pickup loads, chosen by paint on
+  parked cars so each look builds the same.
+- **Ground**: `VehicleWheelArches._xbody(..., crown)` leans a top's edge normals out across the panel and along
+  it (`CROWN`, `_crowned`), so bonnets and roofs dome instead of lighting a white line; normals only, never on a
+  wreck. The technicals and the Humvee pass `ROLL_BOXY`. `VmCiv._suv` has a longer, taller roof, wider arch
+  mouldings and deeper sills; SUVs and pickups vary their wheels. Rear steps on the Gorgon, Slammer, Tempest
+  ambulance and Zamak workshop and ambulance are braced or hung.
+- **Air and sea**: `VmHeli._cabin` opens a slid cabin door on a dark cabin with a non-skid floor edge and
+  outward-facing troop seats (tube frames, webbing back and pan) on the Ghost Hawk, Mohawk and Orca, and the
+  Huron's crew door on its red bench; the kit seed shuts a door about one time in four (the armed Orca's stay
+  shut for its pylons). The patrol ship's roofs are non-skid deck inside a haze-grey margin, its coils lie clear
+  of the bitts, and open doorways are `plain_dark`.
+
+### Fifteenth pass: sandbags, marine cloth, leftovers and military parts
+
+A critic agent rendered the whole roster and ranked its thirty worst-looking things (the sixteenth pass worked
+from that list); four agents fixed. Nodes and meshes are unchanged on every model; vertices rise 0.21% across the
+roster at seed 3, at most 5.0% (the motorboat's bimini and line).
+
+- **Improvised kit** (`VehicleCloth.sack_lot`, `sandbag(k, parent, foot, along, rng, lot, drape, length)`,
+  `sandbags(k, parent, a, b, rng, lot, courses, drape)`, `_sack`): a crew's sacks come from one lot, hessian
+  (`canvas`) or woven plastic (`nylon`), about one in six from the other; each sack is one of eight cached
+  pillow meshes (tied ear or folded mouth, slumped either way, or draped over a rail), and a wall lays each
+  course half a sack along, nested into the one below. Only the gun trawler's parapet uses them: the rail bags,
+  the wall behind the ZU-23 and the Zamak's wing bags this pass first laid came off on review (sandbags aren't
+  every vehicle's kit). Kit-seeded, never on wrecks or scenery: rear-door plate on the DShK technical
+  (`VmCore._hilux_dshk`, which also ropes its spare and jerrycan), bolted bed plate on a quarter of the armed
+  off-roaders (`VmCiv._bed_guard`), grain sacks in the Zamak's load (`_zamak_cargo`).
+- **Marine cloth** (`VehicleMarine.ensign`, `cloth`, `line_coil`; `VmBoat._bimini`; `VmShips._hatch_tarp`): a
+  slack nylon ensign in the team colour, sagging at the fly with two folds and a white tabling, on the ships and
+  boats (`VmBoat._motorboat(..., team)`); Hypalon tubes and vinyl seats in `"coated"`; a bimini on three bows
+  under a crowned top, or folded in its boot, in a seeded colour; a lumpy hold tarp lashed with rope; lines made
+  off on a cleat with the tail coiled down; the raider's pack in nylon and a roll-top dry bag; life rings with
+  flush tape and a grabline; liferaft cradles with a hydrostatic release and painter.
+- **Leftovers**: cloth and vinyl seats on the MB 4WD (chosen by the paint), Qilin and Prowler;
+  `VehicleCloth.load_cover(..., mat)` so a polythene tarp can be `"coated"`; recognition panels on the Strider,
+  Gorgon, Slammer and Namer; the Gryphon's and Buzzard's cockpit floor at 0.19; the Gorgon's and Merkava hull's
+  rear door leaves end at the sloping plate's knuckle.
+- **Military**: the BTR's engine deck (`VmCore._btr80`) is two intake grilles either side of a hinged hatch; the
+  T-100's glacis (`VmCsat._t100(..., lock)`) carries a V of reactive armour, two rows of three a side rising 17
+  degrees from a low centre; armoured brows over vision blocks on the Namer, Marid, Stalker hull and Marshall;
+  the Marid's block frames in its camouflage; the Strider's wipers parked along the foot of each pane.
+
+### Sixteenth pass: the critic's list
+
+Five agents worked from the fifteenth pass's ranked list of the roster's worst-looking things. Vertices rise 0.34%
+across the roster at seed 3. Nodes and meshes fall by one or two on about 110 models, as each team mark joins the
+paint batch, and rise by two on the vans and the tractor for their clear glass (near and far).
+
+- **Team marks** (`VehicleModels._team_mark`, `_mark_outline`, `_mark_col`): the mark keeps its size and place
+  but is painted flat on the face the old box sat on, in the vehicle's own `"paint"`, so it takes the hull's dust,
+  grime and wear: an inverted-V chevron pointing at the bow for team 0, a band with slanted ends for team 1, so
+  the shape tells the sides apart without colour. Wrecks and burnt hulks carry none. `VmPlane.wing_marks` paints
+  the same outline on the wing skin (`VehicleAircraft.paint`, `wing_skin`), mirrored wing to wing.
+- **Finishes**: rubber's grime is 0.06 and its dust a darker road film (`VehicleMaterials.preset`), so tyres stay
+  dusty rubber in a dusty battle; recognition panels are a duller orange or rose with dust in them, on 20% of
+  crews; `VehicleMounts.BLOCK` and `OPTIC` are darker.
+- **Tilts and loads**: `VehicleCloth._tilt` lays a dim liner set in under every width, so the boards that closed
+  tilt openings are gone (HEMTT, Zamak, M35) and you see the benches; `back_flap` (with `_flap_half`, `_flap_mesh`)
+  hangs the Tempest's rear flap from its last bow in two folds, rolled at the foot; laced-shut flaps fold.
+  `VehicleCargo.tilt_colour` keeps the paint on 30% of tilts and otherwise draws from `KIT_CANVAS`, leaned toward
+  `DUCK`; roofs fade further and sag up to 7.5 cm. `crate_stack` picks one stencil style per crew's stack and lays
+  one pallet in three as long crates; `load_cover` folds diagonally with gathered corners; square-roofed shelters
+  get capping and rub rails. The Zamak's jerrycans stand apart and the trawler's bulwark bags are sacks.
+- **Aircraft**: `VehicleRotors.BLUR_SHADER` lights the haze a shade above the blades' paint with ghost blades dark
+  in its hue and a faint soft tip band, fading over the outer 14% and thinning close to the camera; it serves
+  every rotor, fan and propeller. `VmHeli._patch` and `_pane` smooth panel normals on round hulls; the Falcon's
+  nose is a quarter-ellipse dome (`_hull(..., joins)`); drone props are twisted aerofoils
+  (`VehiclePropellers.blade(..., foil)`); `VmHeli._sunk` drops the Blackfoot's roof under its canopy so the crew
+  shows through clear panes, with frame joints and engine-bay panels; `VmGunship._t56`'s nacelles are deeper with
+  shorter, tapering tail fairings.
+- **Civilian**: `VmCiv._van_cab` and `_clear_cab` split the van at the B-pillar into a see-through cab with
+  `VehicleCab.interior` behind one clear-glass sheet; the tractor's cab is clear glass with a console and levers;
+  `VmCore._daub` paints the technicals' sand blotches, primer and rust flat on the panels; `VehicleFrames.step`
+  lays a running board's ribs lengthwise; `VehicleWheels.pneumatic` lathes small road wheels (`_small_tyre`); the
+  kart has a race number and rolled pods, the quad bike moulded fender wings, the hatchback a rounder nose and a
+  paint-picked roof, the SUV a rising shoulder and tighter arches, the MB 4WD a padded bar.
+- **Military fittings**: `VehicleFittings.panel_hatch`'s stiffeners are two parallel ribs, not a cross;
+  `VehicleFittings.vent` (and `_slats(..., slope)`) louvres cover 0.64 of their pitch, so engine decks read as
+  louvres; `VehicleMounts.gun_boot` pleats are ridges in matte duck (`BOOT_DUCK`); the Ifrit has framed armoured glass (`VmCsat.ARMOR_GLASS`), hinges, bins
+  and grab rails (`_ifrit_side`); the Strider's door windows are framed and the MRAPs' glass green-black.
+
+### Seventeenth pass: cost, glass and a second critic
+
+A cost pass brought every model back under +6% of the fifteenth pass's vertices; a second critic re-ranked the
+roster (the eighteenth pass works from its list) and judged two of the sixteenth pass's changes worse at the
+battle camera, which this pass corrects. Nodes and meshes are unchanged; vertices fall 1.1% across the roster at
+seed 3, and every model is within +5.8% of the fifteenth pass.
+
+- **Cost**: no part of `VehicleCab.interior` or `VmPlane.cockpit` casts a shadow (a baked holder's shadow proxy
+  takes every vertex of a material group in which any part casts, so the interior keeps to non-casting groups);
+  `VehicleCab._cab_seat` drops what the waist rail and seat back hide, `_cab_wheel` is a 12-by-4 rim with block
+  spokes, and `_rolled` chamfers only the four edges along X (84 vertices where a `BevelMesh` costs 132); the
+  cockpit's tub, helmet, torso, visor and mask take fewer sides and its harness legs two segments each.
+- **Glass**: an `"armor_glass"` profile (green-black, glaze 0.12, specular 0.5, roughness 0.14) and
+  `VehicleMaterials.glaze(k, pane, kind, col)`, which re-materials a pane `VehicleGlazing` made and keeps its seal:
+  the M-ATV's, Ifrit's, Strider's, Humvee's and Marid's panes, the Humvee's gunner glass, the vision blocks of
+  `VehicleMounts.cupola`, every `VehicleMounts.sight`, and the combat vehicles' optics. Wrecks keep `"glass"`.
+- **Cloth**: on the marine family plain `"canvas"` maps to an `"acrylic"` profile (fine weave, matte), so a bimini
+  reads as cloth; `"cloth"` maps to nylon.
+- **Rotor disc** (`VehicleRotors.BLUR_SHADER`): haze cover 0.15 with little lift toward grey, the edge fading over
+  its outer fifth with no pale tip ring, softer and shorter ghost blades that fade near the camera, and one
+  Compatibility correction across the whole disc, so both renderers darken the ground under it alike.
+- **Corrections**: `VehicleModels._mark_col` lerps the team colour 0.4 toward a pale grey (about value 0.6) and
+  `_mark_outline` paints no wider than 1.6 times its height on wide faces, with slimmer chevron arms, so flank marks
+  read and the sides tell apart; `VehicleEquipment.recognition_panel` lays a panel on at most one crew in eight,
+  duller (`PANEL_FACES`) and dustier.
+- **Military**: the T-100's rear skirts in its camouflage; `VmCore._shield_face` lays a clamp lip over the O-GPK
+  glass; exhaust outlets are painted housings with `VehicleFittings.grille` louvres (Stalker hull, Marid, T-14
+  hull, BTR, Rhino); heat shields take the paint (Strider, Nyx); `VmCore._beam_fittings` bands the unditching logs
+  with pale sawn ends (`END_GRAIN`); crews of the T-100 and T-55 drop fender tanks and drums from the kit seed;
+  tracking radars wear radomes (`VmCsat.RADOME`).
+- **Aircraft, boats and trucks**: the trawler's and patrol ship's decks run in under their bulwarks (no blue
+  seam); the RHIB's radome is one revolved housing; the assault boat's floorboards are aluminium treadplate; the
+  M35's bed is painted steel; HEMTT ammunition pallets are turned a degree or two each from the kit seed; the
+  Mohawk's sponsons are rounded in its upper green; speedboat and trawler gun-deck roofs carry non-skid mats.
+
 ### Gun mounts: laying, recoil and the guns themselves
 
 The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of
