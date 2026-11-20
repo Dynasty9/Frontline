@@ -782,6 +782,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Loose fines trail onto asphalt at town entrances. Bridge decks use the shared weathered
   asphalt and worn road paint, with expansion joints; gravel stops at the deck boundary.
   Concrete driveways have transverse slab joints. Paving and bridge decks share rain wetness.
+- A skirmish town has its parish church where a road comes in, in a walled churchyard of graves: a nave and
+  chancel of coursed stone with dressed quoins, buttresses and tall traceried windows of stained glass under a
+  steep slate roof, and a west tower with a clock, louvred belfry, battlements and a slate spire seen across the
+  map. It has two ways in: the west door under the tower (the tower's ground stage is its porch) and the south
+  door in a timber porch on stone dwarf walls (cover for men holding it). Men go in by either, fight from its
+  chest-high windows (the roofs lift off for them, over the pews, the pulpit, the lectern, the font and the choir
+  and altar), and its walls come down to rubble as a house's do. A squad told to hold it takes its places inside,
+  at the windows and doors, rather than out among the graves; its slate roof on oak trusses rarely catches fire.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
@@ -807,7 +815,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
   tiles, plaster and glass; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
-  a charred joist and bent rods sticking out. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
+  a charred joist and bent rods sticking out. A ruined or shelled house has debris spilled at the foot of its walls, and glass lies
+  under shot-out windows. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
   to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
   boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
