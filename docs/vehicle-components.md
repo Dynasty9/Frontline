@@ -723,13 +723,8 @@ camera first. Nodes, meshes, wheels and rotors are unchanged on every model; ver
 roster at seed 3, at most 8.7% (the Ghost Hawk). A few models gain one surface (the non-skid coat, a gun's
 canvas boot, a camouflage net's cloth where the seed camouflages a vehicle that had no canvas).
 
-- **Camouflage** (`VehicleCloth.camouflage`, `net`, `branch`): how heavily a crew has camouflaged its vehicle,
-  0 to 1 from `k.kit_seed` (none, some or heavy), for armour-family vehicles only, never a wreck, and 0 for
-  scenery. `VehicleCloth.bag` may stuff a net into a basket place and `VehicleEquipment.storage` throw one on
-  a level bin lid or lay a branch along it; `roll` may tuck a branch along its top. Nets are a lumpy heap
-  under scrim leaves in woodland or desert colours chosen by the hull's paint (`_net_colours`); branches are
-  a stem with cached leaf sprays (`_spray`) in one cutting's shade. Both rest only on level places
-  (`_upright`).
+- **Camouflage** (`VehicleCloth.camouflage`, `net`, `branch`; removed in the eleventh pass): cut branches and
+  bundled nets dressed about two thirds of armour-family vehicles by kit seed, on loads, bin lids and rolls.
 - **Armour edges**: `VehicleBody.armour(rings, key, top, bottom, corner, turn)` breaks every lengthwise corner
   that turns more than `turn` degrees (`_broken_corners`, capped at a third of the shorter edge) and hands the
   end chamfers to `VehicleModels.solid`; `VmCsat._chamfer_loft` and `VmIndep._armour` use it, and
@@ -782,9 +777,7 @@ Angara).
   drones and the Xi'an.
 - **Armour**: `VehicleMounts.mantlet`'s `boot` on CSAT and independent guns, and `VehicleMounts._gun_boot` on a
   pivot on the gun's slide for VmCore's Abrams and T-55, so the cover elevates with the gun.
-  `VehicleBody.cut_branches(k, parent, a, b, out, salt)` lays two or three branches per side along a fender or
-  skirt top for a heavily camouflaged crew; `VmNato._branches` does the same along NATO hull sides and
-  `VmCsat._roof_net` / the Zamak and HEMTT cabs carry a kit-seeded net. Spare links on the Varsuk, T-14 hull and
+  Spare links on the Varsuk, T-14 hull and
   Stalker hull; tactical numbers 0.34-0.45 m. `VmCore._idler` is a `VehicleWheels.road` wheel without rubber.
   `VmNato._mk_turret` builds the Merkava turret in three levels to an arrowhead nose.
 - **Small metal**: `VehicleMounts.applique` paints its bolt heads, `receiver` tints feed covers to the gun's
@@ -798,13 +791,71 @@ Angara).
   `rectangular_headlamp`, `signal_lens` indicators and tail lenses and a slatted grille; door seams stop at
   the sill and `VmCiv._bonnet_line` draws the bonnet; a hash of paint and shape picks chrome or black bumpers
   and wheel trims. `VehicleCab.upper` rolls and crowns the cab roof and adds drip rails.
-- **Kit and running gear**: `VehicleCloth.LEAVES` are living greens with a drying olive-gold; `branch` lays
-  sprays wider than tall, and `bag`, `roll` and `VehicleEquipment.storage` lay longer branches more often.
-  Scrim leaves are bigger. `VehicleWheels._road_tyre` chamfers a road wheel's outer rubber edge;
+- **No crew camouflage**: the tenth pass's cut branches and bundled nets are gone (`VehicleCloth.camouflage`,
+  `net`, `branch` and their callers in `bag`, `roll` and `VehicleEquipment.storage`): foliage a crew cuts and
+  a net it throws over the load aren't part of a vehicle, and from the battle camera they read as clutter. The
+  nets some vehicles stow rolled and strapped (on the Stalker hulls, the Mora and the Gorgon) are issue kit
+  and stay.
+- **Kit and running gear**: `VehicleWheels._road_tyre` chamfers a road wheel's outer rubber edge;
   `_sidewall` raises a maker's name and size code on pneumatic tyres of 0.3 m and up.
 - **Boats and ships**: `VmShips._drip` lays five graded coats (two faint fringes, `STREAK_STAIN`, `FRINGE`) and
   `_funnel_soot` four. `VmBoat._moulded` lofts the water scooter's hood, pedestal and saddles (old cache keys
   kept); `_outboard` lofts cowling, leg and apron. The SURCs carry kit-seeded numbers on the cabin.
+
+### Twelfth pass: cockpits, bellows, steel wheels and cab interiors
+
+Five agents (aircraft; materials, markings and fittings; guns, mounts and running gear; armour; trucks,
+soft-skins and civilians) each closed seven to ten gaps, starting with the eleventh pass's leftovers.
+Vertices rise 1.4% across the roster at seed 3, at most 12.5% (the M35's cab interior and frame; the
+Neophron's two cockpits +11.6%). Nodes and meshes change only where a cab gained clear panes, each a near
+and a distant glass instance: the M35 (27 to 39 nodes, 19 to 31 meshes) and the FIA trucks (18 to 24, 13 to 19).
+
+- **Cockpits**: `VmPlane.clear_glass` (a smoked see-through glass per tint, made in code like
+  `fighter_canopy`, so it draws in the Compatibility renderer) and `VmPlane.cockpit` (a dark tub, a raked
+  seat with headrest and firing handle, the pilot's shoulders, helmet and visor, a black coaming, a HUD
+  combiner on a front seat). A clear canopy casts no shadow, so the model keeps its shadow proxy (one
+  surface on another shader that casts would cost the model its proxy). `VmHeli._canopy` returns its glass.
+  Wrecks keep the old opaque glass.
+- **Aircraft lights and kit**: `VmPlane.nav_light` (a red or green teardrop lens on a dark base, standing
+  out of the tip) and `beacon`; `VmHeli._beacon` and the gunships' beacons are aviation red. `VmPlane.number`
+  (from the kit seed, a fixed one for scenery), `VehicleAircraft.rocket_pod` (a warhead in each mouth),
+  `VmPlane.nozzle` (heat-tinted steel), `VmHeli._wipers`.
+- **Fittings and materials**: `VehicleBody.fastener` defaults to dark oiled steel (`FASTENER`) and takes
+  `mat` / `col`; `VehicleFittings.hatch` paints its hinge bolts and latch. `VehicleBody.soot` takes
+  `paint` / `paint_col` (or finds the hull's paint, `_paint_under`) and lays two faint fringes in that paint
+  before grading to a black core; `VmNato._soot` and `VmCore._soot` hand off to it. `VehicleFittings._fluted`
+  (one cached ribbed-lens slab) replaces the rib boxes of rectangular headlamps, signal lenses and the
+  ambulance's light bar, and `_headlamp_ribs` a round lamp's tubes. `VehicleCloth.load_cover` waists the tarp
+  at each lashing; `VehicleEquipment.drum` draws its paint from `VehicleCargo.KIT_DRUM`.
+  `VehicleMarkings._emboss` builds only the tops of raised plate characters.
+- **Guns and running gear**: `VehicleMounts.gun_boot(k, mount, face, radius, barrel, length, folds)` is
+  public (`_gun_boot` calls it): five puffed folds, a sag, a strap at the casting end and a kit-seeded canvas.
+  `VehicleWheels.pneumatic` cuts hand holes in offroad rims from 0.35 m; `_swapped` repaints about one
+  running wheel in eleven as a replacement. `VehicleTracks._hardware` puts wedge-bolt heads on double-pin
+  connectors (belts 0.2 m and wider) and pin stubs on single-pin links; `shoes` tints a run of 3-7 new links
+  on about half of crews' belts. Sprocket rings and steel idler rims are bare `steel`.
+  `VehicleWeapons.autocannon` draws a painted tube's last fifth in the gun's steel; `VehicleMounts.sight`
+  glass is `OPTIC` and vision blocks `BLOCK`. All of it leaves wrecks and hulks as they were.
+- **Armour**: `VmNato.NONSKID` is a drab; `VmIndep._slats` and `VmCsat._slats` take `mat` / `col` (the
+  Kuma's cages painted at 13 cm, the Angara's painted); `VmNato._module_paint` and `VmIndep._module_paint`
+  draw about one bolt-on module in eight as a depot replacement from the kit seed. Graded soot on the
+  Marshall, Angara and T-55; the Varsuk's launchers move forward off its number.
+- **Trucks and cars**: the HEMTT's cab cap is gone, so `VehicleCab.upper`'s roof shows. The technicals'
+  (`VmCore._hilux`) and `_car`'s roofs crown at 0.6, so the sun makes a glint, not a blob. The M35 (`VmCore._truck`) and FIA truck (`VmCiv._truck`) cabs are
+  `VehicleCab.upper` / `framed_face` with clear panes and `interior`, on `VehicleRunningGear.frame` ladder
+  frames; the M35 has an `exhaust_run` stack (no new exhaust point). `VmCiv._mirror` gives `car_paint` a
+  moulded shell, `_odd_bonnet` repaints one bonnet in four (`build_car`) or five (hatchbacks), and the
+  Zamak's sacks are soft (`VehicleCloth._shell`).
+- **A short seventh round** (two agents, +0.09% vertices, no structure change): `VehicleFittings.barrel`
+  splits the tube at 0.9 of its length and draws the front in `VehicleWeapons.STEEL` (unless the gun is
+  already steel), puts a dark joint ring in each gap of the thermal sleeve and turns each section's closure
+  strip +-25 degrees; `evacuator` has a weld bead round its middle. `VehicleMounts.slats` takes appended
+  `frame_mat` / `frame_col` for the posts and rails and gives cages of horizontal bars an upright at least
+  every 1.6 m (the Kuma, Angara and Rhino UP pass their paint). `VehicleTracks.on_rollers(k, outline, circles,
+  lift)` lets each return roller's top into a track outline when it lies within 8 cm of a long upper run, so
+  `shoes` sags the run between rollers (CSAT and independent static belts); `TrackBelt` records the top run's
+  `free_spans` and hangs them the same way (the Abrams and Bradley). VmCore's guns call
+  `VehicleMounts.gun_boot`. All of it leaves wrecks as they were.
 
 ### Gun mounts: laying, recoil and the guns themselves
 

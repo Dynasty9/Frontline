@@ -13,6 +13,7 @@ var radii := PackedFloat32Array()
 var half_thickness := 0.0
 var turn_sign := 1.0
 var rests_on_wheels := false
+var free_spans := PackedVector2Array()
 var dust: GeometryInstance3D
 
 func build(hull: PackedVector2Array, width: float, thickness: float, wheels: Array, unsupported_return: bool) -> void:
@@ -20,8 +21,22 @@ func build(hull: PackedVector2Array, width: float, thickness: float, wheels: Arr
 	rests_on_wheels = unsupported_return
 	loop.bake_interval = 0.07
 	half_thickness = thickness * 0.5
+	var middle := Vector2.ZERO
 	for p in hull:
 		loop.add_point(p)
+		middle += p
+	middle /= maxf(1.0, float(hull.size()))
+	# The free spans of the return run between the rollers it rests on (each
+	# as its two ends, nose first), which hang as VehicleTracks.shoes hangs
+	# them; a longer run has rollers the outline leaves out.
+	if not rests_on_wheels:
+		for i in hull.size():
+			var a := hull[i]
+			var b := hull[(i + 1) % hull.size()]
+			var span := absf(b.x - a.x)
+			if span > 0.3 and span < VehicleTracks.SAG_SPAN and a.y + b.y > middle.y * 2.0 and absf(b.y - a.y) < 0.2 * span:
+				free_spans.append(a if a.x < b.x else b)
+				free_spans.append(b if a.x < b.x else a)
 	# Geometry2D's lower edge runs toward +Z for a counterclockwise outline.
 	turn_sign = -1.0 if Geometry2D.is_polygon_clockwise(hull) else 1.0
 	for wheel: Node3D in wheels:
@@ -179,8 +194,17 @@ func _point(offset: float) -> Vector2:
 				sag = 0.035 * span * sin(PI * fraction) * sin(PI * fraction)
 			var edge := centers[prev].z if p.x < z else centers[next].z
 			lift += travel[i] * (1.0 - absf((p.x - z) / (edge - z)))
+	# Over return rollers the run hangs about 2 cm a metre of free span.
+	for j in range(0, free_spans.size(), 2):
+		var a := free_spans[j]
+		var b := free_spans[j + 1]
+		if p.x > a.x and p.x < b.x:
+			var fraction := (p.x - a.x) / (b.x - a.x)
+			if absf(p.y - lerpf(a.y, b.y, fraction)) < 0.01:
+				sag = 0.02 * (b.x - a.x) * sin(PI * fraction) * sin(PI * fraction)
+				break
 	var top := smoothstep(0.18, 0.60, p.y)
-	p.y += lerpf(lift, lift - sag if rests_on_wheels else 0.0, top)
+	p.y += lerpf(lift, lift - sag if rests_on_wheels else -sag, top)
 	return p
 
 ## The exporter can sample the same rig without reading a GPU instance buffer.
