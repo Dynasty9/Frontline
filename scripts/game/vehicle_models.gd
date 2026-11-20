@@ -1398,7 +1398,7 @@ func _car(v: int, col: Color) -> void:
 	# upright, so the side glass still lies on them.
 	var ty: float = (float(hz[5]) + float(hz[7])) * 0.5
 	var ry: float = ty
-	VmCiv._yloft(self, m, key + "h", [[-hw, fz, hw, fz, hw, bz, -hw, bz], [-hw, tz, hw, tz, hw, rz, -hw, rz]], [fy, ty], 0.05, "car_paint", col)
+	VmCiv._yloft(self, m, key + "h", [[-hw, fz, hw, fz, hw, bz, -hw, bz], [-hw, tz, hw, tz, hw, rz, -hw, rz]], [fy, ty], 0.05, "car_paint", col, Vector3.ZERO, 0.6)
 	# glass: windscreen, rear screen, side windows (inset a touch)
 	if not burnt:
 		var inside := Vector3(0, (fy + ty) * 0.5, (fz + bz) * 0.5)
@@ -1411,8 +1411,16 @@ func _car(v: int, col: Color) -> void:
 			var panes := 1 if v == 2 else 2
 			for pane in panes:
 				VehicleGlazing.quad(self, m, key + "side_%s_%d" % [side, pane], face, inside, Rect2(0.06 + pane * 0.46, 0.13, 0.88 if panes == 1 else 0.42, 0.74), 0.012, 0.012, "glass")
-			# the wing mirror on its arm from the window's front corner, the door handle
-			VehicleFittings.mirror(self, m, Vector3(side * (w + 0.14), fy + 0.16, fz + 0.22), Vector2(0.09, 0.13), 0.0, [Vector3(side * hw, fy + 0.10, fz + 0.25)], "rubber", null)
+			# The wing mirror: a car's is a moulded shell on a short foot at
+			# the window's front corner, in the body's paint (black on the
+			# older cars that keep their chrome), its glass facing back. (A
+			# truck's mirror on tubular arms and a ball joint read as fitted
+			# kit, and cost a thousand vertices a side.)
+			var black := absi(hash(col.to_html(false) + str(v))) % 3 == 0
+			var glass_at := Vector3(side * (w + 0.075), fy + 0.12, fz + 0.24)
+			VmCiv._strut(self, m, Vector3(side * (hw + 0.03), fy + 0.03, fz + 0.27), glass_at + Vector3(-side * 0.04, -0.03, 0.0), 0.06, 0.03, "plain", VmCiv.TRIM, false)
+			_add(m, BevelMesh.make(Vector3(0.16, 0.1, 0.07), 0.022), "plain" if black else "car_paint", VmCiv.TRIM if black else col, glass_at)
+			_box(m, Vector3(0.135, 0.075, 0.006), glass_at + Vector3(0, 0, 0.036), "mirror", Color(0.78, 0.82, 0.84), Vector3.ZERO, false)
 	# The doors' shut lines down the sides, each stopping on the sill or over
 	# the rear arch, a handle near each door's rear edge, and the bonnet's U:
 	# the gaps that break a car's flank and bonnet into the pressings they are.
@@ -1427,7 +1435,9 @@ func _car(v: int, col: Color) -> void:
 					foot = maxf(foot, 0.33 + sqrt(0.37 * 0.37 - (z - c) * (z - c)) + 0.03)
 			VehicleBody.seam(self, m, [Vector3(side * (w + 0.002), fy - 0.04, z), Vector3(side * (w + 0.002), foot, z)], 0.004)
 			if i > 0 and not burnt:
-				VehicleDoors.pull(self, m, Vector3(side * (w + 0.001), fy - 0.09, z - 0.16), Vector3(side, 0, 0), Vector3.BACK, 0.13, 0.006, "steel")
+				# a flush pull handle moulded into the door skin, black (a
+				# truck's bar handle on its posts stood off a car's door)
+				_add(m, BevelMesh.make(Vector3(0.014, 0.03, 0.13), 0.005), "plain", VmCiv.TRIM, Vector3(side * (w + 0.004), fy - 0.09, z - 0.16), Vector3.ZERO, Vector3.ONE, false)
 	VmCiv._bonnet_line(self, m, body, w - 0.22, fz - 0.06, bf + 0.16)
 	# Moulded bumpers, lights, plate. Parked cars of one shape differ by more
 	# than paint, as a street's do: some older ones keep chrome bumpers, and
@@ -1438,6 +1448,15 @@ func _car(v: int, col: Color) -> void:
 	for z: float in [bf - 0.02, bb + 0.02]:
 		VehicleMounts.bumper(self, m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, z), "steel" if chrome else "rubber", Color(0.7, 0.71, 0.72) if chrome else null, Vector3.ZERO, true)
 	var hub: Color = [Color(0.62, 0.63, 0.62), Color(0.76, 0.76, 0.74), Color(0.24, 0.245, 0.25)][(trim >> 3) % 3]
+	# About one car in four runs on a bonnet from a breaker's yard, never
+	# painted to match: grey primer, or another car's colour. From above the
+	# bonnet is the biggest panel the battle camera sees, so this is what keeps
+	# a street of one shape from looking stamped from one mould. (A film on
+	# the bonnet's own slope, inside its shut lines.)
+	# (hashed shape first, so each shape of one paint draws its own)
+	var odd := absi(hash(str(v) + col.to_html(false)))
+	if odd % 4 == 0 and not burnt:
+		VmCiv._odd_bonnet(self, m, body, w - 0.22, fz - 0.1, bf + 0.2, col, odd >> 3)
 	# The lamps sit on the nose and tail as they lean (they floated a few
 	# centimetres ahead of a raked nose): sealed rectangular headlamps either
 	# side of a black grille, amber indicators under them, and tail clusters,
