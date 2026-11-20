@@ -186,6 +186,15 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		camera.size = 1.25 if kind == "kerbside_stop" else 1.8
 		camera.position = center + Vector3(1.7, 0.65, -3.5)
 		camera.look_at(center)
+	if kind in ["stop_sign_face", "stop_sign_back"]:
+		# the stop sign close enough to read its lettering's shapes: its face
+		# a little off square with the sun on it, or its bare back in the sun
+		center = Vector3(0, 2.15, 0)
+		camera.size = 1.0
+		camera.position = center + (Vector3(0.9, 0.3, -3.5) if kind == "stop_sign_face" else Vector3(1.6, 0.3, 3.0))
+		camera.look_at(center)
+		if kind == "stop_sign_face":
+			sun.rotation_degrees = Vector3(-35, 160, 0)
 	cameras[kind] = [center.x, center.y, center.z, camera.size, camera.position.distance_to(center)]
 	motion_cells.append({"camera": camera, "sun": sun, "center": center, "size": camera.size})
 	var label := Label.new()
@@ -392,13 +401,13 @@ func _subject(kind: String) -> Node3D:
 					br.seed = 3 + i
 					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
 			return row
-		"kerbside_stop", "kerbside_lamp_joint":
+		"kerbside_stop", "kerbside_lamp_joint", "stop_sign_face", "stop_sign_back":
 			var detail := Node3D.new()
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 5
 			var kit := BuildingKit.nodes(detail, rng)
-			if kind == "kerbside_stop": BuildingKerbside.stop_sign(kit, rng)
-			else: BuildingKerbside.column(kit)
+			if kind == "kerbside_lamp_joint": BuildingKerbside.column(kit)
+			else: BuildingKerbside.stop_sign(kit, rng)
 			return detail
 		"kerbside":
 			# street lamps, a lantern, a hydrant, a stop sign, a mailbox and the

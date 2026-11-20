@@ -472,7 +472,10 @@ The pieces at the kerb are `BuildingKerbside`'s:
   and finial.
 - **A pillar hydrant** (`hydrant`): flange, barrel, bonnet, and outlets with chained caps.
 - **A stop sign** (`stop_sign`): the octagon with STOP in its white border, standing off its post on brackets,
-  its back bare galvanised steel.
+  its back bare galvanised steel. Its face is `sheeting` (a sign's reflective film: flat colour, no paint to wear
+  through), and STOP is one cached part every sign shares (`stop_letters`): flat ribbons along each letter's centre
+  line (lines and Bezier curves) in the highway sans road signs use, a third of the sign's height, 3 mm proud of
+  the red. The fixture checks it lies in front of the face and inside the border.
 - **A mailbox on its post** (`mailbox`), with its flag up or down.
 - **The electricity board's cabinet** (`cabinet`), with louvres, doors and a danger plate.
 

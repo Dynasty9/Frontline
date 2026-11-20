@@ -1478,6 +1478,11 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.55, 0.55, 0.55), "rough": 0.85, "bump": 0.2, "grime": 0.3}
 		"plain_dark":
 			return {"pattern": PLAIN, "col_a": Color(0.18, 0.18, 0.18), "rough": 0.8, "bump": 0.2, "grime": 0.2}
+		"sheeting":
+			# a road sign's reflective sheeting: flat colour under a satin film,
+			# with no paint to wear through to bare metal in patches (its base
+			# dark enough that a sign's red tints to a deep red, not a coral)
+			return {"pattern": PLAIN, "col_a": Color(0.4, 0.4, 0.4), "rough": 0.5, "bump": 0.0, "grime": 0.0}
 		"bronze":
 			# cast bronze gone green with weather (a statue, a plaque): the
 			# verdigris clouded with the darker bronze where the rain doesn't
