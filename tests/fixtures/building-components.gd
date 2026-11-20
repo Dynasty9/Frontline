@@ -416,11 +416,11 @@ func _ready() -> void:
 		lw.free()
 	# The water tower stands on its piers within its footprint, its finial at
 	# 13.5 m or so.
-	var wtk := kit()
-	BuildingLandmarks.water_tower(wtk, wtk.rng)
-	var wtb := _bounds(wtk.sink.root, Transform3D.IDENTITY)
-	check(wtb.size.x <= 6.5 and wtb.size.z <= 6.4 and wtb.position.y >= -0.01 and wtb.end.y > 13.0 and wtb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % wtb)
-	wtk.sink.root.free()
+	var towk := kit()
+	BuildingLandmarks.water_tower(towk, towk.rng)
+	var towb := _bounds(towk.sink.root, Transform3D.IDENTITY)
+	check(towb.size.x <= 6.5 and towb.size.z <= 6.4 and towb.position.y >= -0.01 and towb.end.y > 13.0 and towb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % towb)
+	towk.sink.root.free()
 	# A tunnel's mouth keeps to its 3 m plot, its shaft going down below it.
 	var tn := Structure.preview_model("tunnel", 1)
 	var tnb := _bounds(tn, Transform3D.IDENTITY)
