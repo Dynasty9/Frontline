@@ -4101,29 +4101,31 @@ func _build_model() -> void:
 			var hoist := BuildingFittings.flagpole(bk, Vector3(size.x * 0.4 - 0.55, 3.0 + rise - 0.1, 0), 1.3, Color(0.6, 0.6, 0.58), false)
 			_flag = _box(hoist + Vector3(0.52, -0.25, 0), Vector3(1.0, 0.6, 0.04), tc)
 		"factory":
-			# a sheeted shed on a concrete upstand under a slab, north lights
-			# along the roof, a roller shutter onto a loading apron, pipes on
-			# brackets down one side, extract cowls and the works chimney
+			# a sheeted shed on a brick dado under a slab, north lights along
+			# the roof, a roller shutter onto a loading apron between bollards,
+			# glazing high along the sides and back, gutters and downpipes,
+			# pipes on brackets down one side in and out of the wall, extract
+			# cowls and the boiler's steel stack for the works chimney
+			# (BuildingFactory has the walls and the chimney)
 			var fk := _kit(rng)
 			_mk(Res.box(Vector3(size.x + 0.4, 0.3, size.z + 0.4)), "concrete", Vector3(0, 5.15, 0), Vector3.ZERO, Color(0.48, 0.48, 0.46))
 			BuildingRoofs.sawtooth(fk.at_point(Vector3(0, 5.3, 0)), size.x * 0.9, size.z * 0.8, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45), Color(0.3, 0.32, 0.3), true)
-			var shed := Color(0.45, 0.46, 0.44)
-			for face in 4:
-				var out: Vector3 = [Vector3(0, 0, -1), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(1, 0, 0)][face]
-				var flen := size.x if face < 2 else size.z
-				var face_kit := fk.on_face(out * Vector3(size.x * 0.5, 0, size.z * 0.5), out)
-				BuildingWalls.face(face_kit, flen, 5.0, "corrugated", shed, [Rect2(-2.3, 0.0, 4.6, 4.45)] if face == 0 else [])
-				if face == 0:
-					BuildingOpenings.roller_door(face_kit, Vector3(0, 0, 0.035), Vector2(4.4, 3.9), Color(0.55, 0.5, 0.36))
+			BuildingFactory.walls(fk, size, Color(0.45, 0.46, 0.44), rng)
 			_mk(Res.box(Vector3(6.4, 0.12, 3.4)), "concrete_floor", Vector3(0, 0.06, -size.z * 0.5 - 1.7))
-			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 3.2, -size.z * 0.45), Vector3(size.x * 0.5 + 0.25, 3.2, size.z * 0.45), 0.18, Color(0.5, 0.42, 0.3), Vector3(-0.25, 0, 0))
-			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 2.7, -size.z * 0.45), Vector3(size.x * 0.5 + 0.25, 2.7, size.z * 0.45), 0.12, Color(0.35, 0.37, 0.33), Vector3(-0.25, 0, 0))
+			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 3.2, -size.z * 0.43), Vector3(size.x * 0.5 + 0.25, 3.2, size.z * 0.43), 0.18, Color(0.5, 0.42, 0.3), Vector3(-0.25, 0, 0), "steel", true)
+			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 2.7, -size.z * 0.43), Vector3(size.x * 0.5 + 0.25, 2.7, size.z * 0.43), 0.12, Color(0.35, 0.37, 0.33), Vector3(-0.25, 0, 0), "steel", true)
+			# the cowls stand on the north lights' slopes, through a flashing
+			# laid on the sheet (`ang` the slopes' pitch, as sawtooth lays them)
+			var ang := atan2(0.9, size.x * 0.9 / 3.0 * 0.78)
 			for i in 2:
-				BuildingFittings.flue(fk, Vector3(-size.x * 0.25 + i * 1.4, 5.3, size.z * 0.32), 0.3, 0.35, Color(0.4, 0.41, 0.4), "steel")
-			BuildingFittings.stack(fk, Vector3(size.x * 0.35, 5.1, size.z * 0.3), 0.55, 0.42, 5.0)
+				var cx := -size.x * 0.25 + i * 1.4
+				var cy := 5.3 + BuildingRoofs.sawtooth_rise(size.x * 0.9, 3, 0.9, cx) + 0.04
+				fk.plate(Vector3(0.74, 0.012, 0.9), Vector3(cx, cy + 0.008, size.z * 0.32), "steel", Color(0.36, 0.37, 0.36), Vector3(0, 0, ang))
+				BuildingFittings.flue(fk, Vector3(cx, cy - 0.38 * tan(ang), size.z * 0.32), 0.3, 0.5, Color(0.4, 0.41, 0.4), "steel")
+			var mouth := BuildingFactory.chimney(fk, size, rng)
 			if world != null and world.fx and world.fx.vfx and built:
 				var stack := world.fx.vfx.make_burner(0.7)
-				stack.position = Vector3(size.x * 0.35, 10.4, size.z * 0.3)
+				stack.position = mouth + Vector3(0, 0.15, 0)  # (out from under its rain cap)
 				model.add_child(stack)
 				world.fx.vfx.set_burning(stack, 0.0, 0.35)
 			BuildingFittings.flagpole(fk, Vector3(-size.x * 0.4 - 0.66, 5.3, 0), 1.5, Color(0.6, 0.6, 0.58), false)

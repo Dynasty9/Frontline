@@ -140,6 +140,7 @@ func _ready() -> void:
 			BuildingFittings.hopper(k, Vector3(0, 3, 0))
 			BuildingFittings.chimney(k, Vector3.ZERO, Vector2(0.6, 0.6), 1.5)
 			BuildingFittings.stack(k, Vector3.ZERO, 0.5, 0.4, 5.0)
+			BuildingFittings.steel_stack(k, Vector3.ZERO, 0.28, 4.6, [Vector3(3, 0, 0), Vector3(-1.5, 0, 2.6), Vector3(-1.5, 0, -2.6)], k.rng)
 			BuildingFittings.flue(k, Vector3.ZERO, 0.1, 1.0)
 			BuildingFittings.ac_unit(k, Vector3.ZERO)
 			BuildingFittings.water_tank(k, Vector3.ZERO)
@@ -531,6 +532,33 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# The vehicle works: its walls' dressing keeps close to the shed (the
+	# bollards and drums an arm's length out), under the eaves, and the brick
+	# dado stops either side of the shutter, so a vehicle drives out clear.
+	var fk2 := kit()
+	var shed := Vector3(11.0, 5.0, 10.0)
+	BuildingFactory.walls(fk2, shed, Color(0.45, 0.46, 0.44), fk2.rng)
+	var wb := _bounds(fk2.sink.root, Transform3D.IDENTITY)
+	check(wb.position.x >= -6.4 and wb.end.x <= 6.4 and wb.position.z >= -5.8 and wb.end.z <= 5.8 and wb.end.y <= 5.2 and wb.position.y >= -0.01, "a factory's walls keep to the shed (%s)" % wb)
+	for x: float in [-2.0, 0.0, 2.0]:
+		check(not occupied(fk2.sink.root, Vector3(x, 0.6, -5.07)), "the factory's dado leaves the shutter clear at x %.1f" % x)
+	check(occupied(fk2.sink.root, Vector3(4.0, 0.6, -5.07)), "the factory's dado runs along its front")
+	fk2.sink.root.free()
+	# Its chimney stands on the roof slab in the strip beside the north
+	# lights, out of them and inside the eaves, its kerb and its guys'
+	# blocks bedded on the slab, its mouth where the smoke is put.
+	var fck := kit()
+	var fcm := BuildingFactory.chimney(fck, shed, fck.rng)
+	var fcb := _bounds(fck.sink.root, Transform3D.IDENTITY)
+	check(fcb.position.y >= BuildingFactory.SLAB - 0.05 and fcb.end.y <= BuildingFactory.FLUE_TOP + 0.6 and absf(fcb.end.x) <= shed.x * 0.5 + 0.2
+		and fcb.position.z >= -shed.z * 0.5 and fcb.end.z <= shed.z * 0.5 + 0.2, "the factory's chimney keeps to its roof slab (%s)" % fcb)
+	check(is_equal_approx(fcm.y, BuildingFactory.FLUE_TOP) and occupied(fck.sink.root, Vector3(fcm.x, BuildingFactory.SLAB + 0.05, fcm.z)), "the chimney stands on its kerb on the slab under its mouth (%s)" % fcm)
+	check(occupied(fck.sink.root, Vector3(fcm.x, BuildingFactory.FLUE_TOP - 1.0, fcm.z)), "the chimney's stack rises to its mouth")
+	for x: float in [2.0, 3.0, 4.0]:
+		for z: float in [1.5, 3.0, 3.8]:
+			var under := BuildingFactory.SLAB + BuildingRoofs.sawtooth_rise(shed.x * 0.9, 3, 0.9, x) - 0.1
+			check(not occupied(fck.sink.root, Vector3(x, under, z)), "the chimney keeps out of the north lights at (%.1f, %.1f)" % [x, z])
+	fck.sink.root.free()
 	# The pillbox: its walls, drawn from the bunker's parts, fill every part
 	# that stops a bullet, short of them only at the corners' chamfer; its
 	# embrasure stands out of the wall no further than its frame, round the
