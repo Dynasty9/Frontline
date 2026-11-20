@@ -411,7 +411,7 @@ func _ready() -> void:
 	# its foot lies flat within a metre of it inside, and outside no further
 	# than the debris a dark house sheds (BuildingWeathering.spill, out to a
 	# metre and a half and a lath's length). Its parts, its cover, stay whole.
-	for ci in [1, 2, 4, 5]:
+	for ci in [1, 2, 4, BuildingMaterials.HOUSE.find("timber")]:
 		for v in 4:
 			var rw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), false, 70 + v + ci * 10, true)
 			var lw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), false, 70 + v + ci * 10, false)
