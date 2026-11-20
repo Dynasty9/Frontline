@@ -24,6 +24,16 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 		k._add(pv, _carcass(), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO, AXLE, Vector3(r, w / 0.50, r))
 		if profile != "aircraft":
 			k._add(pv, _tread(r, w, profile == "offroad"), "rubber", Color(0.20, 0.21, 0.19), Vector3.ZERO)
+		if r >= 0.3 and profile != "aircraft":
+			# The maker's name and the size moulded into the outer sidewall
+			# (inboard too on a spare, which shows both).
+			var faces: Array[float] = [1.0, -1.0]
+			if register:
+				faces = [signf(pos.x) if pos.x != 0.0 else 1.0]
+			for f: float in faces:
+				# (the letters' faces scuffed a shade paler than the wall, as
+				# kerbs and brush rub them)
+				k._add(pv, _sidewall(r, w), "rubber", Color(0.25, 0.26, 0.24), Vector3.ZERO, Vector3(0, PI, 0) if f < 0.0 else Vector3.ZERO, Vector3.ONE, false)
 	# The rim: its disc (the drum's edge runs on inside the tyre), the rolled
 	# lip at each face, eight wheel nuts a face and the hub. Small wheels need
 	# half the segments to look as round.
@@ -367,6 +377,69 @@ static func _carcass() -> ArrayMesh:
 	return _meshes["carcass"]
 
 
+## The lettering moulded into a tyre's sidewall on its +x face (the axle
+## along x): the maker's name in an arc over the hub and the size and pattern
+## in a smaller one under it, every letter a block standing a few millimetres
+## proud of the carcass's curve (see _carcass), as on a Michelin XZL or a
+## Goodyear on a truck. From a few metres the raised letters catch the light
+## on their edges and break up the plain black wall. Cached by size.
+static func _sidewall(r: float, w: float) -> ArrayMesh:
+	var key := "sidewall_%.3f_%.3f" % [r, w]
+	if _meshes.has(key):
+		return _meshes[key]
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	# The carcass's face at radius rho (a fraction of r): w/2 at its widest.
+	var wall := func(rho: float) -> float: return w * 0.5 * sqrt(maxf(0.0, 1.0 - pow((rho - 0.75) / 0.25, 2.0)))
+	var proud := clampf(r * 0.018, 0.006, 0.012)
+	# [middle angle (from the top, toward the front), radius, letter height,
+	# letters' widths in heights (0 a space)]
+	# (on the plain wall between the rim's flange and the lugs' ends)
+	for arc: Array in [[0.0, 0.69, 0.085, [0.9, 0.6, 0.7, 0.7, 0.6, 0.6, 0.25, 0.7]], [PI, 0.68, 0.07, [0.6, 0.6, 0.6, 0.0, 0.6, 0.6, 0.0, 0.7, 0.6, 0.55]]]:
+		var mid: float = arc[0]
+		var rho: float = arc[1]
+		var hgt: float = arc[2]
+		var widths: Array = arc[3]
+		var gap := 0.22
+		var span := 0.0
+		for wd: float in widths:
+			span += (wd if wd > 0.0 else 0.5) + gap
+		span -= gap
+		# (radians along the arc for a length in letter heights)
+		var per := hgt / rho
+		var a := mid - span * per * 0.5
+		for wd: float in widths:
+			if wd <= 0.0:
+				a += (0.5 + gap) * per
+				continue
+			var a0 := a
+			var a1 := a + wd * per
+			a = a1 + gap * per
+			var lo := rho - hgt * 0.5
+			var hi := rho + hgt * 0.5
+			var corners: Array[Vector3] = []
+			for q: Vector2 in [Vector2(a0, lo), Vector2(a1, lo), Vector2(a1, hi), Vector2(a0, hi)]:
+				corners.append(Vector3(0.0, cos(q.x) * q.y * r, -sin(q.x) * q.y * r))
+			var foot: Array[Vector3] = []
+			var top: Array[Vector3] = []
+			for i in 4:
+				var rr: float = lo if i < 2 else hi
+				foot.append(corners[i] + Vector3(wall.call(rr) - 0.002, 0, 0))
+				top.append(corners[i] + Vector3(wall.call(rr) + proud, 0, 0))
+			var face := (top[1] - top[0]).cross(top[3] - top[0]).normalized()
+			if face.x < 0.0:
+				face = -face
+			_quad(verts, norms, idx, face, top[0], top[1], top[2], top[3])
+			for i in 4:
+				var j := (i + 1) % 4
+				var out := ((top[i] + top[j]) * 0.5 - (top[0] + top[1] + top[2] + top[3]) * 0.25)
+				out.x = 0.0
+				_quad(verts, norms, idx, out.normalized(), foot[i], foot[j], top[j], top[i])
+	_meshes[key] = _mesh(verts, norms, idx)
+	return _meshes[key]
+
+
 ## The tread for an `r` by `w` tyre, as one mesh: two staggered rows of
 ## blocks round the crown, each placed and turned exactly as the separate
 ## blocks were. They were bevelled boxes; a bevel of a few millimetres on a
@@ -491,7 +564,13 @@ static func road(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: fl
 	var outer := signf(pos.x) if pos.x != 0 else 1.0
 	for side: float in [-1.0, 1.0]:
 		var x: float = side * w * 0.30
-		k._add(pv, drum(r, r, w * 0.38, 28), "rubber" if rubber else "gunmetal_w", null, Vector3(x, 0, 0), AXLE)
+		if rubber and side == outer:
+			# The outer tyre's outer edge, the one that shows past the track
+			# and under the skirts, is moulded round, not cut square: a single
+			# chamfer, shaded round into the face and the tread (see _road_tyre).
+			k._add(pv, _road_tyre(r, w * 0.38), "rubber", null, Vector3(x, 0, 0), Vector3(0, PI, 0) if side < 0.0 else Vector3.ZERO)
+		else:
+			k._add(pv, drum(r, r, w * 0.38, 28), "rubber" if rubber else "gunmetal_w", null, Vector3(x, 0, 0), AXLE)
 		k._add(pv, drum(r * 0.82, r * 0.77, w * 0.40, 28), mat, col, Vector3(x, 0, 0), AXLE)
 		k._add(pv, drum(r * 0.66, r * 0.66, w * 0.41, 24), mat, col, Vector3(x, 0, 0), AXLE, Vector3.ONE, false)
 		# The inboard twin's bolts face the hull side, behind the track; a
@@ -508,6 +587,22 @@ static func road(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: fl
 		k._box(pv, Vector3(0.025, r * 0.44, r * 0.18), Vector3(outer * w * 0.52, sin(a) * r * 0.53, cos(a) * r * 0.53), mat, col, Vector3(-a + PI / 2, 0, 0), false)
 	k.wheels.append(pv)
 	return pv
+
+
+## A road wheel's rubber tyre `h` wide about the X axis (the axle), its +x
+## edge rolled over in one chamfer (about a twelfth of its radius) whose
+## normals blend into the face and the tread, so it lights as a moulded,
+## rounded edge; the other edge, against its twin, stays square. Half as many
+## triangles again as the plain drum, where a lathed round profile cost three
+## times as many. Cached by size.
+static func _road_tyre(r: float, h: float) -> ArrayMesh:
+	var key := "road_tyre_%.3f_%.3f" % [r, h]
+	if _meshes.has(key):
+		return _meshes[key]
+	var c := minf(r * 0.08, h * 0.25)
+	var x := h * 0.5
+	_meshes[key] = _lathe(PackedVector2Array([Vector2(x, 0.0), Vector2(x, r - c), Vector2(x - c, r), Vector2(-x, r), Vector2(-x, 0.0)]), 28)
+	return _meshes[key]
 
 
 ## Track return roller (support roller): one of the small wheels above the road

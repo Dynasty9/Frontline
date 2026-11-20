@@ -441,17 +441,17 @@ static func _offroad(k: VehicleModels, team: int, seed: int, v: String) -> void:
 		var fc := _face(lo3, hi3, f)
 		var a := 0.1 if f == 1 else 0.0
 		_pane(k, m, "civ_off_hlc%d" % f, fc, nin, a, a + 0.9, 0.64, 0.9, 0.0, 0.02, "gunmetal_w")
-		_pane(k, m, "civ_off_hlcl%d" % f, fc, nin, a + 0.06, a + 0.84, 0.68, 0.87, 0.02, 0.008, "paint", LENS)
+		_pane(k, m, "civ_off_hlcl%d" % f, fc, nin, a + 0.06, a + 0.84, 0.68, 0.87, 0.02, 0.008, "signal_lens", LENS)
 	var ff := _face(lo3, hi3, 0)
 	for s in [0, 1]:
 		var u0 := 0.0 if s == 0 else 0.76
 		_pane(k, m, "civ_off_hl%d" % s, ff, nin, u0, u0 + 0.24, 0.62, 0.9, 0.0, 0.02, "gunmetal_w")
-		_pane(k, m, "civ_off_hll%d" % s, ff, nin, u0 + 0.02, u0 + 0.22, 0.66, 0.87, 0.02, 0.008, "paint", LENS)
+		_pane(k, m, "civ_off_hll%d" % s, ff, nin, u0 + 0.02, u0 + 0.22, 0.66, 0.87, 0.02, 0.008, "signal_lens", LENS)
 		for j in 2:
 			var pu := u0 + 0.04 + j * 0.09 + (0.0 if s == 0 else 0.02)
-			_pane(k, m, "civ_off_prj%d%d" % [s, j], ff, nin, pu, pu + 0.07, 0.7, 0.83, 0.028, 0.01, "paint", HEAD)
-		_pane(k, m, "civ_off_drl%d" % s, ff, nin, u0 + 0.02, u0 + 0.22, 0.6, 0.625, 0.02, 0.008, "paint", Color(0.95, 0.95, 0.9))
-		_pane(k, m, "civ_off_fog%d" % s, ff, nin, u0 + 0.06, u0 + 0.16, 0.14, 0.22, 0.0, 0.02, "paint", LENS)
+			_pane(k, m, "civ_off_prj%d%d" % [s, j], ff, nin, pu, pu + 0.07, 0.7, 0.83, 0.028, 0.01, "signal_lens", HEAD)
+		_pane(k, m, "civ_off_drl%d" % s, ff, nin, u0 + 0.02, u0 + 0.22, 0.6, 0.625, 0.02, 0.008, "signal_lens", Color(0.95, 0.95, 0.9))
+		_pane(k, m, "civ_off_fog%d" % s, ff, nin, u0 + 0.06, u0 + 0.16, 0.14, 0.22, 0.0, 0.02, "signal_lens", LENS)
 	# the black lower lip and the intake under the grille
 	_pane(k, m, "civ_off_lip", ff, nin, 0.08, 0.92, 0.0, 0.1, 0.0, 0.04, "plain", TRIM)
 	_xbody(k, m, "civ_off_bedb", [0.39, 0.5, 2.5, 0.5, 2.5, 0.96, 0.39, 0.96], -hw, hw, 0.03, [[zr, wr, ar]], "car_paint", col, 8, [], ROLL_BOXY)
@@ -991,11 +991,11 @@ static func _van(k: VehicleModels, team: int, seed: int, v: String) -> void:
 		var up := Vector3(0, 1, 0.37).normalized()
 		_slab(k, m, Vector3(s * 0.42, 0.9, -2.9), Vector3(s * 0.8, 0.92, -2.885), 0.21, 0.05, "gunmetal_w", null, up)
 		_slab(k, m, Vector3(s * 0.79, 0.92, -2.88), Vector3(s * 0.95, 0.98, -2.64), 0.21, 0.05, "gunmetal_w", null, up)
-		_slab(k, m, Vector3(s * 0.44, 0.9, -2.915), Vector3(s * 0.79, 0.92, -2.9), 0.17, 0.03, "paint", LENS, up)
-		_slab(k, m, Vector3(s * 0.81, 0.925, -2.89), Vector3(s * 0.96, 0.98, -2.66), 0.17, 0.03, "paint", LENS, up)
-		_slab(k, m, Vector3(s * 0.5, 0.91, -2.925), Vector3(s * 0.6, 0.91, -2.92), 0.09, 0.03, "paint", HEAD, up)
-		_slab(k, m, Vector3(s * 0.64, 0.92, -2.92), Vector3(s * 0.74, 0.92, -2.915), 0.09, 0.03, "paint", HEAD, up)
-		_slab(k, m, Vector3(s * 0.88, 0.96, -2.8), Vector3(s * 0.95, 0.98, -2.68), 0.06, 0.035, "paint", AMBER, up)
+		_slab(k, m, Vector3(s * 0.44, 0.9, -2.915), Vector3(s * 0.79, 0.92, -2.9), 0.17, 0.03, "signal_lens", LENS, up)
+		_slab(k, m, Vector3(s * 0.81, 0.925, -2.89), Vector3(s * 0.96, 0.98, -2.66), 0.17, 0.03, "signal_lens", LENS, up)
+		_slab(k, m, Vector3(s * 0.5, 0.91, -2.925), Vector3(s * 0.6, 0.91, -2.92), 0.09, 0.03, "signal_lens", HEAD, up)
+		_slab(k, m, Vector3(s * 0.64, 0.92, -2.92), Vector3(s * 0.74, 0.92, -2.915), 0.09, 0.03, "signal_lens", HEAD, up)
+		_slab(k, m, Vector3(s * 0.88, 0.96, -2.8), Vector3(s * 0.95, 0.98, -2.68), 0.06, 0.035, "signal_lens", AMBER, up)
 		VehicleFittings.headlamp(k, m, Vector3(s * 0.7, 0.5, -3.0) + Vector3(0, 0, -0.015), 0.045)
 	# the moulded bumper, the slatted intake low in its face (the bumper's black
 	# face behind the slats), the plate; wipers parked under the windscreen
@@ -1093,9 +1093,9 @@ static func _quad(k: VehicleModels, seed: int) -> void:
 	k._cyl(m, 0.06, 0.06, 1.2, Vector3(0, 0.3, zr), Vector3(0, 0, PI / 2), "gunmetal_w", null, 8)
 	k._add(m, Res.sphere(0.1, 10), "gunmetal_w", null, Vector3(0.0, 0.3, zr))
 	# the front body over the wheels, the console and tank, the rear body
-	_xbody(k, m, "civ_quad_front", [-0.98, 0.56, -0.24, 0.56, -0.2, 0.7, -0.34, 0.84, -0.9, 0.85, -1.0, 0.72], -0.57, 0.57, 0.04, [[zf, 0.29, 0.35]], "paint", col, 7, [0.22, 0.08, 0.0, 0.0], ROLL)
-	_xbody(k, m, "civ_quad_rear", [0.24, 0.56, 0.98, 0.56, 1.0, 0.7, 0.92, 0.84, 0.3, 0.85, 0.2, 0.7], -0.58, 0.58, 0.04, [[zr, 0.3, 0.36]], "paint", col, 7, [0.0, 0.0, 0.2, 0.07], ROLL)
-	k._add(m, VehicleModels.loft("civ_quad_tank", [-0.22, -0.4, 0.22, -0.4, 0.2, 0.05, -0.2, 0.05], [-0.15, -0.3, 0.15, -0.3, 0.14, 0.0, -0.14, 0.0], 0.62, 0.92, 0.03), "paint", col, Vector3.ZERO)
+	_xbody(k, m, "civ_quad_front", [-0.98, 0.56, -0.24, 0.56, -0.2, 0.7, -0.34, 0.84, -0.9, 0.85, -1.0, 0.72], -0.57, 0.57, 0.04, [[zf, 0.29, 0.35]], "car_paint", col, 7, [0.22, 0.08, 0.0, 0.0], ROLL)
+	_xbody(k, m, "civ_quad_rear", [0.24, 0.56, 0.98, 0.56, 1.0, 0.7, 0.92, 0.84, 0.3, 0.85, 0.2, 0.7], -0.58, 0.58, 0.04, [[zr, 0.3, 0.36]], "car_paint", col, 7, [0.0, 0.0, 0.2, 0.07], ROLL)
+	k._add(m, VehicleModels.loft("civ_quad_tank", [-0.22, -0.4, 0.22, -0.4, 0.2, 0.05, -0.2, 0.05], [-0.15, -0.3, 0.15, -0.3, 0.14, 0.0, -0.14, 0.0], 0.62, 0.92, 0.03), "car_paint", col, Vector3.ZERO)
 	k._add(m, VehicleModels.loft("civ_quad_seat", [-0.19, -0.04, 0.19, -0.04, 0.19, 0.62, -0.19, 0.62], [-0.16, 0.0, 0.16, 0.0, 0.16, 0.58, -0.16, 0.58], 0.8, 0.95, 0.035), "plain", dark, Vector3.ZERO)
 	# floorboards with their raised lips
 	for s in [-1.0, 1.0]:
@@ -1219,8 +1219,8 @@ static func _hatch(k: VehicleModels, seed: int, sport: bool) -> void:
 	for s in [-1.0, 1.0]:
 		var up := Vector3(0, 1, 0.5).normalized()
 		_slab(k, m, Vector3(s * 0.4, 0.68 + dy, -2.14), Vector3(s * 0.8, 0.735 + dy, -1.88), 0.1, 0.05, "gunmetal_w", null, up)
-		_slab(k, m, Vector3(s * 0.42, 0.685 + dy, -2.155), Vector3(s * 0.79, 0.74 + dy, -1.9), 0.075, 0.03, "paint", LENS, up)
-		_slab(k, m, Vector3(s * 0.48, 0.69 + dy, -2.16), Vector3(s * 0.6, 0.71 + dy, -2.1), 0.05, 0.03, "paint", HEAD, up)
+		_slab(k, m, Vector3(s * 0.42, 0.685 + dy, -2.155), Vector3(s * 0.79, 0.74 + dy, -1.9), 0.075, 0.03, "signal_lens", LENS, up)
+		_slab(k, m, Vector3(s * 0.48, 0.69 + dy, -2.16), Vector3(s * 0.6, 0.71 + dy, -2.1), 0.05, 0.03, "signal_lens", HEAD, up)
 		# the tail clusters wrapping round the corners: a black housing, the
 		# red lens with the clear reversing lamp inboard of it, the amber
 		# indicator at the tip on the wing
@@ -1423,10 +1423,10 @@ static func _suv(k: VehicleModels, seed: int) -> void:
 		var up := Vector3(0, 1, 0.1).normalized()
 		_slab(k, m, Vector3(s * 0.31, 0.87, -2.445), Vector3(s * 0.67, 0.875, -2.445), 0.12, 0.04, "gunmetal_w", null, up)
 		_slab(k, m, Vector3(s * 0.66, 0.875, -2.44), Vector3(s * 0.88, 0.9, -2.23), 0.11, 0.04, "gunmetal_w", null, up)
-		_slab(k, m, Vector3(s * 0.32, 0.87, -2.465), Vector3(s * 0.66, 0.875, -2.465), 0.09, 0.02, "paint", LENS, up)
-		_slab(k, m, Vector3(s * 0.67, 0.877, -2.455), Vector3(s * 0.885, 0.9, -2.25), 0.08, 0.02, "paint", LENS, up)
+		_slab(k, m, Vector3(s * 0.32, 0.87, -2.465), Vector3(s * 0.66, 0.875, -2.465), 0.09, 0.02, "signal_lens", LENS, up)
+		_slab(k, m, Vector3(s * 0.67, 0.877, -2.455), Vector3(s * 0.885, 0.9, -2.25), 0.08, 0.02, "signal_lens", LENS, up)
 		for j in 2:
-			k._add(m, Res.torus(0.03, 0.042), "paint", HEAD, Vector3(s * (0.42 + j * 0.15), 0.872, -2.478), Vector3(PI / 2, 0, 0))
+			k._add(m, Res.torus(0.03, 0.042), "signal_lens", HEAD, Vector3(s * (0.42 + j * 0.15), 0.872, -2.478), Vector3(PI / 2, 0, 0))
 		# the L-shaped tail lights across the corners in their black housings,
 		# the clear reversing lamp in the inboard end, a reflector under them
 		var wrap := Vector3(s * 0.83, 0, 0.56) * 0.007
@@ -1484,9 +1484,9 @@ static func _kart(k: VehicleModels, seed: int) -> void:
 	k._cyl(m, 0.09, 0.09, 0.012, Vector3(-0.32, 0.14, zr), Vector3(0, 0, PI / 2), "gunmetal_w", null, 14)
 	k._cyl(m, 0.08, 0.08, 0.012, Vector3(0.2, 0.14, zr), Vector3(0, 0, PI / 2), "steel", Color(0.6, 0.6, 0.6), 14)
 	# nose fairing, front panel, pods in the livery
-	k._add(m, VehicleModels.loft("civ_kart_nose", [-0.38, -0.92, 0.38, -0.92, 0.5, -0.66, -0.5, -0.66], [-0.28, -0.88, 0.28, -0.88, 0.42, -0.68, -0.42, -0.68], 0.05, 0.15, 0.02), "paint", col, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("civ_kart_nose", [-0.38, -0.92, 0.38, -0.92, 0.5, -0.66, -0.5, -0.66], [-0.28, -0.88, 0.28, -0.88, 0.42, -0.68, -0.42, -0.68], 0.05, 0.15, 0.02), "car_paint", col, Vector3.ZERO)
 	k._add(m, VehicleModels.loft("civ_kart_nose_tip", [-0.28, -0.88, 0.28, -0.88, 0.42, -0.68, -0.42, -0.68], [-0.2, -0.82, 0.2, -0.82, 0.3, -0.72, -0.3, -0.72], 0.15, 0.18), "paint", acc, Vector3.ZERO)
-	k._add(m, VehicleModels.loft("civ_kart_panel", [-0.2, -0.47, 0.2, -0.47, 0.2, -0.43, -0.2, -0.43], [-0.16, -0.4, 0.16, -0.4, 0.16, -0.36, -0.16, -0.36], 0.1, 0.42), "paint", col, Vector3.ZERO)
+	k._add(m, VehicleModels.loft("civ_kart_panel", [-0.2, -0.47, 0.2, -0.47, 0.2, -0.43, -0.2, -0.43], [-0.16, -0.4, 0.16, -0.4, 0.16, -0.36, -0.16, -0.36], 0.1, 0.42), "car_paint", col, Vector3.ZERO)
 	k._box(m, Vector3(0.24, 0.17, 0.012), Vector3(0, 0.3, -0.425), "paint", Color(0.88, 0.87, 0.83), Vector3(-0.22, 0, 0), false)
 	k._box(m, Vector3(0.06, 0.12, 0.014), Vector3(-0.04, 0.3, -0.43), "paint", Color(0.08, 0.08, 0.08), Vector3(-0.22, 0, 0), false)
 	k._box(m, Vector3(0.06, 0.12, 0.014), Vector3(0.05, 0.3, -0.43), "paint", Color(0.08, 0.08, 0.08), Vector3(-0.22, 0, 0), false)
@@ -1496,7 +1496,7 @@ static func _kart(k: VehicleModels, seed: int) -> void:
 		if s < 0.0:
 			pb = [-0.66, -0.26, -0.27, -0.34, -0.27, 0.3, -0.66, 0.3]
 			pt = [-0.62, -0.22, -0.3, -0.28, -0.3, 0.26, -0.62, 0.26]
-		k._add(m, VehicleModels.loft("civ_kart_pod%d" % int(s), pb, pt, 0.06, 0.2, 0.02), "paint", col, Vector3.ZERO)
+		k._add(m, VehicleModels.loft("civ_kart_pod%d" % int(s), pb, pt, 0.06, 0.2, 0.02), "car_paint", col, Vector3.ZERO)
 		k._box(m, Vector3(0.012, 0.1, 0.22), Vector3(s * 0.645, 0.13, 0.05), "paint", Color(0.88, 0.87, 0.83), Vector3.ZERO, false)
 		k._box(m, Vector3(0.014, 0.07, 0.04), Vector3(s * 0.65, 0.13, 0.02), "paint", Color(0.08, 0.08, 0.08), Vector3.ZERO, false)
 		k._box(m, Vector3(0.014, 0.07, 0.04), Vector3(s * 0.65, 0.13, 0.08), "paint", Color(0.08, 0.08, 0.08), Vector3.ZERO, false)
