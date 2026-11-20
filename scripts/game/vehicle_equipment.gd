@@ -32,15 +32,15 @@ static func storage(k: VehicleModels, parent: Node3D, center: Vector3, size: Vec
 	if camo > 0.0 and minf(size.x, size.z) >= 0.12 and maxf(size.x, size.z) >= 0.4 and VehicleCloth._upright(k, mount):
 		var rng := VehicleCargo.kit(k, parent, center, 13)
 		var lid := size.y * 0.5 + lip * 0.4
-		if rng.randf() < 0.4 * camo:
-			VehicleCloth.net(k, mount, Vector3(0, lid, 0), Vector3(size.x * 0.9, rng.randf_range(0.07, 0.15), size.z * 0.88), Vector3.ZERO, rng)
-		elif rng.randf() < 0.45 * camo and maxf(size.x, size.z) >= 0.7:
+		if rng.randf() < 0.45 * camo:
+			VehicleCloth.net(k, mount, Vector3(0, lid, 0), Vector3(size.x * 0.94, rng.randf_range(0.09, 0.17), size.z * 0.92), Vector3.ZERO, rng)
+		elif rng.randf() < 0.7 * camo and maxf(size.x, size.z) >= 0.55:
 			# A cut branch is longer than the bin it's laid on and lies low
 			# along it, its leaves hanging past both ends: on a short lid, or
 			# heaped as tall as it is wide, it would read as a planter.
 			var lay := (Vector3.RIGHT if size.x >= size.z else Vector3.BACK) * (1.0 if rng.randf() < 0.5 else -1.0)
-			var reach := maxf(size.x, size.z) * rng.randf_range(0.55, 0.7)
-			VehicleCloth.branch(k, mount, Vector3(0, lid + 0.012, 0) - lay * reach, Vector3(0, lid + 0.012, 0) + lay * reach, rng, clampf(minf(size.x, size.z) * 0.35, 0.1, 0.16))
+			var reach := maxf(size.x, size.z) * rng.randf_range(0.65, 0.85)
+			VehicleCloth.branch(k, mount, Vector3(0, lid + 0.012, 0) - lay * reach, Vector3(0, lid + 0.012, 0) + lay * reach, rng, clampf(minf(size.x, size.z) * 0.45, 0.14, 0.22))
 	k._fold(mount)
 
 
