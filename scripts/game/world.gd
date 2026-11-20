@@ -2073,6 +2073,8 @@ func team_of_peer(peer: int) -> int:
 func send_cmd(d: Dictionary) -> void:
 	if settings.get("replay", false):
 		return
+	if hud and not (d.get("vehicles", []) as Array).is_empty() and (d.get("squads", []) as Array).is_empty():
+		hud.vehicle_ack(d)  # (squads answer when their order arrives back: Hud._track_orders)
 	if srv:
 		execute_cmd(local_peer, d)
 	else:

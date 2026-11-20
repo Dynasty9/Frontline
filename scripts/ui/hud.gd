@@ -982,6 +982,37 @@ static func ack_words(kind: String, at: Vector3) -> String:
 	return ""  # (contact, shellfire, routing: the squad's own doing, not an answer)
 
 
+## Vehicles answering an order you've just sent them, in the words of their
+## element: a crew drives, a helicopter flies, a boat gets under way.
+func vehicle_ack(d: Dictionary) -> void:
+	var vs: Array = d.get("vehicles", [])
+	var v := world.entity(int(vs[0])) as Vehicle
+	if v == null:
+		return
+	var who: String = v.display_name() + (" +%d" % (vs.size() - 1) if vs.size() > 1 else "")
+	var dom := HudOrbat.domain_of(v.vkind)
+	var at: Vector3 = d.get("pos", v.position)
+	var g := Defs.grid_ref(at)
+	var words := ""
+	match String(d.get("t", "")):
+		"move":
+			words = {"air": "Inbound to %s." % g, "sea": "Under way to %s." % g}.get(dom, "Moving to %s, out." % g)
+		"assault":
+			words = {"air": "Attack run on %s." % g, "sea": "Closing on %s, guns free." % g}.get(dom, "Advancing on %s, guns free." % g)
+		"defend":
+			words = {"air": "Holding over %s." % g, "sea": "On station at %s." % g}.get(dom, "Taking up position at %s." % g)
+		"retreat":
+			words = {"air": "Returning to base."}.get(dom, "Pulling back, out.")
+		"attack":
+			words = "Target. Engaging."
+		"stop":
+			words = {"air": "Holding here."}.get(dom, "Halted.")
+		"fire_mission":
+			words = "Fire mission %s, shot, over." % g
+	if words != "":
+		radio.ack(who, words)
+
+
 ## Picks out what the cursor is over (see focus_sid): the order of battle's
 ## row first (the hand is on the panel), then a man or vehicle on the ground,
 ## then a squad's or vehicle's symbol on the map.
