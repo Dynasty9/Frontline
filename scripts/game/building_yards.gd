@@ -163,6 +163,36 @@ static func trampoline(k: BuildingKit, col: Color) -> void:
 		k.bar(p + Vector3(0, y - 0.05, 0), p * 0.92, 0.04, 0.04, "metal_dark", Color(0.55, 0.56, 0.57), false)
 
 
+## A row of `count` graves across x, 1.15 m apart, their faces to +z:
+## headstones with round or pointed tops (an inscription panel on each), a
+## stone cross now and then, some leaning with age, and a few with a kerb
+## round the grave in front, gravel in it.
+static func graves(k: BuildingKit, count: int, rng: RandomNumberGenerator) -> void:
+	for i in count:
+		var x := (i - (count - 1) * 0.5) * 1.15 + rng.randf_range(-0.08, 0.08)
+		var stone: Color = [Color(0.62, 0.6, 0.56), Color(0.5, 0.5, 0.5), Color(0.38, 0.37, 0.36), Color(0.58, 0.52, 0.45)][rng.randi() % 4]
+		var g := k.at_point(Vector3(x, 0, 0), Vector3(rng.randf_range(-0.12, 0.06), rng.randf_range(-0.1, 0.1), rng.randf_range(-0.06, 0.06)))
+		var h := rng.randf_range(0.6, 1.0)
+		var kind := rng.randf()
+		if kind < 0.18:
+			g.box(Vector3(0.12, h + 0.2, 0.1), Vector3(0, (h + 0.2) * 0.5, 0), "stone", stone)
+			g.box(Vector3(0.48, 0.1, 0.1), Vector3(0, h * 0.8, 0), "stone", stone)
+			g.box(Vector3(0.32, 0.15, 0.26), Vector3(0, 0.075, 0), "stone", stone.darkened(0.1))
+		else:
+			var w := rng.randf_range(0.45, 0.65)
+			g.box(Vector3(w, h, 0.09), Vector3(0, h * 0.5, 0), "stone", stone)
+			if kind < 0.6:
+				g.cyl(w * 0.5, w * 0.5, 0.09, Vector3(0, h, 0), "stone", stone, Vector3(PI * 0.5, 0, 0), 12)
+			else:
+				g.prism(Vector3(w, w * 0.3, 0.09), Vector3(0, h + w * 0.15, 0), "stone", stone)
+			g.plate(Vector3(w * 0.6, h * 0.34, 0.006), Vector3(0, h * 0.6, 0.048), "stone", stone.darkened(0.3))
+		if rng.randf() < 0.3:
+			for sx: float in [-1.0, 1.0]:
+				k.box(Vector3(0.08, 0.12, 1.7), Vector3(x + sx * 0.3, 0.06, 0.95), "stone", stone, Vector3.ZERO, false)
+			k.box(Vector3(0.68, 0.12, 0.08), Vector3(x, 0.06, 1.8), "stone", stone, Vector3.ZERO, false)
+			k.plate(Vector3(0.52, 0.03, 1.6), Vector3(x, 0.05, 0.95), "concrete", Color(0.7, 0.68, 0.62))
+
+
 ## Pots of flowers in a row by a door.
 static func pots(k: BuildingKit, count: int, rng: RandomNumberGenerator) -> void:
 	for i in count:
