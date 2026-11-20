@@ -8,6 +8,11 @@ file = "tutorial-transitions.webm"
 poster = "tutorial-transitions.jpg"
 caption = "The same Boot Camp sequence before, then after: new instructions replace stale banners as training advances. Autopilot demonstration at normal simulation speed."
 
+[[videos]]
+file = "adviser-state.webm"
+poster = "adviser-state.jpg"
+caption = "Matched Adviser display states before and after: reversed ownership restores the active panel row and minimap marker; at the cutoff, valid completion feedback remains briefly without new markers. Native UI fixture with synthetic state, shown at 150%; no gameplay simulation."
+
 [[screenshots]]
 file = "tutorial-before-after.jpg"
 caption = "Matched training views: the old camera message above, the current selection instruction below."

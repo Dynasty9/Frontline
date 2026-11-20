@@ -1,0 +1,22 @@
+{
+  "before_ref": "58d9bd170767b193c2577b2485edc1d5f844defc",
+  "after_ref": "4f9ce6ce9bd482b40ba3b200d61347db68ed146e",
+  "fixture": "tests/fixtures/adviser-display.tscn",
+  "fixture_script_sha256": "f892940fa1adeaaeaf600400132fd69a0a95e459750da38b618ea26499663ca5",
+  "scope": "Inert synthetic ownership states, native Adviser and HudObjectives plus native HudMinimap objective drawing on a fixture grid. World/entities never enter the scene tree; no simulation. Controls magnified 150%, explicitly labeled.",
+  "engine": "Godot 4.7.2.stable.ed1daf0bf",
+  "renderer": "Compatibility / Mesa llvmpipe LLVM 19.1.7; no hardware or performance claim",
+  "logical_viewport": [
+    1600,
+    900
+  ],
+  "output": [
+    1280,
+    720
+  ],
+  "command": "DISPLAY=:99 XAUTHORITY=<private-auth> XDG_DATA_HOME=<isolated-data> XDG_CONFIG_HOME=<isolated-config> XDG_CACHE_HOME=<isolated-cache> LP_NUM_THREADS=2 godot --path <exact-worktree> --rendering-method gl_compatibility --audio-driver Dummy --resolution 1280x720 tests/fixtures/adviser-display.tscn -- --adviser-capture=<raw-out> --adviser-take=<BEFORE/AFTER sha> --matchmaker=http://127.0.0.1:1 --no-stun",
+  "before_fixture": "Identical fixture from after_ref copied to the isolated exact-before worktree; production Adviser unchanged.",
+  "edit": "24 native frames per state; encode 12 fps, two-second holds. Match before then after for ownership reversal (phase 2), fourth-town cutoff (phase 4), retained completion (phase 5); finish with after expiry (phase 6). 14 seconds, silent. Explicit synthetic time jumps; not real-time gameplay.",
+  "regression": "Original head fails 8 assertions; corrected head passes. Additional checks cover staggered completion expiry without replacement markers and reversal while still at the cutoff. Existing tutorial-transition and Adviser/Boot Camp tests pass.",
+  "media_validation": "Full ffmpeg decode passes; 1x playback reaches end, seek/reopen and image/video controls pass in the actual ReleaseCard. Reduced-motion starts paused. Desktop and compact 640px views checked."
+}
