@@ -10,6 +10,10 @@ caption = "A stretch of overhead line, before and after"
 [[screenshots]]
 file = "transformer.jpg"
 caption = "A pole carrying the street's transformer"
+[[videos]]
+file = "utility-motion.webm"
+poster = "utility-motion.jpg"
+caption = "Seed 3, main versus this branch: the standalone farm transformer has no pole-to-pole line connection; the last section shows a separate real connected roadside span. Matched camera motion, with an identical detail crop for the span. Low settings, native Forward+ software rendering; simulation held."
 +++
 
 - **The pole** is creosoted timber, darker where it stands in the ground, with a weather cap on top. Two steel braces hold up its crossarm.
