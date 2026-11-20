@@ -118,9 +118,7 @@ func _process(dt: float) -> void:
 				expanded[i] = previous[i]
 			if not previous.is_empty():
 				mm.buffer = expanded
-		var transform := s.transform
-		if s.srv:
-			transform *= s.ip_offset()
+		var transform := s.transform * s.body_offset
 		transform.origin -= group.origin
 		mm.set_instance_transform(slot, transform)
 		group.count = slot + 1

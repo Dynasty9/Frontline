@@ -266,12 +266,17 @@ static func _digits(k: VehicleModels, m: Node3D, p: Dictionary, s: float, text: 
 		_decal(k, m, p, s, zc - s * c.x, yc + c.y, r.size.x, r.size.y, "paint", col, 0.008 if shade == null else 0.01)
 
 
-## How strongly each coat of a rust streak stains the paint under it, the
-## long pale tail first, the dark core under the weep last.
-const STREAK_STAIN := [0.5, 0.78, 1.0]
+## How strongly each coat of a rust streak stains the paint under it: two
+## faint fringes a little wider and longer than the rest first (where the
+## water ran thin, so the streak's edge fades into the paint in steps too
+## small to read as a line), the long pale tail, and the dark core under the
+## weep last. FRINGE counts the fringes, which are laid in the tail's finish.
+const STREAK_STAIN := [0.1, 0.26, 0.5, 0.78, 1.0]
+const FRINGE := 2
 
 ## A rust streak's coats (see _coat) on the trawler's steel topsides and on
-## her painted bulwarks and deckhouse.
+## her painted bulwarks and deckhouse, from the pale tail (the fringe is laid
+## in the tail's finish) to the crust.
 const ON_STEEL := ["steel", "steel", "rust_steel"]
 const ON_PAINT := ["plain", "plain", "rust_steel"]
 
@@ -315,7 +320,7 @@ static func _streak(k: VehicleModels, m: Node3D, p: Dictionary, s: float, z: flo
 		for q: Vector2 in coats[i]:
 			shape.append(q * 2.0 + Vector2(0, h))
 		var c := _stain(col, base, STREAK_STAIN[i])
-		_decal(k, m, p, s, z - s * run.x, top + run.y, w, h, _coat(c, kinds, i), c, t + i * 0.0012, tilt, shape, 0)
+		_decal(k, m, p, s, z - s * run.x, top + run.y, w, h, _coat(c, kinds, maxi(i - FRINGE, 0)), c, t + i * 0.0012, tilt, shape, 0)
 
 
 ## The same streak on a flat wall facing +-x (`s`) at x, from (z, top): a
@@ -327,25 +332,27 @@ static func _wall_streak(k: VehicleModels, m: Node3D, s: float, x: float, z: flo
 		var at := Vector3(s * 0.0012 * (i + 1), 0, 0)
 		var c := _stain(col, base, STREAK_STAIN[i])
 		VehicleMarkings.polygons(k, m, [coats[i]], func(q: Vector2) -> Vector3: return wall.sample.call(q) + at,
-			Vector3(s, 0, 0), c, _coat(c, kinds, i), false, 0)
+			Vector3(s, 0, 0), c, _coat(c, kinds, maxi(i - FRINGE, 0)), false, 0)
 
 
 ## Soot on the trawler's funnel (round, 0.3 m in radius at `top`, its upper
 ## end, swelling to 0.33 m 2.3 m below), under its black top band, whose foot
 ## is at `at` on its axis: the smoke curls down round the stack in the boat's
 ## own wake and leaves a grimy collar, its lower edge ragged, reaching `h`
-## down on the after side and a third of that forward, in two coats graded
-## from a grey film over `base` to soot black under the band.
+## down on the after side and a third of that forward, in four coats graded
+## from two faint fringes a little lower than the rest (so the collar fades
+## out down the stack instead of ending at a line) through a grey film over
+## `base` to soot black under the band.
 static func _funnel_soot(k: VehicleModels, m: Node3D, at: Vector3, top: float, h: float, base: Color) -> void:
-	for i in 2:
-		var depth := h * (1.0 if i == 0 else 0.4)
+	for i in 4:
+		var depth: float = h * float([1.32, 1.15, 1.0, 0.4][i])
 		var lift := 0.006 + i * 0.0012
-		var c := _stain(Color(0.06, 0.055, 0.05), base, 0.45 if i == 0 else 1.0)
+		var c := _stain(Color(0.06, 0.055, 0.05), base, float([0.1, 0.24, 0.45, 1.0][i]))
 		# (a strip of narrow panels round the stack, so none cuts a chord
 		# into it, in three sectors each laid facing its own middle; an
 		# outline's x is the angle round from aft)
 		var foot := func(a: float) -> float:
-			return -depth * (0.66 + 0.34 * cos(a) + 0.12 * sin(a * 5.0 + 1.3 + i) + 0.07 * sin(a * 9.0 + 0.4))
+			return -depth * (0.66 + 0.34 * cos(a) + 0.12 * sin(a * 5.0 + 1.3 + maxi(i - 2, 0)) + 0.07 * sin(a * 9.0 + 0.4))
 		for sector in 3:
 			var a0 := -PI + sector * TAU / 3.0
 			var strips := []
@@ -358,16 +365,17 @@ static func _funnel_soot(k: VehicleModels, m: Node3D, at: Vector3, top: float, h
 				var y := at.y + q.y
 				var r := 0.3 + 0.03 * (top - y) / 2.3 + lift
 				return Vector3(at.x + sin(q.x) * r, y, at.z + cos(q.x) * r),
-				Vector3(sin(mid), 0.0, cos(mid)), c, _coat(c, ["plain", "plain_dark"], i), false, 0)
+				Vector3(sin(mid), 0.0, cos(mid)), c, _coat(c, ["plain", "plain", "plain", "plain_dark"], i), false, 0)
 
 
 ## A rust streak's coats as outlines (metres, x across, y up, its top edge at
 ## y = 0), one inside the next: each a tongue `w` wide at the top narrowing to
-## a blunt end, the long pale tail running all `h` down, the core under the
-## source a third of it, each one's end drifting off to the side by `lean`.
+## a blunt end, the faint fringes a little past the long pale tail, which runs
+## all `h` down, the core under the source a third of it, each one's end
+## drifting off to the side by `lean`.
 static func _drip(w: float, h: float, lean: float) -> Array:
 	var out := []
-	for c: Vector2 in [Vector2(1.0, 1.0), Vector2(0.8, 0.62), Vector2(0.55, 0.3)]:
+	for c: Vector2 in [Vector2(1.3, 1.18), Vector2(1.14, 1.08), Vector2(1.0, 1.0), Vector2(0.8, 0.62), Vector2(0.55, 0.3)]:
 		var a := w * 0.5 * c.x
 		var l := h * c.y
 		var lx := lean * a * 0.8
@@ -574,33 +582,50 @@ static func _mk38(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	# the barrel: a support sleeve out of the housing's nose, the long tube, a
 	# muzzle device on its end
 	VehicleWeapons.autocannon(k, tv, Vector3(0, 0.58, -0.63), Vector3(0, 0.58, -2.64), Vector2(0.08, 0.3), Vector2(0.03, 0.042), Vector2(0.045, 0.16))
-	# the electro-optical sight on the left, its windows forward
-	_bx(k, tv, Vector3(0.08, 0.1, 0.3), Vector3(-0.34, 0.6, -0.1), cm, col)
-	k._add(tv, VehicleModels.loft("ship_mk38_eos", VmBoat._rr(0.28, 0.46, 0.0, 0.06, 0.04), VmBoat._rr(0.24, 0.4, 0.02, 0.05, 0.03), 0.0, 0.4, 0.02), cm, col, Vector3(-0.53, 0.44, -0.12))
-	_bx(k, tv, Vector3(0.16, 0.1, 0.012), Vector3(-0.53, 0.72, -0.35), "glass", null, Vector3.ZERO, false)
-	_bx(k, tv, Vector3(0.1, 0.08, 0.012), Vector3(-0.53, 0.58, -0.35), "glass", null, Vector3.ZERO, false)
-	_bx(k, tv, Vector3(0.3, 0.02, 0.2), Vector3(-0.53, 0.855, -0.3), cm, col, Vector3(-0.12, 0, 0), false)
-	# the ammunition box on the right and its feed chute into the receiver
+	# the electro-optical sight on the left, on its arm off the housing: the
+	# head's three windows forward (the TV camera's over the thermal
+	# imager's, the laser rangefinder's small one beside), bezelled, under
+	# their visors
+	_bx(k, tv, Vector3(0.12, 0.1, 0.3), Vector3(-0.33, 0.6, -0.1), cm, col)
+	VehicleMounts.sight(k, tv, Vector3(-0.53, 0.64, -0.12), Vector3(0.28, 0.4, 0.46), [Rect2(Vector2(-0.045, 0.09), Vector2(0.15, 0.1)), Rect2(Vector2(-0.045, -0.06), Vector2(0.15, 0.1)), Rect2(Vector2(0.09, -0.06), Vector2(0.05, 0.05))], cm, col)
+	# the ammunition box on the right, its lid's seam and the two latches
+	# that clamp it, and the ribbed chute the linked rounds ride up out of
+	# it and into the receiver's feed
 	_bx(k, tv, Vector3(0.26, 0.38, 0.66), Vector3(0.52, 0.42, 0.18), cm, col.darkened(0.06))
-	_bx(k, tv, Vector3(0.2, 0.06, 0.2), Vector3(0.38, 0.66, 0.0), "gunmetal_w", null, Vector3(0, 0, -0.5))
+	_bx(k, tv, Vector3(0.268, 0.008, 0.668), Vector3(0.52, 0.55, 0.18), "plain_dark", Color(0.12, 0.13, 0.13), Vector3.ZERO, false)
 	for z in [-0.05, 0.4]:
-		_bx(k, tv, Vector3(0.28, 0.03, 0.04), Vector3(0.52, 0.62, z), "gunmetal_w", null, Vector3.ZERO, false)
+		_bx(k, tv, Vector3(0.012, 0.07, 0.04), Vector3(0.656, 0.55, z), "gunmetal_w", null, Vector3.ZERO, false)
+		_bx(k, tv, Vector3(0.28, 0.02, 0.04), Vector3(0.52, 0.62, z), "gunmetal_w", null, Vector3.ZERO, false)
+	var feed: Array[Vector3] = [Vector3(0.5, 0.6, -0.04), Vector3(0.45, 0.71, -0.06), Vector3(0.35, 0.73, -0.08), Vector3(0.26, 0.66, -0.1)]
+	VehicleFrames.path(k, tv, feed, 0.045, "metal_dark", null, 8)
+	for i in feed.size() - 1:
+		k._add(tv, Res.torus(0.04, 0.054), "metal_dark", null, feed[i].lerp(feed[i + 1], 0.5), VehicleFrames.aim(feed[i + 1] - feed[i]).get_euler(), Vector3.ONE, false)
 	# the spent case chute under the housing, a cable loom at the back
 	_bx(k, tv, Vector3(0.12, 0.2, 0.14), Vector3(0, 0.3, -0.2), "gunmetal_w")
 	_rod(k, tv, Vector3(-0.2, 0.42, 0.68), Vector3(-0.32, 0.12, 0.5), 0.03, "rubber", null, 6)
 	return tv
 
 
-## The M2 .50 cal on a pedestal mount: a post with a flange, the cradle,
-## receiver, barrel with its carrying handle and flash hider, spade grips, the
-## ammo can on the left. Trained `yaw` (0 = forward), elevated `el`.
+## The M2 .50 cal on a shipboard stanchion mount: the pedestal on its deck
+## plate with four braced feet, the swivel and yoke on top with the gun's
+## trunnion block between the cheeks, the receiver, barrel with its carrying
+## handle and flash hider, spade grips, the ammo can on the left and the
+## canvas bag under the receiver that catches the spent brass and links (a
+## ship's gun throws them on a deck the crew has to stand on). Trained `yaw`
+## (0 = forward), elevated `el`.
 static func _m2(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float, el := 0.06) -> void:
-	var pv := k._pivot(m, pos + Vector3(0, 0.88, 0))
+	var pv := k._pivot(m, pos + Vector3(0, 0.78, 0))
 	pv.rotation = Vector3(el, yaw, 0)
-	# the post's flange on the deck plate, the post and the cradle under the
-	# receiver (an HMG of size 0.9: 0.144 wide, 0.171 high)
-	VehicleMounts.pintle(k, m, pos + Vector3(0, 0.012, 0), pv.transform * Vector3(0, 0.13, -0.05), "gunmetal_w", null, Vector2(0.05, 0.06), Vector2(0.144, 0.171), -pv.basis.z)
-	VehicleWeapons.hmg(k, pv, Vector3(0, 0.13, -0.05), Vector3(0, 0.13, -1.625), 0.9, -1.0, true, "gunmetal_w", Color(0.3, 0.33, 0.22))
+	# (an HMG of size 0.9: its trunnion block 0.1 under the receiver's axis and
+	# 0.22 ahead of its centre, so the gun sits back over the post)
+	var head := k._pivot(m, pv.position)
+	head.rotation.y = yaw
+	VehicleMounts.pedestal(k, m, pos, pv.position, head, "gunmetal_w", null, 0.42, Vector2(0.055, 0.065), 4, Vector3(0.1, 0.15, 0.16))
+	k._fold(head)
+	VehicleWeapons.hmg(k, pv, Vector3(0, 0.23, 0.216), Vector3(0, 0.23, -1.359), 0.9, -1.0, true, "gunmetal_w", Color(0.3, 0.33, 0.22))
+	# the brass bag under the ejection port, hung off the receiver's back
+	k._bag(pv, Vector3(0.11, 0.15, 0.2), Vector3(0, 0.07, 0.28), "canvas", Color(0.36, 0.35, 0.26))
+	_rod(k, pv, Vector3(-0.05, 0.14, 0.19), Vector3(0.05, 0.14, 0.19), 0.006, "steel", null, 6, false)
 	VmBoat._bake(k, pv)
 
 
@@ -635,7 +660,8 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	for sx in [-0.16, 0.16]:
 		# receivers, then each barrel from its jacket to the slotted flash hider
 		VehicleMounts.receiver(k, el, Vector3(0.14, 0.2, 1.05), Vector3(sx, 0.02, 0.05), gm)
-		VehicleWeapons.autocannon(k, el, Vector3(sx, 0.04, -0.46), Vector3(sx, 0.04, -2.7), Vector2(0.06, 0.4), Vector2(0.032, 0.036), Vector2(0.05, 0.3), gm)
+		VehicleWeapons.autocannon(k, el, Vector3(sx, 0.04, -0.46), Vector3(sx, 0.04, -2.7), Vector2(0.06, 0.4), Vector2(0.032, 0.03), Vector2(0.03, 0.001), gm)
+		VehicleWeapons.cone_hider(k, el, Vector3(sx, 0.04, -2.7), 0.03, 0.05, 0.27)
 		# the box magazine on the gun's outer side
 		var ox: float = signf(sx) * 0.37
 		_bx(k, el, Vector3(0.2, 0.36, 0.52), Vector3(ox, 0.08, 0.05), cm, col.darkened(0.08))
@@ -659,28 +685,25 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	return tv
 
 
-## DShK 12.7 mm on a pintle: the post, the cradle, the receiver, the finned
-## barrel and its big muzzle brake, spade grips, a 50-round box on the left,
-## a scrap-steel shield in front. Trained `yaw`.
+## DShK 12.7 mm on a pintle: the post, the cradle, the gun itself (the
+## ground forces' DShK: its finned barrel, the flat muzzle brake, the ring
+## sight, wooden spade grips, the 50-round box on the left), a scrap-steel
+## shield in front. Trained `yaw`.
 static func _dshk(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float) -> void:
 	var gm := "gunmetal_w"
 	var pv := k._pivot(m, pos + Vector3(0, 0.97, 0))
 	pv.rotation = Vector3(0.1, yaw, 0)
 	# the pintle (its socket on the roof, the post, the cradle under the
 	# receiver) and three legs welded on to steady it
-	VehicleMounts.pintle(k, m, pos, pv.transform * Vector3(0, 0.12, 0.0), gm, null, Vector2(0.06, 0.07), Vector2(0.14, 0.17), -pv.basis.z)
+	VehicleMounts.pintle(k, m, pos, pv.transform * Vector3(0, 0.12, 0.0), gm, null, Vector2(0.06, 0.07), Vector2(0.13, 0.15), -pv.basis.z)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(0.35, 0.0, 0.2), 0.025, gm, null, 6, true)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(-0.35, 0.0, 0.2), 0.025, gm, null, 6, true)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(0.0, 0.0, -0.4), 0.025, gm, null, 6, true)
-	VehicleMounts.receiver(k, pv, Vector3(0.14, 0.17, 0.7), Vector3(0, 0.12, 0.0), gm)
-	for i in 6:
-		k._cyl(pv, 0.05, 0.05, 0.035, Vector3(0, 0.13, -0.42 - i * 0.07), Vector3(PI / 2, 0, 0), gm, null, 10, false)
-	k._cyl(pv, 0.026, 0.026, 1.1, Vector3(0, 0.13, -0.92), Vector3(PI / 2, 0, 0), gm, null, 6)
-	_bx(k, pv, Vector3(0.11, 0.09, 0.16), Vector3(0, 0.13, -1.5), gm)
-	for sx in [-0.07, 0.07]:
-		_rod(k, pv, Vector3(sx, 0.1, 0.33), Vector3(sx, 0.2, 0.42), 0.017, "wood_dark", null, 6, true)
-	_bx(k, pv, Vector3(0.14, 0.22, 0.3), Vector3(-0.17, 0.07, 0.0), "paint", Color(0.3, 0.33, 0.22))
-	_bx(k, pv, Vector3(0.5, 0.32, 0.025), Vector3(0, 0.06, -0.4), "steel", Color(0.32, 0.31, 0.27), Vector3(-0.1, 0, 0))
+	VmCore._dshk(k, pv, Vector3(0, 0.12, 0.0))
+	# the shield: a slab of plate cut from the hull's scrap, notched for the
+	# barrel and the gas tube under it, clamped to the cradle just ahead of
+	# the receiver (it turns with the gun), so the ring sight stands over it
+	VmCore._shield_face(k, pv, 0.0, 0.21, 0.52, -0.12, 0.27, [Rect2(-0.05, 0.03, 0.1, 0.16)], [false], "steel", 0.02)
 	VmBoat._bake(k, pv)
 
 

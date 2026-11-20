@@ -441,20 +441,33 @@ func order_move(pos: Vector3, face: Vector3, mode := 0, tactical := true) -> voi
 		# the leader heads for his spot; the others keep their place in a compact group behind him
 		ld.cmd_move(final_slots[ld.eid], mode, facing)
 		_offsets.clear()
-		var k := 0
-		for m in mems:
-			if m == ld:
-				continue
+		var head := _travel_heading(ld)
+		var side := head.cross(Vector3.UP)
+		var followers := mems.duplicate()
+		followers.erase(ld)
+		var places := []
+		for k in followers.size():
 			var angle := k * 2.399963
 			var radius := minf(3.5, sqrt(float(k + 1)) * 1.4)
-			_offsets[m.eid] = Vector2(cos(angle) * radius, 3.8 + sin(angle) * radius)
-			k += 1
+			places.append(ld.position + side * cos(angle) * radius - head * (3.8 + sin(angle) * radius))
+		# Keep each follower on the near side of the group when a new order turns it around.
+		var assigned := _assign(places, followers)
+		for i in followers.size():
+			var offset: Vector3 = assigned[i] - ld.position
+			_offsets[followers[i].eid] = Vector2(offset.dot(side), -offset.dot(head))
 		_follow_tick()
 	else:
 		for i in mems.size():
 			mems[i].cmd_move(slots[i], mode, facing)
 	var sayer: Soldier = ld if ld else mems[0]
 	sayer.say(_pick(["Moving!", "Move up!", "On me!", "Let's go!", "Copy, moving."]) if owner >= 0 else _pick(["Copy, moving to %s." % Defs.grid_ref(pos), "Roger, %s. On me!" % Defs.grid_ref(pos), "Moving to %s." % Defs.grid_ref(pos)]), true)
+
+
+## Followers can receive the new order before the leader takes the first step.
+func _travel_heading(ld: Soldier) -> Vector3:
+	var target: Vector3 = ld.path[ld.path_i] if ld.path_i < ld.path.size() else final_slots.get(ld.eid, order_pos)
+	var to := Defs.flat(target - ld.position)
+	return to.normalized() if to.length_squared() > 0.01 else facing
 
 
 ## Travelling in formation: every half second the men re-aim for their place
@@ -471,10 +484,7 @@ func _follow_tick() -> void:
 			if m != ld and m.can_take_orders() and not m.detached and final_slots.has(m.eid):
 				m.follow_to(final_slots[m.eid], travel_mode, facing)
 		return
-	var head: Vector3 = ld._last_dir if ld.is_moving() else Defs.flat(goal - ld.position).normalized()
-	head = Defs.flat(head).normalized()
-	if head.length() < 0.1:
-		head = facing
+	var head := _travel_heading(ld)
 	var side := head.cross(Vector3.UP)
 	var max_lag := 0.0
 	for m in members:

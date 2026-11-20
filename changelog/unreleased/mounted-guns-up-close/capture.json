@@ -1,0 +1,12 @@
+{
+  "stage": "mounted-guns",
+  "fixture": "tests/fixtures/mounted-gun-clips.tscn",
+  "before_ref": "origin/main 38b3d6b1",
+  "after_ref": "this change's head (38b3d6b1 with every pass)",
+  "engine": "Godot 4.7.2.stable, Forward+, 1280x720, --fixed-fps 30, showroom battlefield seed 712, High preset, day",
+  "commands": [
+    "godot --position -10000,-10000 --fixed-fps 30 --audio-driver Dummy --resolution 1280x720 --path . res://tests/fixtures/mounted-gun-clips.tscn -- --clip=mounted-guns-stills --label=BEFORE|AFTER --kinds=<eight at a time> --frames=DIR"
+  ],
+  "comparison": "stills humvee-a, tank-b, hunter_hmg-a, panther-a, ifrit_hmg-b, old_tank-b; before left, after right, 800x450 each, 1600x2700 JPEG q80",
+  "review": "every vehicle with a gun (52 kinds, a/b/c and the gunner's views) rendered after, in batches of eight, 0 script errors; per-area before/after sheets of the NATO, CSAT/AAF and boat/aircraft passes reviewed alongside"
+}

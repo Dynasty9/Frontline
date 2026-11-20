@@ -390,6 +390,22 @@ static func _bustle_basket(k: VehicleModels, p: Node3D, floor_center: Vector3, s
 		_beam(k, p, Vector3(x, floor_center.y - 0.03, back - 0.04), Vector3(x, floor_center.y - 0.03, front + size.z * 0.6), 0.05, 0.04, cam)
 
 
+## Cut branches a camouflaging crew (VehicleCloth.camouflage) has laid along
+## its vehicle where they stay put on the move: tucked along a skirt's or
+## fender's top against the hull, or along a roof's edge. Each run [cut end,
+## tip] in p's space takes one about half the time, more often on a heavily
+## camouflaged vehicle; `spread` sizes the leaf sprays (smaller where they'd
+## press into a leaning side). Scenery and wrecks never get them.
+static func _branches(k: VehicleModels, p: Node3D, runs: Array, spread := 0.2) -> void:
+	var rng := VehicleCargo.kit(k, p, Vector3.ZERO, 23)
+	var camo := VehicleCloth.camouflage(k)
+	if rng == null or camo <= 0.0:
+		return
+	for run: Array in runs:
+		if rng.randf() < 0.25 + camo * 0.4:
+			VehicleCloth.branch(k, p, run[0], run[1], rng, spread)
+
+
 ## Non-skid coating: a dark grey grit.
 const NONSKID := Color(0.19, 0.19, 0.17)
 
@@ -415,57 +431,159 @@ static func _seat(k: VehicleModels, p: Node3D, pos: Vector3, f := -1.0, yaw := 0
 
 # --- weapons -----------------------------------------------------------------------
 
-## An M2 .50 cal on its own, receiver at pos, firing along -Z (spade grips
-## for a crew-served mount). The mounts carry its ammunition boxes. Returns
-## the muzzle position (in p's space).
-static func _m2(k: VehicleModels, p: Node3D, pos: Vector3, grips := false) -> Vector3:
-	return VehicleWeapons.hmg(k, p, pos, pos + Vector3(0, 0, -1.69), 1.0, 0.0, grips)
+## A remote weapon station's ammunition box hung on its cradle (in the
+## cradle's space): `center` and `size` the box's, `side` the side of the gun
+## it hangs on, the flexible feed chute arching from the mouth in its lid,
+## up over the yoke arm's bearing and down into the gun's feedway at `feed`
+## (the chute `width` along the gun, as wide as a round is long). A station's
+## gunner never touches the gun: a few hundred rounds ride in the box and the
+## chute's articulated links feed them in at any elevation, the box going up
+## and down with the gun on the cradle.
+static func _rws_box(k: VehicleModels, cr: Node3D, center: Vector3, size: Vector3, side: float, feed: Vector3, width: float, cam: String) -> void:
+	# the box: its body, the lid clamped down over it, the lid's two latches
+	# on the outboard face and the carrying handle on its end
+	k._box(cr, size, center, "paint", STOW)
+	var top := center.y + size.y * 0.5
+	k._box(cr, Vector3(size.x + 0.012, 0.028, size.z + 0.012), Vector3(center.x, top + 0.008, center.z), "paint", STOW)
+	for z: float in [-0.3, 0.3]:
+		k._box(cr, Vector3(0.014, 0.05, 0.034), Vector3(center.x + side * (size.x * 0.5 + 0.007), top - 0.02, center.z + size.z * z), "gunmetal_w", null, Vector3.ZERO, false)
+	VehicleDoors.pull(k, cr, Vector3(center.x, center.y + 0.02, center.z + size.z * 0.5 + 0.004), Vector3.BACK, Vector3.RIGHT, 0.1, 0.007, "gunmetal_w")
+	# the chute's collar on the lid's inboard edge, where it leaves the box
+	var mouth := Vector3(center.x - side * (size.x * 0.5 - 0.05), top + 0.03, feed.z)
+	k._box(cr, Vector3(0.07, 0.03, width + 0.02), mouth - Vector3(0, 0.01, 0), "metal_dark", null, Vector3.ZERO, false)
+	# the chute: one link every few centimetres along a curve that leaves the
+	# lid straight up and enters the feedway level, each link the same steel
+	# pressing (one mesh) laid along the curve, a dark gap between them
+	var a := Vector2(mouth.x, mouth.y)
+	var b := Vector2(feed.x + side * 0.012, feed.y)
+	# (a box close beside the gun gets a tighter loop)
+	var reach := absf(a.x - b.x)
+	var c1 := a + Vector2(0, clampf(reach * 0.9, 0.12, 0.2))
+	var c2 := b + Vector2(side * maxf(0.05, reach * 0.7), 0.0)
+	var pts: Array[Vector2] = []
+	for i in 25:
+		var u := i / 24.0
+		var v := 1.0 - u
+		pts.append(a * v * v * v + c1 * 3.0 * v * v * u + c2 * 3.0 * v * u * u + b * u * u * u)
+	var pitch := 0.03
+	var run := 0.0
+	var next := pitch * 0.5
+	for i in pts.size() - 1:
+		var d := pts[i + 1] - pts[i]
+		var l := d.length()
+		while next <= run + l:
+			var at := pts[i] + d * ((next - run) / l)
+			k._box(cr, Vector3(pitch * 0.8, 0.04, width), Vector3(at.x, at.y, feed.z), "gunmetal_w", null, Vector3(0, 0, atan2(d.y, d.x)), false)
+			next += pitch
+		run += l
+	# the feedway's adapter on the receiver's side, the chute's last link in it
+	k._box(cr, Vector3(0.02, 0.05, width * 0.8), Vector3(feed.x + side * 0.006, feed.y, feed.z), "metal_dark", null, Vector3.ZERO, false)
 
 
-## A 40 mm grenade machine gun: a squat receiver, short fat perforated barrel
-## and a drum of linked grenades on its right. Returns the muzzle position.
-static func _gmg(k: VehicleModels, p: Node3D, pos: Vector3) -> Vector3:
-	return VehicleWeapons.gmg(k, p, pos, pos + Vector3(0, 0, -0.9), 1.0, 1.0, true, "gunmetal_w", STOW)
+## A remote station's sensor unit, its centre at `center` (on the cradle, so
+## it looks where the gun points): the armoured box with its three windows in
+## the front, the big thermal imager's beside the day camera's over the laser
+## rangefinder's, and its ballistic door swung up on its hinge over them as a
+## brow against the sun (the crew close it on the move, against stones and
+## fragments).
+static func _rws_sensor(k: VehicleModels, cr: Node3D, center: Vector3, cam: String) -> void:
+	var size := Vector3(0.24, 0.26, 0.36)
+	VehicleMounts.sight(k, cr, center, size, [Rect2(Vector2(0.04, 0.0), Vector2(0.09, 0.09)), Rect2(Vector2(-0.065, 0.025), Vector2(0.06, 0.05)), Rect2(Vector2(-0.065, -0.06), Vector2(0.05, 0.035))], cam)
+	# the door: hinged along the box's top front edge and lifted 25 degrees
+	# past level, the hinge's knuckles along the edge
+	var hinge := center + Vector3(0, size.y * 0.5, -size.z * 0.5)
+	var lift := 0.44
+	k._box(cr, Vector3(size.x + 0.02, 0.022, 0.24), hinge + Vector3(0, sin(lift) * 0.12 + 0.011, -cos(lift) * 0.12), cam, null, Vector3(lift, 0, 0))
+	k._cyl(cr, 0.014, 0.014, size.x * 0.9, hinge + Vector3(0, 0.006, 0), Vector3(0, 0, PI / 2), "gunmetal_w", null, 8, false)
 
 
 ## A remote weapon station (CROWS / Samson pattern) on a roof at pos: the
-## turntable, the yoke, the gun cradle and the sight. gun: "hmg", "gmg" or
-## "both" (HMG left, GMG right); sc scales the whole station. Becomes
-## k.turret, k.mg_tip at the (HMG's) muzzle - on a tank's turret roof, put
+## mount ring and the azimuth drive, the yoke's two arms and, on the trunnions
+## between them, the cradle that elevates whole: the gun, the sensor head
+## outboard on its left and the ammunition box outboard on its right, the
+## chute arching over the arm into the gun's feed, as a real station's does,
+## so the sight always looks where the gun points. gun: "hmg", "gmg" or
+## "both" (HMG left, GMG right; `fires` names the one the vehicle shoots,
+## whose muzzle is k.mg_tip); sc scales the whole station. Becomes
+## k.turret, k.mg_tip at the gun's muzzle - on a tank's turret roof, put
 ## k.turret back to the main turret afterwards (the station turns with it).
-static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, cam: String, sc := 1.0) -> Node3D:
+static func _rcws(k: VehicleModels, p: Node3D, pos: Vector3, gun: String, cam: String, sc := 1.0, fires := "hmg") -> Node3D:
 	var t := k._pivot(p, pos)
 	t.scale = Vector3.ONE * sc
 	k.turret = t
 	VehicleMounts.turret_ring(k, t, Vector3(0, 0.05, 0), 0.34, 0.38, 0.1, cam, null, 16)
-	k._cyl(t, 0.24, 0.28, 0.14, Vector3(0, 0.17, 0), Vector3.ZERO, "gunmetal_w", null, 12)
+	# the azimuth drive's housing on the ring: a low armoured box with its
+	# corners cut, painted with the vehicle
+	k._add(t, VehicleModels.loft("nato_rws_base", [-0.2, -0.3, 0.2, -0.3, 0.3, -0.18, 0.3, 0.22, 0.22, 0.3, -0.22, 0.3, -0.3, 0.22, -0.3, -0.18], [-0.18, -0.28, 0.18, -0.28, 0.28, -0.16, 0.28, 0.2, 0.2, 0.28, -0.2, 0.28, -0.28, 0.2, -0.28, -0.16], 0.1, 0.25, 0.02), cam, null, Vector3.ZERO)
 	var gy := 0.52
 	if gun == "both":
-		# Samson-style: a wide box between two cradles, the sight head on top
+		# Samson-style: the elevation drive's wide box between the two guns,
+		# the sensor unit on it (laid on its own mirror), and the guns on one
+		# cradle through the box, elevating together, each fed from a box hung
+		# on its outboard side
 		VehicleMounts.mantlet(k, t, Vector3(0.62, 0.34, 0.6), Vector3(0, 0.36, 0.05), cam)
-		VehicleMounts.sight(k, t, Vector3(0, 0.62, -0.05), Vector3(0.3, 0.2, 0.3), [Rect2(Vector2.ZERO, Vector2(0.22, 0.14))], cam)
-		k._box(t, Vector3(0.08, 0.16, 0.08), Vector3(0, 0.75, 0.08), "gunmetal_w")
-		var a := _m2(k, t, Vector3(-0.42, 0.42, -0.05))
-		k._box(t, Vector3(0.24, 0.26, 0.38), Vector3(-0.42, 0.32, 0.35), "paint", STOW)
-		_gmg(k, t, Vector3(0.44, 0.42, -0.05))
-		k.mg_tip = k._tip(t, a)
+		_rws_sensor(k, t, Vector3(0, 0.66, -0.02), cam)
+		for s in [-1.0, 1.0]:
+			k._cyl(t, 0.07, 0.07, 0.03, Vector3(s * 0.32, 0.42, -0.05), Vector3(0, 0, PI / 2), "gunmetal_w", null, 14)
+		# (the cradle's origin sits on the gun the vehicle fires, so that gun
+		# lies straight down its axis: the model lays the cradle by it)
+		var ox := -0.86 if fires == "gmg" else 0.0
+		var o := Vector3(ox, 0, 0)
+		var bc := k._pivot(t, Vector3(-0.42 - ox, 0.42, -0.05))
+		# the .50's cradle: its tray and cheeks, the box on the left
+		k._box(bc, Vector3(0.24, 0.02, 0.5), Vector3(0, -0.15, -0.02) + o, "gunmetal_w")
+		for x: float in [-0.11, 0.11]:
+			k._box(bc, Vector3(0.016, 0.15, 0.42), Vector3(x, -0.07, -0.02) + o, "gunmetal_w")
+		var a := VehicleWeapons.hmg(k, bc, o, Vector3(0, 0, -1.69) + o, 1.0, 0.0)
+		_rws_box(k, bc, Vector3(-0.2, -0.08, 0.03) + o, Vector3(0.16, 0.26, 0.4), -1.0, Vector3(-0.071, 0.072, 0.03) + o, 0.15, cam)
+		# the grenade gun's, its outboard cheek carrying its box on the right
+		k._box(bc, Vector3(0.3, 0.02, 0.5), Vector3(0.86, -0.15, -0.02) + o, "gunmetal_w")
+		k._box(bc, Vector3(0.016, 0.17, 0.42), Vector3(1.0, -0.07, 0.02) + o, "gunmetal_w")
+		var g := VehicleWeapons.gmg(k, bc, Vector3(0.86, 0, 0) + o, Vector3(0.86, 0, -0.9) + o, 1.0, 0.0, true, "gunmetal_w", STOW, 0.24, "mk19")
+		_rws_box(k, bc, Vector3(1.1, -0.08, 0.06) + o, Vector3(0.18, 0.28, 0.42), 1.0, Vector3(0.98, 0.07, 0.06) + o, 0.13, cam)
+		var fired := g if fires == "gmg" else a
+		var at := bc.position  # (the assembly folds the cradle away)
+		k.gun_assembly(bc, fired)
+		k.mg_tip = k._tip(t, at + fired)
 		_smoke(k, t, Vector3(0, 0.3, 0.38), 1.0, 3, PI / 2)
 		return t
-	# yoke arms either side of the cradle
+	# the cradle's trunnions at the receiver's centre (the grenade gun's sits
+	# a little further forward on it)
+	var gz := -0.05 if gun == "gmg" else 0.0
+	# the yoke: an arm each side up off the drive, its bearing hub round the
+	# trunnion (round, so the chute arching over it clears it at any lay)
 	for s in [-1.0, 1.0]:
-		VehicleMounts.mantlet(k, t, Vector3(0.06, 0.42, 0.34), Vector3(s * 0.2, 0.42, 0.02), cam)
-	k._cyl(t, 0.045, 0.045, 0.5, Vector3(0, gy, 0.02), Vector3(0, 0, PI / 2), "gunmetal_w", null, 8)
+		k._box(t, Vector3(0.06, gy - 0.23, 0.24), Vector3(s * 0.2, (gy + 0.23) * 0.5, gz), cam)
+		k._cyl(t, 0.075, 0.075, 0.06, Vector3(s * 0.2, gy, gz), Vector3(0, 0, PI / 2), cam, null, 14)
+		# the harness out of the drive's back, clipped up the arm's back edge
+		# and into its bearing: the sight's video and the elevation motor's
+		# power cross the trunnion there
+		VehicleFrames.cable(k, t, [Vector3(s * 0.1, 0.25, 0.26), Vector3(s * 0.12, 0.3, gz + 0.17), Vector3(s * 0.19, 0.36, gz + 0.135), Vector3(s * 0.19, gy - 0.07, gz + 0.13), Vector3(s * 0.19, gy - 0.03, gz + 0.07)], 0.012, 0.0, "rubber", null, false)
+	# the cradle, elevating on the trunnions with everything it carries: the
+	# tray the gun's trunnion block is pinned to and the cheeks either side
+	var cr := k._pivot(t, Vector3(0, gy, gz))
+	k._box(cr, Vector3(0.3, 0.02, 0.5), Vector3(0, -0.15, -0.02), "gunmetal_w")
+	for s in [-1.0, 1.0]:
+		k._box(cr, Vector3(0.016, 0.15, 0.42), Vector3(s * 0.15, -0.07, -0.02), "gunmetal_w")
+		# the trunnion's bearing cap outboard of the arm, and the bracket off it
+		# that carries the sight head (left) or the ammunition box (right)
+		k._cyl(cr, 0.042, 0.042, 0.016, Vector3(s * 0.238, 0, 0), Vector3(0, 0, PI / 2), "metal_dark", null, 12, false)
+		k._box(cr, Vector3(0.014, 0.17, 0.2), Vector3(s * 0.253, -0.04, 0.02), "gunmetal_w")
 	var tip: Vector3
+	var feed: Vector3
 	if gun == "gmg":
-		tip = _gmg(k, t, Vector3(0, gy, -0.05))
+		tip = VehicleWeapons.gmg(k, cr, Vector3.ZERO, Vector3(0, 0, -0.9), 1.0, 0.0, true, "gunmetal_w", STOW, 0.24, "mk19")
+		feed = Vector3(0.12, 0.07, 0.06)
+		_rws_box(k, cr, Vector3(0.37, -0.08, 0.06), Vector3(0.22, 0.28, 0.42), 1.0, feed, 0.13, cam)
 	else:
-		tip = _m2(k, t, Vector3(0, gy, 0.0))
-		k._box(t, Vector3(0.22, 0.3, 0.42), Vector3(0.33, gy - 0.05, 0.08), "paint", STOW)
-	# the sight unit on the left of the cradle: day camera and thermal windows
-	# side by side, under a sun lid
-	VehicleMounts.sight(k, t, Vector3(-0.36, gy + 0.06, -0.06), Vector3(0.24, 0.26, 0.36), [Rect2(Vector2(-0.05, 0.02), Vector2(0.08, 0.08)), Rect2(Vector2(0.05, 0.02), Vector2(0.08, 0.08))], cam)
-	k._box(t, Vector3(0.28, 0.03, 0.42), Vector3(-0.36, gy + 0.2, -0.08), cam)
-	k.mg_tip = k._tip(t, tip)
+		tip = VehicleWeapons.hmg(k, cr, Vector3.ZERO, Vector3(0, 0, -1.69), 1.0, 0.0)
+		feed = Vector3(0.071, 0.072, 0.03)
+		_rws_box(k, cr, Vector3(0.37, -0.07, 0.03), Vector3(0.2, 0.28, 0.42), 1.0, feed, 0.15, cam)
+	_rws_sensor(k, cr, Vector3(-0.38, 0.06, -0.06), cam)
+	# the firing solenoid's lead from the cradle cheek to the gun's back plate
+	VehicleFrames.cable(k, cr, [Vector3(0.15, -0.02, 0.17), Vector3(0.08, 0.0, 0.345)], 0.008, 0.03, "rubber", null, false)
+	k.gun_assembly(cr, tip)
+	k.mg_tip = k._tip(t, Vector3(0, gy, gz) + tip)
 	return t
 
 
@@ -672,10 +790,11 @@ static func _prowler(k: VehicleModels, team: int, arm: String) -> void:
 	_team_mark(k, m, team, Vector3(-0.67, 0.98, -1.4), Vector3(0.02, 0.06, 0.6))
 	if arm == "":
 		return
-	# the passenger's pintle MG (an M240-class .338) on a swing arm
+	# the passenger's pintle MG (an M240-class .338) on a swing arm, its can
+	# on the left, the side the M240 family feeds from
 	var pz := -0.78
 	VehicleMounts.pintle(k, m, Vector3(0.6, 1.08, pz), Vector3(0.6, 1.45, pz - 0.1), "gunmetal_w", null, Vector2(0.025, 0.03), Vector2(0.08, 0.13))
-	var ptip := VehicleWeapons.mmg(k, m, Vector3(0.6, 1.45, pz - 0.1), Vector3(0.6, 1.46, pz - 1.12), 1.0, 1.0, true, "gunmetal_w", STOW)
+	var ptip := VehicleWeapons.mmg(k, m, Vector3(0.6, 1.45, pz - 0.1), Vector3(0.6, 1.46, pz - 1.12), 1.0, -1.0, true, "gunmetal_w", STOW)
 	# the ring mount on the cage roof, turning whole with the gun: the ring,
 	# the carriage bar across its front under the post, the post clamped to
 	# the bar; the gunner stands in the ring behind the gun, on the rear seats'
@@ -686,9 +805,17 @@ static func _prowler(k: VehicleModels, team: int, arm: String) -> void:
 	VehicleMounts.ring_mount(k, t, Vector3.ZERO, 0.48, 0.03, "gunmetal_w", null, [], t, bar)
 	VehicleMounts.pedestal(k, t, Vector3(0, 0, bar), Vector3(0, 0.365, bar), null, "gunmetal_w", null, 0.0, Vector2(0.05, 0.06), 0, Vector3(0.1, 0.3, 0.16), 0.0255)
 	if arm == "hmg":
-		var tip := _m2(k, t, Vector3(0, 0.42, bar), true)
-		k._box(t, Vector3(0.22, 0.26, 0.36), Vector3(0.2, 0.36, bar + 0.02), "paint", STOW)
-		k.mg_tip = k._tip(t, tip)
+		# the M2 in its cradle on the post's yoke, elevating with its ammo can:
+		# the can on its tray bolted out from the cradle on the gun's left, the
+		# lid off and the belt rising out of it into the feed, as a gunner
+		# rides it on a ring
+		var cradle := k._pivot(t, Vector3(0, 0.42, bar))
+		k._box(cradle, Vector3(0.15, 0.012, 0.31), Vector3(-0.18, -0.171, 0.08), VehicleWeapons.STEEL, null, Vector3.ZERO, false)
+		VehicleFrames.beam(k, cradle, Vector3(-0.05, -0.12, -0.12), Vector3(-0.12, -0.168, 0.02), 0.03, 0.012, VehicleWeapons.STEEL)
+		VehicleFrames.beam(k, cradle, Vector3(-0.05, -0.12, 0.2), Vector3(-0.12, -0.168, 0.16), 0.03, 0.012, VehicleWeapons.STEEL)
+		var tip := VehicleWeapons.hmg(k, cradle, Vector3.ZERO, Vector3(0, 0, -1.69), 1.0, -1.0, true, "gunmetal_w", STOW)
+		k.gun_assembly(cradle, tip, [Vector3(0.075, 0.03, 0.4), Vector3(-0.075, 0.03, 0.4)])
+		k.mg_tip = k._tip(t, Vector3(0, 0.42, bar) + tip)
 		k.gunner_floor = {"on": t, "y": 0.45 - 1.3, "area": Rect2(Vector2(0, bar + 0.4 + 0.3), Vector2.ZERO)}
 		# the pintle gun is the second gun, decoration here
 	else:
@@ -799,6 +926,13 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 		_jerry(k, m, Vector3(s * 1.15, 1.25, 3.95), Color(0.3, 0.33, 0.22), Vector3(0, PI / 2, 0))
 	_team_mark(k, m, team, Vector3(1.405, 1.42, 1.5), Vector3(0.02, 0.2, 0.7))
 	_team_mark(k, m, team, Vector3(-1.405, 1.42, 1.5), Vector3(0.02, 0.2, 0.7))
+	# cut branches tucked along the crease over the wheels, at the foot of the
+	# armour module and the back bin
+	var runs := []
+	for s in [-1.0, 1.0]:
+		runs.append([Vector3(s * 1.43, 1.585, -0.95), Vector3(s * 1.44, 1.59, -2.55)])
+		runs.append([Vector3(s * 1.43, 1.585, 3.45), Vector3(s * 1.44, 1.59, 2.2)])
+	_branches(k, m, runs, 0.16)
 	# --- the turret: low and faceted, the 40 mm, smoke dischargers, the
 	# commander's panoramic sight on its mast
 	var t := k._pivot(m, Vector3(0, roof, 0.2))
@@ -808,13 +942,17 @@ static func _marshall(k: VehicleModels, team: int, seed := 0) -> void:
 	var tt := [-0.34, -0.76, 0.34, -0.76, 0.76, -0.4, 0.79, 1.02, 0.6, 1.24, -0.6, 1.24, -0.79, 1.02, -0.76, -0.4]
 	k._add(t, VehicleModels.loft("nato_amv_tur", tb, tt, 0.06, 0.74, 0.04), cam, null, Vector3.ZERO)
 	_weld(k, t, _seated(_rings([tb, 0.06, tt, 0.74]), 0.04), cam)
-	# gun: the mantlet with its canvas boot round the recoil sleeve, the
-	# barrel, the muzzle brake
-	VehicleMounts.mantlet(k, t, Vector3(0.44, 0.36, 0.4), Vector3(0, 0.34, -1.18), cam, null, Vector3.ZERO, Vector2(0.1, 0.16))
-	VehicleWeapons.autocannon(k, t, Vector3(0, 0.34, -1.32), Vector3(0, 0.34, -4.59), Vector2(0.1, 0.6), Vector2(0.052, 0.058), Vector2(0.08, 0.36), "paint", GUN)
+	# gun: the trunnion casting in the turret's face; on the cradle, pivoting
+	# in it at the breech, the mantlet's face plate with its canvas boot round
+	# the recoil sleeve, the barrel and its muzzle brake, and the coaxial MG
+	# beside it, so all of them rise together when the gun is laid high
+	VehicleMounts.mantlet(k, t, Vector3(0.44, 0.36, 0.4), Vector3(0, 0.34, -1.18), cam)
+	var g := k._pivot(t, Vector3(0, 0.34, -1.32))
+	VehicleMounts.mantlet(k, g, Vector3(0.4, 0.32, 0.12), Vector3(0, 0, -0.08), cam, null, Vector3.ZERO, Vector2(0.1, 0.16))
+	var tip := VehicleWeapons.autocannon(k, g, Vector3.ZERO, Vector3(0, 0, -3.27), Vector2(0.1, 0.6), Vector2(0.052, 0.058), Vector2(0.08, 0.36), "paint", GUN)
+	VehicleWeapons.coax(k, g, Vector3(0.32, -0.04, 0.02), 0.3, 0.025)
+	k.gun_assembly(g, tip)
 	k.mg_tip = k._tip(t, Vector3(0, 0.34, -4.6))
-	# coaxial MG port beside the mantlet
-	VehicleWeapons.coax(k, t, Vector3(0.32, 0.3, -1.3), 0.3, 0.025)
 	# sights: gunner's forward left, the commander's panoramic sight on a mast
 	VehicleMounts.sight(k, t, Vector3(-0.42, 0.78, -0.5), Vector3(0.3, 0.26, 0.34), [Rect2(Vector2(0, 0.02), Vector2(0.22, 0.16))], cam)
 	VehicleMounts.sight(k, t, Vector3(0.45, 1.05, 0.55), Vector3(0.36, 0.3, 0.36), [Rect2(Vector2(0, 0.02), Vector2(0.24, 0.16))], cam, null, Vector3(0.08, 0.1, 0.33))
@@ -877,7 +1015,8 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 		# big stowage bins along the leaning sides, the engine deck louvres
 		_xy_bin(k, m, s, -0.6, 1.5, Vector2(1.42, 1.45), Vector2(1.12, roof), 0.16, cam)
 		_xy_bin(k, m, s, 1.25, 1.2, Vector2(1.42, 1.45), Vector2(1.12, roof), 0.16, cam)
-		k._box(m, Vector3(0.06, 0.06, 2.8), Vector3(s * 1.44, 1.32, 0.3), "gunmetal_w")
+		# (the grab rail along the side, painted with the hull it's welded to)
+		k._box(m, Vector3(0.06, 0.06, 2.8), Vector3(s * 1.44, 1.32, 0.3), cam)
 		k._box(m, Vector3(0.05, 0.3, 0.55), Vector3(s * 1.43, 1.0, 3.1), "gunmetal_w")
 		_taillight(k, m, Vector3(s * 1.15, 1.5, 3.57))
 		_shackle(k, m, Vector3(s * 0.7, 0.95, 3.58), 1.0)
@@ -886,6 +1025,13 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	k._box(m, Vector3(1.9, 0.6, 0.06), Vector3(0, 1.5, 3.57), "gunmetal_w")
 	_team_mark(k, m, team, Vector3(1.425, 1.33, -1.6), Vector3(0.02, 0.18, 0.6))
 	_team_mark(k, m, team, Vector3(-1.425, 1.33, -1.6), Vector3(0.02, 0.18, 0.6))
+	# cut branches tucked along the crease over the wheels, under the bins
+	# (and between the slat cage's brackets on the urban package)
+	var runs := []
+	for s in [-1.0, 1.0]:
+		runs.append([Vector3(s * 1.45, 1.475, -0.55), Vector3(s * 1.46, 1.48, -1.85)])
+		runs.append([Vector3(s * 1.45, 1.475, 2.65), Vector3(s * 1.46, 1.48, 1.35)])
+	_branches(k, m, runs, 0.16)
 	# --- the turret: wedged front faces round the gun, a long bustle
 	var t := k._pivot(m, Vector3(0, roof, 0.5))
 	k.turret = t
@@ -912,13 +1058,26 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 	VehicleFittings.hatch(k, t, Vector3(0.52, 1.03, 0.6), 0.3, cam, null, 1.0, 0.06)
 	VehicleMounts.sight(k, t, Vector3(0.62, 1.2, -0.4), Vector3(0.32, 0.28, 0.32), [Rect2(Vector2(0, 0.02), Vector2(0.22, 0.14))], cam, null, Vector3(0.07, 0.08, 0.4))
 	VehicleFittings.hatch(k, t, Vector3(-0.5, 0.83, 0.75), 0.28, cam, null, 1.0, 0.06)
+	if not up:
+		# the loader's MG on its pintle ahead of his hatch, at his chest when he
+		# stands in it, its box on the left and the belt into the feed (the
+		# urban package's remote .50 behind the hatch takes its place)
+		k.roof_gun = Vector3(-0.5, 1.28, 0.38)
+		VehicleMounts.pintle(k, t, Vector3(-0.5, 0.8, 0.38), k.roof_gun, "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
+		VehicleWeapons.mmg(k, t, k.roof_gun, k.roof_gun + Vector3(0, 0.01, -0.8), 1.0, -1.0, true, "gunmetal_w", STOW)
 	for s in [-1.0, 1.0]:
 		_smoke(k, t, Vector3(s * 1.06, 0.6, -0.72), s, 4, s * -0.5)
 		# bins on the bustle sides
 		VehicleEquipment.storage(k, t, Vector3(s * 1.18, 0.42, 1.35), Vector3(0.24, 0.42, 1.0), cam, null, Vector3(0, 0, s * 0.1))
-		if not up and team >= 0:
-			# the turret number on its flank ahead of the bins
-			_stencil(k, t, _tac(seed, false), 0.24, Vector3(s * 1.08, 0.45, 0.25), Vector3(0, 0, -s), Vector3(s * 0.971, 0.239, 0))
+		if not up:
+			# The MTTD's crew sit behind bolt-on armour modules on the turret's
+			# flanks, between the smoke dischargers and the bins: thick
+			# chamfered slabs with heavy bolts, so the side reads as armour
+			# hung on a hull rather than one blank wall (the urban package
+			# hangs reactive bricks there instead), the turret number on it.
+			var face := _xy_module(k, t, s, 0.15, 1.2, Vector2(1.168, 0.06), Vector2(0.986, 0.8), 0.1, cam, Vector2i(4, 2), 0.06)
+			if team >= 0:
+				_stencil(k, t, _tac(seed, false), 0.24, face, Vector3(0, 0, -s), Vector3(s * 0.971, 0.239, 0))
 	_bustle_basket(k, t, Vector3(0, 0.28, 2.5), Vector3(2.0, 0.36, 0.46), 2.26, cam)
 	k._bag(t, Vector3(0.8, 0.36, 0.38), Vector3(0.45, 0.47, 2.5), "canvas", BAG, Vector3(0, -0.1, 0))
 	# the crosswind sensor on its mast
@@ -1040,8 +1199,10 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 			var z := -2.25 + i * 1.12
 			VehicleEquipment.skirt(k, m, Vector3(sx, 0.93, z), Vector3(0.08, 0.62, 1.08), s, cam)
 		VehicleEquipment.skirt_bow(k, m, Vector3(sx, 0.98, -3.22), Vector3(0.08, 0.55, 0.9), s, cam, null, Vector3(0.42, 0, 0))
-		# the rail along the sponson edge and a tow cable on it
-		k._box(m, Vector3(0.1, 0.06, 6.9), Vector3(s * 1.8, 1.24, -0.02), "gunmetal_w")
+		# the rail along the sponson edge the skirts hang from (painted with
+		# the hull: bare, it read from above as a pale stripe down each side)
+		# and a tow cable on it
+		k._box(m, Vector3(0.1, 0.06, 6.9), Vector3(s * 1.8, 1.24, -0.02), cam)
 		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.79, 1.4, -2.9), Vector3(s * 1.76, 1.4, 1.6)], 0.028, 0.04)
 		# tool boxes along the sponson (the hull roof aft stays clear: the
 		# bustle and its chains sweep over it), the long one's latch lever
@@ -1056,6 +1217,13 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 			for i in 6:
 				for j in 2:
 					VehicleMounts.era_brick(k, m, Vector3(s * 1.9, 0.72 + j * 0.33, -2.4 + i * 0.93), Vector3(0.86, 0.3, 0.12), Vector3(0, s * PI / 2, 0), cam)
+	# cut branches tucked along the skirts' tops against the sponsons, under
+	# the tow cables, clear of the tool boxes aft
+	var runs := []
+	for s in [-1.0, 1.0]:
+		runs.append([Vector3(s * 1.84, 1.285, -1.2), Vector3(s * 1.86, 1.29, -2.75)])
+		runs.append([Vector3(s * 1.84, 1.285, 0.35), Vector3(s * 1.86, 1.29, -0.85)])
+	_branches(k, m, runs)
 	if era:
 		# the glacis bricks lie along its slope (as _zy lays a plate), turned
 		# over so their covers face up and out of the plate
@@ -1079,7 +1247,7 @@ static func _mk_hull(k: VehicleModels, team: int, cam: String, era: bool) -> voi
 		VehicleDoors.hinge(k, m, Vector3(-0.32, y, 3.82), Vector3.BACK, Vector3.UP, 0.04, "gunmetal_w")
 	VehicleFrames.step(k, m, Vector3(0.2, 0.68, 3.9), Vector2(0.9, 0.3), Vector3.ZERO, "gunmetal_w", null)
 	for s in [-1.0, 1.0]:
-		VehicleMounts.basket(k, m, Vector3(s * 1.2, 1.32, 3.98), Vector3(0.62, .36, 0.36))
+		VehicleMounts.basket(k, m, Vector3(s * 1.2, 1.32, 3.98), Vector3(0.62, .36, 0.36), "paint", STOW)
 		k._bag(m, Vector3(0.5, 0.42, 0.3), Vector3(s * 1.2, 1.56, 3.98), "canvas", BAG)
 		_jerry(k, m, Vector3(s * 1.62, 1.55, 3.92), Color(0.3, 0.33, 0.22), Vector3(0, PI / 2, 0))
 	var mx := 1.975 if era else 1.865
@@ -1096,10 +1264,18 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool, seed 
 	var m := k.root
 	var t := k._pivot(m, Vector3(0, 1.9, 0.75))
 	k.turret = t
-	# the turret's body: the wedge in front, the main body over the ring
-	var b0 := [-0.32, -2.55, 0.32, -2.55, 1.48, -0.72, 1.6, 1.2, -1.6, 1.2, -1.48, -0.72]
+	# the turret's body: the wedge in front, the main body over the ring. Seen
+	# from the side the real wedge is an arrowhead: its long upper plates slope
+	# down to a sharp nose at the gun's height, and under the nose the chin is
+	# cut back toward the ring (the gun depresses past it, and the nose throws
+	# its shadow on the hull); behind the cheeks the sides run straight from
+	# the ring to the roof, where the side modules lie
+	var nose := 0.36
+	var b0 := [-0.28, -2.08, 0.28, -2.08, 1.44, -0.68, 1.6, 1.2, -1.6, 1.2, -1.44, -0.68]
+	var bn := [-0.3, -2.58, 0.3, -2.58, 1.4, -0.6, 1.519, 1.2, -1.519, 1.2, -1.4, -0.6]
 	var b1 := [-0.26, -1.75, 0.26, -1.75, 1.3, -0.42, 1.42, 1.2, -1.42, 1.2, -1.3, -0.42]
-	k._add(t, VehicleModels.loft("nato_mk_tur", b0, b1, 0.0, 0.8, 0.05), cam, null, Vector3.ZERO)
+	var shell := _rings([b0, 0.0, bn, nose, b1, 0.8])
+	k._add(t, VehicleModels.solid(shell, "nato_mk_tur_nose", false, 0.05), cam, null, Vector3.ZERO)
 	# the bustle, raised clear of the hull roof (the chains hang across the gap)
 	var c0 := [-1.6, 1.15, 1.6, 1.15, 1.56, 2.55, 1.3, 2.85, -1.3, 2.85, -1.56, 2.55]
 	var c1 := [-1.42, 1.15, 1.42, 1.15, 1.4, 2.5, 1.16, 2.76, -1.16, 2.76, -1.4, 2.5]
@@ -1110,28 +1286,30 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool, seed 
 	# roof plate over the wedge welded in ahead of the hatches. Where the
 	# bustle's roof meets the turret's, their chamfers meet in a shallow vee
 	# across the roof: the joint between the two castings.
-	var body := _seated(_rings([b0, 0.0, b1, 0.8]), 0.05, [5, 0, 1, 2])
+	var body := _seated(shell, 0.05, [5, 0, 1, 2])
 	var back := _seated(_rings([c0, 0.3, c1, 0.8]), 0.05, [1, 2, 3, 4, 5, 0])
 	_weld(k, t, body + back + [body[0]], cam)
+	# the weld along the nose's crease, where the upper plates meet the chin
+	_weld(k, t, [Vector3(-1.4, nose, -0.6), Vector3(-0.3, nose, -2.58), Vector3(0.3, nose, -2.58), Vector3(1.4, nose, -0.6)], cam, 0.014)
 	var wedge_top := [-0.18, -1.62, 0.18, -1.62, 1.1, -0.44, 1.12, -0.3, -1.12, -0.3, -1.1, -0.44]
 	k._add(t, VehicleModels.loft("nato_mk_wedge_plate", wedge_top, wedge_top, 0.796, 0.82), cam, null, Vector3.ZERO)
 	_weld(k, t, _loop(wedge_top, 0.8), cam, 0.012)
 	if not up:
 		# the wedge's flanks: the modules' joints across them and the rows
 		# of heavy bolts that hold them (reactive armour covers them on the
-		# urban package), each face as the loft folds it
+		# urban package), each upper plate as the solid folds it
 		for s in [-1.0, 1.0]:
-			var q := [Vector3(0.32, 0.0, -2.55), Vector3(1.48, 0.0, -0.72), Vector3(0.26, 0.8, -1.75), Vector3(1.3, 0.8, -0.42)]
+			var q := [Vector3(0.3, nose, -2.58), Vector3(1.4, nose, -0.6), Vector3(0.26, 0.8, -1.75), Vector3(1.3, 0.8, -0.42)]
 			if s < 0.0:
-				q = [Vector3(-1.48, 0.0, -0.72), Vector3(-0.32, 0.0, -2.55), Vector3(-1.3, 0.8, -0.42), Vector3(-0.26, 0.8, -1.75)]
-			var out := Vector3(s, 0.4, -0.6)
+				q = [Vector3(-1.4, nose, -0.6), Vector3(-0.3, nose, -2.58), Vector3(-1.3, 0.8, -0.42), Vector3(-0.26, 0.8, -1.75)]
+			var out := Vector3(s, 0.7, -0.5)
 			# (f runs from the wedge's nose back along the flank)
 			var u := func(f: float) -> float: return f if s > 0.0 else 1.0 - f
 			_loft_seam(k, t, q, Vector2(u.call(0.06), 0.46), Vector2(u.call(0.98), 0.46))
 			for f: float in [0.37, 0.69]:
 				# (up to the foot of the roof's chamfer)
-				_loft_seam(k, t, q, Vector2(u.call(f), 0.03), Vector2(u.call(f), 0.93))
-			for row: float in [0.16, 0.6, 0.86]:
+				_loft_seam(k, t, q, Vector2(u.call(f), 0.03), Vector2(u.call(f), 0.88))
+			for row: float in [0.18, 0.56, 0.8]:
 				for i in 9:
 					var f := 0.1 + i * 0.105
 					if absf(f - 0.37) < 0.04 or absf(f - 0.69) < 0.04:
@@ -1166,9 +1344,18 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool, seed 
 	k._box(t, Vector3(0.1, 0.06, 0.24), Vector3(-0.35, 0.86, 0.75), "gunmetal_w")
 	k._cyl(t, 0.055, 0.055, 0.7, Vector3(-0.85, 1.0, 1.35), Vector3(PI / 2 - 0.5, 0, 0), "gunmetal_w", null, 8)
 	k._box(t, Vector3(0.16, 0.16, 0.2), Vector3(-0.85, 0.86, 1.62), "gunmetal_w")
-	# the loader's MG on its pintle, the wind sensor mast, antennas
-	VehicleMounts.pintle(k, t, Vector3(-0.6, 0.8, 0.35), Vector3(-0.6, 1.02, 0.35), "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
-	VehicleWeapons.mmg(k, t, Vector3(-0.6, 1.02, 0.35), Vector3(-0.6, 1.03, -0.45), 1.0, 0.0)
+	# the loader's MAG on its pintle ahead of his hatch, as high as his chest
+	# when he stands in it, its 100-round box on the left and the belt rising
+	# into the feed; on the plain tank the commander has one of his own on a
+	# post at his cupola's front (the urban package's remote .50 replaces it)
+	var lg := Vector3(-0.6, 1.3, 0.36)
+	VehicleMounts.pintle(k, t, Vector3(-0.6, 0.8, 0.36), lg, "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
+	VehicleWeapons.mmg(k, t, lg, lg + Vector3(0, 0.01, -0.8), 1.0, -1.0, true, "gunmetal_w", STOW)
+	if not up:
+		k.roof_gun = lg
+		var cg := Vector3(0.34, 1.32, 0.42)
+		VehicleMounts.pintle(k, t, Vector3(0.34, 0.96, 0.42), cg, "gunmetal_w", null, Vector2(0.03, 0.04), Vector2(0.08, 0.13))
+		VehicleWeapons.mmg(k, t, cg, cg + Vector3(0, 0.01, -0.8), 1.0, -1.0, true, "gunmetal_w", STOW)
 	VehicleMounts.mast_segment(k, t, Vector3(0.0, 1.05, 2.2), 0.5, 0.02, "gunmetal_w", null)
 	k._box(t, Vector3(0.12, 0.05, 0.05), Vector3(0.0, 1.3, 2.2), "gunmetal_w", null, Vector3.ZERO, false)
 	for s in [-1.0, 1.0]:
@@ -1181,12 +1368,12 @@ static func _mk_turret(k: VehicleModels, team: int, cam: String, up: bool, seed 
 			# the tactical number on the module, above its channel
 			_stencil(k, t, _tac(seed, false), 0.22, Vector3(s * 1.551, 0.579, 0.3), Vector3(0, 0, -s), Vector3(s * 0.972, 0.236, 0))
 		_xy(k, t, s, 0.3, 1.52, Vector2(1.52, 0.38), Vector2(1.51, 0.44), 0.06, 0.09, "gunmetal_w", null, false)
-		VehicleMounts.basket(k, t, Vector3(s * 1.66, 0.425, 2.05), Vector3(0.3, .32, 1.3))
+		VehicleMounts.basket(k, t, Vector3(s * 1.66, 0.425, 2.05), Vector3(0.3, .32, 1.3), "paint", STOW)
 		k._bag(t, Vector3(0.24, 0.34, 1.2), Vector3(s * 1.64, 0.62, 2.05), "canvas", BAG if s < 0 else STOW)
 	if up:
 		# reactive armour bricks over the wedge's faces and the turret sides
 		for s in [-1.0, 1.0]:
-			_era(k, t, Vector3(s * 0.32, 0.0, -2.55), Vector3(s * 1.48, 0.0, -0.72), Vector3(s * 0.26, 0.8, -1.75), Vector3(s * 1.3, 0.8, -0.42), 4, 2, Vector3(s, 0.3, -0.5), cam, 0.12, 0.0, 0.78)
+			_era(k, t, Vector3(s * 0.3, nose, -2.58), Vector3(s * 1.4, nose, -0.6), Vector3(s * 0.26, 0.8, -1.75), Vector3(s * 1.3, 0.8, -0.42), 4, 2, Vector3(s, 0.7, -0.5), cam, 0.12, 0.0, 0.78)
 			for i in 3:
 				for j in 2:
 					VehicleMounts.era_brick(k, t, Vector3(s * 1.72, 0.25 + j * 0.34, -0.25 + i * 0.5), Vector3(0.46, 0.3, 0.12), Vector3(0, s * PI / 2, 0), cam)
@@ -1241,7 +1428,7 @@ static func _scorcher(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleDoors.leaf(k, t, Vector3(0.04, 0.8, 0.7), Vector3(s * 1.6, 0.62, 0.9), cam, null, Vector3.ZERO, 0, s)
 		VehicleDoors.pull(k, t, Vector3(s * 1.62, 0.62, 0.65), Vector3(s, 0, 0), Vector3.BACK, 0.14)
 		_smoke(k, t, Vector3(s * 1.45, 0.88, -1.3), s, 4, s * -0.4)
-		k._box(t, Vector3(0.3, 0.05, 1.2), Vector3(s * 1.74, 0.335, -0.15), "gunmetal_w")
+		k._box(t, Vector3(0.3, 0.05, 1.2), Vector3(s * 1.74, 0.335, -0.15), cam)
 		k._bag(t, Vector3(0.24, 0.32, 1.1), Vector3(s * 1.72, 0.52, -0.15), "canvas", BAG)
 		_antenna(k, t, Vector3(s * 1.2, 1.28, 2.2), 1.4)
 	VehicleFittings.panel_hatch(k, t, Vector3(-0.6, 1.31, 0.9), Vector3(0.7, 0.06, 0.6), cam)
@@ -1383,7 +1570,7 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 			var z := -2.25 + i * 1.12
 			VehicleEquipment.skirt(k, m, Vector3(sx, 0.93, z), Vector3(0.08, 0.62, 1.08), s, cam)
 		VehicleEquipment.skirt_bow(k, m, Vector3(sx, 0.98, -3.22), Vector3(0.08, 0.55, 0.9), s, cam, null, Vector3(0.42, 0, 0))
-		k._box(m, Vector3(0.1, 0.06, 6.9), Vector3(s * 1.8, 1.24, -0.02), "gunmetal_w")
+		k._box(m, Vector3(0.1, 0.06, 6.9), Vector3(s * 1.8, 1.24, -0.02), cam)
 		# The Namer's flanks are hung with heavy bolted modules in two rows,
 		# the hull's band over the skirts and the superstructure's above it;
 		# their thick chamfered edges and the gaps between them break up what
@@ -1400,6 +1587,15 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 		_antenna(k, m, Vector3(s * 1.45, roof, 3.4), 1.5)
 		# smoke dischargers on the front roof corners
 		_smoke(k, m, Vector3(s * 1.45, roof + 0.05, -0.45), s, 4, s * -0.5)
+	# cut branches tucked along the skirts' tops ahead of the armour modules,
+	# and laid along the roof's edges beside the troop hatches where a
+	# turret or crane leaves the roof clear
+	var runs := []
+	for s in [-1.0, 1.0]:
+		runs.append([Vector3(s * 1.84, 1.285, -1.0), Vector3(s * 1.86, 1.29, -2.65)])
+		if stow:
+			runs.append([Vector3(s * 1.42, roof + 0.013, 2.35), Vector3(s * 1.44, roof + 0.013, 0.75)])
+	_branches(k, m, runs)
 	# roof: the commander's cupola with periscopes, hatches over the troop
 	# compartment, stowage at the back
 	if cupola:
@@ -1437,7 +1633,7 @@ static func _namer_hull(k: VehicleModels, team: int, cam: String, cupola := true
 static func _panther(k: VehicleModels, team: int, seed := 0) -> void:
 	var cam := _cam(team)
 	_namer_hull(k, team, cam, true, true, seed)
-	_rcws(k, k.root, Vector3(-0.5, 2.32, -0.05), "both", cam, 1.15)
+	_rcws(k, k.root, Vector3(-0.5, 2.32, -0.05), "both", cam, 1.15, "gmg")
 
 
 ## CRV-6e Bobcat: the Namer as an engineering / recovery vehicle: a dozer
@@ -1509,15 +1705,29 @@ static func _cheetah(k: VehicleModels, team: int, seed := 0) -> void:
 	k._add(t, VehicleModels.loft("nato_ch_tur", b0, b1, 0.08, 0.92, 0.05), cam, null, Vector3.ZERO)
 	_weld(k, t, _seated(_rings([b0, 0.08, b1, 0.92]), 0.05), cam)
 	# a 35 mm on each flank: the trunnion housing, the cradle, the long barrel
-	# with its muzzle velocity radar ring and brake
+	# tapering to the muzzle velocity sensor and the brake
 	var gy := 0.52
 	for s in [-1.0, 1.0]:
 		var gx: float = s * 1.42
 		VehicleMounts.mantlet(k, t, Vector3(0.24, 0.42, 0.9), Vector3(s * 1.3, gy, -0.4), cam)
 		# the gun's armoured housing, painted with the turret, its edges broken
 		k._add(t, VehicleMounts._bevel(Vector3(0.24, 0.3, 1.1), 0.025), cam, null, Vector3(gx, gy, -0.75))
-		VehicleWeapons.autocannon(k, t, Vector3(gx, gy, -1.25), Vector3(gx, gy, -4.2), Vector2(0.07, 0.6), Vector2(0.04, 0.045), Vector2(0.06, 0.2))
-		k._cyl(t, 0.075, 0.075, 0.16, Vector3(gx, gy, -3.1), Vector3(PI / 2, 0, 0), "metal_dark", null, 10)
+		# The gun on its own pivot at the breech, laid with all it carries. As
+		# on the Gepard, the muzzle velocity sensor rides just behind the brake:
+		# a drum round the barrel whose coils time each shell leaving, so the
+		# fire control corrects for the next one as the barrel wears and heats.
+		# Its lead runs back along the barrel's top under the clamp.
+		var g := k._pivot(t, Vector3(gx, gy, -1.25))
+		# the housing's front, round the recoil sleeve, elevating with the gun
+		# (at rest it runs the housing on forward; laid high, it rises out of it)
+		k._add(g, VehicleMounts._bevel(Vector3(0.24, 0.3, 0.46), 0.025), cam, null, Vector3(0, 0, -0.26))
+		k._cyl(g, 0.085, 0.085, 0.03, Vector3(0, 0, -0.5), Vector3(PI / 2, 0, 0), "metal_dark", null, 14, false)
+		var tip := VehicleWeapons.autocannon(k, g, Vector3.ZERO, Vector3(0, 0, -2.95), Vector2(0.07, 0.6), Vector2(0.046, 0.038), Vector2(0.06, 0.2))
+		k._cyl(g, 0.072, 0.072, 0.3, Vector3(0, 0, -2.57), Vector3(PI / 2, 0, 0), VehicleWeapons.STEEL, null, 14)
+		for z: float in [-2.425, -2.715]:
+			k._cyl(g, 0.079, 0.079, 0.022, Vector3(0, 0, z), Vector3(PI / 2, 0, 0), "metal_dark", null, 14, false)
+		VehicleFrames.tube(k, g, Vector3(0, 0.05, -2.42), Vector3(0, 0.054, -0.62), 0.008, "rubber", null, 6, false)
+		k.gun_assembly(g, tip)
 		# the ammunition feed chute and the missile box above the gun
 		k._box(t, Vector3(0.18, 0.2, 0.4), Vector3(gx, gy - 0.24, -0.4), "gunmetal_w")
 		# four rounds, mounted by its inboard face on the bracket
@@ -1661,6 +1871,13 @@ static func _hemtt_cab_detail(k: VehicleModels, paint: Color) -> void:
 	var rim := [-1.15, -4.295, 1.15, -4.295, 1.15, -2.865, -1.15, -2.865]
 	var crown := [-1.09, -4.235, 1.09, -4.235, 1.09, -2.925, -1.09, -2.925]
 	k._add(m, VehicleModels.solid(_rings([rim, 2.82, rim, 2.87, crown, 2.92]), "nato_hemtt_roof_cap"), "paint", paint, Vector3.ZERO)
+	# A camouflaging crew (VehicleCloth.camouflage) keeps its net bundled on
+	# the cab roof, the one flat place a man on the step can reach: on the
+	# crown beside the hatch, clear of the antenna's base and the markers.
+	var net := Vector3(-0.55, 2.92, -3.58)
+	var rng := VehicleCargo.kit(k, m, net, 17)
+	if rng != null and VehicleCloth.camouflage(k) > 0.0 and rng.randf() < 0.5:
+		VehicleCloth.net(k, m, net, Vector3(1.0, 0.2, 0.7), Vector3.ZERO, rng)
 	k._box(m, Vector3(1.88, 0.035, 0.30), Vector3(0, 1.98, -4.67), "paint", paint.darkened(0.15), Vector3(0.12, 0, 0))
 	for s in [-1.0, 1.0]:
 		# Door recess, raised inner pressing, hinges and a grab handle.

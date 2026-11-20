@@ -263,9 +263,10 @@ variants).
 | Dome light | `VehicleFittings.dome_light` | 19 / 25 | Metal base reaching the old sphere's foot, rubber seat, glossy lens |
 | Navigation sidelight | `VehicleFittings.nav_light` | 30 / 36 | Red to port and green to starboard by rule, marker housing, visor |
 | Coaxial gun port | `VehicleWeapons.coax` | 13 / 17 | Port sleeve, slotted flash hider, dark bore |
-| Automatic cannon | `VehicleWeapons.autocannon` | 16 / 24 | Recoil-sleeve collar, clamp bands, ported muzzle brake, bore |
-| Heavy machine gun | `VehicleWeapons.hmg` | 22 / 40 | Shared receiver, feed cover, rear sight, perforated jacket, carrying handle, spade grips, open ammo can and the belt running from it into the feedway (`_belt`) |
-| Medium machine gun | `VehicleWeapons.mmg` | 8 / 16 | Shared receiver, butt and pistol grip, gas tube, carrying handle, open ammo can and belt |
+| Automatic cannon | `VehicleWeapons.autocannon` | 16 / 24 | Recoil-sleeve collar, clamp bands, ported muzzle brake (a brake under 1 cm long: a plain crown instead, for guns like the M242 that carry none), bore |
+| Conical flash hider | `VehicleWeapons.cone_hider` | 3 / 3 | A cone flaring forward over a barrel's end, its lip and dark bore (ZU-23's 2A14, KPVT) |
+| Heavy machine gun | `VehicleWeapons.hmg` | 22 / 40 | Shared receiver (13.5 cm across, as the M2's side plates), feed cover, rear sight, perforated jacket, carrying handle, the retracting handle's slot, spade grips as loops off the back plate with the butterfly trigger, open ammo can and the belt running from it into the feedway (`_belt`) |
+| Medium machine gun | `VehicleWeapons.mmg` | 8 / 16 | Shared receiver at an M240's proportions with stamped ribs and its charging handle, butt, pistol grip and trigger guard, gas tube and block, the bipod folded under it, carrying handle, open ammo can and belt |
 | Grenade machine gun | `VehicleWeapons.gmg` | 14 / 23 | Shared receiver, spade grips, perforated jacket, drum or box feed with chute |
 | Rotary barrel cluster | `VehicleWeapons.rotary` | 11 / 19 | Spindle, barrel carrier, clamps and bores along any axis |
 | Missile launch tube | `VehicleWeapons.launch_tube` | 4 / 11 | End collars, frangible front cover, rear blast seal, clamp bands, umbilical box |
@@ -764,6 +765,46 @@ canvas boot, a camouflage net's cloth where the seed camouflages a vehicle that 
 - **Boats and ships**: `VehicleMarkings.craft_number` (registrations from the seed, lettered along the sheer
   by `VmBoat._lettering`); `VmShips._streak`, `_wall_streak`, `_drip`, `_stain` and `_coat` (rust runs in
   three graded coats tinting the paint they cross), `_funnel_soot`, and `_digits`' `shade` (a drop shadow).
+
+### Eleventh pass: gun boots, foliage, matte steel and moulded parts
+
+Five agents (aircraft; CSAT, independent and core armour; NATO; core materials and parked cars; running gear,
+kit and small boats) each closed eight to ten gaps, starting with the tenth pass's leftovers. Nodes, meshes,
+wheels and rotors are unchanged on every model except the Hunter GMG, whose weapon station now casts its own
+shadow (one node and one mesh fewer). Vertices rise 1.7% across the roster at seed 3, at most 5.3% (the
+Angara).
+
+- **Airframes**: `VmHeli._skirt` carries a roof fairing's bottom outline down onto the roof, pulling its foot
+  in where the flank narrows. `VehicleModels.loft(..., smooth)` rolls the top edge over in a quarter round
+  with each flank its own smoothing group (the Mohawk's and Ghost Hawk's cowls; `_cowl_top`'s inset follows
+  it). `VmPlane.glow` is 58% of its old size; `VmPlane.canopy_frame` lays sill rails and arches;
+  `VehicleAirfoils.surface` tints a hinged surface 8% darker than its wing box; `wing_lines` reaches the
+  drones and the Xi'an.
+- **Armour**: `VehicleMounts.mantlet`'s `boot` on CSAT and independent guns, and `VehicleMounts._gun_boot` on a
+  pivot on the gun's slide for VmCore's Abrams and T-55, so the cover elevates with the gun.
+  `VehicleBody.cut_branches(k, parent, a, b, out, salt)` lays two or three branches per side along a fender or
+  skirt top for a heavily camouflaged crew; `VmNato._branches` does the same along NATO hull sides and
+  `VmCsat._roof_net` / the Zamak and HEMTT cabs carry a kit-seeded net. Spare links on the Varsuk, T-14 hull and
+  Stalker hull; tactical numbers 0.34-0.45 m. `VmCore._idler` is a `VehicleWheels.road` wheel without rubber.
+  `VmNato._mk_turret` builds the Merkava turret in three levels to an arrowhead nose.
+- **Small metal**: `VehicleMounts.applique` paints its bolt heads, `receiver` tints feed covers to the gun's
+  steel, and `VmNato._rcws` paints the turntable; skirt rails and baskets take the paint. The gunmetal
+  profile is metal 0.5 / roughness 0.54 with darker colours. `VehicleModels._mark_mat` makes team marks matte
+  (cached per team, not mutating `Res.mat`). Plain `paint` on the automotive family takes the `service`
+  profile (matte, edge-worn); civilian lamps use `signal_lens`.
+- **The older car model** (`VehicleModels.build_car` / `_car`, the studio's `civilian_0`-`4`; the town parks
+  VmCiv's cars, so play reaches it only as a fallback): the house is a `VmCiv._yloft`, the body a
+  `VehicleWheelArches._xbody` with arches; `_car_face` finds the nose and tail at a height for
+  `rectangular_headlamp`, `signal_lens` indicators and tail lenses and a slatted grille; door seams stop at
+  the sill and `VmCiv._bonnet_line` draws the bonnet; a hash of paint and shape picks chrome or black bumpers
+  and wheel trims. `VehicleCab.upper` rolls and crowns the cab roof and adds drip rails.
+- **Kit and running gear**: `VehicleCloth.LEAVES` are living greens with a drying olive-gold; `branch` lays
+  sprays wider than tall, and `bag`, `roll` and `VehicleEquipment.storage` lay longer branches more often.
+  Scrim leaves are bigger. `VehicleWheels._road_tyre` chamfers a road wheel's outer rubber edge;
+  `_sidewall` raises a maker's name and size code on pneumatic tyres of 0.3 m and up.
+- **Boats and ships**: `VmShips._drip` lays five graded coats (two faint fringes, `STREAK_STAIN`, `FRINGE`) and
+  `_funnel_soot` four. `VmBoat._moulded` lofts the water scooter's hood, pedestal and saddles (old cache keys
+  kept); `_outboard` lofts cowling, leg and apron. The SURCs carry kit-seeded numbers on the cabin.
 
 ### Gun mounts: laying, recoil and the guns themselves
 

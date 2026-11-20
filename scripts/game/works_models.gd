@@ -1172,3 +1172,58 @@ static func _at_weapon(model: Node3D, rebel: bool, rng: RandomNumberGenerator) -
 	for i in 2:
 		_mk(model, Res.cyl(0.07, 0.07, 1.2, 12), "paint", Vector3(1.0 + i * 0.17, 0.08, 0.35), Vector3(PI * 0.5, 0.2, 0), tube.darkened(0.05))
 	_mk(model, Res.box(Vector3(0.5, 0.25, 0.3)), "paint", Vector3(-1.0, 0.13, 0.5), Vector3(0, 0.3, 0), OD)
+
+
+## A militia's tunnel entrance (in `root`, standing on the ground): the shaft
+## going down black, shored round its mouth with timber frames and boards, a
+## ladder down into it; a ring of sandbags round the mouth (a gap where men go
+## in); a sheet of corrugated iron propped over it on poles against the eyes
+## overhead; the spoil heaped behind; a hurricane lamp hung on a frame post.
+## Returns where its flag should hang.
+static func tunnel_mouth(root: Node3D, rng: RandomNumberGenerator) -> Vector3:
+	var k := BuildingKit.nodes(root, rng)
+	var wood := Color(0.42, 0.31, 0.2)
+	var earth := Color(0.33, 0.26, 0.18)
+	# the hole, its sides falling away into the dark
+	k.cyl(0.95, 0.95, 0.02, Vector3(0, 0.015, 0), "plain_dark", Color(0.02, 0.02, 0.02), Vector3.ZERO, 16, false)
+	k.cyl(0.95, 0.85, 1.2, Vector3(0, -0.6, 0), "earth", earth.darkened(0.5), Vector3.ZERO, 16, false)
+	# the shoring round its mouth: four frames, boards between
+	for i in 4:
+		var a := TAU * i / 4.0 + PI * 0.25
+		var p := Vector3(cos(a), 0, sin(a)) * 0.9
+		k.box(Vector3(0.14, 0.7, 0.14), p + Vector3(0, 0.2, 0), "wood_dark", wood.darkened(rng.randf_range(0.0, 0.15)))
+	for side in 4:
+		var a := TAU * side / 4.0
+		var face := k.at_point(Vector3(cos(a), 0, sin(a)) * 0.86, Vector3(0, -a + PI * 0.5, 0))
+		for b in 2:
+			face.box(Vector3(1.3, 0.16, 0.05), Vector3(rng.randf_range(-0.04, 0.04), 0.1 + b * 0.18, 0), "wood", wood.lightened(rng.randf_range(-0.05, 0.1)), Vector3(0, 0, rng.randf_range(-0.04, 0.04)), false)
+	# the ladder down
+	for sx: float in [-0.2, 0.2]:
+		k.rod(Vector3(sx, -1.2, -0.6), Vector3(sx, 0.9, -0.82), 0.03, "wood", wood.lightened(0.1), 6, false)
+	for i in 6:
+		var y := -1.0 + i * 0.32
+		var z := lerpf(-0.6, -0.82, (y + 1.2) / 2.1)
+		k.rod(Vector3(-0.2, y, z), Vector3(0.2, y, z), 0.02, "wood", wood.lightened(0.1), 4, false)
+	# sandbags round the mouth, a gap at the ladder
+	var ring := 14
+	for i in ring:
+		var a := TAU * (i + 0.5) / ring
+		if absf(angle_difference(a, -PI * 0.5)) < 0.5:
+			continue
+		var p := Vector3(cos(a), 0, sin(a)) * 1.45
+		for c in 2:
+			k.part(Res.sphere(0.5, 8), "sandbag", Transform3D(Basis(Vector3.UP, -a + PI * 0.5) * Basis.from_scale(Vector3(0.62, 0.16, 0.34)), p + Vector3(0, 0.08 + c * 0.15, 0)), Color(0.5, 0.45, 0.32).darkened(rng.randf_range(0.0, 0.15)), c == 1)
+	# the sheet propped over its back half on two poles, its far edge down on
+	# the spoil: the mouth open under it at the front
+	var sheet := Basis(Vector3.RIGHT, 0.36)
+	for sx: float in [-0.95, 0.95]:
+		k.rod(Vector3(sx, 0, 0.0), Vector3(sx, 1.25, 0.0), 0.035, "wood_dark", wood.darkened(0.1), 6)
+	k.part(Res.box(Vector3(2.2, 0.03, 2.3)), "corrugated", Transform3D(sheet, Vector3(0, 0.84, 1.05)), Color(0.42, 0.3, 0.2))
+	# the spoil heaped behind
+	for i in 3:
+		k.part(Res.sphere(0.5, 8), "earth", Transform3D(Basis.from_scale(Vector3(rng.randf_range(1.2, 1.8), rng.randf_range(0.5, 0.8), rng.randf_range(0.8, 1.2))), Vector3(-0.8 + i * 0.8, 0.12, 1.75 + rng.randf_range(-0.15, 0.15))), earth.darkened(rng.randf_range(0.0, 0.12)))
+	# a hurricane lamp hung on the front post
+	var post := Vector3(cos(PI * 1.25), 0, sin(PI * 1.25)) * 0.9 + Vector3(0, 0.55, 0)
+	k.cyl(0.05, 0.06, 0.16, post + Vector3(-0.08, 0.0, 0), "metal_dark", Color(0.3, 0.25, 0.15), Vector3.ZERO, 8, false)
+	k.cyl(0.035, 0.035, 0.08, post + Vector3(-0.08, 0.02, 0), "glass", Color(0.9, 0.75, 0.4), Vector3.ZERO, 8, false)
+	return Vector3(0.95, 1.5, 0.0)
