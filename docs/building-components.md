@@ -11,8 +11,8 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_materials.gd` | `BuildingMaterials` | Construction materials: surface, colour, dressings, finish |
 | `scripts/game/building_walls.gd` | `BuildingWalls` | Faces (plinths, bands, boards, sheeting, joints, quoins), copings, piers |
 | `scripts/game/building_openings.gd` | `BuildingOpenings` | Windows, sills, heads, shutters, doorways, door leaves, roller shutters, louvres, ribbon glazing |
-| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets (and their wear), single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
-| `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
+| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets (and their wear), single-pitch roofs, canopies, north lights; `underside` for seating things on a slope, `sawtooth_rise` on north lights |
+| `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks (brick, and guyed steel), pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
 | `scripts/game/building_fences.gd` | `BuildingFences` | Fence bays in nine styles (picket, post-and-rail, railings, close-board, paling, chain-link, bow-top, military security, mesh panels) and their gates |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor, roof tarps and holes; stains that fade into a wall (soot, rain streaks, scorch), shell scars, bullet strikes, boarded and sandbagged windows |
@@ -360,6 +360,13 @@ The factory's walls are `BuildingFactory.walls`, over the shed the structure's p
 - at the front, the roller shutter between hazard-painted bollards, and a personnel door with a sheeted canopy;
 - gas bottles chained to the back wall and drums down one side.
 
+Its chimney is `BuildingFactory.chimney`: the boiler's flue, a steel stack (`BuildingFittings.steel_stack`) out
+through the roof slab in the strip between the last north light and the side eaves, near the back. A sheeted
+shed has no brick stack: nothing on a light roof could carry one. The stack stands on a kerb under a storm collar,
+in flanged lengths, guyed three ways to blocks on the slab, under a rain cap. Its top is black with soot that runs
+down it, and rust weeps from its joints; the smoke comes out of the mouth `chimney` returns. The extract cowls stand
+on the north lights' slopes through flashings, and the pipes down the side come out of the wall and go back into it.
+
 Render it with `--building-kinds=factory:0` (add `--building-rear` for the back).
 
 ## The water tower
@@ -401,11 +408,11 @@ parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
 | `BuildingRoofs.gable`, `hip` | House roofs (tile: about a third hipped), barracks (sheet) |
 | `BuildingRoofs.flat`, `mono`, `canopy`, `sawtooth` | Flat house roofs; watchtower roof; barracks porch and house door hoods; factory north lights |
 | `BuildingFittings` rainwater goods | Every pitched and flat house roof, the barracks, the boat shed |
-| `BuildingFittings.chimney`, `flue`, `stack`, `pipe` | House chimneys; barracks stove, bunker vent, factory cowls, generator exhaust; factory chimney and pipe runs |
+| `BuildingFittings.chimney`, `flue`, `stack`, `steel_stack`, `pipe` | House chimneys; barracks stove, bunker vent, factory cowls, generator exhaust; the components sheet's brick works chimney; the factory's boiler stack and pipe runs |
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
-| `BuildingFactory.walls` | The factory (vehicle works) |
+| `BuildingFactory.walls`, `chimney` | The factory (vehicle works) |
 | `BuildingCargo.stack`, `shipping_crate`, `ammo_box`, `pallet_load`, `ammo_row` | Cover crate stacks, the town's supply dumps, the FOB's stores |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 

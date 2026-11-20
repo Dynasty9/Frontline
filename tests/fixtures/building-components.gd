@@ -140,6 +140,7 @@ func _ready() -> void:
 			BuildingFittings.hopper(k, Vector3(0, 3, 0))
 			BuildingFittings.chimney(k, Vector3.ZERO, Vector2(0.6, 0.6), 1.5)
 			BuildingFittings.stack(k, Vector3.ZERO, 0.5, 0.4, 5.0)
+			BuildingFittings.steel_stack(k, Vector3.ZERO, 0.28, 4.6, [Vector3(3, 0, 0), Vector3(-1.5, 0, 2.6), Vector3(-1.5, 0, -2.6)], k.rng)
 			BuildingFittings.flue(k, Vector3.ZERO, 0.1, 1.0)
 			BuildingFittings.ac_unit(k, Vector3.ZERO)
 			BuildingFittings.water_tank(k, Vector3.ZERO)
@@ -406,11 +407,11 @@ func _ready() -> void:
 		bk.sink.root.free()
 	# The water tower stands on its piers within its footprint, its finial at
 	# 13.5 m or so.
-	var wtk := kit()
-	BuildingLandmarks.water_tower(wtk, wtk.rng)
-	var wtb := _bounds(wtk.sink.root, Transform3D.IDENTITY)
-	check(wtb.size.x <= 6.5 and wtb.size.z <= 6.4 and wtb.position.y >= -0.01 and wtb.end.y > 13.0 and wtb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % wtb)
-	wtk.sink.root.free()
+	var towk := kit()
+	BuildingLandmarks.water_tower(towk, towk.rng)
+	var towb := _bounds(towk.sink.root, Transform3D.IDENTITY)
+	check(towb.size.x <= 6.5 and towb.size.z <= 6.4 and towb.position.y >= -0.01 and towb.end.y > 13.0 and towb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % towb)
+	towk.sink.root.free()
 	# A tunnel's mouth keeps to its 3 m plot, its shaft going down below it.
 	var tn := Structure.preview_model("tunnel", 1)
 	var tnb := _bounds(tn, Transform3D.IDENTITY)
@@ -542,6 +543,21 @@ func _ready() -> void:
 		check(not occupied(fk2.sink.root, Vector3(x, 0.6, -5.07)), "the factory's dado leaves the shutter clear at x %.1f" % x)
 	check(occupied(fk2.sink.root, Vector3(4.0, 0.6, -5.07)), "the factory's dado runs along its front")
 	fk2.sink.root.free()
+	# Its chimney stands on the roof slab in the strip beside the north
+	# lights, out of them and inside the eaves, its kerb and its guys'
+	# blocks bedded on the slab, its mouth where the smoke is put.
+	var chk := kit()
+	var chm := BuildingFactory.chimney(chk, shed, chk.rng)
+	var chb := _bounds(chk.sink.root, Transform3D.IDENTITY)
+	check(chb.position.y >= BuildingFactory.SLAB - 0.05 and chb.end.y <= BuildingFactory.FLUE_TOP + 0.6 and absf(chb.end.x) <= shed.x * 0.5 + 0.2
+		and chb.position.z >= -shed.z * 0.5 and chb.end.z <= shed.z * 0.5 + 0.2, "the factory's chimney keeps to its roof slab (%s)" % chb)
+	check(is_equal_approx(chm.y, BuildingFactory.FLUE_TOP) and occupied(chk.sink.root, Vector3(chm.x, BuildingFactory.SLAB + 0.05, chm.z)), "the chimney stands on its kerb on the slab under its mouth (%s)" % chm)
+	check(occupied(chk.sink.root, Vector3(chm.x, BuildingFactory.FLUE_TOP - 1.0, chm.z)), "the chimney's stack rises to its mouth")
+	for x: float in [2.0, 3.0, 4.0]:
+		for z: float in [1.5, 3.0, 3.8]:
+			var under := BuildingFactory.SLAB + BuildingRoofs.sawtooth_rise(shed.x * 0.9, 3, 0.9, x) - 0.1
+			check(not occupied(chk.sink.root, Vector3(x, under, z)), "the chimney keeps out of the north lights at (%.1f, %.1f)" % [x, z])
+	chk.sink.root.free()
 	# Cover crates: the stores stand on the ground inside the boxes their parts
 	# give for cover, and one stack is loaded differently from the next.
 	var loads := {}

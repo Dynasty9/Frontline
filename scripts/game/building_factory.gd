@@ -7,7 +7,8 @@ extends RefCounted
 ## shop floor, gutters along the side eaves and downpipes at the corners,
 ## steel bollards guarding the shutter's jambs, a personnel door with its
 ## canopy beside it, gas bottles chained to the back wall and drums by the
-## side. The shed itself is the structure's part (`size` across).
+## side; and its chimney, the boiler's steel stack on the roof. The shed
+## itself is the structure's part (`size` across).
 
 const BRICK := Color(0.5, 0.27, 0.19)
 const DADO := 1.25  # how high the brick goes
@@ -15,6 +16,9 @@ const EAVES := 5.0
 const DOOR := Rect2(-2.3, 0.0, 4.6, 4.45)  # the shutter's opening in the front face
 const HAZARD := Color(0.78, 0.6, 0.1)
 const BOTTLES := [Color(0.1, 0.1, 0.1), Color(0.42, 0.12, 0.1), Color(0.1, 0.1, 0.1), Color(0.24, 0.35, 0.5)]  # oxygen, acetylene, oxygen, argon
+const SLAB := EAVES + 0.3  # the top of the roof slab the north lights stand on
+const FLUE_R := 0.34
+const FLUE_TOP := 9.9  # the chimney's mouth: far enough over the north lights to carry its smoke clear of them
 
 
 ## The four faces, `k` at the shed's middle on the ground: front (the
@@ -58,6 +62,22 @@ static func walls(k: BuildingKit, size: Vector3, shed: Color, rng: RandomNumberG
 		BuildingFittings.gutter(k, Vector3(x, EAVES - 0.05, -size.z * 0.5), Vector3(x, EAVES - 0.05, size.z * 0.5), Vector3(sx, 0, 0))
 		for sz: float in [-1.0, 1.0]:
 			BuildingFittings.downpipe(k, Vector3(x, EAVES - 0.1, sz * (size.z * 0.5 - 0.3)), Vector3(x, 0.15, sz * (size.z * 0.5 - 0.3)))
+
+
+## The works chimney: the boiler's flue, a steel stack out through the roof
+## slab in the strip between the last north light and the side eaves, near
+## the back, as a sheeted shed's would be (no brick stack stands on a light
+## roof). It is guyed three ways to blocks on the slab: along the strip,
+## along the back and to the corner. Returns its mouth in the model's space,
+## where the smoke comes out.
+static func chimney(k: BuildingKit, size: Vector3, rng: RandomNumberGenerator) -> Vector3:
+	var wear := RandomNumberGenerator.new()
+	wear.seed = rng.seed ^ 0x5f1ce  # (a stream of its own: the walls draw as they did)
+	var base := Vector3(size.x * 0.5 - 0.5, SLAB, size.z * 0.3)
+	var anchors: Array = [Vector3(base.x, SLAB, base.z - 3.2), Vector3(base.x - 3.4, SLAB, size.z * 0.5 - 0.55),
+		Vector3(size.x * 0.5 - 0.05, SLAB, size.z * 0.5 - 0.15)]
+	BuildingFittings.steel_stack(k, base, FLUE_R, FLUE_TOP - SLAB, anchors, wear)
+	return k.to_model(Vector3(base.x, FLUE_TOP, base.z))
 
 
 ## The brick dado along a face's foot, round its openings, with a
