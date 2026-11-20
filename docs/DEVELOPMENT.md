@@ -370,6 +370,7 @@ FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
+--scenario=church                                     the parish church held by a fighter cell; two squads clear it by its west door and south porch
 --scenario=storeys                                    a house on two floors with a wing; a charge blows in a front wall
                                                       and the floor above comes down with its roof (storey_fell)
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
@@ -491,7 +492,7 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 | `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `ai_allies` (with `play`: an AI commander on your side too), `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
 | `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
 | `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
-| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind` |
+| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind`, and carry their `variant` and `size` |
 | `ping` | `peer` (1: you), `kind` (`attack`, `defend`, `help`...), `pos` | a co-commander's ping as the host receives it (an AI ally answers some) |
 | `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
 | `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
@@ -551,7 +552,8 @@ The client prints a `CLIENT entities=...` summary when it quits. Check both outp
 `--quit-after` counts from when the host's world has reached it and been built (`World.loaded`): the host answers
 only once it has laid out the map and, with a window, drawn its first frame, which takes a minute or more off-screen.
 `waited=` in the summary is how long the client took to get there (-1: nothing came, and it gave up 5 minutes past
-`--quit-after`). With `FL_DEBUG_NET=1` the host prints what it sent a joiner (`JOIN sent peer ... entities in N kB`)
+`--quit-after`). A client whose host quits first (the host's `--quit-after` counts from the battle's start, so it
+usually does) prints the summary then, ending `host_left=1`, and quits. With `FL_DEBUG_NET=1` the host prints what it sent a joiner (`JOIN sent peer ... entities in N kB`)
 and the client when its world was laid out, built and covered (`JOIN loaded ...`).
 
 The host's lobby takes `--battle-name=NAME`, `--coop` (everyone on `--team`'s side), `--max-players=N` and
