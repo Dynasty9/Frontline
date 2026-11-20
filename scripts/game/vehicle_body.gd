@@ -588,9 +588,9 @@ const SOOT_FRINGE: Array[Vector3] = [Vector3(1.18, 1.3, 0.1), Vector3(1.08, 1.14
 
 
 ## The paint under a mark: [its material, its colour] as the caller gave it,
-## or the parent's (else the root's) first part in its family's own finish,
-## the hull the family laid first, as VehicleCloth._net_colours finds it;
-## empty if none is known (a part built outside a bake).
+## or the parent's (else the root's) first part in its family's own finish
+## (the hull the family laid first); empty if none is known (a part built
+## outside a bake).
 static func _paint_under(k: VehicleModels, parent: Node3D, paint: String, paint_col: Variant) -> Array:
 	if paint != "":
 		var preset := VehicleMaterials.preset(VehicleMaterials.key(paint, k.surface_family))
@@ -609,34 +609,3 @@ static func _paint_under(k: VehicleModels, parent: Node3D, paint: String, paint_
 	return []
 
 
-## Cut branches a crew that camouflages its vehicle (VehicleCloth.camouflage)
-## has laid along a fender, a track guard or a skirt's top: the level run
-## from `a` to `b` in the parent's space (on the surface, the stems resting on
-## it), `out` the way its edge faces. Heavily camouflaged, two or three; a
-## little, one or none. Each lies along the run, a metre or more long, its cut
-## end tucked in and its leafy tip trailing out over the edge, so the leaves
-## break the long straight line of the fender that picks a tank out from the
-## battle camera. Scenery, wrecks and burnt hulks carry no crew's load, so
-## never any (`salt` keeps each run's draw its own).
-static func cut_branches(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, out: Vector3, salt: int) -> void:
-	var camo := VehicleCloth.camouflage(k)
-	var rng := VehicleCargo.kit(k, parent, (a + b) * 0.5, salt)
-	if rng == null or camo <= 0.0:
-		return
-	var run := b - a
-	var length := run.length()
-	if length < 1.0:
-		return
-	var count := rng.randi_range(2, 3) if camo > 0.8 else rng.randi_range(0, 1)
-	count = mini(count, int(length / 0.9))
-	var along := run / length
-	var o := out.normalized()
-	for i in count:
-		var span := minf(rng.randf_range(0.9, 1.4), length / count + 0.3)
-		var mid := a + along * (length * (i + rng.randf_range(0.35, 0.65)) / count)
-		# the tip trails aft as a rule (pushed in from the front as the crew
-		# walks the fender), now and then forward
-		var dir := along * (1.0 if rng.randf() < 0.7 else -1.0)
-		var cut := mid - dir * span * 0.5 - o * 0.03
-		var tip := mid + dir * span * 0.5 + o * rng.randf_range(0.04, 0.14)
-		VehicleCloth.branch(k, parent, cut, tip, rng, 0.2)

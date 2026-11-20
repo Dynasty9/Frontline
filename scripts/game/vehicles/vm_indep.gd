@@ -428,8 +428,6 @@ static func _mora(k: VehicleModels, team: int, seed := 0) -> void:
 		for i in 5:
 			VehicleEquipment.skirt(k, m, Vector3(s * 1.49, 0.8, -1.9 + i * 1.1), Vector3(0.05, 0.44, 1.08), s, cam, col)
 			k._box(m, Vector3(0.02, 0.03, 1.0), Vector3(s * 1.52, 0.98, -1.9 + i * 1.1), "gunmetal_w", null, Vector3.ZERO, false)
-		# cut branches tucked along the skirts' top edge, against the hull side
-		VehicleBody.cut_branches(k, m, Vector3(s * 1.5, 1.033, -2.2), Vector3(s * 1.5, 1.033, 1.1), Vector3(s, 0, 0), 31)
 		VehicleEquipment.skirt_bow(k, m, Vector3(s * 1.49, 0.86, -2.78), Vector3(0.05, 0.36, 0.6), s, cam, col, Vector3(-0.45, 0, 0))
 		# the hull's side seam at the deck line, a stowage box aft
 		k._box(m, Vector3(0.04, 0.05, 6.1), Vector3(s * 1.45, 1.5, 0.05), cam, col)
@@ -551,8 +549,6 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 			if heavy:
 				k._box(m, Vector3(0.02, 0.03, 0.9), Vector3(s * 1.905, 1.06, sz), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleEquipment.skirt_bow(k, m, Vector3(s * 1.83, 0.96, -3.48), Vector3(0.14, 0.4, 0.56), s, cam, col, Vector3(-0.5, 0, 0))
-		# cut branches tucked along the skirts' top, against the hull side
-		VehicleBody.cut_branches(k, m, Vector3(s * 1.82, 1.153, -2.8), Vector3(s * 1.82, 1.153, 1.3), Vector3(s, 0, 0), 31)
 		# the hull's sides: a stowage box and the tool rack above the skirts
 		VehicleEquipment.storage(k, m, Vector3(s * 1.8, 1.4, 2.6), Vector3(0.12, 0.3, 1.2), cam, col, Vector3.ZERO)
 		k._cyl(m, 0.03, 0.03, 2.4, Vector3(s * 1.79, 1.5, 0.1), X90, "gunmetal_w", null, 6, false)
@@ -1007,13 +1003,6 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	for x: float in [-0.3, 0.0, 0.3]:
 		VehicleFittings.marker(k, m, Vector3(x, 2.74, -1.94), Vector3(0.06, 0.05, 0.09), 2.0, Color(0.62, 0.45, 0.12))
 	_antenna(k, m, Vector3(-1.0, 2.72, -0.86), 1.6)
-	# a camouflage net bundled on the cab roof between the hatch and the
-	# antenna, by a crew that camouflages its truck (VehicleCloth.camouflage)
-	var net_at := Vector3(-0.42, 2.72, -1.3)
-	var rng := VehicleCargo.kit(k, m, net_at, 17)
-	var camo := VehicleCloth.camouflage(k)
-	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
-		VehicleCloth.net(k, m, net_at, Vector3(0.78, rng.randf_range(0.1, 0.17), 0.72), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
 	# behind the cab: the spare wheel upright in its frame, the air intake,
 	# the fuel tank on the left and the battery box on the right
 	VehicleWheels.spare(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, cam, col)

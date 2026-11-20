@@ -1910,9 +1910,6 @@ static func _bradley(k: VehicleModels, team: int, seed := 0) -> void:
 			_bx(k, m, Vector3(0.02, 0.03, 0.9), Vector3(s * 1.5, 1.08, z0 + 0.52), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleEquipment.skirt_bow(k, m, Vector3(s * 1.44, 0.95, -2.85), Vector3(0.07, 0.42, 0.5), s, cam, null, Vector3(-0.45, 0, 0))
 		k._team_mark(m, team, Vector3(s * 1.515, 1.46, 1.42), Vector3(0.02, 0.24, 0.7))
-		# cut branches tucked along the skirts' top under the armour tiles,
-		# ahead of the recognition panel
-		VehicleBody.cut_branches(k, m, Vector3(s * 1.48, 1.143, -2.3), Vector3(s * 1.48, 1.143, 0.4), Vector3(s, 0, 0), 31)
 	# the roof: the troop compartment's long cargo hatch hinged at its back
 	# edge, vision blocks
 	VehicleFittings.panel_hatch(k, m, Vector3(0, roof + 0.03, 2.05), Vector3(1.3, 0.06, 1.2), cam)
