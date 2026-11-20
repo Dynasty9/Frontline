@@ -35,6 +35,17 @@ export const fighting = (s) => !out(s);
 /** Distance on the ground between two [x, z] points. */
 export const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
+/** Whether [x, z] is on a structure's footprint (its size, turned by its yaw), or within `pad` metres of it. */
+export function within(p, st, pad = 0) {
+  const dx = p[0] - st.pos[0];
+  const dz = p[1] - st.pos[1];
+  const c = Math.cos(-st.yaw);
+  const s = Math.sin(-st.yaw);
+  const lx = c * dx + s * dz;
+  const lz = -s * dx + c * dz;
+  return Math.abs(lx) < st.size[0] / 2 + pad && Math.abs(lz) < st.size[2] / 2 + pad;
+}
+
 /** What a row's check sees: the counters at the end, and queries of the field. */
 export class Field {
   /** Every behaviour counter (world.stat) so far. */

@@ -74,8 +74,9 @@ var ow_t := 0.0
 var ow_rbf_t := 0.0  # recon by fire: not before
 var then_defend: Array = []  # [pos, face]: a hold order, once it's got there as a squad
 var cleared := {}  # house (floor) eid -> when it was cleared
+var clearing := {}  # house (floor) eid -> when a pair was sent to clear it (till it's called clear)
 var bt_clear: Array = []
-var clear_call: Array = []  # [man, time]: he calls "Clear!" once he's had a look
+var clear_call: Array = []  # [man, time, house]: he calls "Clear!" once he's had a look
 var ambush_plan = null  # AmbushPlan it's carrying out (untyped: may be dropped)
 var halt_then: Array = []
 

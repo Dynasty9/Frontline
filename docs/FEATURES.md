@@ -425,6 +425,10 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   the doorway, back to the wall; pin out, he steps into the doorway and throws it in low under the lintel (or
   through a window), steps back against the wall for the bang, then goes in with a mate right behind him.
   If the door's shut he kicks it in first and only then pulls the pin. A new order waits until the grenade is in.
+  A stretch of wall blown down to rubble is a way in as good as a door (a house with both doors blown out still
+  gets cleared).
+  Once he's had a look round he calls the room: "Clear!" if there's nobody left on his feet in there (one he can
+  see outside, running off across the field, doesn't stop him; one in the next room makes it "Clear! Next room!").
 - **Doors.** Most houses' front doors are shut (double doors with panels and handles). Shut, they hide the room
   - nobody sees or shoots through them - and keep a grenade out. A man who walks into one in a fight kicks it
   in (a boot by the lock, the doors slam back against the wall inside, and whoever's in there hears it); with
@@ -530,7 +534,9 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   burst into the hedge or house where the enemy was last heard (*recon by fire*). Ordered to run (Shift) it
   just runs. A squad sent to hold somewhere a long way off gets there as a squad, then spreads into its
   positions. On a long move, followers take nearby places relative to the leader’s next waypoint, including when a new order reverses their direction. The squad *clears* any house on that ground first: two men stack on the door, kick it in, go through
-  (a grenade first only if someone's known to be inside) and call "Clear!".
+  (a grenade first only if someone's known to be inside) and call "Clear!". If they never get in - the point man
+  hit at the door, or pulled off it to drag a wounded mate in - another pair goes 45 seconds on, or, if the squad's
+  men are in there by then, one of them has a look round and calls it.
 - **Near ambush.** Hit at 30 metres or less, a steady squad that isn't hopelessly outnumbered assaults straight
   into the ambush instead of lying in the killing zone.
 - **Stragglers and crews.** The last man of a squad attaches himself to the nearest friendly squad. A knocked-out
@@ -617,6 +623,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   as things are built, destroyed or cratered. Formation slots snap to the best cover nearby (Company of Heroes
   style) and soldiers look for craters, rubble and woods when there's no wall to hide behind.
 - Stuck watchdogs: infantry re-plan if they stop making progress; vehicles back off, turn and re-plan.
+- A wall's 1 m cell is blocked though the wall is thinner, so a man can stand in one (at a window, in a doorway,
+  pressed into a corner by a blast). His route sets off from the nearest free cell he can step straight to, on his
+  own side of the wall, not the nearest by the grid alone, which can be through it.
 
 **The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
 - Town asphalt combines fine photographed aggregate with larger cracks and repairs, continuous across street junctions. Traffic wears it by lane: polished wheel paths, oil down each lane's middle, grit and damp in the gutters, with drain grates along the kerbs and manhole covers in the lanes. Repairs are saw-cut patches edged with sealant and cracks are filled with tar. Zebra crossings and parking lines are paint on that same asphalt, worn through in places, and junctions and markings take the rain as the roads do. Sidewalk slabs are shaded along the photograph's own stretcher-bond joints; the square is laid in larger slabs of the same concrete. Outside town every road is drawn by the terrain shader itself, not a mesh: the grass job rasterises each texel's nearness to a road (Grass.road_field) into the packed biome texture's blue, and in its alpha whether that road is gravelled (the civilian network; the sides' supply routes are earth). The ground blends the trail scan (terrain layer 11) in by its height against the turf's, and on gravel roads the aggregate scan (layer 12) over it, banked where no wheel runs, with potholes in clusters, with wandering wheel ruts and rolled shoulders in the normal and the meadow's rutted soil at the edges. The road ribbon draws only the town's asphalt. Asphalt cracks run along and across the street grid. At crossroads the kerb turns each corner on a 1.6 m radius (TownGen.CORNER_R; Decor builds the corner as a terrain-following fan of paving with asphalt in the bite). Car parks are kerbed on three sides, and playgrounds are surfaced in poured rubber crumb. Road and pavement normal maps follow their actual slopes. Photographic roof, concrete, wood and bark materials are calibrated to their intended colours, so grey roofs remain grey and terracotta stays distinct at distance.

@@ -445,6 +445,28 @@ func _nearest_free(g: NavRaster, c: Vector2i, radius := 9) -> Vector2i:
 	return c
 
 
+## A man standing in a blocked cell: a wall's cell is solid, but the wall
+## is thinner than the cell, so a man at a window or in a doorway (or pressed
+## into a corner by a blast) can stand in it. The free cell nearest him that
+## he can step straight to, on his own side of the wall (c if there's none).
+func _free_start(g: NavRaster, c: Vector2i, from: Vector3, vehicle: bool, tracks: bool) -> Vector2i:
+	var best := c
+	var bd := INF
+	for dz in range(-2, 3):
+		for dx in range(-2, 3):
+			var n := Vector2i(c.x + dx, c.y + dz)
+			if not g.is_in_boundsv(n) or g.is_point_solid(n):
+				continue
+			var p := center(n)
+			var d := Vector2(p.x - from.x, p.z - from.z).length_squared()
+			if d >= bd or (terrain and terrain.world.water and terrain.world.water.too_deep(p)):
+				continue
+			if can_step(from, p, vehicle, tracks):
+				bd = d
+				best = n
+	return best
+
+
 func nearest_walkable(p: Vector3, vehicle := false, tracks := false) -> Vector3:
 	var g := tracked if tracks else (veh if vehicle else inf)
 	var c := cell_of(p)
@@ -477,11 +499,32 @@ func find_path(from: Vector3, to: Vector3, vehicle := false, team := -1, care :=
 
 func _find_path(from: Vector3, to: Vector3, vehicle: bool, team: int, care: float, tracks: bool) -> PackedVector3Array:
 	var g := tracked if tracks else (veh if vehicle else inf)
-	var a := cell_of(from)
+	var c := cell_of(from)
+	if not g.is_point_solid(c):
+		return _route(from, to, vehicle, team, care, tracks, c)
+	# Standing in a blocked cell, the route sets off from the nearest free one.
+	# The nearest by the grid alone can be on the far side of the wall he's up
+	# against, and a route from there starts with a step through it he can
+	# never take: he'd ask for the same route again, every tick, and stand
+	# there for the rest of the battle. Then it sets off from the free cell he
+	# can step to, with that step first if the route doesn't start in reach.
+	var out := _route(from, to, vehicle, team, care, tracks, _nearest_free(g, c))
+	if not out.is_empty() and can_step(from, out[0], vehicle, tracks):
+		return out
+	var a := _free_start(g, c, from, vehicle, tracks)
+	if a == c:
+		return out
+	out = _route(from, to, vehicle, team, care, tracks, a)
+	if not out.is_empty() and not can_step(from, out[0], vehicle, tracks):
+		out.insert(0, center(a))
+	return out
+
+
+## The route from `from`, setting off from its free cell `a`.
+func _route(from: Vector3, to: Vector3, vehicle: bool, team: int, care: float, tracks: bool, a: Vector2i) -> PackedVector3Array:
+	var g := tracked if tracks else (veh if vehicle else inf)
 	var b := cell_of(to)
 	var end_exact := true
-	if g.is_point_solid(a):
-		a = _nearest_free(g, a)
 	if g.is_point_solid(b):
 		b = _nearest_free(g, b)
 		end_exact = false

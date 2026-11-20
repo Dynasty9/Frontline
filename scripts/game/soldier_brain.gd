@@ -344,20 +344,26 @@ static func house_at(w: World, p: Vector3) -> Structure:
 	return null
 
 
-## Its doorways and windows: [wall, centre, outward normal, is a door].
+## Its doorways and windows: [wall, centre, outward normal, is a door]. A
+## stretch of its wall blown down (rubble where the wall stood) is a way in
+## as good as a door: a house whose doors have both been blown out is still
+## a house to clear.
 static func openings(w: World, house: Structure) -> Array:
 	var out := []
 	var reach := maxf(house.size.x, house.size.z) * 0.5 + 1.5
 	for st in w.structures_near(house.position, reach):
-		if st.skind != "house_wall" or st.gone or st.wrecked or not (st.variant in [1, 2, 3]):
+		var gap: bool = st.skind == "rubble"
+		if st.gone or (not gap and (st.skind != "house_wall" or st.wrecked or not (st.variant in [1, 2, 3]))):
 			continue
 		var l: Vector3 = Basis(Vector3.UP, -house.yaw) * (st.position - house.position)
 		if absf(l.x) > house.size.x * 0.5 + 0.6 or absf(l.z) > house.size.z * 0.5 + 0.6:
 			continue
+		if gap and absf(l.x) < house.size.x * 0.5 - 0.6 and absf(l.z) < house.size.z * 0.5 - 0.6:
+			continue  # (rubble lying inside: not where a wall was)
 		var n: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, 1)
 		if n.dot(Defs.flat(st.position - house.position)) < 0.0:
 			n = -n
-		out.append([st, Defs.flat(st.position), Defs.flat(n).normalized(), st.variant == 2])
+		out.append([st, Defs.flat(st.position), Defs.flat(n).normalized(), gap or st.variant == 2])
 	return out
 
 
@@ -368,6 +374,9 @@ static func _stack_spot(s: Soldier, o: Array) -> Vector3:
 	var along := Vector3(n.z, 0, -n.x)
 	var side := 1.0 if (s.position - c).dot(along) >= 0.0 else -1.0
 	var half := 0.95 if o[3] else 0.65
+	var st: Variant = o[0]
+	if is_instance_valid(st) and st.skind == "rubble":
+		half = st.size.x * 0.5  # beside the gap, where the wall still stands
 	return s.world.nav.nearest_walkable(c + n * 0.5 + along * side * (half + 0.6))
 
 
@@ -594,8 +603,9 @@ static func breach_tick(s: Soldier, dt: float) -> void:
 				return
 			var inside := s.world.nav.nearest_walkable(c - n * 2.2)
 			s.say(_pick(s, ["Go! Go! Go!", "Moving in!", "In! In!", "Clear the room!"]), true)
-			if s.bt_clear and s.squad:
-				s.squad.clear_call = [s, s.world.time + 2.5]
+			if s.squad:
+				# (whether he went in after a man seen inside or to check it)
+				s.squad.clear_call = [s, s.world.time + 2.5, h]
 			end_breach(s)
 			s.hold_pos = inside
 			s.hold_face = -n

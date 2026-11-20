@@ -228,6 +228,16 @@ static func then_defend_tick(q: Squad) -> void:
 
 # --- clearing houses -----------------------------------------------------------------
 
+## A house called clear (or found with friends in it) isn't cleared again for
+## this long (Squad.cleared); one a pair has gone to clear is left to them
+## for CLEARING_FOR (Squad.clearing), and if nobody's called it clear by then
+## - the point man was hit at the door, or pulled off it to drag a wounded
+## mate in - another pair goes, or, if the squad's men are in there by then,
+## one of them has a look round and calls it.
+const CLEARED_FOR := 600.0
+const CLEARING_FOR := 45.0
+
+
 ## Holding ground with houses on it, in a fight (or with the enemy about):
 ## the houses get cleared, one at a time, before the squad settles in.
 static func can_clear(q: Squad) -> bool:
@@ -247,10 +257,15 @@ static func can_clear(q: Squad) -> bool:
 	for st in q.world.structures_near(q.order_pos, 22.0):
 		if st.skind != "floor" or st.gone or Defs.flat(st.position - q.order_pos).length() > 18.0:
 			continue
-		if q.world.time - float(q.cleared.get(st.eid, -1e9)) < 600.0:
+		if q.world.time - float(q.cleared.get(st.eid, -1e9)) < CLEARED_FOR or q.world.time - float(q.clearing.get(st.eid, -1e9)) < CLEARING_FOR:
 			continue
-		if _friends_inside(q, st):
+		var mate := _friend_inside(q, st)
+		if mate != null:
 			q.cleared[st.eid] = q.world.time
+			if q.clearing.has(st.eid):
+				q.clearing.erase(st.eid)
+				if mate.squad == q and q.clear_call.is_empty():
+					q.clear_call = [mate, q.world.time + 1.5, st]
 			continue
 		var door := []
 		var bd := 1e9
@@ -282,8 +297,7 @@ static func start_clear(q: Squad) -> int:
 	var door: Array = q.bt_clear[1]
 	var s: Soldier = q.bt_clear[2]
 	var buddy: Soldier = q.bt_clear[3]
-	# Busy riflemen must not mark an unvisited house as cleared.
-	q.cleared[h.eid] = q.world.time
+	q.clearing[h.eid] = q.world.time
 	SoldierBrain.start_clearing(s, h, door, buddy)
 	q.world.stat("clear_house")
 	return BT.OK
@@ -296,24 +310,42 @@ static func _enemy_about(q: Squad, r: float) -> bool:
 	return false
 
 
-static func _friends_inside(q: Squad, h: Structure) -> bool:
+## A friend in the house, one of the squad's own if there is one.
+static func _friend_inside(q: Squad, h: Structure) -> Soldier:
+	var friend: Soldier = null
 	for s in q.world.soldiers_near(h.position, maxf(h.size.x, h.size.z) * 0.6 + 1.0):
 		if s.team == q.team and s.life == Soldier.Life.ALIVE and SoldierBrain.house_at(q.world, s.position) == h:
-			return true
-	return false
+			if s.squad == q:
+				return s
+			if friend == null:
+				friend = s
+	return friend
 
 
-## The man who went in calls it once he's had a look round.
+## The man who went in calls it once he's had a look round: clear, if
+## there's nobody left on his feet in there he can see. (An enemy he can see
+## outside - one running off across the field, through a window - doesn't
+## stop him calling the room, nor do the next room's men: "Clear! Next room!")
 static func clear_call_tick(q: Squad) -> void:
 	if q.clear_call.is_empty() or q.world.time < float(q.clear_call[1]):
 		return
-	var s: Soldier = q.clear_call[0]
+	# (either may have been freed since: look before giving them a type)
+	var sv: Variant = q.clear_call[0]
+	var hv: Variant = q.clear_call[2]
 	q.clear_call = []
-	if s == null or not is_instance_valid(s) or s.gone or s.life != Soldier.Life.ALIVE:
+	if not is_instance_valid(sv) or not is_instance_valid(hv):
 		return
-	if s.vis_targets.is_empty():
-		s.say(_pick(q, ["Clear!", "Room clear!", "Clear! Next room!", "Building clear!"]) if q.team == 0 else _pick(q, ["Empty!", "Nobody here!", "Clear!"]), true)
-		q.world.stat("house_cleared")
+	var s: Soldier = sv
+	var h: Structure = hv
+	if s.gone or s.life != Soldier.Life.ALIVE or h.gone:
+		return
+	for e in s.vis_targets:
+		if is_instance_valid(e) and not e.gone and (not (e is Soldier) or e.life == Soldier.Life.ALIVE) and SoldierBrain.house_at(q.world, e.position) == h:
+			return
+	s.say(_pick(q, ["Clear!", "Room clear!", "Clear! Next room!", "Building clear!"]) if q.team == 0 else _pick(q, ["Empty!", "Nobody here!", "Clear!"]), true)
+	q.cleared[h.eid] = q.world.time
+	q.clearing.erase(h.eid)
+	q.world.stat("house_cleared")
 
 
 # --- near ambush ---------------------------------------------------------------------
