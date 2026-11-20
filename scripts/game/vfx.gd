@@ -23,6 +23,7 @@ var world: World
 var noise_tex: ImageTexture
 var scorch_tex: ImageTexture
 var smoke_mat: ShaderMaterial
+var screen_volume_mat: ShaderMaterial
 var flare_smoke_mat: ShaderMaterial
 var blast_flame_mat: ShaderMaterial
 var flash_mat: ShaderMaterial
@@ -303,6 +304,9 @@ func _add_clods(p: Vector3, size: float) -> void:
 
 func _make_materials() -> void:
 	smoke_mat = _shader_mat(SMOKE_SHADER)
+	screen_volume_mat = ShaderMaterial.new()
+	screen_volume_mat.shader = preload("res://scripts/shaders/smoke_screen.gdshader")
+	screen_volume_mat.set_shader_parameter("noise_tex", preload("res://assets/sky/cloud_noise.res"))
 	var flare_shader: Shader = load("res://scripts/shaders/flare_smoke.gdshader")
 	flare_smoke_mat = _shader_mat(flare_shader.code)
 	flare_smoke_mat.set_shader_parameter("positive_map", load("res://assets/vfx/fuel_positive.png"))
@@ -354,7 +358,7 @@ func apply_lighting() -> void:
 	var zn: Color = mood.zenith
 	var amb := _desat(hz.lerp(zn, 0.4), 0.55)
 	# (and the copies of it carrying a smoke's own density, in the browser build)
-	for material in [smoke_mat, flare_smoke_mat]:
+	for material in [smoke_mat, flare_smoke_mat, screen_volume_mat]:
 		Mats.set_shared(material, &"sun_dir", sd)
 		Mats.set_shared(material, &"sun_col", sc)
 		Mats.set_shared(material, &"sun_energy", at.sun.light_energy * at.by_mood(SMOKE_SUN, 0.75))
@@ -1036,6 +1040,19 @@ func heat_sources(hh: HeatHaze) -> void:
 			hh.add_fire(h.global_position, h.get_meta("ext", Vector3(0.5, 0.4, 0.5)), f)
 
 
+## (view) Every fire that's alight, seen or not, as [where, how hard (0..1),
+## how big (make_fire's k, 0.45 a small one to 2.6 a house)]: the smoke it
+## pours into the air (WeatherGrid, SmokePlumes).
+func fire_sources() -> Array:
+	var out := []
+	for b in _burners:
+		if is_instance_valid(b) and (b as Node3D).is_inside_tree():
+			var f := float(b.get_meta("fire", 0.0))
+			if f > 0.02:
+				out.append([(b as Node3D).global_position, f, float(b.get_meta("k", 1.0))])
+	return out
+
+
 ## A fire made by make_fire at strength f (0..1): its smoke goes on thinly
 ## even as it dies down.
 func set_fire(h: Node3D, f: float) -> void:
@@ -1229,6 +1246,36 @@ func make_trail() -> GeometryInstance3D:
 	return part(t)
 
 
+## How much the flames light their own smoke (1; FL_DEBUG_AIR_FLIP_GLOW
+## turns it off and on for comparisons).
+var fire_glow_k := 1.0
+## The flames' light on the smoke rising off them (sRGB-ish multiplier on the
+## smoke's own colour): a dull orange-red, at most what the flames give.
+const FIRE_SMOKE_GLOW := Vector3(0.95, 0.28, 0.06)
+
+
+## The fire's light on its own smoke: each puff is lit dull orange as it
+## leaves the flames and goes dark grey as it climbs away from them (the smoke
+## shader fades it with the puff's age), so the undersides of the billows near
+## the fire glow, mottled as the smoke is, and only where there's smoke.
+func _smoke_glow(h: Node3D, fire: float) -> void:
+	var s := h.get_node_or_null("Smoke") as GeometryInstance3D
+	if s == null:
+		return
+	# (a fuel fire's smoke is lit from its vent alone; a burning house or wood
+	# puts a whole roof of flame under its darker smoke)
+	var k := 1.0 if s.has_meta(&"fuel_smoke") else 2.6 * clampf(fire * 1.2, 0.0, 1.0)
+	Mats.set_inst(s, &"local_light", FIRE_SMOKE_GLOW * k * fire_glow_k)
+
+
+## Every fire's light on its smoke at once (for the off/on comparison).
+func set_fire_glow(k: float) -> void:
+	fire_glow_k = k
+	for b in _burners:
+		if is_instance_valid(b):
+			_smoke_glow(b, float(b.get_meta("fire", 0.0)))
+
+
 func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 	if h == null or not is_instance_valid(h):
 		return
@@ -1265,6 +1312,7 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 		elif fire <= 0.02 and snd.playing:
 			snd.stop()
 	h.set_meta("fire", fire)
+	_smoke_glow(h, fire)
 	if is_emitting(f) or is_emitting(s):
 		f.visible = true
 		e.visible = true
@@ -1486,7 +1534,22 @@ func make_rotor_wash(radius: float) -> Node3D:
 			pm.color_ramp = _ramp([0.0, 0.12, 1.0], [Color(0.92, 0.94, 0.95, 0.0), Color(0.92, 0.94, 0.95, 0.42), Color(0.9, 0.92, 0.93, 0.0)])
 		else:
 			pm.color_ramp = _ramp([0.0, 0.15, 0.6, 1.0], [Color(0.6, 0.55, 0.45, 0.0), Color(0.6, 0.55, 0.45, 0.3), Color(0.62, 0.58, 0.5, 0.18), Color(0.64, 0.6, 0.52, 0.0)])
-		var d := _sys(int((40 if wet else 64) * k), 1.2 if wet else 2.0, pm, smoke_mat)
+		# Dust leaves the rotor disc as a shallow sheet, then lifts and loses density.
+		# Spray is heavier and falls back into the water.
+		if not wet:
+			pm.emission_ring_inner_radius = radius * 0.42
+			pm.gravity = WIND * 0.46 + Vector3.UP * 0.48
+			pm.radial_accel_min = 11.0
+			pm.radial_accel_max = 18.0
+			pm.damping_min = 1.0
+			pm.damping_max = 1.75
+			pm.angle_min = -8.0
+			pm.angle_max = 8.0
+			pm.angular_velocity_min = -5.0
+			pm.angular_velocity_max = 5.0
+			pm.scale_curve = _curve([Vector2(0, 0.28), Vector2(0.26, 0.9), Vector2(1, 1.8)])
+		var sheet: Mesh = null if wet else Res.quad(Vector2(2.6, 0.69))
+		var d := _sys(int((40 if wet else 64) * k), 1.2 if wet else 2.4, pm, smoke_mat, sheet)
 		d.one_shot = false
 		d.explosiveness = 0.0
 		d.emitting = false
@@ -1508,11 +1571,20 @@ static func set_rotor_wash(h: Node3D, strength: float, wet: bool) -> void:
 			set_ratio(p, clampf(strength, 0.2, 1.0))
 
 
-## Thick white smoke screen (grenade / mortar smoke); FogVolume adds real
-## volumetric density when volumetric fog is on.
+## High effects trace the screen through its depth. Lower settings and the
+## browser use particles, with fog where the renderer supports it.
 func make_smoke_screen() -> Node3D:
 	var h := Node3D.new()
-	var pm := _pm(Vector3.UP, 60.0, 0.35, 1.15, Fires.WIND * 0.68 + Vector3.UP * 0.22, 2.3, 4.8)
+	if not gl and Settings.fx_mult() > 0.65:
+		var volume := MeshInstance3D.new()
+		volume.name = "ScreenVolume"
+		volume.mesh = Res.box(Vector3.ONE)
+		volume.material_override = screen_volume_mat
+		volume.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		volume.visible = false
+		h.add_child(volume)
+		return h
+	var pm := _pm(Vector3.UP, 60.0, 0.35, 1.15, Fires.WIND * 0.68 + Vector3.UP * 0.22, 2.3, 4.1)
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	pm.emission_sphere_radius = 1.0
 	pm.damping_min = 0.5
@@ -1525,11 +1597,14 @@ func make_smoke_screen() -> Node3D:
 	pm.turbulence_influence_min = 0.01
 	pm.turbulence_influence_max = 0.04
 	pm.scale_curve = _curve([Vector2(0, 0.3), Vector2(0.3, 0.9), Vector2(1, 1.0)])
-	pm.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [Color(0.85, 0.85, 0.83, 0.0), Color(0.69, 0.69, 0.65, 0.72), Color(0.82, 0.82, 0.79, 0.52), Color(0.8, 0.8, 0.78, 0.0)])
+	pm.color_ramp = _ramp([0.0, 0.1, 0.7, 1.0], [Color(0.85, 0.85, 0.83, 0.0), Color(0.65, 0.65, 0.62, 0.70), Color(0.74, 0.74, 0.71, 0.32), Color(0.8, 0.8, 0.78, 0.0)])
 	var s := _sys(60, 6.0, pm, smoke_mat)
 	s.one_shot = false
 	s.explosiveness = 0.0
 	s.name = "Smoke"
+	# Each screen gets its own billow pattern. Let older wisps break up around the dense core.
+	Mats.set_inst(s, &"seed", randf() * 100.0)
+	Mats.set_inst(s, &"erode", 1.6)
 	s.visibility_aabb = AABB(Vector3(-15, -2, -15), Vector3(30, 20, 30))
 	Mats.set_inst(s, &"density", 1.0)
 	s.emitting = false
@@ -1551,6 +1626,13 @@ func make_smoke_screen() -> Node3D:
 
 
 func set_smoke_screen(h: Node3D, r: float) -> void:
+	var volume := h.get_node_or_null("ScreenVolume") as MeshInstance3D
+	if volume:
+		volume.visible = r > 0.3
+		if volume.visible:
+			volume.scale = Vector3(3.15, 1.36, 2.7) * r
+			volume.position = (Fires.WIND * 0.58 + Vector3.UP * 0.44) * r
+		return
 	var s := h.get_node("Smoke") as GeometryInstance3D
 	var fv := h.get_node_or_null("Fog") as FogVolume
 	set_emitting(s, r > 0.3)
@@ -1621,6 +1703,10 @@ func _view_process(dt: float) -> void:
 			tb[0].queue_free()
 			_timed.remove_at(i)
 	var t := Time.get_ticks_msec() / 1000.0
+	# FL_DEBUG_STEADY_FIRE: fires hold one brightness, so pictures taken one
+	# after another compare like with like
+	if OS.has_environment("FL_DEBUG_STEADY_FIRE"):
+		t = 0.0
 	for i in range(_burners.size() - 1, -1, -1):
 		if not is_instance_valid(_burners[i]):
 			_burners.remove_at(i)

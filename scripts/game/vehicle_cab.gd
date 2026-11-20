@@ -59,7 +59,14 @@ static func upper(k: VehicleModels, widths: Vector2, heights: Vector2, front: Ve
 	var y := (heights.x + heights.y) * 0.5
 	var z := (front.x + front.y) * 0.5
 	var width := (widths.x + widths.y) * 0.5
-	k._box(m, Vector3(widths.y * 2.0, 0.09, rear - front.y), Vector3(0, heights.y, (rear + front.y) * 0.5), mat, col)
+	# The roof is one pressing: its edge rolls over into the cab's sides and
+	# its top is crowned, so the sun slides across it rather than flashing
+	# off a flat lid, and a drip rail runs along each side over the doors,
+	# where rain is led off clear of the door gap.
+	var roof := [-widths.y, front.y, widths.y, front.y, widths.y, rear, -widths.y, rear]
+	VmCiv._yloft(k, m, "cab_roof_%.2f_%.2f_%.2f" % [widths.y, front.y, rear], [roof, roof], [heights.y - 0.045, heights.y + 0.045], 0.035, mat, col, Vector3.ZERO, 0.18)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.bead(k, m, [Vector3(side * (widths.y + 0.008), heights.y - 0.05, front.y + 0.06), Vector3(side * (widths.y + 0.008), heights.y - 0.05, rear - 0.04)], 0.011, mat, col, 5, false)
 	k._box(m, Vector3(width * 2.0, h, 0.10), Vector3(0, y, rear), mat, col)
 	# The same surface defines the shell and its glass: the raked panes cannot
 	# drift away from a separately positioned frame as cab proportions change.

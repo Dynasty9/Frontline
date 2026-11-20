@@ -271,3 +271,45 @@ records 30 seconds and applies controlled damage at 18 seconds before repair.
 Use engine `--fixed-fps 30` so animation and simulation advance together.
 See [the trench review](../../docs/trench-realism-review.md) for exact commands,
 matched baseline provenance and coverage limits. Raw frames belong outside Git.
+
+### Weather cell boundary
+
+`weather-drift.gd` loads the actual naval scenario, freezes the battle after one
+simulated second, and fixes a low shoreline camera. Drawing is disabled while
+scenery queues finish building; the stage rejects construction during capture.
+It holds the weather still for 20 rendered frames, then steps the production grid
+across a cell boundary for 60 frames at 30 fps. This controlled boundary crossing
+is not a performance measurement. Use the identical script on both revisions and
+compare `camera.json`, including the weather phase and scenery count, before encoding.
+
+```sh
+FL_DRIFT_CAPTURE=/tmp/weather-after godot --path . --rendering-method forward_plus \
+  --resolution 960x540 --fixed-fps 30 --script tools/showcase/weather-drift.gd -- \
+  --scenario=naval --static --seed=3 --preset=high --mood=dawn \
+  --nohud --offscreen --set=perf:0,shadows:1,aa:0
+```
+
+The software diagnostic keeps volumetric fog and cloud shadows on, with 2048-pixel
+shadows and AA off. It does not establish full-High image quality or hardware
+speed. Keep raw frames outside the repository and leave exposure unchanged.
+
+### Surface-history correction comparison
+
+`ssgi-history-capture.patch` records the identical capture-only changes applied
+to revisions `5aac3f1` and `959238e` for the isolated correction comparison.
+Apply it to either historical checkout, import with Godot 4.7.2, then run:
+
+```sh
+FL_DEBUG_GI_CYCLE=/tmp/gi-before FL_DEBUG_GI_AT=1 FL_DEBUG_GI_MODES=ssgi2 \
+FL_DEBUG_GI_POSES='close:tank:10:auto:2.4;command:tank:55:auto:2.4' \
+FL_DEBUG_GI_PAN=1,0,60 godot --path . --rendering-method forward_plus \
+  --resolution 960x540 --fixed-fps 30 -- --scenario=tank --static --seed=3 \
+  --preset=high --set=perf:0 --mood=day --nohud --offscreen
+```
+
+It saves each full game frame and records the camera transforms. The historical
+fixture logs an out-of-range pose during deferred quit after saving all 120
+frames; the current harness prevents that extra callback. Current mainline
+harness controls also retain the newer zoom/probe options. These historical
+clips isolate the surface-history fix and do not validate later renderer edits.
+Do not grade the comparison or use software capture time as GPU performance.

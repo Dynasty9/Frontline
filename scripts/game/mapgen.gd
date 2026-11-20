@@ -117,6 +117,10 @@ func generate() -> void:
 	tg.streetscape()
 	tg.lots()
 	tg.hamlet_houses()
+	# the parish church and its yard where a road comes into the town, before
+	# the farms take the land round it (a mission's town is as it was written)
+	if String(world.settings.get("mission", "")) == "":
+		tg.church()
 	await world._breathe("Farms and fields", 0.44)
 	tg.farms(int(rng.randi_range(2, 3) * area * 0.6))
 	tg.country_power()
@@ -153,6 +157,8 @@ func generate() -> void:
 		var dumps := world.rules.town_list.filter(func(t: Structure) -> bool: return t.variant == 1)
 		tg.military_fences(r.depots, dumps)
 	tg._road_verges()
+	# (the farmyards' kit last of all: everything before it lies as it did)
+	tg.farmyards()
 	_spawn_late()
 	world.set_decor(tg.decor, tg.rect)
 
@@ -608,6 +614,20 @@ func scenario(sname: String) -> void:
 			t2.order_move(Vector3(2, 0, -45))
 			r.spawn_squad("rpg_team", 1, b, Vector3(-30, 0, -50))
 			r.spawn_squad("fighter_cell", 1, b, Vector3(20, 0, -55))
+		"convoy":
+			# a column of four driving down a dirt road and on across the field: the
+			# dust it raises and leaves hanging along its route by day, its
+			# headlights in the night's damp air after dark (--set=mood:night)
+			var track := PackedVector3Array()
+			for i in 30:
+				track.append(Vector3(0, 0, 150 - i * 12.0))
+			world.roads[2] = [track]
+			world._rebuild_roads()
+			var kinds := ["humvee", "ifv", "ifv", "humvee"]
+			for i in kinds.size():
+				var cv: Vehicle = world.spawn("vehicle", {"vkind": kinds[i], "team": 0, "owner": a, "pos": Vector3(0, 0, 50 + i * 16.0), "yaw": 0.0})
+				if not world.settings.get("static", false):
+					cv.order_move(Vector3(0, 0, -140))
 		"mounted":
 			# two IFVs halted with men aboard: one its own mech team, the other an MG
 			# team and an AT team. Unless static, the first drops a fire team and the
@@ -794,6 +814,24 @@ func scenario(sname: String) -> void:
 					v.order_move(Vector3(x * 0.5, 0, -side * 30.0))
 				else:
 					v.order_assault(Vector3(x * 0.6, 0, side * 6.0))
+		"alley":
+			# two houses across a narrow alley with a car parked in it under the
+			# eaves, a gun team holding the houses and a rifle squad out in the
+			# street, all one side's: the light probes' shade on men indoors and in
+			# the open, and on wet paint and glass the sky can't reach (--mood=rain)
+			_house(Vector3(0, 0, -30), 8.0, 6.0, 0.0, 1.0, false, 0.0)
+			_house(Vector3(0, 0, -38.5), 8.0, 6.0, 0.0, -1.0, false, 0.0)
+			_spawn("car", Vector3(1.0, 0, -34.25), PI * 0.5, -1, {"variant": 1})
+			var gq := r.spawn_squad("mg_team", 0, a, Vector3(0, 0, -30))
+			gq.order_defend(Vector3(0, 0, -30), Vector3(0, 0, 1))
+			var rq := r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, -20))
+			rq.order_defend(Vector3(0, 0, -20), Vector3(0, 0, 1))
+			# and an AT team put in the alley's shade, a squad out in the sun at its mouth
+			var aq := r.spawn_squad("at_team", 0, a, Vector3(-2.5, 0, -34.25))
+			for i in aq.members.size():
+				aq.members[i].position = Vector3(-3.0 + i * 1.6, 0, -34.25)
+			var sq := r.spawn_squad("rifle_squad", 0, a, Vector3(-12, 0, -34.25))
+			sq.order_move(Vector3(-12, 0, -34.25), Vector3(-1, 0, 0), 0, false)
 		"lean":
 			for i in 3:
 				_spawn("tall_wall", Vector3(-14 + i * 14.0, 0, -10), 0.0, -1, {"size": Vector3(6, 2.6, 0.5)})
@@ -958,6 +996,27 @@ func scenario(sname: String) -> void:
 				for sq in sqb:
 					ids2.append(sq.sid)
 				world.execute_cmd(a, {"t": "assault", "squads": ids2, "pos": Vector3(0, 0, -30), "face": Vector3(0, 0, -1)})
+		"church":
+			# a fighter cell holed up in the parish church (its doors shut); two
+			# rifle squads and a gun team sent to clear it, one squad coming up
+			# the road to the west door under the tower, the other round to the
+			# south porch
+			doors_shut = 1
+			var cc := Vector3(0, 0, -40)
+			_church(cc, PI, BuildingMaterials.HOUSE.find("church"), Vector3(8.0, 6.5, 23.0))
+			doors_shut = -1
+			var cell2 := r.spawn_squad("fighter_cell", 1, b, cc + Vector3(0, 0, -1))
+			cell2.order_defend(cc, Vector3(0, 0, 1))
+			for i in 3:
+				_spawn("low_wall", Vector3(-6 + i * 4.2, 0, -12), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
+			for i in 3:
+				_try("tree", Vector3(22 + i * 1.5, 0, -14 - i * 2.5), 0.0, -1)
+			var sqc := [r.spawn_squad("rifle_squad", 0, a, Vector3(-2, 0, 4)), r.spawn_squad("rifle_squad", 0, a, Vector3(26, 0, 0)),
+				r.spawn_squad("mg_team", 0, a, Vector3(8, 0, 6))]
+			if not world.settings.get("static", false):
+				# each squad its own way in
+				world.execute_cmd(a, {"t": "assault", "squads": [sqc[0].sid, sqc[2].sid], "pos": cc + Vector3(0, 0, 14), "face": Vector3(0, 0, -1)})
+				world.execute_cmd(a, {"t": "assault", "squads": [sqc[1].sid], "pos": cc + Vector3(10, 0, 5), "face": Vector3(-1, 0, 0)})
 		"storeys":
 			# a house on two floors with a wing out of the back (as the town
 			# plans the bigger ones), and a charge that blows in one of its
@@ -1193,9 +1252,24 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 		color += BuildingMaterials.HOUSE.size() * (paint.randi() % 3)
 	plan["color"] = color  # (for what dresses the house from outside: a shop's fascia)
 	var ruined := rng.randf() < ruin_p
+	# the door: in the front, mostly, else in one end (drawn here, before the
+	# floor, so a barn's floor knows where it is: what's in a barn keeps clear
+	# of its doorway)
+	var door_side := 0 if street_side > 0 else 1
+	if rng.randf() < 0.3:
+		door_side = 2 + rng.randi() % 2
+	# a shop's front is its windows and its door, all on the street (decided
+	# after the draws above, so the map's random numbers stay as they were)
+	var shopfront: bool = plan.get("shop", false) and street_side > 0.0 and not barn
+	if shopfront:
+		door_side = 0
 	# (a ruin's floor is marked, so it's drawn with the roof fallen in on it;
-	# a barn's, so it's bare and strewn with straw)
-	_spawn("floor", c, axis, -1, {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else 0)})
+	# a barn's, so it's bare and strewn with straw, and fitted out as a barn)
+	# (a shop's, so it's fitted out as one: TownGen._plan)
+	var fp := {"size": Vector3(w, 0.06, d), "variant": 1 if ruined else (2 if barn else (3 if plan.get("shop", false) else 0))}
+	if (barn or plan.get("shop", false)) and not ruined:
+		fp["entry"] = door_side
+	_spawn("floor", c, axis, -1, fp)
 	_unplace_last()
 	_place([Vector2(c.x, c.z), half, axis])
 	if wk > 0:
@@ -1208,14 +1282,6 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 		[Vector3(-w * 0.5, 0, 0), d - 0.4, PI * 0.5],
 		[Vector3(w * 0.5, 0, 0), d - 0.4, PI * 0.5],
 	]
-	var door_side := 0 if street_side > 0 else 1
-	if rng.randf() < 0.3:
-		door_side = 2 + rng.randi() % 2
-	# a shop's front is its windows and its door, all on the street (decided
-	# after the draws above, so the map's random numbers stay as they were)
-	var shopfront: bool = plan.get("shop", false) and street_side > 0.0 and not barn
-	if shopfront:
-		door_side = 0
 	# every wall stands at the house's own level (its middle's ground, as the
 	# floor and roof do), so on a slope none pokes up through the roof; the
 	# foundation under each (Structure) fills the downhill side
@@ -1256,8 +1322,12 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 			# most front doors are shut (decided from where it stands: the map's
 			# random numbers stay as they were)
 			var shut := variant == 2 and (doors_shut == 1 or (doors_shut < 0 and posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7))
-			# (a ruin's lamps are long out)
-			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined})
+			# (a ruin's lamps are long out; a shop's walls are fitted out as a
+			# shop's inside)
+			var wall := {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": yaw, "variant": variant, "size": Vector3(seg_len, float(color), 0.4), "door": shut, "dark": ruined}
+			if plan.get("shop", false) and not barn:
+				wall["shop"] = true
+			world.spawn("structure", wall)
 	# a roof on every house still standing: tiled and pitched, or flat (over
 	# a storey above the ground floor, where it has one)
 	var flat := false
@@ -1273,7 +1343,12 @@ func _house(c: Vector3, w: float, d: float, axis: float, street_side: float, yar
 		_wing(c, b, axis, w, d, wk0, wk, bays, wd, level, color, ruined, flat or bool(wing[3]), int(plan.get("seed", 0)), roof_id)
 	if rng.randf() < 0.5:
 		var ip := c + b * Vector3(rng.randf_range(-w * 0.25, w * 0.25), 0, rng.randf_range(-d * 0.2, d * 0.2))
-		world.spawn("structure", {"skind": "crates", "pos": ip, "yaw": axis + rng.randf_range(-0.4, 0.4), "variant": 0})
+		var crate_yaw := axis + rng.randf_range(-0.4, 0.4)
+		# Shops and barns already have fitted stock and equipment. A separate
+		# solid cover crate here could intersect their shelving or hay stacks.
+		# Still draw its placement so later map generation keeps the same seed.
+		if ruined or (not barn and not plan.get("shop", false)):
+			world.spawn("structure", {"skind": "crates", "pos": ip, "yaw": crate_yaw, "variant": 0})
 	if ruined and rng.randf() < 0.6:
 		var ip2 := c + b * Vector3(rng.randf_range(-w * 0.25, w * 0.25), 0, rng.randf_range(-d * 0.25, d * 0.25))
 		world.spawn("structure", {"skind": "rubble", "pos": ip2, "yaw": rng.randf() * TAU, "size": Vector3(2.2, 0, 1.4)})
@@ -1335,6 +1410,55 @@ func _wing(c: Vector3, b: Basis, axis: float, w: float, d: float, k0: int, n: in
 	_late.append({"skind": "floor", "pos": Vector3(wc.x, level, wc.z), "yaw": axis, "team": -1, "size": Vector3(x1 - x0, 0.06, wd), "variant": 1 if ruined else 0})
 	if not ruined:
 		_late.append({"skind": "roof", "pos": Vector3(wc.x, level, wc.z), "yaw": axis, "size": Vector3(x1 - x0, BuildingStoreys.GROUND, wd), "variant": color * 2 + (1 if flat else 0), "look": roof_id})
+
+
+## A parish church at `c` (its length `size.z` along `axis`, its west tower
+## to -z): the tower (Structure "church", its ground stage the west porch),
+## the nave and the chancel built as a house is - a floor (variant 3:
+## flagstones, pews, the pulpit, the altar), house walls in the church's
+## stone (`ci`) laid by Structure.church_walls with a door at the west end,
+## under the tower, and one in the south side, and a roof each that draws
+## the walls on up to the eaves; the south porch's dwarf walls are low walls.
+## Men go in by either door and fight from the windows, and the roofs lift
+## off for them as a house's does. False if there's no room.
+func _church(c: Vector3, axis: float, ci: int, size: Vector3) -> bool:
+	var half := Vector2(size.x * 0.5 + Structure.CHURCH_PORCH.y + 0.5, size.z * 0.5 + 0.6)
+	if not _is_free(c, half, axis, 0.6):
+		return false
+	var b := Basis(Vector3.UP, axis)
+	var level := world.terrain.landform.height(c)
+	var at := func(z: float) -> Vector3:
+		var p: Vector3 = c + b * Vector3(0, 0, z)
+		return Vector3(p.x, level, p.z)
+	var z0 := -size.z * 0.5
+	var tw := Structure.CHURCH_TOWER
+	var cl := Structure.CHURCH_CHANCEL
+	var nl := size.z - tw - cl
+	var cw := size.x - 2.4
+	world.spawn("structure", {"skind": "church", "pos": at.call(z0 + tw * 0.5), "yaw": axis, "size": Vector3(tw, Structure.CHURCH_TOWER_H, tw), "variant": ci})
+	for body: Array in [[z0 + tw + nl * 0.5, size.x, nl, size.y - 0.3, false], [size.z * 0.5 - cl * 0.5, cw, cl, size.y - 1.5, true]]:
+		var bc: Vector3 = at.call(body[0])
+		world.spawn("structure", {"skind": "floor", "pos": bc, "yaw": axis, "size": Vector3(body[1], 0.06, body[2]), "variant": 3})
+		for e: Array in Structure.church_walls(body[1], body[2], body[4]):
+			var p: Vector2 = e[0]
+			var wp := bc + b * Vector3(p.x, 0, p.y)
+			# its doors shut, as most houses' are (or as the scenario has them)
+			var shut := int(e[3]) == 2 and doors_shut != 0 and (doors_shut == 1 or posmod(int(absf(wp.x) * 7.3 + absf(wp.z) * 13.1), 10) < 7)
+			world.spawn("structure", {"skind": "house_wall", "pos": Vector3(wp.x, level, wp.z), "yaw": axis + float(e[1]), "variant": e[3],
+				"size": Vector3(e[2], float(ci), 0.4), "door": shut})
+			# the south porch's dwarf walls, either side of its mouth
+			var porch := Structure.church_porch(e)
+			if not porch.is_empty():
+				var pb := Basis(Vector3.UP, float(porch[1]))
+				for sx: float in [-1.0, 1.0]:
+					var q: Vector2 = porch[0]
+					var pp := bc + b * (Vector3(q.x, 0, q.y) + pb * Vector3(sx * (Structure.CHURCH_PORCH.x * 0.5 - 0.25), 0, 0))
+					world.spawn("structure", {"skind": "low_wall", "pos": Vector3(pp.x, level, pp.z), "yaw": axis + float(porch[1]) + PI * 0.5, "team": -1,
+						"size": Vector3(Structure.CHURCH_PORCH.y, 0.9, 0.5), "variant": 0})
+		world.spawn("structure", {"skind": "roof", "pos": bc, "yaw": axis, "size": Vector3(body[1], body[3], body[2]), "variant": ci * 2})
+	_place([Vector2(c.x, c.z), half - Vector2(0.3, 0.3), axis])
+	world.stat("church")
+	return true
 
 
 func _hedgerow() -> void:
