@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/infantry-turns.md",
+  "title": "Infantry step through their turns",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Infantry ease through reversals and reposition their boots on a standing turn.",
+  "medium": "motion",
+  "stage": "Native Forward+ at 30 fps and seed 3. A lone rifleman reverses at 1.16 seconds and receives a new heading at 3.1 seconds. The final shot is the untrimmed village street crossing at 23.3 seconds in the source take.",
+  "rationale": "Matched cameras and real-time playback show the foot placement during the half-turn and make the change visible at squad scale.",
+  "source_ref": "Edition 48 street take and gameplay baseline aec37ddc with its smoke and vehicle changes. After adds the infantry presentation changes. Both runs receive the same commands.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/infantry-turns/movement.mp4",
+      "caption": "Matched real-time movement.",
+      "sha256": "dacd458b39ee03413f94b6872a7a0325110a87754d5d0be84e2685fbbb0bf462"
+    },
+    {
+      "file": "changelog/unreleased/infantry-turns/movement.jpg",
+      "caption": "Rifleman reversing direction.",
+      "sha256": "ac6e959e24e3ddc4640de26c73701bddc587868efeea1429ed5d5f5f3d19abd1"
+    }
+  ],
+  "output": null
+}

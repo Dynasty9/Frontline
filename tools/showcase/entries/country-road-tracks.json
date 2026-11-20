@@ -1,0 +1,79 @@
+{
+  "entry": "changelog/unreleased/country-road-tracks.md",
+  "summary": "Gravel roads and supply tracks are drawn into the terrain itself: compacted wheel paths, loose stone and edges the meadow takes back stone by stone.",
+  "medium": "motion",
+  "stage": "game capture, matched: --fixed-fps 30 -- --aivai --seed=3 --set=dof:false --shot-at=6, with --focus=77,-5 --cam-yaw=0 --zoom=32 --pitch=-35; --focus=74,-3 --cam-yaw=0 --zoom=10 --pitch=-30; --focus=70,0 --cam-yaw=-1.57 --zoom=6 --pitch=-15; --focus=56,-5 --cam-yaw=0 --zoom=26 --pitch=-40 (1600x900, --nohud --perf=0, off-screen window; before from origin/main)",
+  "rationale": "Ground materials are an appearance change: matched before/after frames of the same track, town edge and street show the surfaces directly. Matched native camera motion and a separately labeled isolated-lighting fixture supplement the preserved still comparison.",
+  "source_ref": "66fcc4044a3d9cb87afc922557776d5a7c490e64 + working tree",
+  "before_ref": "66fcc4044a3d9cb87afc922557776d5a7c490e64",
+  "sources": [
+    {
+      "file": "changelog/unreleased/country-road-tracks/comparison.jpg",
+      "sha256": "c713b4275a0bf77d51f0e326d2f7493ba1fb7d68a57f07fc96dda0e3f6c8474e"
+    },
+    {
+      "file": "changelog/unreleased/country-road-tracks/motion-comparison.webm",
+      "sha256": "dec420ae7c4550133e9dcabde2383698bb5139e5e43db8fee260b952f548d45c"
+    },
+    {
+      "file": "changelog/unreleased/country-road-tracks/motion-comparison.jpg",
+      "sha256": "cde25cbe8f8f68691f1490408bcb46a1bcd3102ffbbff021769f691f5e342d98"
+    },
+    {
+      "file": "changelog/unreleased/country-road-tracks/rut-lighting.webm",
+      "sha256": "1be2c46c21c1dc1fd33b513684743081212a23979053dfd4cafec23b690af01c"
+    },
+    {
+      "file": "changelog/unreleased/country-road-tracks/rut-lighting.jpg",
+      "sha256": "bd0c40708e5f6fc6d0308a5ccf6f1747f2bd9e9f3600227770875e1377c42797"
+    },
+    {
+      "file": "changelog/unreleased/country-road-tracks/forward-lighting.webm",
+      "sha256": "090b30f2bc99c121eca06787677859a53aace7e0d403c5492a89020bba594d26"
+    },
+    {
+      "file": "changelog/unreleased/country-road-tracks/forward-lighting.jpg",
+      "sha256": "c9b3c42461ddb4be333353cd9b953372bb528907ac20bcbdb798e62388e20d63"
+    }
+  ],
+  "output": null,
+  "followup_capture": {
+    "before_ref": "5656124f12d631e90d319fdcf6d459f718c6b056",
+    "after_ref": "f14770cc6242febf143a6a542b5f0d107cdbd403",
+    "scope": "The comparison includes the retained ground-normal fix abf917c and subsequent concurrent terrain/gravel commits. The obsolete local ribbon experiment is excluded.",
+    "renderer": "Godot 4.7.2 Compatibility; Mesa llvmpipe LLVM 19.1.7 software rendering; Low preset",
+    "command": "godot --path PROJECT --rendering-method gl_compatibility --fixed-fps 12 --resolution 1280x720 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --nohud --preset=low --set=perf:0,vsync:false --mood=day --capture-set=road-types --capture-defer-draw --capture-fast --capture-views=track,track-command --capture-clip=track --capture-orbit --capture-frames=48 --capture-prefix=OUTPUT",
+    "light_command": "same launch with --capture-views=track-light --capture-clip=track-light --capture-light-sweep --capture-no-light-shadows, without --capture-orbit",
+    "camera": "Track zoom 14 m, pitch -60 degrees, yaw 0.2; command zoom 50 m, pitch -50 degrees. Comparison orbit +/-0.18 radians. Simulation held at two seconds.",
+    "light_fixture": "Same native scene and terrain materials, fixed camera, sky and exposure. Directional shadows disabled only for the fixture. Sun elevation 12 degrees; azimuth 45 to 225 and back over 48 frames.",
+    "output": [
+      "motion-comparison.webm: 6 s, 1600x530, 911550 bytes; 4 s orbit and 2 s held command view",
+      "rut-lighting.webm: 4 s, 960x580, 1077442 bytes; isolated directional-light response"
+    ],
+    "validation": [
+      "Captured material file matches f14770c exactly",
+      "Camera, focus, zoom, pitch, yaw, mood and simulation-time metadata match the baseline",
+      "Full decode passed for both WebMs; encoded close, command, opposing-light and return frames visually reviewed",
+      "f14770c Check, Website and Changelog CI all passed",
+      "Original retained ground-normal readback regression passed in Forward+ and Compatibility",
+      "High Forward+ native scene completed48 frames; full decode and encoded opposing-light/return views reviewed"
+    ],
+    "limitations": [
+      "Software capture is not a performance measurement",
+      "The lighting fixture intentionally removes directional shadows; the scene comparison retains them",
+      "Low retains visible texture repetition and angular verge transitions",
+      "Capture shutdown emitted ObjectDB/RID cleanup warnings; no script errors",
+      "High Forward+ clip covers a fixed track camera, not full combat, command-distance movement or hardware performance"
+    ],
+    "harness_sha256": "be312e56dcaef731f118d16bd04033266d88769b2a8ca8b068700f86693fb8c4",
+    "low_comparison_harness_sha256": "54e12139652030814f07f0a7629664472d0c6df29e57c1d32f6625b16851087e",
+    "forward_capture": {
+      "command": "same native scene launch with --rendering-method forward_plus --preset=high --capture-views=track-light --capture-clip=track-light --capture-light-sweep; no --capture-no-light-shadows or --capture-orbit",
+      "resolution": "1280x720 uncropped, scaled960x540 plus30px caption",
+      "output": "forward-lighting.webm:4s,960x570,1265508bytes",
+      "material_ref": "f14770cc6242febf143a6a542b5f0d107cdbd403",
+      "directional_shadows": true,
+      "notes": "Software scenery/shader warm-up completed after about20minutes; no performance inference. Cleanup dependency warnings on exit; no script errors."
+    }
+  }
+}
