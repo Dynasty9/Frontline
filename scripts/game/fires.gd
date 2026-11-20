@@ -36,6 +36,7 @@ const FUEL := {
 	"barracks": [0.22, 70.0, "stands", 3.5],
 	"log_bunker": [0.12, 60.0, "stands", 2.5],
 	"roof": [0.3, 75.0, "ash", 4.0],
+	"church_roof": [0.06, 120.0, "ash", 5.0],  # slate on oak trusses: hard to light, long to burn out
 	"car": [0.45, 55.0, "shell", 3.0],
 	"wreck": [0.0, 40.0, "shell", 3.5],  # a vehicle brewing up: lit as it's made, never relit
 	"camo_net": [0.9, 16.0, "ash", 1.5],  # a net of dry scrim goes up in a flash
@@ -217,7 +218,7 @@ func _burn(st: Structure, dt: float, beat: bool) -> void:
 	st.set_burn(b)
 	if beat:
 		if b > 0.25:
-			_scorch(st.position, b, func(p): return box_dist(st, p), st.radius + 3.0, 1.0 + 1.2 * b, st.fire_k == "roof")
+			_scorch(st.position, b, func(p): return box_dist(st, p), st.radius + 3.0, 1.0 + 1.2 * b, st.fire_k in ["roof", "church_roof"])
 		if b > 0.45:
 			_spread(st, b)
 
@@ -225,7 +226,7 @@ func _burn(st: Structure, dt: float, beat: bool) -> void:
 ## Heat and sparks off a fire at full blaze: whatever will burn nearby may
 ## catch, much more readily downwind.
 func _spread(st: Structure, b: float) -> void:
-	var reach := 2.0 + 3.0 * b + (1.5 if st.fire_k in ["roof", "watchtower", "tree"] else 0.0)
+	var reach := 2.0 + 3.0 * b + (1.5 if st.fire_k in ["roof", "church_roof", "watchtower", "tree"] else 0.0)
 	for o in world.structures_near(st.position, reach + st.radius + 6.0):
 		if o == st or o.gone or o.burn > 0.0 or o.burnt:
 			continue

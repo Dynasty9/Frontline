@@ -25,6 +25,20 @@ scenarioTests([
     },
   },
   {
+    scenario: "convoy",
+    seed: 1,
+    secs: 30,
+    does: "a column of four drives off down the dirt road",
+    check: async (f) => {
+      const column = await f.vehicles({ team: 0 });
+      assert.equal(column.length, 4, "all four are there");
+      assert.ok(
+        column.every((v) => v.pos[1] < 0),
+        `each has driven a good way down the road (${column.map((v) => v.kind + " " + v.pos[1].toFixed(0)).join(", ")})`,
+      );
+    },
+  },
+  {
     scenario: "mounted",
     seed: 1,
     secs: 12,

@@ -103,6 +103,10 @@ func capture() -> void:
 				# stock in them, the grime on the walls
 				views.append(["shopfront-kerb", piece[1], 16.0, -32.0, float(piece[2])])
 				break
+		# the parish church from the road it stands back from, where there is one
+		for st in world.structures_near(center, 300.0):
+			if st.skind == "church":
+				views.append(["church", st.position, 48.0, -30.0, st.yaw + PI + 0.6])
 		# a rendered house's front at a man's eye, across its garden: what
 		# the years leave on a plain wall
 		# (and a brick house's, and a stone house's)
