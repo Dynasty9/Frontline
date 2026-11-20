@@ -1377,6 +1377,11 @@ static func _preset(kind: String) -> Dictionary:
 			# a dry-laid or pointed field-stone wall (a garden's, a field's):
 			# random rubble, grey and brown stones, the mortar darker
 			return {"pattern": FIELDSTONE, "col_a": Color(0.58, 0.55, 0.49), "col_b": Color(0.4, 0.38, 0.34), "col_c": Color(0.5, 0.45, 0.37), "rough": 0.93, "bump": 2.4, "grime": 0.7}
+		"fieldstone_cap":
+			# the stones on edge along a field-stone wall's top (BuildingWalls.
+			# cock_and_hen): the same stone with no joints drawn on it, since
+			# each part is a stone of its own, its shade in its vertex colours
+			return {"pattern": FIELDSTONE, "col_a": Color(0.58, 0.55, 0.49), "col_b": Color(0.4, 0.38, 0.34), "col_c": Color(0.5, 0.45, 0.37), "rough": 0.93, "bump": 1.6, "grime": 0.7, "seams": 0.0}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
 		"church_stone":
@@ -1558,7 +1563,7 @@ instance uniform float armour_section = -1.0;
 uniform sampler2D wear_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float rust = 0.0;
 uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
-uniform float seams = 1.0;  // concrete: the formwork joints
+uniform float seams = 1.0;  // concrete: the formwork joints; fieldstone: the joints between stones (0: the part is one stone)
 uniform float boards = 0.0;  // concrete: the planks of the formwork it was cast against, printed on its walls
 uniform float cell_w = 1.05;  // HESCO: the width of a cell
 uniform float lit = 0.0;  // lamplight behind it (a window, a lantern): glows as the light goes
@@ -1956,6 +1961,20 @@ void fragment() {
 		r = mix(0.98, clamp(rough - 0.04 + 0.06 * rb, 0.8, 0.96), e);
 		// About a centimetre of relief at the stone preset, not deep grooves.
 		h = e * (0.25 + 0.08 * relief);
+	} else if (pattern == 24 && seams < 0.5) {
+		// a stone set on edge along a field-stone wall's top: the part is the
+		// stone (its shade in its vertex colours), so here only what its face
+		// is like: mottled, gritty, pitted, and pale crusts of lichen on the
+		// faces turned up to the rain
+		float g1 = tnoise(uv * 9.0);
+		float g2 = mix(0.5, tnoise(uv * 31.0 + 3.1), keep(0.03, px));
+		col = col_a * (0.78 + 0.3 * g1) * (0.88 + 0.2 * tnoise(uv * 2.6 + 5.0));
+		float pit = smoothstep(0.58, 0.85, g2);
+		col *= 1.0 - 0.16 * pit;
+		float lichen = smoothstep(0.64, 0.72, tnoise(uv * 5.5 + 2.7)) * smoothstep(0.2, 0.7, tn.y) * keep(0.08, px);
+		col = mix(col, col_a * vec3(1.2, 1.22, 1.08), lichen * 0.6);
+		h = 0.5 + 0.3 * g1 + 0.08 * g2 - 0.05 * pit;
+		r = min(rough + 0.03, 0.98);
 	} else if (pattern == 24) {
 		// random rubble, laid as a waller lays field stones: stones of every
 		// size and shape (longer than they are tall), each its own tone,

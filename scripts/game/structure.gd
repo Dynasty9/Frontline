@@ -3841,11 +3841,11 @@ func _build_model() -> void:
 						var smat := Res.mat(Res.vary(hc, 0.05, rng).lightened(0.06))
 						_skinned(smesh, smat, Vector3(x, 1.2, rng.randf_range(-0.15, 0.15)), Vector3.ZERO, Vector3(0.8, 1.3, 0.8), true)
 			else:
-				# a garden wall of field stone under a saddleback coping, or of
-				# brick on a darker base course under a brick-on-edge coping
+				# a garden wall of field stone finished with stones on edge, or
+				# of brick on a darker base course under a brick-on-edge coping
 				_bx(p.p, p.s, p.color)
 				var lk := _kit(rng)
-				var lm := "brick" if variant % 3 == 2 else "stone"
+				var lm := "brick" if variant % 3 == 2 else "fieldstone"
 				BuildingWalls.coping(lk, p.s.x, p.s.z, p.s.y, lm, p.color)
 				var wear := RandomNumberGenerator.new()
 				wear.seed = rng.seed ^ 0x77ea7e12
@@ -4477,8 +4477,8 @@ func _surf_kind(c: Color, mesh: Mesh) -> String:
 		"rubble":
 			return "rubble"
 		"low_wall":
-			# a stone garden wall is field stone, random rubble (its coping is
-			# dressed: see _build_model)
+			# a stone garden wall is field stone, random rubble (its top is
+			# stones on edge: see BuildingWalls.cock_and_hen)
 			if variant % 3 == 0 and Res.box_size(mesh) != Vector3.ZERO:
 				return "fieldstone"
 		"crates":

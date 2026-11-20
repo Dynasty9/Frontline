@@ -92,6 +92,16 @@ func _part_boxes(node: Node3D, parent: Transform3D, out: Array[AABB]) -> void:
 			_part_boxes(child, xf, out)
 
 
+## How high the triangles `tris` stand over (p.x, p.z), from p.y (or -1).
+func _top_at(tris: PackedVector3Array, p: Vector3) -> float:
+	var top := -1.0
+	for i in range(0, tris.size(), 3):
+		var hit = Geometry3D.ray_intersects_triangle(p, Vector3.DOWN, tris[i], tris[i + 1], tris[i + 2])
+		if hit != null:
+			top = maxf(top, (hit as Vector3).y)
+	return top
+
+
 func kit() -> BuildingKit:
 	var root := Node3D.new()
 	add_child(root)
@@ -116,7 +126,7 @@ func _ready() -> void:
 		"face_sheet": func(k: BuildingKit): BuildingWalls.face(k, 4.0, 4.0, "corrugated", Color(0.45, 0.46, 0.44)),
 		"face_precast": func(k: BuildingKit): BuildingWalls.face(k, 6.0, 3.0, "precast", Color(0.5, 0.5, 0.5)),
 		"coping": func(k: BuildingKit):
-			for m in ["plaster", "brick", "stone", "concrete"]:
+			for m in ["plaster", "brick", "stone", "concrete", "fieldstone"]:
 				BuildingWalls.coping(k, 3.0, 0.4, 1.0, m, BuildingMaterials.color(m)),
 		"window": func(k: BuildingKit): BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"shutters": Color(0.3, 0.4, 0.3), "shutter": "louvred"}),
 		"doorway": func(k: BuildingKit): BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(1.9, 2.2), {"hood": true}),
@@ -941,6 +951,68 @@ func _ready() -> void:
 			check(fb.position.y >= -0.02 and fb.end.y <= fsize.y + 0.2, "a %s stands on the ground, no taller than it falls (%s)" % [kind, fb])
 			check(maxf(absf(fb.position.x), absf(fb.end.x)) <= fsize.x * 0.5 + 0.3 and maxf(absf(fb.position.z), absf(fb.end.z)) <= fsize.z * 0.5 + 0.3, "a %s keeps inside its own box (%s)" % [kind, fb])
 			fyk.sink.root.free()
+
+	# A field-stone wall's top is stones on edge, not a lid laid over it: one
+	# cached part a wall, drawn in field stone (the face's own stone, without
+	# its joints), kept to the wall's length and about its width, tall and
+	# short stones in turn down to the joints between them, so its skyline is
+	# ragged; and cheap, since a map has a hundred and more of these walls.
+	var fsc_k := kit()
+	var fsc_top := BuildingWalls.coping(fsc_k, 4.0, 0.5, 1.0, "fieldstone", BuildingMaterials.color("fieldstone"))
+	check(fsc_k.sink.parts == 1 and fsc_top > 1.15 and fsc_top < 1.35, "a field-stone wall's top is one part (%d) standing up to %.2f" % [fsc_k.sink.parts, fsc_top])
+	var fsc_mi := fsc_k.sink.root.get_child(0) as MeshInstance3D
+	var fsc_mat := Mats.base_of(fsc_mi.material_override) as ShaderMaterial
+	check(int(fsc_mat.get_shader_parameter("pattern")) == Mats.FIELDSTONE and float(fsc_mat.get_shader_parameter("seams")) == 0.0 and fsc_mat.get_shader_parameter("use_vcolor") == true,
+		"its stones are field stone, each a stone of its own, shaded by its vertex colours")
+	var fsc_box := fsc_mi.transform * fsc_mi.mesh.get_aabb()
+	check(fsc_box.position.x >= -2.01 and fsc_box.end.x <= 2.01 and fsc_box.size.z <= 0.62 and fsc_box.position.y >= 0.95, "they keep to the wall's length and about its width (%s)" % fsc_box)
+	var fsc_v: PackedVector3Array = fsc_mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	check(fsc_v.size() <= 1500, "a 4 m top costs %d vertices" % fsc_v.size())
+	# (the skyline: how high it stands every 4 cm along the wall's middle)
+	var fsc_sky := PackedFloat32Array()
+	for fsc_i in 100:
+		fsc_sky.append(_top_at(fsc_v, Vector3(-1.98 + fsc_i * 0.04, 1.0, 0.0)))
+	var fsc_turns := 0
+	for fsc_i in range(1, 99):
+		if (fsc_sky[fsc_i] - fsc_sky[fsc_i - 1]) * (fsc_sky[fsc_i + 1] - fsc_sky[fsc_i]) < 0.0:
+			fsc_turns += 1
+	var fsc_joints := 0
+	for fsc_h in fsc_sky:
+		if fsc_h < 0.07:
+			fsc_joints += 1  # (down in a joint, on the mortar)
+	var fsc_sorted := fsc_sky.duplicate()
+	fsc_sorted.sort()
+	var fsc_short: float = fsc_sorted[20]
+	var fsc_tall: float = fsc_sorted[90]
+	check(fsc_joints <= 15 and fsc_short > 0.07 and fsc_tall - fsc_short > 0.06 and fsc_tall < BuildingWalls.CROWN_H + 0.01 and fsc_turns >= 20,
+		"its skyline is ragged, stones all along (%d in joints, short %.2f, tall %.2f, %d turns)" % [fsc_joints, fsc_short, fsc_tall, fsc_turns])
+	# the same wall's top again is the same mesh; other walls take other layouts
+	var fsc_meshes := {}
+	for fsc_s in 24:
+		var fsc_k2 := kit()
+		fsc_k2.rng.seed = fsc_s
+		BuildingWalls.coping(fsc_k2, 4.0, 0.5, 1.0, "fieldstone", BuildingMaterials.color("fieldstone"))
+		fsc_meshes[(fsc_k2.sink.root.get_child(0) as MeshInstance3D).mesh] = true
+		fsc_k2.sink.root.free()
+	check(fsc_meshes.size() >= 3 and fsc_meshes.size() <= BuildingWalls.CROWN_LAYOUTS, "walls share a few cached tops (%d)" % fsc_meshes.size())
+	fsc_k.sink.root.free()
+	# a stone garden wall is built so
+	var fsc_wall := Structure.preview_model("low_wall", -1, 0, Vector3(4.0, 1.0, 0.5))
+	var fsc_found := false
+	var fsc_stack: Array = [fsc_wall]
+	while not fsc_stack.is_empty():
+		var fsc_child: Node = fsc_stack.pop_back()
+		fsc_stack.append_array(fsc_child.get_children())
+		var fsc_wm := fsc_child as MeshInstance3D
+		if fsc_wm != null and fsc_wm.mesh != null:
+			for fsc_si in fsc_wm.mesh.get_surface_count():
+				var fsc_sm := fsc_wm.mesh.surface_get_material(fsc_si) as ShaderMaterial
+				if fsc_wm.material_override is ShaderMaterial:
+					fsc_sm = fsc_wm.material_override
+				if fsc_sm != null and fsc_sm.get_shader_parameter("seams") == 0.0 and fsc_sm.get_shader_parameter("pattern") == Mats.FIELDSTONE:
+					fsc_found = true
+	check(fsc_found, "a stone garden wall is topped with field stones on edge")
+	fsc_wall.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()

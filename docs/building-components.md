@@ -62,6 +62,7 @@ are made of (`trim`, `sill`, `head`, `base`, `cap`) and its `finish`, which deci
 | plaster | `plaster` | Darker rendered plinth, band under the eaves | Render bands in the wall's paint | Cast cap with drips |
 | brick | `brick` | Engineering-brick base | Concrete sills and lintels | Brick-on-edge over a creasing |
 | stone | `stone` | Stone base course, dressed quoins | Stone sills, lintel with a keystone | Saddleback |
+| fieldstone | `fieldstone` | Random rubble pointed in mortar | (none) | Stones on edge (`cock_and_hen`) |
 | concrete | `concrete` | Cast base | Cast | Cast cap with drips |
 | precast | `precast` | Sealed panel joints | Cast | Cast cap |
 | timber | `wood_painted` | Lapped weatherboards, corner boards | Painted timber | Timber |
@@ -84,6 +85,16 @@ bitumen felt, mineral felt, bare concrete, old asphalt; its own stream), and its
 same stuff. A house's colour index says its material (`ci % 6`, `BuildingMaterials.HOUSE`) and
 which of that material's three colours it is (`ci / 6`): MapGen draws the second from a stream of its own seeded
 from where the house is, so rendered houses come in the nine `RENDERS` and brick and stone in three shades each.
+
+A garden's or a field's stone wall (`low_wall` variant 0) is `fieldstone`: random rubble, pointed in darker
+mortar, and finished along the top as a waller finishes one, with field stones set on edge across it
+(`BuildingWalls.cock_and_hen`): packed tight, a tall one (the cock) and one or two shorter (hens) in turn, each
+leaning a little as the one before it, its shoulders and crown rounded and set off its middle, their feet bedded
+in a mortar ridge that shows only in the joints. They're the face's own stone (`fieldstone_cap`: the same
+pattern with its joints left off, since each piece is a stone of its own, its shade in its vertex colours), so
+the skyline is ragged rather than a lid. A wall's top is one part: one cached mesh per length, width and layout
+(six layouts, picked from the wall's generator), about 1,100 vertices for 4 m, the first and last stones flush
+with the wall's ends so walls in a line run on unbroken.
 
 ## Lived-in houses and lamplight
 
@@ -447,7 +458,7 @@ parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
 | Component | Users |
 | --- | --- |
 | `BuildingWalls.face` | House walls (rendered, brick, stone), barracks (weatherboard), factory (sheet), research post (precast) |
-| `BuildingWalls.coping`, `plinth`, `joints` | Garden walls (field stone under a saddleback coping, brick-on-edge over a blue-brick base), compound walls, flat-roof parapets, bridge parapets |
+| `BuildingWalls.coping`, `plinth`, `joints` | Garden walls (field stone finished with stones on edge, brick-on-edge over a blue-brick base), compound walls, flat-roof parapets, bridge parapets |
 | `BuildingOpenings.window` | House windows (louvred or boarded shutters, cracked panes), barracks windows |
 | `BuildingOpenings.doorway`, `leaf` | House doors (panelled, now and then a hood), barracks (ledged double doors), research post and bunker (steel) |
 | `BuildingOpenings.roller_door`, `ribbon` | Factory shutter; research post glazing |
