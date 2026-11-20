@@ -117,17 +117,25 @@ static func vent(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outl
 	var pitch := bounds.size[axis] / maxf(count, 1)
 	# Fine channels remain behind the protective slats, at a separate depth:
 	# strips of sheet seen only face on through the slats, so no edges or backs.
-	_slats(k, parent, surface, inset[0], bounds, 0, clampi(ceili(bounds.size.x / 0.055), 6, 40), 0.14, -0.012, 0.0, "gunmetal", Color(0.14, 0.15, 0.14))
-	_slats(k, parent, surface, inset[0], bounds, axis, count, 0.42, 0.012, minf(0.012, pitch * 0.15), material, col)
+	# The protective louvres overlap as seen from above, so no rain or shell
+	# splinter drops straight through: what shows between them is a narrow
+	# shadowed slot with the fins behind, not a stripe of black as wide as the
+	# louvre (which read as zebra stripes on every engine deck). Each wider
+	# louvre is pitched less steeply, so its raised edge stands where the
+	# narrower one's did, under the rim. (A wreck's vent stays as it was.)
+	var w := k.wreck
+	_slats(k, parent, surface, inset[0], bounds, 0, clampi(ceili(bounds.size.x / 0.055), 6, 40), 0.14 if w else 0.22, -0.012, 0.0, "gunmetal", Color(0.14, 0.15, 0.14) if w else Color(0.15, 0.16, 0.15))
+	_slats(k, parent, surface, inset[0], bounds, axis, count, 0.42 if w else 0.64, 0.012, minf(0.012, pitch * 0.15), material, col, 0.25 if w else 0.165)
 
-static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, inset: PackedVector2Array, bounds: Rect2, axis: int, count: int, coverage: float, lift: float, depth: float, material: String, col) -> void:
+## `slope`: how far each slat rises across its own width (its pitch).
+static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, inset: PackedVector2Array, bounds: Rect2, axis: int, count: int, coverage: float, lift: float, depth: float, material: String, col, slope := 0.25) -> void:
 	var pitch := bounds.size[axis] / maxf(count, 1)
 	for i in count:
 		var lo := bounds.position[axis] + pitch * (i + (1.0 - coverage) * 0.5)
 		var hi := lo + pitch * coverage
 		var strip := PackedVector2Array([Vector2(lo, bounds.position.y), Vector2(hi, bounds.position.y), Vector2(hi, bounds.end.y), Vector2(lo, bounds.end.y)]) if axis == 0 else PackedVector2Array([Vector2(bounds.position.x, lo), Vector2(bounds.end.x, lo), Vector2(bounds.end.x, hi), Vector2(bounds.position.x, hi)])
 		for clipped: PackedVector2Array in Geometry2D.intersect_polygons(inset, strip):
-			var angled := VehicleSurface.new(func(q: Vector2) -> Vector3: return surface.point(q, lift + (q[axis] - lo) * 0.25), surface.outward)
+			var angled := VehicleSurface.new(func(q: Vector2) -> Vector3: return surface.point(q, lift + (q[axis] - lo) * slope), surface.outward)
 			k._add(parent, angled.patch(clipped, 0.0, depth), material, col, Vector3.ZERO)
 
 
@@ -961,9 +969,18 @@ static func panel_hatch(k: VehicleModels, parent: Node3D, center: Vector3, size:
 		k._box(mount, Vector3(rim, t * 0.55, size.z), Vector3(side * (size.x + rim) * 0.5, -t * 0.225, 0), material, col)
 	k._add(mount, BevelMesh.make(Vector3(size.x - 0.01, t, size.z - 0.01), minf(t * 0.3, 0.012)), material, col, Vector3.ZERO)
 	k._box(mount, Vector3(size.x - 0.004, 0.006, size.z - 0.004), Vector3(0, -t * 0.5 + 0.004, 0), "rubber", null, Vector3.ZERO, false)
+	# A lid's stiffeners are pressed in two parallel ribs running from its hinge
+	# straps to its far edge, where it would bend as it swings open: crossed
+	# ribs read from the battle camera as a "+" drawn on every roof hatch. (A
+	# wreck's lid keeps the crossed pair it has always had.)
 	var rib := minf(0.04, minf(size.x, size.z) * 0.08)
-	k._add(mount, BevelMesh.make(Vector3(size.x * 0.7, t * 0.3, rib), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
-	k._add(mount, BevelMesh.make(Vector3(rib, t * 0.3, size.z * 0.7), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
+	if k.wreck:
+		k._add(mount, BevelMesh.make(Vector3(size.x * 0.7, t * 0.3, rib), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
+		k._add(mount, BevelMesh.make(Vector3(rib, t * 0.3, size.z * 0.7), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
+	else:
+		var ribs := BevelMesh.make(Vector3(rib, t * 0.3, size.z * 0.72), t * 0.1)
+		for side: float in [-1.0, 1.0]:
+			k._add(mount, ribs, material, col, Vector3(side * size.x * 0.3, t * 0.6, signf(hinge_side) * size.z * 0.06))
 	var hinge_z := signf(hinge_side) * (size.z * 0.5 - 0.02)
 	for side: float in [-1.0, 1.0]:
 		VehicleDoors.hinge(k, mount, Vector3(side * size.x * 0.3, t * 0.5, hinge_z), Vector3.UP, Vector3.RIGHT, minf(0.016, t * 0.3), material, col)

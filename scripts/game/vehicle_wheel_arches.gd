@@ -2,6 +2,9 @@ class_name VehicleWheelArches
 extends RefCounted
 ## Cut body strips, folded flares and liners share the same authored arch envelope.
 
+## How far a rolled body's top normals lean out at its shoulders (see _crowned).
+const CROWN := 0.2
+
 ## Insets a convex polygon: edge i (p[i] to p[i+1]) moves in by d[i].
 static func _inset(p: PackedVector2Array, d: Array) -> PackedVector2Array:
 	var n := p.size()
@@ -82,14 +85,81 @@ static func _clip(p: PackedVector2Array, f: Array, nrm: Vector2, c: float, cut: 
 ## the roof and bonnet, the gentle bends of the profile, the corners rounded
 ## in plan), so a car's shoulders and bumpers roll over instead of breaking at
 ## a hard line; the flat sides keep their own normal. Same vertices either way.
-static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = [], roll := 0.0) -> Variant:
+## `crown` > 0 (with `roll`) crowns the top as well (see _crowned); `span` is
+## the whole body's (middle, half length) along z.
+static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = [], roll := 0.0, crown := 0.0, span := Vector2.ZERO) -> Variant:
 	var d := []
 	for fl in f:
 		d.append(ch if fl else 0.0)
 	var pin := _inset(p, d)
 	var rings := [_xring(pin, x0, 1.0, rnd), _xring(p, x0 + ch, 1.0, rnd), _xring(p, x1 - ch, -1.0, rnd), _xring(pin, x1, -1.0, rnd)]
 	var mesh: ArrayMesh = VehicleProfiles.loft(rings, roll) if roll > 0.0 else VehicleModels.solid(rings, key)
+	if roll > 0.0 and crown > 0.0:
+		mesh = _crowned(mesh, x0 + ch, x1 - ch, rnd, crown, span)
 	return k._add(parent, mesh, mat, col, Vector3.ZERO)
+
+
+static var _crowns := {}
+
+
+## A rolled panel's top crowned like a pressing. A car's bonnet, roof and boot
+## lid are domed: a little across (higher on the centre line than at the
+## shoulders) and more along, curving down into the nose and the tail. The
+## loft's top spans the body's whole width in one quad, so its normals ran
+## straight from one shoulder's roll to the other's and the sun lit one thin
+## line of it end to end: a white streak down every bonnet. Here the top's
+## edge normals lean out across by `crown` (less than the roll's average, so
+## the shoulder turns over in the chamfer) and along by how far the point
+## lies from the body's middle (`span`), so the highlight is a soft patch
+## that slides over the panel. The chamfers' normals at the top edge follow
+## (they were shared), crisp chamfers keep their own; normals only, so the
+## vertices are the loft's.
+static func _crowned(mesh: ArrayMesh, xa: float, xb: float, rnd: Array, crown: float, span: Vector2) -> ArrayMesh:
+	var key := "%d|%.4f|%.4f|%.3f|%.3f|%.3f" % [mesh.get_instance_id(), xa, xb, crown, span.x, span.y]
+	if _crowns.has(key):
+		return _crowns[key]
+	var src: Array = mesh.get_meta(&"src")
+	var vs: PackedVector3Array = src[Mesh.ARRAY_VERTEX]
+	var ns: PackedVector3Array = (src[Mesh.ARRAY_NORMAL] as PackedVector3Array).duplicate()
+	for t in range(0, vs.size() - 2, 3):
+		var fc := (vs[t + 1] - vs[t]).cross(vs[t + 2] - vs[t])
+		if fc.length_squared() < 1e-14:
+			continue
+		var fx := absf(fc.normalized().x)
+		for j in 3:
+			var v := vs[t + j]
+			var lift := _taper(v.z, rnd)
+			var side := 0.0
+			if absf(v.x - (xa + lift)) < 1e-4:
+				side = -1.0
+			elif absf(v.x - (xb - lift)) < 1e-4:
+				side = 1.0
+			if side == 0.0:
+				continue
+			var n := ns[t + j]
+			# (a chamfer whose normal wasn't shared with the top keeps it)
+			if fx > 0.05 and absf(n.x) > fx - 0.05:
+				continue
+			# the profile's own normal, the lean across taken out of it
+			var np := Vector3(0.0, n.y, n.z)
+			if np.length_squared() < 1e-6:
+				continue
+			np = np.normalized()
+			# (only what faces the sky: a nose or tail standing upright stays as it was)
+			var w := smoothstep(0.25, 0.7, np.y)
+			if w <= 0.0:
+				continue
+			var along := clampf((v.z - span.x) / span.y, -1.0, 1.0) if span.y > 0.0 else 0.0
+			ns[t + j] = (np + Vector3(side * crown, 0.0, along * crown * 0.9) * w).normalized()
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vs
+	arrays[Mesh.ARRAY_NORMAL] = ns
+	var out := ArrayMesh.new()
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(out, arrays)
+	_crowns[key] = out
+	return out
 
 
 ## A side-profile ring at x, pulled in (towards +x when s is 1) where the
@@ -120,14 +190,17 @@ static func _taper(z: float, rnd: Array) -> float:
 ## A body panel: a convex side profile (z, y pairs) from x0 to x1 with
 ## chamfered edges and round wheel arches [zc, yc, r] cut out of its underside.
 ## rnd [front length, front inset, rear length, rear inset] rounds the corners
-## off in plan; `roll` shades its edges as rolled sheet metal (see _xprism).
-static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = [], roll := 0.0) -> void:
+## off in plan; `roll` shades its edges as rolled sheet metal (see _xprism)
+## and crowns its top by `crown` (see _crowned; a wreck's top stays flat, as
+## it always was).
+static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = [], roll := 0.0, crown := CROWN) -> void:
 	var p := VehicleModels._v2(prof)
 	var zmin := INF
 	var zmax := -INF
 	for v in p:
 		zmin = minf(zmin, v.x)
 		zmax = maxf(zmax, v.x)
+	var span := Vector2((zmin + zmax) * 0.5, (zmax - zmin) * 0.5)
 	# strips: plain between the arches, one per chord over them, and a few
 	# more where the corners round off
 	var cuts := []
@@ -181,7 +254,7 @@ static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x
 				poly = r2[0]
 				fl = r2[1]
 		if poly.size() >= 3:
-			_xprism(k, parent, "%s_%d" % [key, i], poly, fl, x0, x1, ch, mat, col, rr, roll)
+			_xprism(k, parent, "%s_%d" % [key, i], poly, fl, x0, x1, ch, mat, col, rr, roll, 0.0 if k.wreck else crown, span)
 
 
 ## A wheel-arch flare: a band round the arch from angle a0 to a1 (0 is the
