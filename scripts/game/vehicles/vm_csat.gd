@@ -832,6 +832,10 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	k._bag(m, Vector3(0.7, 0.26, 0.5), Vector3(-0.3, 2.37, 2.95), "canvas", Color(0.33, 0.33, 0.24), Vector3(0, 0.1, 0))
 	k._box(m, Vector3(0.45, 0.22, 0.4), Vector3(0.35, 2.35, 3.0), "paint", OLIVE)
 	k._team_mark(m, team, Vector3(0, 2.235, 0.85), Vector3(0.7, 0.02, 0.5))
+	# a camouflage net heaped on the roof beside the recognition panel, aft
+	# of the weapon stations' sweep (left or right as the crew threw it)
+	var net_side := -1.0 if posmod(seed, 2) == 0 else 1.0
+	_roof_net(k, m, Vector3(net_side * 0.72, 2.2, 0.8), Vector2(0.56, 0.8))
 	# the tactical number low on each upper side, between the exhaust and the
 	# first firing port
 	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.18, Vector3(1.45, 1.42, 3.3), Vector3(1.45, 1.42, -2.0), Vector3(1.15, 2.2, -2.0), Vector3(1.15, 2.2, 3.3), Vector2(0.585, 0.23))
@@ -894,6 +898,10 @@ static func _stalker(k: VehicleModels, team: int, seed := 0) -> Vector3:
 	_hatch(k, m, Vector3(-0.62, 1.72, -2.0), 0.3)
 	for i in 3:
 		_periscope(k, m, Vector3(-0.92 + i * 0.3, 1.73, -2.38), (i - 1) * 0.35)
+	# spare track links bolted across the glacis ahead of the driver, where a
+	# tracked carrier's crew keeps them to hand (on the plate, 45 cm up it
+	# from the nose's knuckle)
+	VehicleTracks.spare_links(k, m, Vector3(-0.6, 1.469, -2.97), Vector3.RIGHT, gn, 4, Vector3(0.17, 0.5, 0.045), 0.19)
 	VehicleFittings.grille(k, m, Vector3(0.55, 1.4575, -3.0) + gn * 0.03, Vector2(1.0, 0.9), _face_rot(gn, gu), c, null, 6)
 	for s in [-1.0, 1.0]:
 		_headlight(k, m, Vector3(s * 1.28, 1.22, -3.42))
@@ -931,8 +939,10 @@ static func _stalker(k: VehicleModels, team: int, seed := 0) -> Vector3:
 	# the section's camouflage net rolled and strapped across the roof behind them
 	VehicleCloth.roll(k, m, Vector3(0, 1.84, 2.95), 0.12, 1.3, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
 	k._team_mark(m, team, Vector3(0, 1.735, 3.3), Vector3(0.7, 0.02, 0.4))
-	# the tactical number on each upper side, between the bins and the vision blocks
-	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.24, Vector3(1.7, 1.1, 3.5), Vector3(1.7, 1.1, -2.3), Vector3(1.24, 1.72, -2.3), Vector3(1.24, 1.72, 3.5), Vector2(0.61, 0.52))
+	# the tactical number on each upper side, between the bins and the vision
+	# blocks, as big as the side takes (40 cm figures, read from the battle
+	# camera; the sloped side faces up at it)
+	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.38, Vector3(1.7, 1.1, 3.5), Vector3(1.7, 1.1, -2.3), Vector3(1.24, 1.72, -2.3), Vector3(1.24, 1.72, 3.5), Vector2(0.61, 0.5))
 	return Vector3(0, 1.72, -0.35)
 
 
@@ -1056,6 +1066,8 @@ static func _t100(k: VehicleModels, team: int) -> Vector3:
 		# a tow cable stowed along each guard beside the hull, its eyes flat on
 		# the guard over their pegs: Soviet-lineage tanks carry one a side
 		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.71, 1.077, -2.6), Vector3(s * 1.71, 1.077, 1.15)], 0.022, 0.0, -1, Vector3.UP)
+		# cut branches laid on the guard over the cable, ahead of the stowage
+		VehicleBody.cut_branches(k, m, Vector3(s * 1.71, 1.112, -2.45), Vector3(s * 1.71, 1.112, 0.55), Vector3(s, 0, 0), 31)
 	_onface(k, m, g0 + gu * 1.45, gn, gu, Vector3(0.7, 0.24, 0.05), c)
 	_hatch(k, m, Vector3(0, 1.5, -2.02), 0.27)
 	_periscope(k, m, Vector3(0, 1.5, -2.36))
@@ -1160,9 +1172,9 @@ static func _varsuk(k: VehicleModels, team: int, seed := 0) -> void:
 		var along := Vector3(s * 0.753, 0, 0.659)
 		var roof := Vector3(s * 0.677, 0.78, -0.936) if s > 0.0 else Vector3(-0.553, 0.78, -1.045)
 		_era(k, t, roof, Vector3.UP, Vector3(along.z, 0, -along.x), 1, 2 if s > 0.0 else 1, Vector3(0.3, 0.3, 0.1), 0.0, CAM, Vector2(0.03, 0.03))
-	# mantlet, gun, coax
-	VehicleMounts.mantlet(k, t, Vector3(0.72, 0.5, 0.3), Vector3(0, 0.42, -1.58), c)
-	k._cyl(t, 0.2, 0.15, 0.3, Vector3(0, 0.42, -1.8), Vector3(PI / 2, 0, 0), "canvas", Color(0.3, 0.29, 0.22), 12)
+	# mantlet, gun, coax; the gun's pleated canvas boot strapped round the
+	# mantlet's face and tied round the barrel, as on every T-72 and T-90
+	VehicleMounts.mantlet(k, t, Vector3(0.72, 0.5, 0.3), Vector3(0, 0.42, -1.58), c, null, Vector3.ZERO, Vector2(0.1, 0.26))
 	k.gun_tip = _gun125(k, t, 0.42, -1.9, 5.4)
 	VehicleWeapons.coax(k, t, Vector3(0.3, 0.33, -1.85), 0.3, 0.022)
 	k.mg_tip = k._tip(t, Vector3(0.3, 0.33, -2.0))
@@ -1180,14 +1192,20 @@ static func _varsuk(k: VehicleModels, team: int, seed := 0) -> void:
 		# antennas at the bustle's back corners
 		_antenna(k, t, Vector3(s * 0.8, 0.76, 2.6), 2.0 if s < 0 else 1.5)
 	# the tactical number on the turret's flanks, under the smoke dischargers
-	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.26, Vector3(1.42, 0.06, 0.95), Vector3(1.38, 0.06, -0.95), Vector3(1.22, 0.78, -0.82), Vector3(1.27, 0.78, 0.88), Vector2(0.26, 0.36))
+	# (38 cm figures, the size a crew paints them to be read across a field,
+	# far enough behind the launchers that they don't hide the last figure)
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.38, Vector3(1.42, 0.06, 0.95), Vector3(1.38, 0.06, -0.95), Vector3(1.22, 0.78, -0.82), Vector3(1.27, 0.78, 0.88), Vector2(0.235, 0.33))
 	# stowage on the bustle's back, a wind sensor mast
 	k._bag(t, Vector3(1.6, 0.36, 0.3), Vector3(0, 0.5, 3.02), "canvas", Color(0.33, 0.33, 0.24))
 	# the crew's tarpaulin rolled and strapped across the back of the bustle roof
 	VehicleCloth.roll(k, t, Vector3(0, 0.91, 2.62), 0.14, 1.3, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
 	VehicleMounts.mast_segment(k, t, Vector3(0.2, 0.95, 1.2), 0.35, 0.015, "gunmetal_w", null)
-	k._team_mark(t, team, Vector3(1.09, 0.45, 1.95), Vector3(0.03, 0.24, 0.7))
-	k._team_mark(t, team, Vector3(-1.09, 0.45, 1.95), Vector3(0.03, 0.24, 0.7))
+	k._team_mark(t, team, Vector3(1.09, 0.45, 1.55), Vector3(0.03, 0.24, 0.7))
+	k._team_mark(t, team, Vector3(-1.09, 0.45, 1.55), Vector3(0.03, 0.24, 0.7))
+	# spare track links hung on the bustle's flanks behind the panels, on the
+	# side plate (which leans in 5 cm up its height and narrows 5 cm aft)
+	for s in [-1.0, 1.0]:
+		VehicleTracks.spare_links(k, t, Vector3(s * 1.036, 0.44, 2.5), Vector3.BACK, Vector3(s, 0.083, 0.026), 4, Vector3(0.17, 0.5, 0.045), 0.19)
 
 
 ## T-100X Futura: the Varsuk's hull under an experimental turret - two faceted
@@ -1225,7 +1243,7 @@ static func _futura(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.grille(k, t, Vector3(s * 0.48, 0.45, 2.86), Vector2(0.5, 0.2), Vector3.ZERO, "gunmetal_w", null, 4)
 		_smoke(k, t, Vector3(s * 1.18, 0.55, 0.6), s, 4, 1.0)
 		_antenna(k, t, Vector3(s * 0.7, 0.75, 1.9), 1.8 if s < 0 else 1.3)
-	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.24, Vector3(1.48, 0.06, 1.4), Vector3(1.42, 0.06, -0.75), Vector3(1.14, 0.6, -0.55), Vector3(1.2, 0.6, 1.3), Vector2(0.43, 0.44))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.34, Vector3(1.48, 0.06, 1.4), Vector3(1.42, 0.06, -0.75), Vector3(1.14, 0.6, -0.55), Vector3(1.2, 0.6, 1.3), Vector2(0.43, 0.4))
 	# sights: the gunner's block, the commander's panoramic head, a remote MG
 	VehicleMounts.sight(k, t, Vector3(-0.42, 0.98, -0.25), Vector3(0.36, 0.26, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.12))], c)
 	VehicleMounts.sight(k, t, Vector3(0.45, 1.25, 0.6), Vector3(0.3, 0.22, 0.3), [Rect2(Vector2(0, 0.01), Vector2(0.18, 0.1))], c, null, Vector3(0.08, 0.1, 0.41))
@@ -1265,7 +1283,7 @@ static func _sochor(k: VehicleModels, team: int, seed := 0) -> void:
 			VehicleDoors.pull(k, t, Vector3(s * 1.497, 1.15, hz), Vector3(s * cos(0.11), sin(0.11), 0), Vector3.BACK, 0.3, 0.014)
 	VehicleCloth.roll(k, t, Vector3(-0.72, 1.41, 2.36), 0.13, 1.0, Vector3(0, 0, PI / 2), Color(0.36, 0.35, 0.26))
 	# the tactical number on the turret's flanks ahead of the crew doors
-	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.28, Vector3(1.62, 0.06, 2.75), Vector3(1.62, 0.06, -1.5), Vector3(1.46, 1.28, -1.1), Vector3(1.48, 1.28, 2.62), Vector2(0.776, 0.36))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.45, Vector3(1.62, 0.06, 2.75), Vector3(1.62, 0.06, -1.5), Vector3(1.46, 1.28, -1.1), Vector3(1.48, 1.28, 2.62), Vector2(0.776, 0.36))
 	VehicleDoors.leaf(k, t, Vector3(1.0, 0.7, 0.04), Vector3(0.45, 0.6, 2.69), c, null, Vector3.ZERO, 2)
 	VehicleDoors.pull(k, t, Vector3(0.0, 0.6, 2.71), Vector3.BACK, Vector3.UP, 0.16)
 	# roof: hatches, the commander's panoramic sight, the remote 12.7 mm
@@ -1332,6 +1350,11 @@ static func _t14(k: VehicleModels, team: int) -> Vector3:
 		VehicleBody.track_guard(k, m, Vector3(s * 1.72, 1.12, 0.05), Vector3(0.24, 0.05, 8.3), s, c, null, 7, 0.0, Vector2(0.4, 0.3))
 		# the tow cable along each guard, ahead of the slat cages
 		VehicleFittings.tow_cable(k, m, [Vector3(s * 1.76, 1.165, -3.3), Vector3(s * 1.76, 1.165, 1.0)], 0.02, 0.0, -1, Vector3.UP)
+		# cut branches laid on the guard over the cable, ahead of the cages
+		VehicleBody.cut_branches(k, m, Vector3(s * 1.76, 1.198, -3.1), Vector3(s * 1.76, 1.198, 0.2), Vector3(s, 0, 0), 31)
+		# spare track links on the hull's flank above the guard, behind the
+		# crew capsule (the plate leans in 4 cm up its height)
+		VehicleTracks.spare_links(k, m, Vector3(s * 1.659, 1.5, -1.0), Vector3.BACK, Vector3(s, 0.053, 0), 4, Vector3(0.17, 0.5, 0.045), 0.19)
 	# the crew capsule: three hatches abreast, periscopes ahead of each
 	for i in 3:
 		var hx := (i - 1) * 0.82
@@ -1375,9 +1398,12 @@ static func _angara(k: VehicleModels, team: int, command: bool, seed := 0) -> vo
 	k._add(t, _chamfer_loft("csat_ang_tur", [-0.55, -1.85, 0.55, -1.85, 1.35, -1.15, 1.45, 1.4, 1.15, 2.1, -1.15, 2.1, -1.45, 1.4, -1.35, -1.15],
 		[-0.42, -1.55, 0.42, -1.55, 1.12, -1.0, 1.2, 1.3, 0.95, 1.9, -0.95, 1.9, -1.2, 1.3, -1.12, -1.0], 0.06, 0.74, 0.05), c, null, Vector3.ZERO)
 	k._add(t, _chamfer_loft("csat_ang_top", [-0.9, -0.6, 0.9, -0.6, 0.95, 1.6, -0.95, 1.6], [-0.8, -0.4, 0.8, -0.4, 0.85, 1.5, -0.85, 1.5], 0.74, 0.86, 0.04), c, null, Vector3.ZERO)
-	# the gun slot and mask, the 125 mm, the coax
-	k._box(t, Vector3(0.5, 0.42, 0.3), Vector3(0, 0.42, -1.82), c)
-	k._box(t, Vector3(0.3, 0.3, 0.04), Vector3(0, 0.42, -1.98), "plain_dark", null, Vector3.ZERO, false)
+	# the gun slot and its mask, the 125 mm, the coax: the slot's dark mouth
+	# closed by the gun's canvas boot, strapped round the mask and tied round
+	# the barrel (the slot a little narrower than the boot, so no corner of it
+	# shows past the cloth)
+	VehicleMounts.mantlet(k, t, Vector3(0.5, 0.42, 0.3), Vector3(0, 0.42, -1.82), c, null, Vector3.ZERO, Vector2(0.1, 0.24))
+	k._box(t, Vector3(0.26, 0.26, 0.04), Vector3(0, 0.42, -1.98), "plain_dark", null, Vector3.ZERO, false)
 	k.gun_tip = _gun125(k, t, 0.42, -1.98, 5.1, false)
 	VehicleWeapons.coax(k, t, Vector3(0.32, 0.3, -1.85), 0.3, 0.022)
 	k.mg_tip = k._tip(t, Vector3(0.32, 0.3, -2.0))
@@ -1402,7 +1428,7 @@ static func _angara(k: VehicleModels, team: int, command: bool, seed := 0) -> vo
 		VehicleFittings.smoke_bank(k, t, Vector3(s * 0.85, 0.84, -0.55), Vector3(0.5, 0.18, 0.34), Vector3(0, s * -0.3, 0), tubes, 0.045, 0.2)
 		_antenna(k, t, Vector3(s * 0.85, 0.74, 1.75), 2.0 if s < 0 else 1.5)
 	# the tactical number high on the casing's flanks, behind the Afghanit housings
-	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.26, Vector3(1.45, 0.06, 1.4), Vector3(1.35, 0.06, -1.15), Vector3(1.12, 0.74, -1.0), Vector3(1.2, 0.74, 1.3), Vector2(0.235, 0.62))
+	VehicleMarkings.side_number(k, t, VehicleMarkings.tactical_number(seed, TAC), 0.4, Vector3(1.45, 0.06, 1.4), Vector3(1.35, 0.06, -1.15), Vector3(1.12, 0.74, -1.0), Vector3(1.2, 0.74, 1.3), Vector2(0.21, 0.6))
 	# the gunner's sight (front left) and the commander's panoramic sight
 	VehicleMounts.sight(k, t, Vector3(-0.5, 1.0, -0.2), Vector3(0.44, 0.34, 0.5), [Rect2(Vector2(0, 0.03), Vector2(0.3, 0.16))], c)
 	VehicleMounts.sight(k, t, Vector3(0.55, 1.4, 0.5), Vector3(0.4, 0.3, 0.4), [Rect2(Vector2(0, 0.02), Vector2(0.26, 0.14))], c, null, Vector3(0.12, 0.14, 0.54))
@@ -1494,6 +1520,23 @@ static func _typhoon(k: VehicleModels, team: int) -> void:
 	_antenna(k, m, Vector3(-0.85, 3.12, -2.5), 2.0)
 	VehicleFittings.light_bar(k, m, Vector3(-0.6, 3.18, -3.95), Vector3(0.3, 0.12, 0.12), [Color.WHITE, Color.WHITE], "work", Vector3.ZERO, -1.0, "gunmetal_w", null)
 	k._team_mark(m, team, Vector3(0.0, 3.145, -3.7), Vector3(0.6, 0.02, 0.4))
+	# a camouflage net bundled on the cab roof between the work light and the
+	# antenna, clear of the hatch and the recognition panel, on a truck whose
+	# crew camouflages it (VehicleCloth.camouflage): the roof is the first
+	# thing the battle camera sees of a cab-over
+	_roof_net(k, m, Vector3(-0.6, 3.12, -3.1), Vector2(0.58, 0.68))
+
+
+## A camouflage net thrown in a heap on a roof at `foot` (`size` its x and z
+## reach), turned a little as it landed, by a crew that camouflages its
+## vehicle (VehicleCloth.camouflage: always if heavily, often if a little,
+## never on scenery or a wreck), so neighbouring trucks and carriers differ
+## from above.
+static func _roof_net(k: VehicleModels, p: Node3D, foot: Vector3, size: Vector2) -> void:
+	var rng := VehicleCargo.kit(k, p, foot, 17)
+	var camo := VehicleCloth.camouflage(k)
+	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
+		VehicleCloth.net(k, p, foot, Vector3(size.x, rng.randf_range(0.1, 0.17), size.y), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
 
 
 ## Tempest: the Typhoon-K with its mission module. `kind`: "" (troops under a
