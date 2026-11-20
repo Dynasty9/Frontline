@@ -1123,31 +1123,67 @@ func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunme
 	return VehicleWheels.pneumatic(self, parent, pos, r, w, hub_kind, hub_col, profile)
 
 
+## A side's identification mark, painted on as armies paint them for a
+## campaign (the inverted-V chevrons of 2003, the bands of others): where the
+## old panel box `s` sat, centred on `pos`, on the face its thin axis is the
+## normal of (a roof's faces up, a flank's out to its side, an end's fore or
+## aft). It's brushed on in the vehicle's own paint, so it takes the dust,
+## grime and wear the hull round it takes and never stands clean and dark
+## like a hole in the roof; the side's colour, sunk toward the hull's grey,
+## still tells the sides apart from the battle camera, and so does its shape
+## (`_mark_outline`). Laid on the box's outer face, which stood clear of the
+## hull everywhere the box showed. Burnt off a wreck with the paint.
 func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
-	if wreck or team < 0:  # (burnt off a wreck with the paint)
+	if wreck or team < 0:
 		return
-	var mi := MeshInstance3D.new()
-	mi.mesh = Res.box(s)
-	mi.position = pos
-	mi.material_override = _mark_mat(team)
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mi)
+	var normal := Vector3.UP
+	var along := Vector3.RIGHT
+	var up := Vector3.FORWARD  # (a roof's mark points at the bow)
+	var size := Vector2(s.x, s.z)
+	var thin := s.y
+	if s.x < s.y and s.x <= s.z:
+		normal = Vector3(-1.0 if pos.x < 0.0 else 1.0, 0, 0)
+		along = Vector3.BACK
+		up = Vector3.UP
+		size = Vector2(s.z, s.y)
+		thin = s.x
+	elif s.z < s.y and s.z < s.x:
+		normal = Vector3(0, 0, -1.0 if pos.z < 0.0 else 1.0)
+		up = Vector3.UP
+		size = Vector2(s.x, s.y)
+		thin = s.z
+	var o := pos + normal * thin * 0.5
+	VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return o + along * q.x + up * q.y, normal, _mark_col(team), "paint", true, 0)
 
 
-static var _mark_mats := {}
+## A team mark's outline, `size` (across, up) centred on the origin: the
+## coalition's inverted-V chevron, its arms half the mark's height thick,
+## apex up (toward the bow on a roof or wing); the other side's band, its
+## ends cut on a slant leaning forward. Two shapes, so the sides read apart
+## even where the colour doesn't.
+static func _mark_outline(team: int, size: Vector2) -> PackedVector2Array:
+	# (a flank's mark box is wide and short: a chevron stretched across all of
+	# it, arms half its height thick, read from the battle camera as a smear.
+	# Painted no wider than 1.6 times its height, centred, with slimmer arms,
+	# it reads as a chevron)
+	var wide := size.x > size.y * 1.6
+	var w := minf(size.x, size.y * 1.6) * 0.5
+	var h := size.y * 0.5
+	if team == 0:
+		var t := size.y * (0.34 if wide else 0.52)
+		return PackedVector2Array([Vector2(0, h), Vector2(w, -h + t), Vector2(w, -h), Vector2(0, h - t), Vector2(-w, -h), Vector2(-w, -h + t)])
+	var slant := minf(size.y * 0.6, size.x * 0.3)
+	return PackedVector2Array([Vector2(-w + slant, -h), Vector2(w, -h), Vector2(w - slant, h), Vector2(-w, h)])
 
 
-## A subdued identification panel, not a toy's coloured sticker: the side's
-## colour sunk most of the way to the hull's dark grey, in flat matte paint
-## with hardly any sheen, so the sky doesn't lie on it as a bright patch
-## beside the matte camouflage round it.
-static func _mark_mat(team: int) -> StandardMaterial3D:
-	if not _mark_mats.has(team):
-		var tc: Color = Defs.TEAM_COLORS[team]
-		var mat := Res.mat(tc.lerp(Color(0.2, 0.21, 0.2), 0.7).darkened(0.62), 0.97).duplicate() as StandardMaterial3D
-		mat.metallic_specular = 0.12
-		_mark_mats[team] = mat
-	return _mark_mats[team]
+## A team mark's paint: the side's colour lerped toward a pale grey, a pale
+## service blue or a pale brick at about value 0.6, light enough to stand off
+## dark camouflage and dark enough not to glow like a sticker on sand (sunk to
+## the hull's grey and darkened, it was as dark as olive camouflage, and the
+## sides could not be told apart from the battle camera).
+static func _mark_col(team: int) -> Color:
+	var tc: Color = Defs.TEAM_COLORS[team]
+	return tc.lerp(Color(0.74, 0.74, 0.7), 0.4)
 
 
 # --- tanks -----------------------------------------------------------------------
@@ -1398,7 +1434,7 @@ func _car(v: int, col: Color) -> void:
 	# upright, so the side glass still lies on them.
 	var ty: float = (float(hz[5]) + float(hz[7])) * 0.5
 	var ry: float = ty
-	VmCiv._yloft(self, m, key + "h", [[-hw, fz, hw, fz, hw, bz, -hw, bz], [-hw, tz, hw, tz, hw, rz, -hw, rz]], [fy, ty], 0.05, "car_paint", col)
+	VmCiv._yloft(self, m, key + "h", [[-hw, fz, hw, fz, hw, bz, -hw, bz], [-hw, tz, hw, tz, hw, rz, -hw, rz]], [fy, ty], 0.05, "car_paint", col, Vector3.ZERO, 0.6)
 	# glass: windscreen, rear screen, side windows (inset a touch)
 	if not burnt:
 		var inside := Vector3(0, (fy + ty) * 0.5, (fz + bz) * 0.5)
@@ -1411,8 +1447,16 @@ func _car(v: int, col: Color) -> void:
 			var panes := 1 if v == 2 else 2
 			for pane in panes:
 				VehicleGlazing.quad(self, m, key + "side_%s_%d" % [side, pane], face, inside, Rect2(0.06 + pane * 0.46, 0.13, 0.88 if panes == 1 else 0.42, 0.74), 0.012, 0.012, "glass")
-			# the wing mirror on its arm from the window's front corner, the door handle
-			VehicleFittings.mirror(self, m, Vector3(side * (w + 0.14), fy + 0.16, fz + 0.22), Vector2(0.09, 0.13), 0.0, [Vector3(side * hw, fy + 0.10, fz + 0.25)], "rubber", null)
+			# The wing mirror: a car's is a moulded shell on a short foot at
+			# the window's front corner, in the body's paint (black on the
+			# older cars that keep their chrome), its glass facing back. (A
+			# truck's mirror on tubular arms and a ball joint read as fitted
+			# kit, and cost a thousand vertices a side.)
+			var black := absi(hash(col.to_html(false) + str(v))) % 3 == 0
+			var glass_at := Vector3(side * (w + 0.075), fy + 0.12, fz + 0.24)
+			VmCiv._strut(self, m, Vector3(side * (hw + 0.03), fy + 0.03, fz + 0.27), glass_at + Vector3(-side * 0.04, -0.03, 0.0), 0.06, 0.03, "plain", VmCiv.TRIM, false)
+			_add(m, BevelMesh.make(Vector3(0.16, 0.1, 0.07), 0.022), "plain" if black else "car_paint", VmCiv.TRIM if black else col, glass_at)
+			_box(m, Vector3(0.135, 0.075, 0.006), glass_at + Vector3(0, 0, 0.036), "mirror", Color(0.78, 0.82, 0.84), Vector3.ZERO, false)
 	# The doors' shut lines down the sides, each stopping on the sill or over
 	# the rear arch, a handle near each door's rear edge, and the bonnet's U:
 	# the gaps that break a car's flank and bonnet into the pressings they are.
@@ -1427,7 +1471,9 @@ func _car(v: int, col: Color) -> void:
 					foot = maxf(foot, 0.33 + sqrt(0.37 * 0.37 - (z - c) * (z - c)) + 0.03)
 			VehicleBody.seam(self, m, [Vector3(side * (w + 0.002), fy - 0.04, z), Vector3(side * (w + 0.002), foot, z)], 0.004)
 			if i > 0 and not burnt:
-				VehicleDoors.pull(self, m, Vector3(side * (w + 0.001), fy - 0.09, z - 0.16), Vector3(side, 0, 0), Vector3.BACK, 0.13, 0.006, "steel")
+				# a flush pull handle moulded into the door skin, black (a
+				# truck's bar handle on its posts stood off a car's door)
+				_add(m, BevelMesh.make(Vector3(0.014, 0.03, 0.13), 0.005), "plain", VmCiv.TRIM, Vector3(side * (w + 0.004), fy - 0.09, z - 0.16), Vector3.ZERO, Vector3.ONE, false)
 	VmCiv._bonnet_line(self, m, body, w - 0.22, fz - 0.06, bf + 0.16)
 	# Moulded bumpers, lights, plate. Parked cars of one shape differ by more
 	# than paint, as a street's do: some older ones keep chrome bumpers, and
@@ -1438,6 +1484,15 @@ func _car(v: int, col: Color) -> void:
 	for z: float in [bf - 0.02, bb + 0.02]:
 		VehicleMounts.bumper(self, m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, z), "steel" if chrome else "rubber", Color(0.7, 0.71, 0.72) if chrome else null, Vector3.ZERO, true)
 	var hub: Color = [Color(0.62, 0.63, 0.62), Color(0.76, 0.76, 0.74), Color(0.24, 0.245, 0.25)][(trim >> 3) % 3]
+	# About one car in four runs on a bonnet from a breaker's yard, never
+	# painted to match: grey primer, or another car's colour. From above the
+	# bonnet is the biggest panel the battle camera sees, so this is what keeps
+	# a street of one shape from looking stamped from one mould. (A film on
+	# the bonnet's own slope, inside its shut lines.)
+	# (hashed shape first, so each shape of one paint draws its own)
+	var odd := absi(hash(str(v) + col.to_html(false)))
+	if odd % 4 == 0 and not burnt:
+		VmCiv._odd_bonnet(self, m, body, w - 0.22, fz - 0.1, bf + 0.2, col, odd >> 3)
 	# The lamps sit on the nose and tail as they lean (they floated a few
 	# centimetres ahead of a raked nose): sealed rectangular headlamps either
 	# side of a black grille, amber indicators under them, and tail clusters,

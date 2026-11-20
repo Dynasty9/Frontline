@@ -87,6 +87,8 @@ func prewarm(at: Vector3) -> void:
 	plume(p, 1.0)
 	plume(p + Vector3(20, 0, 0), 2.4)
 	var b := make_burner(1.0)
+	# Shader warm-up is not a battlefield heat source: it must not thaw snow.
+	_burners.erase(b)
 	add_child(b)
 	b.global_position = p
 	burn_for(b, 1.0, 1.0)
@@ -340,7 +342,7 @@ func _shader_mat(code: String) -> ShaderMaterial:
 ## its surroundings, by mood (far more at night).
 const SMOKE_SUN := {"night": 0.45}
 const SMOKE_SKY := {"night": 0.6}
-const FIRE_LIGHT := {"night": 2.6, "dusk": 1.5, "dawn": 1.5, "rain": 1.5, "overcast": 1.5}
+const FIRE_LIGHT := {"night": 2.6, "dusk": 1.5, "dawn": 1.5, "rain": 1.5, "overcast": 1.5, "snow": 1.5}
 
 
 ## Copies the scene's sun / sky light into the smoke shader.
@@ -1038,6 +1040,12 @@ func heat_sources(hh: HeatHaze) -> void:
 		# away, its own fire with it, and burns on as its wreck instead)
 		if f > 0.02 and h.is_inside_tree() and h.is_visible_in_tree():
 			hh.add_fire(h.global_position, h.get_meta("ext", Vector3(0.5, 0.4, 0.5)), f)
+
+
+## The fires (each holder with its strength, "fire", and size, "ext"), for
+## the snow melting round them (SnowMelt).
+func burning() -> Array:
+	return _burners
 
 
 ## (view) Every fire that's alight, seen or not, as [where, how hard (0..1),

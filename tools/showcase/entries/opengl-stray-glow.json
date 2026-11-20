@@ -1,0 +1,32 @@
+{
+  "entry": "changelog/unreleased/opengl-stray-glow.md",
+  "summary": "Unused gun effects no longer leave a stray white shape at the map centre in OpenGL.",
+  "medium": "still",
+  "stage": "Actual fire scenario, map origin; current-build Compatibility check with matched pre-fix control and linked historical effects clip",
+  "rationale": "This is a visible fix. Publish one current-head native-rendered still and explicitly label the non-reproduction on the pre-fix build. Link verified released motion for the affected effects, labeled historical Forward+ context; do not claim it demonstrates this correction. No synthetic glow, shader override, duplicate release media or no-media exemption.",
+  "source_ref": "217199eff3950b2873a27cac00c17d216f001755",
+  "before_ref": "f3cf2d945507824e5eba3df57aa62d92341b8f22",
+  "capture": {
+    "renderer": "Stock Godot 4.7.2 Compatibility / OpenGL 4.5 Mesa 25.0.7 llvmpipe LLVM 19.1.7; software appearance check, not hardware or performance validation",
+    "command": "godot --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x540 --fixed-fps 24 -- --scenario=fire --seed=3 --mood=snow --nohud --preset=medium --set=perf:0 --focus=0,0 --zoom=25 --pitch=-35 --screenshot=OUT/origin.png --shot-at=2",
+    "controls": "Same stock command on separate clean worktrees at source_ref and before_ref. No script or shader overrides. Both exited 0 and saved full 960x540 frames. Natural fire/particle timing differs; neither frame reproduces the origin glow. Raw controls stay outside Git.",
+    "encoding": "Full uncropped native frame, JPEG quality 85; no image alterations.",
+    "limitations": "No reproduced before artifact on this software renderer; affected hardware comparison remains outstanding. Both runs emit imported-asset UID warnings and shutdown resource/RID leak messages; no SCRIPT ERROR or SHADER ERROR. These captures are not full-build validation."
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/opengl-stray-glow/compatibility-origin.jpg",
+      "sha256": "6b4d3109b581cfefb339cf450a384e90269ffd4dbef452075be4d25d39f3f99a"
+    },
+    {
+      "file": "changelog/v1.0.13/realistic-armament-effects/impacts-close.webm",
+      "sha256": "fb1a465c8f67d4db8c35c39dac7dda8b28971743c665fcfb238a068976452ec7",
+      "role": "Historical released context, not fix comparison"
+    }
+  ],
+  "output": "changelog/unreleased/opengl-stray-glow/compatibility-origin.jpg",
+  "validation": [
+    "Original presentation audit fails with Presentation decision needed for this entry.",
+    "Historical VP9 clip: 1280x720, 30 fps, 12 seconds, 431679 bytes; full decode succeeds; dirt, stone and metal frames visually inspected. Exact-ref GitHub download HTTP 200 and SHA256 matches."
+  ]
+}

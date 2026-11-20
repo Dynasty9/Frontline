@@ -13,11 +13,19 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 	if profile == "road" and k.surface_family == "automotive" and hub_kind in ["steel", "gunmetal_w"] and r >= 0.3 and r < 0.42 and w <= r * 0.75:
 		return _car_wheel(k, parent, pos, r, w, hub_kind, hub_col, register)
 	var pv := k._pivot(parent, pos)
+	# (a painted rim only: a bare steel one from stores looks like the rest)
+	var swapped: Variant = _swapped(k, parent, pos, 37, hub_col) if register and profile == "offroad" and hub_kind == "paint" else null
+	if swapped != null:
+		hub_col = swapped
 	# Rounded shoulders and recessed rims share meshes at every wheel size.
 	# Tiny trolley wheels and broad tracked road wheels retain their solid discs.
 	var fine := r >= 0.18
 	if k.wreck:
 		pass  # (burnt away: only the rim is left, and the hull sits down on it: Structure._ruin)
+	elif r < 0.18 and r >= 0.04 and w <= r * 1.6 and profile == "road":
+		# A kart's slick or a robot's road wheel is still a tyre, its
+		# shoulders rounded over onto the walls (see _small_tyre).
+		k._add(pv, _small_tyre(r, w), "rubber", Color(0.17, 0.18, 0.17), Vector3.ZERO)
 	elif r < 0.18 or w > r * 1.2:
 		k._add(pv, drum(r, r, w, 24), "rubber", null, Vector3.ZERO, AXLE)
 	else:
@@ -46,6 +54,20 @@ static func pneumatic(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, 
 			var a := TAU * i / 8.0
 			k._add(pv, nut, "steel", Color(0.35, 0.36, 0.33), Vector3(side * w * 0.38, sin(a) * r * 0.31, cos(a) * r * 0.31), Vector3(0, 0, -side * PI / 2), Vector3.ONE, false)
 	k._add(pv, drum(r * 0.23, r * 0.26, w * 0.89, 16 if fine else 8), hub_kind, hub_col, Vector3.ZERO, AXLE, Vector3.ONE, false)
+	if profile == "offroad" and r >= 0.35 and w <= r * 1.2 and not k.wreck:
+		# A truck's or armoured car's steel disc is pierced with hand holes
+		# between the wheel nuts and the rim (for the valve, the inflation
+		# hose and the brake's air), so from the battle camera the wheel
+		# reads as a pressed steel wheel with the dark of the hub behind it,
+		# not a plain painted plate. Outer face only on a running wheel.
+		var faces: Array[float] = [1.0, -1.0]
+		if register:
+			faces = [signf(pos.x) if pos.x != 0.0 else 1.0]
+		var hole := drum(r * 0.062, r * 0.062, 0.006, 10, false)
+		for f: float in faces:
+			for i in 6:
+				var a := TAU * (i + 0.5) / 6.0
+				k._add(pv, hole, "rubber", Color(0.03, 0.03, 0.03), Vector3(f * (w * 0.335 + 0.002), sin(a) * r * 0.425, cos(a) * r * 0.425), Vector3(0, 0, -f * PI / 2), Vector3.ONE, false)
 	if register and profile == "offroad" and r >= 0.4 and k.surface_family == "armor" and w <= r * 1.2 and not k.wreck:
 		# A military truck or armoured car pumps its tyres up and down on the
 		# move (central tyre inflation): the rotary seal on the hub's end and
@@ -158,6 +180,34 @@ static func _car_tyre(r: float, w: float, rr: float) -> ArrayMesh:
 	for i in range(half.size() - 1, -1, -1):
 		section.append(Vector2(-half[i].x, half[i].y))
 	_meshes[key] = _lathe(section, 32)
+	return _meshes[key]
+
+
+## A small wheel's tyre, a kart's slick or a robot's road wheel: a flat crown
+## rolling over rounded shoulders onto walls that bulge past the rim, lathed
+## round the axle (x), its bead on the rim's lip. A plain drum read as a
+## black cylinder cut off square, a toy's wheel. Twenty sides, as round as a
+## wheel this small needs; cached by size.
+static func _small_tyre(r: float, w: float) -> ArrayMesh:
+	var key := "small_tyre_%.3f_%.3f" % [r, w]
+	if _meshes.has(key):
+		return _meshes[key]
+	var rr := r * 0.56
+	var wall := r - rr
+	var half: Array[Vector2] = [Vector2(0.4 * w, rr), Vector2(0.49 * w, rr + wall * 0.35), Vector2(0.475 * w, r - wall * 0.26),
+		Vector2(0.38 * w, r - wall * 0.04), Vector2(0.22 * w, r)]
+	# (a road wheel a few centimetres wide needs only its rounded shoulder,
+	# and fewer sides: from a few metres it is a dark rim round the hub)
+	var around := 20
+	if w < 0.05:
+		half = [Vector2(0.45 * w, rr), Vector2(0.5 * w, r - wall * 0.3), Vector2(0.3 * w, r)]
+		around = 14
+	var section := PackedVector2Array()
+	for p in half:
+		section.append(p)
+	for i in range(half.size() - 1, -1, -1):
+		section.append(Vector2(-half[i].x, half[i].y))
+	_meshes[key] = _lathe(section, around)
 	return _meshes[key]
 
 
@@ -561,6 +611,17 @@ static func _mesh(verts: PackedVector3Array, norms: PackedVector3Array, idx: Pac
 ## their characteristic pressed ribs; rubber tyres never receive road tread.
 static func road(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: float, mat := "gunmetal_w", col = null, spokes := 0, rubber := true) -> Node3D:
 	var pv := k._pivot(parent, pos)
+	# (a steel idler, rubber false, is never swapped: it outlasts the tyres)
+	var swapped: Variant = _swapped(k, parent, pos, 31, col) if rubber else null
+	# (an idler's nuts in its rims' bare steel; a depot wheel painted whole,
+	# its nuts too: either way the wheel draws no more finishes than before)
+	var nut_mat := "gunmetal_w" if rubber or k.wreck else "steel"
+	var nut_col: Variant = null
+	if swapped != null:
+		mat = "paint"
+		col = swapped
+		nut_mat = "paint"
+		nut_col = swapped
 	var outer := signf(pos.x) if pos.x != 0 else 1.0
 	for side: float in [-1.0, 1.0]:
 		var x: float = side * w * 0.30
@@ -570,7 +631,10 @@ static func road(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: fl
 			# chamfer, shaded round into the face and the tread (see _road_tyre).
 			k._add(pv, _road_tyre(r, w * 0.38), "rubber", null, Vector3(x, 0, 0), Vector3(0, PI, 0) if side < 0.0 else Vector3.ZERO)
 		else:
-			k._add(pv, drum(r, r, w * 0.38, 28), "rubber" if rubber else "gunmetal_w", null, Vector3(x, 0, 0), AXLE)
+			# A steel idler's rims are the track's running surface: the links'
+			# inner faces and guide horns scrub them to bare bright steel,
+			# against the painted disc inside them.
+			k._add(pv, drum(r, r, w * 0.38, 28), "rubber" if rubber else ("gunmetal_w" if k.wreck else "steel"), null, Vector3(x, 0, 0), AXLE)
 		k._add(pv, drum(r * 0.82, r * 0.77, w * 0.40, 28), mat, col, Vector3(x, 0, 0), AXLE)
 		k._add(pv, drum(r * 0.66, r * 0.66, w * 0.41, 24), mat, col, Vector3(x, 0, 0), AXLE, Vector3.ONE, false)
 		# The inboard twin's bolts face the hull side, behind the track; a
@@ -580,13 +644,36 @@ static func road(k: VehicleModels, parent: Node3D, pos: Vector3, r: float, w: fl
 		var nut := drum(r * 0.03, r * 0.03, 0.025, 6, false)
 		for i in 8:
 			var a := TAU * i / 8.0
-			k._add(pv, nut, "gunmetal_w", null, Vector3(side * w * 0.52, sin(a) * r * 0.47, cos(a) * r * 0.47), Vector3(0, 0, -side * PI / 2), Vector3.ONE, false)
+			k._add(pv, nut, nut_mat, nut_col, Vector3(side * w * 0.52, sin(a) * r * 0.47, cos(a) * r * 0.47), Vector3(0, 0, -side * PI / 2), Vector3.ONE, false)
 	k._add(pv, drum(r * 0.24, r * 0.28, w + 0.06, 16), mat, col, Vector3.ZERO, AXLE, Vector3.ONE, false)
 	for i in spokes:
 		var a := TAU * i / float(spokes)
 		k._box(pv, Vector3(0.025, r * 0.44, r * 0.18), Vector3(outer * w * 0.52, sin(a) * r * 0.53, cos(a) * r * 0.53), mat, col, Vector3(-a + PI / 2, 0, 0), false)
 	k.wheels.append(pv)
 	return pv
+
+
+## Crews change a road wheel whose tyre has chunked or whose disc is bent,
+## and a military truck's crew puts its spare on for a puncture; the wheel
+## from stores comes in the depot's paint, not the vehicle's faded scheme, so
+## a tank's running gear often shows an odd wheel or two (fresh factory
+## green on a sand hull, sand on a green one, a newer coat of its own colour).
+## For a running wheel of a crew's vehicle (`VehicleCargo.kit`, so scenery,
+## wrecks and hulks keep one look), about one in eleven: its paint colour,
+## else null. `col` is the wheel's own paint, if it has one.
+const SWAP_PAINTS: Array[Color] = [Color(0.23, 0.26, 0.17), Color(0.47, 0.41, 0.29), Color(0.16, 0.17, 0.15)]
+
+static func _swapped(k: VehicleModels, parent: Node3D, pos: Vector3, salt: int, col) -> Variant:
+	if k.wreck or k.surface_family != "armor":
+		return null
+	var rng := VehicleCargo.kit(k, parent, pos, salt)
+	if rng == null or rng.randf() >= 0.09:
+		return null
+	var pick := rng.randi_range(0, SWAP_PAINTS.size())
+	if pick == SWAP_PAINTS.size():
+		# the vehicle's own colour, a coat newer than the rest
+		return (col as Color).darkened(0.18).lerp(Color(0.2, 0.22, 0.16), 0.15) if col is Color else SWAP_PAINTS[0]
+	return SWAP_PAINTS[pick]
 
 
 ## A road wheel's rubber tyre `h` wide about the X axis (the axle), its +x
@@ -790,8 +877,15 @@ static func sprocket(k: VehicleModels, parent: Node3D, pos: Vector3, radius: flo
 	var rows: Array = [-0.3, 0.3] if twin else [0.0]
 	var w := width * (0.2 if twin else 0.7)
 	var gear := _gear(radius, w, teeth)
+	# The toothed rings are wear parts, bolted on and changed as the pins
+	# eat their teeth, never painted: bare steel, rust-bloomed on the faces
+	# and scrubbed bright where the track's pins seat, against the painted
+	# disc and hub. Their bolts, cap and the holes' dark are the same steel,
+	# so the wheel draws no more finishes than before (a sprocket that is
+	# all plain dark metal keeps its rings in that one finish).
+	var ring := "gunmetal_w" if mat == "gunmetal_w" or k.wreck else "steel"
 	for row: float in rows:
-		k._add(pv, gear, "gunmetal_w", null, Vector3(row * width, 0, 0))
+		k._add(pv, gear, ring, null, Vector3(row * width, 0, 0))
 	k._add(pv, drum(radius * 0.66, radius * 0.70, width * 0.76, 20), mat, col, Vector3.ZERO, AXLE)
 	var outer := signf(pos.x) if pos.x != 0.0 else 1.0
 	# (the outer ring's face, where the rings cover the disc)
@@ -800,14 +894,18 @@ static func sprocket(k: VehicleModels, parent: Node3D, pos: Vector3, radius: flo
 	var hole := drum(radius * 0.1, radius * 0.1, 0.01, 10, false)
 	for i in 6:
 		var a := TAU * (i + 0.5) / 6.0
-		k._add(pv, hole, "gunmetal_w", Color(0.04, 0.04, 0.04), Vector3(face + outer * 0.001, sin(a) * radius * 0.48, cos(a) * radius * 0.48), out, Vector3.ONE, false)
+		k._add(pv, hole, ring, Color(0.04, 0.04, 0.04), Vector3(face + outer * 0.001, sin(a) * radius * 0.48, cos(a) * radius * 0.48), out, Vector3.ONE, false)
 		var b := TAU * i / 6.0
-		VehicleBody.fastener(k, pv, Vector3(face, sin(b) * radius * 0.48, cos(b) * radius * 0.48), Vector3.RIGHT * outer, radius * 0.045)
+		if ring == "steel":
+			# (a fastener's head, in the rings' steel)
+			k._add(pv, VehicleBody._head(radius * 0.045), ring, Color(0.42, 0.42, 0.4), Vector3(face, sin(b) * radius * 0.48, cos(b) * radius * 0.48), VehicleFrames.aim(Vector3.RIGHT * outer).get_euler(), Vector3.ONE, false)
+		else:
+			VehicleBody.fastener(k, pv, Vector3(face, sin(b) * radius * 0.48, cos(b) * radius * 0.48), Vector3.RIGHT * outer, radius * 0.045)
 	# The hub runs on inboard to the final drive as before.
 	var inboard := width * 0.5 + 0.03
 	var boss := absf(face) + 0.02
 	k._add(pv, drum(radius * 0.25, radius * 0.30, inboard + boss, 12), mat, col, Vector3(outer * (boss - inboard) * 0.5, 0, 0), AXLE, Vector3.ONE, false)
-	k._add(pv, drum(radius * 0.14, radius * 0.17, 0.03, 10, false), "gunmetal_w", null, Vector3(outer * (boss + 0.015), 0, 0), out, Vector3.ONE, false)
+	k._add(pv, drum(radius * 0.14, radius * 0.17, 0.03, 10, false), ring, Color(0.5, 0.5, 0.48) if ring == "steel" else null, Vector3(outer * (boss + 0.015), 0, 0), out, Vector3.ONE, false)
 	k.wheels.append(pv)
 	return pv
 

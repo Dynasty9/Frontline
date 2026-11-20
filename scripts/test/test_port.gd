@@ -170,7 +170,11 @@ func _run(req: Dictionary) -> bool:
 func _answer(cmd: String, req: Dictionary) -> Variant:
 	match cmd:
 		"hello":
-			return {"version": Updater.version, "net": Net.NET_VERSION, "tps": TPS, "headless": DisplayServer.get_name() == "headless"}
+			# native: the numeric extension (tools/build_native.py) is loaded. Without
+			# it the game falls back on GDScript perception and AStar3D routes, as it
+			# does on macOS and in a browser: a fight goes another way than in CI.
+			var native := ClassDB.class_exists("PerceptionSearch") and ClassDB.class_exists("RouteGraph") and ClassDB.class_exists("FormationGround")
+			return {"version": Updater.version, "net": Net.NET_VERSION, "tps": TPS, "headless": DisplayServer.get_name() == "headless", "native": native}
 		"errors":
 			return {"count": TestRun.script_errors, "recent": TestRun.recent}
 		"console":

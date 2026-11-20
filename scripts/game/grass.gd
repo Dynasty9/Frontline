@@ -38,7 +38,8 @@ func _ready() -> void:
 	stone = _make_stone()
 	woodland = Woodland.new()
 	woodland.setup()
-	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
+	# (red: blast scars and burnt grass; green: snow melted off it, SnowMelt)
+	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RG8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
 	# (the clouds' shade, CloudShadow.FOLD: in the albedo with Cloud shadows off)
@@ -47,6 +48,7 @@ func _ready() -> void:
 	bush_mat = ShaderMaterial.new()
 	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX)
 	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
+	bush_mat.set_shader_parameter("scar", scar_tex)
 	# (a shader, not a StandardMaterial3D, so that the stones go into cloud shade too)
 	stone_mat = ShaderMaterial.new()
 	stone_mat.shader = CloudShadow.make(STONE_SHADER)
@@ -61,6 +63,11 @@ func set_deform(t: Texture2DArray) -> void:
 	if woodland:
 		for material in woodland.materials:
 			material.set_shader_parameter("deform_tex", t)
+
+
+## Snow drifted against walls and hedges (SnowDrift): the grass in a drift is buried.
+func set_drift(t: Texture2D) -> void:
+	mat.set_shader_parameter("drift_tex", t)
 
 
 func set_trench_mask(t: Texture2D) -> void:
@@ -82,9 +89,14 @@ func scar(p: Vector3, r: float, strength := 1.0) -> void:
 			if d > r:
 				continue
 			var v := strength * clampf(1.2 - d / r, 0.0, 1.0)
-			var cur := scar_img.get_pixel(x, z).r
-			if v > cur:
-				scar_img.set_pixel(x, z, Color(v, v, v))
+			var cur := scar_img.get_pixel(x, z)
+			if v > cur.r:
+				scar_img.set_pixel(x, z, Color(v, cur.g, 0.0))
+	_scar_dirty = true
+
+
+## The scar map's been painted (SnowMelt): upload it with the next frame.
+func scar_changed() -> void:
 	_scar_dirty = true
 
 
@@ -622,17 +634,21 @@ uniform vec3 tip_col : source_color = vec3(0.38, 0.45, 0.23);
 uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
+uniform sampler2D drift_tex : hint_default_black, filter_linear, repeat_disable;  // (SnowDrift)
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 #include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+global uniform float snow_cover;  // how deep the snow weather lies (Atmosphere._snow_tick)
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
-
+""" + SnowLie.GLSL + """
 varying float h;
 varying float g;
 varying float rnd;
 varying float wet;
 varying float burnt;
+varying float drifted;  // (snow) lying deep 1, thin where the wind or the sun has thinned it 0 (SnowLie)
+varying float thawed;  // (snow) melted off by a fire or an engine (SnowMelt)
 #ifdef CLOUD_PATTERN
 varying float cloud_v;  // the sunlight the clouds let through at the blade
 #endif
@@ -647,15 +663,35 @@ void vertex() {
 	cloud_v = cloud_sun(o);
 #endif
 	// shell holes and blast scars flatten and scorch the grass
-	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
+	vec2 marks = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).rg;
+	burnt = marks.r;
+	thawed = marks.g;
 	// nothing grows in a trench
 	if (trench_disturbed(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.85 / __MAP_SIZE__) > 0.1) {
 		VERTEX *= 0.0;
 	}
 	VERTEX.y *= 1.0 - burnt * 0.85;
 	VERTEX.xz *= 1.0 + burnt * 0.4;
+	vec2 at = (o.xz + __MAP_HALF__) / __MAP_SIZE__;
+	float here = terrain_height(deform_tex, at);
+	// snow buries the blades and weighs the rest down: all but buried where
+	// it lies deep, standing out of it in clumps where it's thin (by the
+	// ground's own rule, SnowLie, so they stand where the ground shows)
+	drifted = 0.0;
+	if (snow_cover > 0.0) {
+		float sp = 10.0 / __MAP_SIZE__;
+		vec4 around = vec4(terrain_height(deform_tex, at + vec2(sp, 0.0)), terrain_height(deform_tex, at - vec2(sp, 0.0)),
+			terrain_height(deform_tex, at + vec2(0.0, sp)), terrain_height(deform_tex, at - vec2(0.0, sp)));
+		drifted = smoothstep(0.2, 1.0, snow_lie(o.xz, here, around, 10.0, snow_sun()));
+		// (and where a fire or an engine has thawed it, the grass stands up again;
+		// heaped against a wall or a hedge, SnowDrift, it's buried altogether)
+		float banked = smoothstep(0.08, 0.4, texture(drift_tex, at).r) * (1.0 - burnt);
+		// (what stands out of it is bowed by the weight it carried: lower still)
+		float bury = clamp(drifted + (rnd - 0.5) * 0.25, 0.05, 0.97) * 0.75 + 0.25;
+		VERTEX.y *= 1.0 - snow_cover * (1.0 - thawed) * mix(bury, 1.0, banked);
+	}
 	// stand on the ground as it is now (shell holes, rims)
-	VERTEX.y += terrain_height(deform_tex, (o.xz + __MAP_HALF__) / __MAP_SIZE__) / max(0.05, length(MODEL_MATRIX[1].xyz));
+	VERTEX.y += here / max(0.05, length(MODEL_MATRIX[1].xyz));
 	float t = TIME * 1.7 + o.x * 0.21 + o.z * 0.13;
 	float gust = 0.6 + 0.4 * sin(TIME * 0.35 + o.x * 0.02 + o.z * 0.015);
 	float sway = (sin(t) + 0.45 * sin(t * 2.7 + 1.3)) * wind * gust * h * h;
@@ -679,9 +715,18 @@ void fragment() {
 	// scorched brown at the edge of a scar, burnt to black stubble where it burnt through
 	vec3 scorched = mix(vec3(0.09, 0.075, 0.05), vec3(0.026, 0.024, 0.021), smoothstep(0.55, 1.0, burnt));
 	col = mix(col, scorched, burnt * 0.9);
+	// Under snow the grass is winter straw, its foot buried white and only the
+	// tips standing out of it, those dusted too.
+	if (snow_cover > 0.0) {
+		// (dead and bleached: pale straw, not a dark green)
+		col = mix(col, dry_col * vec3(1.05, 1.0, 0.9), snow_cover * 0.88 * (1.0 - burnt));
+		vec3 snow = vec3(0.8, 0.83, 0.88);
+		col = mix(col, snow, snow_cover * mix(mix(0.55, 1.0, drifted), mix(0.2, 0.6, drifted), smoothstep(0.3, 0.85, h)) * (1.0 - burnt) * (1.0 - thawed));
+		col *= 1.0 - thawed * snow_cover * 0.3;  // (wet with the melt)
+	}
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
-	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt);
+	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt) * (1.0 - snow_cover * (1.0 - thawed) * 0.7);
 	AO = mix(0.78, 1.0, h);
 	AO_LIGHT_AFFECT = 0.6;
 	// CLOUD_FRAGMENT cloud_v
@@ -698,6 +743,12 @@ varying float rnd;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 #include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
+global uniform float snow_cover;
+// (snow) where it lies on this bush: not where a fire or an engine has thawed
+// it (SnowMelt) or a blast has burnt the ground (the scar map, as the grass)
+varying float lies;
+varying float thawed;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
 #ifdef CLOUD_PATTERN
@@ -705,6 +756,9 @@ varying float cloud_v;
 #endif
 void vertex() {
 	VERTEX.y += 0.65;
+	vec2 marks = textureLod(scar, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).rg;
+	thawed = marks.g;
+	lies = snow_cover * (1.0 - thawed) * (1.0 - marks.r);
 #ifdef CLOUD_PATTERN
 	cloud_v = cloud_sun(MODEL_MATRIX[3].xyz);
 #endif
@@ -732,6 +786,19 @@ void fragment() {
 	}
 	float up = smoothstep(0.0, 1.1, plant_height);
 	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up);
+	// snow caps the top of a bush in lumps on the leaves that face the sky,
+	// one bush more than the next; beside a fire it melts off, leaving the
+	// twigs dark and wet
+	if (snow_cover > 0.0) {
+		// (most of them have dropped their leaves or browned: in winter a
+		// thicket is a brown-grey tangle, a few evergreen among them)
+		col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.0, 0.82, 0.6), snow_cover * step(0.3, fract(rnd * 3.7)) * 0.75);
+		float facing = abs((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
+		float lit = dot(photograph.rgb, vec3(0.2126, 0.7152, 0.0722)) * 6.0;
+		float snowed = smoothstep(0.0, 0.18, up * 0.9 + facing * 0.5 + (lit - 0.5) * 0.6 + (fract(rnd * 7.13) - 0.5) * 0.5 - 0.9 - (1.0 - lies) * 1.4);
+		col *= 1.0 - thawed * snow_cover * 0.3;  // (wet with the melt)
+		col = mix(col, vec3(0.74, 0.77, 0.82), snowed * 0.9);
+	}
 	if (OUTPUT_IS_SRGB) {
 		col = mix(col * 12.92, 1.055 * pow(max(col, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), col));
 	}
