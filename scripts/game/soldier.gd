@@ -4122,7 +4122,39 @@ func read_state(b: StreamPeerBuffer) -> void:
 	cov_net = b.get_u8()
 
 
-var _was_on_gun := false
+const BODY_TURN_RATE := TAU  # half a turn in half a second
+var _body_pos := Vector3.INF
+var _body_yaw := 0.0
+var body_offset := Transform3D.IDENTITY
+
+
+## The battle can reverse a route or change facing in a tick. Give the visible
+## stride time to settle while keeping it within one boot length of the unit.
+func _update_body(dt: float) -> void:
+	body_offset = ip_offset() if srv else Transform3D.IDENTITY
+	if life != Life.ALIVE or not debug_pose.is_empty() or act in [Act.DIVE, Act.FLUNG, Act.VAULT, Act.CLIMB]:
+		_body_pos = Vector3.INF
+		return
+	var sample := transform * body_offset
+	var here := sample.origin
+	var yaw := sample.basis.get_euler().y
+	if here == _body_pos and is_equal_approx(_body_yaw, yaw):
+		return
+	if not _body_pos.is_finite() or _body_pos.distance_squared_to(here) > 2.25:
+		_body_pos = here
+		_body_yaw = yaw
+		return
+	# Clients already ease snapshot positions in net_smooth. On the host, use
+	# horizontal lag only so the boots still follow stairs and trench ground.
+	var lag := Vector3.ZERO
+	if srv:
+		lag = (Defs.flat(_body_pos - here) * exp(-dt * 13.0)).limit_length(0.32)
+		if lag.length_squared() < 0.000001:
+			lag = Vector3.ZERO
+	_body_pos = here + lag
+	_body_yaw = rotate_toward(_body_yaw, yaw, BODY_TURN_RATE * dt)
+	body_offset.origin += transform.basis.inverse() * lag
+	body_offset.basis = body_offset.basis.rotated(Vector3.UP, angle_difference(yaw, _body_yaw))
 
 
 ## Where his shots visibly leave his weapon (view): the crew-served gun's
@@ -4211,9 +4243,11 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		visible = v
 		_vis = v
 	if not v:
+		_body_pos = Vector3.INF
 		view_lod = false
 		_last_view_pos = position
 		return
+	_update_body(dt)
 	var view_camera := get_viewport().get_camera_3d()
 	if view_camera != null and world.soldier_view and debug_pose.is_empty():
 		var distance := view_camera.global_position.distance_to(position)
@@ -4226,7 +4260,7 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		if model:
 			model.visible = false
 		ring.visible = selected
-		_last_view_pos = position
+		_last_view_pos = _body_pos if _body_pos.is_finite() else position
 		return
 	if model == null:
 		model = SoldierModel.new()
@@ -4248,11 +4282,16 @@ func _view_process(dt: float, blend := -1.0) -> void:
 			every = 3 if cd > 90.0 else (2 if cd > 50.0 else 1)
 		_pose_skip += 1
 		if _pose_skip < every:
+			if station == null and not model.crew:
+				var offset := body_offset
+				offset.origin.y += _view_vault_lift
+				if not model.transform.is_equal_approx(offset):
+					model.transform = offset
 			return
 	_pose_skip = 0
 	var pdt := _pose_dt
 	_pose_dt = 0.0
-	var frame_offset := ip_offset() if srv else Transform3D.IDENTITY
+	var frame_offset := body_offset
 	var view_position := (transform * frame_offset).origin
 	var mv := Defs.flat(view_position - _last_view_pos)
 	_last_view_pos = view_position
@@ -4262,12 +4301,13 @@ func _view_process(dt: float, blend := -1.0) -> void:
 		_view_speed = float(debug_pose[3])
 	if debug_pose.size() > 6:
 		model.move_yaw = float(debug_pose[6])  # test gallery: walking one way, facing another
-	var fwd := Defs.dir_of(rotation.y)
+	var fwd := Defs.dir_of(_body_yaw if _body_pos.is_finite() else rotation.y)
 	var back := sp > 0.3 and mv.normalized().dot(fwd) < -0.3
 	if sp > 0.02:
-		# Starting backward must not sweep the feet through a false sideways turn.
+		# The captured gait already blends velocity. Feeding it an interpolated angle
+		# would mix in a sideways step that never happened during a reversal.
 		var direction := fwd.signed_angle_to(mv.normalized(), Vector3.UP)
-		model.move_yaw = direction if _view_speed < 0.15 else lerp_angle(model.move_yaw, direction, 1.0 - exp(-pdt * 10.0))
+		model.move_yaw = direction if model.rifle_driver != null or _view_speed < 0.15 else lerp_angle(model.move_yaw, direction, 1.0 - exp(-pdt * 10.0))
 	model.over_wall = (flags & F_OVERWALL) != 0
 	model.cover_h = cover_h_view() if life == Life.ALIVE else 0.0
 	model.blind = blind_view()
@@ -4290,14 +4330,10 @@ func _view_process(dt: float, blend := -1.0) -> void:
 	if model.tube:
 		model.tube.visible = not at_pit
 	model.crew = on_gun or at_pit
-	if not model.crew:
-		if srv:
-			# between simulation steps (see Entity.ip_offset)
-			if _ip_moving or not model.transform.is_equal_approx(frame_offset):
-				model.transform = frame_offset
-		elif _was_on_gun:
-			model.transform = Transform3D.IDENTITY
-	_was_on_gun = model.crew
+	if not model.crew and not model.transform.is_equal_approx(frame_offset):
+		model.transform = frame_offset
+	if model.crew:
+		_body_yaw = model.global_rotation.y
 	var view_act := Act.IDLE if at_pit and act == Act.LAUNCH else act
 	if model.skinned != null:
 		var step_eligible := life == Life.ALIVE and not model.crew and act in [Act.WALK, Act.RUN, Act.VAULT] and posture != Post.PRONE

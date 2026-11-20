@@ -47,6 +47,7 @@ const PROFILES := {
 	# showroom clear coat over it like the truck's own body.
 	"service": {"surface_paint_wear": 0.6, "surface_normal_strength": 0.06, "surface_finish": 0, "surface_weather": 0.26, "surface_grain": 0.1, "surface_wear": 0.08, "surface_roughness": 0.45, "map": "coating", "rough": 0.72, "metal": 0.0, "bump": 0.014, "grime": 0.3, "surface_scale": 1.5, "surface_tone": 0.06},
 	"track": {"surface_normal_strength": 0.5, "surface_finish": 3, "surface_weather": 0.40, "surface_grain": 0.26, "surface_wear": 0.35, "surface_roughness": 0.65, "map": "metal", "rough": 0.69, "metal": 0.65, "bump": 0.16, "grime": 0.4, "surface_scale": 3.0},
+	"armor_glass": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.16, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.5, "surface_glaze": 0.15},
 	"glass": {"surface_normal_strength": 0.0, "surface_finish": 8, "surface_weather": 0.0, "surface_grain": 0.0, "surface_roughness": 0.0, "rough": 0.045, "metal": 0.0, "bump": 0.0, "grime": 0.0, "surface_detail": false, "surface_specular": 0.8, "surface_glaze": 0.6},
 	"nonslip": {"surface_normal_strength": 0.65, "surface_finish": 4, "surface_weather": 0.23, "surface_grain": 0.75, "surface_roughness": 0.22, "map": "nonslip", "rough": 0.92, "metal": 0.0, "bump": 0.18, "grime": 0.13, "surface_scale": 2.0},
 	"tread": {"surface_normal_strength": 0.7, "surface_finish": 4, "surface_weather": 0.20, "surface_grain": 0.25, "surface_roughness": 0.42, "map": "tread", "rough": 0.76, "metal": 0.0, "bump": 0.65, "grime": 0.13, "surface_scale": 0.65, "surface_tone": 0.18},
@@ -107,7 +108,7 @@ static func key(kind: String, vehicle_family: String) -> String:
 
 static func profile(kind: String, vehicle_family: String) -> String:
 	match kind:
-		"rubber", "glass", "mirror", "headlamp", "signal_lens", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor", "weapon":
+		"rubber", "glass", "armor_glass", "mirror", "headlamp", "signal_lens", "track", "burnt", "steel", "gunmetal", "nonslip", "tread", "rotor", "weapon":
 			return kind
 		"abrams_scorched":
 			return "burnt"

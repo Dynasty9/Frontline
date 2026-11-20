@@ -43,7 +43,10 @@ static func upper(k: BuildingKit, L: float, W: float, y0: float, y1: float, mate
 			# (every bay of the front and back has its window, most of the ends)
 			if rng.randf() < (0.92 if si < 2 else 0.55):
 				xs.append((i + 0.5) * len / bays - len * 0.5)
-		wall(fk, len, h, xs, material, col)
+		# (its grime from a stream of its own, so the windows stay as they were)
+		var dirt := RandomNumberGenerator.new()
+		dirt.seed = rng.seed ^ (0x51d1e5 + si)
+		wall(fk, len, h, xs, material, col, dirt)
 		for x in xs:
 			var opts := {"material": material, "wall": col, "frame": trim, "curtains": curtains, "curtain": fabric}
 			if rng.randf() < 0.3:
@@ -57,8 +60,10 @@ static func upper(k: BuildingKit, L: float, W: float, y0: float, y1: float, mate
 
 ## A storey's wall `length` long and `h` tall in a face kit (its outer face
 ## at z = 0, 0.4 m deep behind it), a window at each of `xs`: the wall around
-## them, a string course along the floor and a band under the eaves.
-static func wall(k: BuildingKit, length: float, h: float, xs: Array[float], material: String, col: Color) -> void:
+## them, a string course along the floor and a band under the eaves, and
+## (given `dirt` to draw it from) the grime under the eaves
+## (BuildingWeathering.grime).
+static func wall(k: BuildingKit, length: float, h: float, xs: Array[float], material: String, col: Color, dirt: RandomNumberGenerator = null) -> void:
 	var surf := BuildingMaterials.surface(material)
 	var top := SILL + WINDOW.y
 	var gaps: Array = []
@@ -71,3 +76,12 @@ static func wall(k: BuildingKit, length: float, h: float, xs: Array[float], mate
 			k.box(Vector3(run.y - run.x, WINDOW.y, 0.4), Vector3((run.x + run.y) * 0.5, SILL + WINDOW.y * 0.5, -0.2), surf, col)
 	BuildingWalls.face(k, length, h, material, col, gaps, {"plinth": 0.0, "band": h - 0.1})
 	BuildingWalls.band(k, length, 0.07, material, col, [], 0.14, 0.05)
+	var finish: String = BuildingMaterials.value(material, "finish", "render")
+	if dirt != null and finish in ["render", "brick", "stone", "panels", "cast"]:
+		var rects: Array = [Rect2(-length * 0.5, 0.0, length, SILL), Rect2(-length * 0.5, top, length, h - top)]
+		for run: Vector2 in BuildingWalls.runs(-length * 0.5, length * 0.5, SILL, top, gaps):
+			if run.y - run.x > 0.02:
+				rects.append(Rect2(run.x, SILL, run.y - run.x, WINDOW.y))
+		var tint := Mats.tint_for(surf, col)
+		BuildingWeathering.grime(k, length, h - 0.1, rects, surf, func(_p: Vector2) -> Color: return tint,
+			1.0 if finish == "render" else 0.55, dirt, false, 0.14)
