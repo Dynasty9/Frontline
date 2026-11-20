@@ -100,7 +100,8 @@ func _ready() -> void:
 		check(k, AABB(Vector3(-0.35, 0.0, -0.33), Vector3(0.7, 0.12, 0.66)), "panel_hatch")
 		k = kit(burnt)
 		VehicleFittings.evacuator(k, k.root, Vector3(0, 1.0, -3.8), 0.135, 0.56)
-		check(k, AABB(Vector3(-0.14, 0.86, -4.08), Vector3(0.28, 0.29, 0.56)), "evacuator")
+		# (its weld bead stands about 1.1 cm proud round the middle)
+		check(k, AABB(Vector3(-0.147, 0.853, -4.08), Vector3(0.294, 0.294, 0.56)), "evacuator")
 		# Lights.
 		k = kit(burnt)
 		VehicleFittings.dome_light(k, k.root, Vector3(0, 4.45, 7.65), 0.06, Color(0.55, 0.08, 0.06))

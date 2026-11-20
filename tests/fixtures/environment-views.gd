@@ -24,9 +24,6 @@ func capture() -> void:
 		if loading_frames % 24 == 0:
 			print("CAPTURE loading frames=", loading_frames, " time=", game.world.time if game.world != null else -1)
 	var world = game.world
-	world.set_physics_process(false)
-	world.cam.set_process(false)
-	world.cam.edge_pan = false
 	if world.director:
 		world.director.active = false
 	var prefix := "build/terrain/environment-views"
@@ -44,6 +41,13 @@ func capture() -> void:
 		if arg.begins_with("--capture-prefix="):
 			prefix = arg.get_slice("=", 1)
 	assert(DirAccess.make_dir_recursive_absolute(prefix.get_base_dir()) == OK)
+	if "--capture-set=snow-bank" in OS.get_cmdline_user_args():
+		await _snow_bank(world, prefix)
+		quit()
+		return
+	world.set_physics_process(false)
+	world.cam.set_process(false)
+	world.cam.edge_pan = false
 	if "--capture-set=trench-build" in OS.get_cmdline_user_args():
 		await _trench_build(world, prefix)
 		quit()
@@ -103,6 +107,10 @@ func capture() -> void:
 				# stock in them, the grime on the walls
 				views.append(["shopfront-kerb", piece[1], 16.0, -32.0, float(piece[2])])
 				break
+		# the parish church from the road it stands back from, where there is one
+		for st in world.structures_near(center, 300.0):
+			if st.skind == "church":
+				views.append(["church", st.position, 48.0, -30.0, st.yaw + PI + 0.6])
 		# a rendered house's front at a man's eye, across its garden: what
 		# the years leave on a plain wall
 		# (and a brick house's, and a stone house's)
@@ -129,6 +137,11 @@ func capture() -> void:
 				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
 				break
 		print("CAPTURE town bounds=", town)
+	# (FL_ONLY_VIEW="name,x,z,distance,pitch,yaw": just that view, to match a
+	# camera another revision chose)
+	if OS.has_environment("FL_ONLY_VIEW"):
+		var f := OS.get_environment("FL_ONLY_VIEW").split(",")
+		views = [[f[0], Vector3(float(f[1]), 0, float(f[2])), float(f[3]), float(f[4]), float(f[5])]]
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
 	if "--capture-set=fortifications" in OS.get_cmdline_user_args():
@@ -581,3 +594,33 @@ func _source_hashes() -> Dictionary:
 		for path in ["scripts/game/trench_net.gd", "scripts/game/trench_earth.gdshaderinc", "scripts/game/works_models.gd", "scripts/game/structure.gd", "scripts/game/grass.gd", "scripts/game/trench_vegetation.gdshaderinc", "scripts/game/atmosphere.gd", "scripts/game/mapgen.gd", "scripts/game/mats.gd", "tests/fixtures/environment-views.gd"]:
 			hashes[path] = FileAccess.get_sha256("res://" + path)
 	return hashes
+
+
+## Two matched gameplay views with simulation running: bank shape and fire response.
+## Fixed 24 fps, 48 frames per view; capture is separate from performance measurement.
+func _snow_bank(world, prefix: String) -> void:
+	world.cam.set_process(false)
+	world.cam.edge_pan = false
+	var records := []
+	var views := [["normal", 30.0, -35.0], ["low", 18.0, -12.0]]
+	for view in views:
+		world.cam.dist = view[1]
+		world.cam.target_dist = view[1]
+		world.cam.pitch_deg = view[2]
+		world.cam.yaw = 0.0
+		world.cam.focus_pos = Vector3(4, 0, -18)
+		world.cam._apply()
+		for warmup in 12:
+			await process_frame
+			await RenderingServer.frame_post_draw
+		var directory: String = prefix + "-" + view[0]
+		assert(DirAccess.make_dir_recursive_absolute(directory) == OK)
+		var start: float = world.time
+		for frame in 48:
+			await process_frame
+			await RenderingServer.frame_post_draw
+			assert(root.get_texture().get_image().save_png(directory + "/%04d.png" % frame) == OK)
+		records.append({"view": view[0], "zoom": view[1], "pitch": view[2], "camera": str(world.cam.cam.global_transform), "start": start, "end": world.time})
+		print("SNOW_BANK_CAPTURE ", view[0], " ", start, " -> ", world.time)
+	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
+	output.store_string(JSON.stringify({"renderer": RenderingServer.get_current_rendering_method(), "seed": world.settings.get("seed", 3), "mood": world.atmo.mood, "fps": 24, "views": records, "drift_sha256": FileAccess.get_sha256("res://scripts/game/snow_drift.gd"), "fixture_sha256": FileAccess.get_sha256("res://tests/fixtures/environment-views.gd")}, "\t"))

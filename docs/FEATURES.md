@@ -312,7 +312,8 @@ Every release also comes as a browser build (WebAssembly and WebGL 2), the same 
 plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
 a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
 between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
-lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have: the mist and the weather's
+smoke and dust thicken the plain fog where you look instead, and the water's caustics are a single web) and, with no threads to
 spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
 simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
 shaders (it keeps them, so only the first time); to keep that short, surface lighting is worked out per vertex and emitter particles run on the processor. Animated blast clouds and
@@ -698,10 +699,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   fitted out (shelving down the middle and along the walls stocked with goods, a cooler of drinks, a greengrocer's
   crates, a counter and till), seen when the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
   floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
-- A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
+- A town square on one corner of the crossroads (fountain or war memorial, benches, planters, a flagpole, market
   stalls, bollards; the fountain a stone basin with two bowls, the planters concrete troughs of bedding flowers
-  round a clipped box ball), glazed bus shelters with their timetable and flag, slatted litter bins, a yellow name
-  board where each road comes into town, a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
+  round a clipped box ball): the memorial a bronze soldier resting on his arms reversed, head bowed, on a granite
+  pedestal with plaques of names, poppy wreaths laid at its foot, and the stalls under striped canopies over crates of produce; glazed bus shelters with
+  their timetable and flag, slatted litter bins, a yellow name board where each road comes into town, a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
 - Fences are built as the real ones are (`BuildingFences`), one bay between two posts, climbing with the ground.
   A house keeps one look: white or painted pickets, chestnut paling, or iron railings with spear heads on a dwarf
@@ -744,7 +746,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   crests and streaks of foam laid down the wind. Breakers rise as they shoal, spill unevenly along the beach and
   surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
-  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
+  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows (laid on the bed along the sun's way
+  down through the water, crisp in the first metre and broadening deeper down; from High a net of wandering cells
+  worked out per pixel, thin lines brightest at the nodes where they meet and tinted by the sun, so it re-forms
+  rather than slides; the same net is thrown back up onto hulls, piles and banks, moving with the bed's,
+  `caustics.gd`, faint, since that light is a small share of the sun's; both fade out as the camera pulls back, where
+  the lines would be finer than the eye picks out and only brighten the shore), and the sky and
   its clouds are reflected, more the flatter you look across it. Where something stands above the water on screen
   - a bank, trees, a bridge, a boat (not flames or smoke: they're drawn after) - it's mirrored instead (a ray marched over the screen; looked down on
   steeply, where calm water mirrors only a couple of percent, none is marched). Rivers run: a flow map baked from
@@ -776,6 +783,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Loose fines trail onto asphalt at town entrances. Bridge decks use the shared weathered
   asphalt and worn road paint, with expansion joints; gravel stops at the deck boundary.
   Concrete driveways have transverse slab joints. Paving and bridge decks share rain wetness.
+- A skirmish town has its parish church where a road comes in, in a walled churchyard of graves: a nave and
+  chancel of coursed stone with dressed quoins, buttresses and tall traceried windows of stained glass under a
+  steep slate roof, and a west tower with a clock, louvred belfry, battlements and a slate spire seen across the
+  map. It has two ways in: the west door under the tower (the tower's ground stage is its porch) and the south
+  door in a timber porch on stone dwarf walls (cover for men holding it). Men go in by either, fight from its
+  chest-high windows (the roofs lift off for them, over the pews, the pulpit, the lectern, the font and the choir
+  and altar), and its walls come down to rubble as a house's do. A squad told to hold it takes its places inside,
+  at the windows and doors, rather than out among the graves; its slate roof on oak trusses rarely catches fire.
 - **The town and every village have a name and a supply dump** (crated stores on a pallet, fuel drums and a
   flagpole): the town's on its square where the flagpole stood, a village's on the verge of its main street.
   Nobody holds them at the start. They are the supply worth fighting over: see *Towns* under Base building and
@@ -791,7 +806,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   grow on the tiles in uneven patches. Tiled roofs are weathered clay or concrete tile in five shades or slate and grey tile in three,
   barns dull galvanised, rusted or red sheet; walls are dirty under the eaves and damp at the foot, with the odd run down from a gutter; brick is old red-brown, and stone is coursed rubble (courses of three heights, stones
   of their own lengths and shades) in pale lime mortar. Flat roofs are felted black or green-grey, bare concrete or old asphalt, and carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
-  water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
+  water tanks, air conditioners and dishes on them. Stone garden and field walls are random rubble (field stones of every size, longer than tall, rounded, each its own tone, pointed with darker mortar: the surface `fieldstone`) finished along the top with field stones set on edge, tall and short in turn (cock and hen), or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
   in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
@@ -801,7 +816,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
   tiles, plaster and glass; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
-  a charred joist and bent rods sticking out. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
+  a charred joist and bent rods sticking out. A ruined or shelled house has debris spilled at the foot of its walls, and glass lies
+  under shot-out windows. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
   to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,
   boarded across or sandbagged along the sill. Round the houses are what the people in them keep: wheelie bins at a front corner,
   pots of flowers by the door, a bicycle against a side wall, and out the back a woodpile and chopping block, a
@@ -1308,8 +1324,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   It holds fire when your own troops are within 8 m of the target. Select it to call 6-round HE or smoke fire missions.
   Rounds whistle on the way down, so soldiers shout "Incoming!" and hit the dirt, or dive if a shell is landing right on them.
 - **Mortar teams** (both sides) do the same on the move with limited rounds. Press F to call a fire mission.
-- **Bunker** (concrete pillbox, or a log-and-earth dugout for the Rebels): firing slits soldiers shoot through,
-  and a roof that stops shrapnel. Right-click it with a squad to garrison.
+- **Bunker** (a concrete pillbox cast in place, with splayed embrasures and a steel observation cupola, or a
+  log-and-earth dugout for the Rebels): firing slits soldiers shoot through, and a roof that stops shrapnel.
+  Right-click it with a squad to garrison.
 - **AT post**: a crewed guided missile (Coalition, top attack) or recoilless rifle (Rebels) that engages vehicles out to 130 m.
 - **Walls and obstacles** (`works_models.gd` builds them all, from the real thing):
   - *Sandbags*: filled bags laid the way they are in the field, stretcher courses along the wall and header
@@ -1341,11 +1358,72 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Fog of war, drawn on the ground and the minimap, with intel pings and last-known enemy positions.
 
 **Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `cloud_shadow.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
-- Eight lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**) with a
-  procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film look.
-  At night the sky fills with stars and illumination flares drift down on parachutes over the fighting, throwing
-  moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the sky and
-  lightning flashes are followed by thunder.
+- Nine lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**, **snow**)
+  with a procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film
+  look. At night the sky fills with stars and illumination flares drift down on parachutes over the fighting,
+  throwing moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the
+  sky and lightning flashes are followed by thunder.
+- **Snow** (`Atmosphere.MOODS.snow`, `snowfall.gd`, the `snow_cover` global; `Atmosphere._snow_tick`): a flat, cold
+  winter light, the sun weak behind cloud and its shadows barely there, a pale blue-grey sky and the haze closing in.
+  Flakes drift down with the wind (`Fires.WIND`) in a box of air the shader wraps round the view, so they keep their
+  places in the world while the camera pans through them; each flutters on a spiral of its own, never drawn smaller
+  than a pixel and a half, and fades at the box's edges. How deep it lies on the land is one rule the ground and
+  the grass share (`SnowLie`, read from the ground's height ten metres round each point, no texture of its own):
+  thin on rises facing the wind (`Fires.WIND`), on ridges and on slopes facing the sun, deep and smooth in hollows,
+  gullies and the lee of hills, uneven over a few hundred metres and scoured in long streaks along the wind, and
+  thinner under trees. Where it's thin, tussocks and dead grass poke through in small clumps dusted at their edges,
+  bleached to pale straw (under the trees, a floor of dead leaves and needles), with snow still lying in the hollows
+  between them, and further off the cover thins gradually rather than at a line; the grass's blades stand out of it
+  there and nowhere else, bowed and pale, and most meadow shrubs go to a brown-grey tangle. Where it's deep the open
+  ground is clean, and the wind-packed snow between is carved into low sastrugi along the wind, as shading (none
+  under the trees). The powder scan is read twice at two sizes
+  and angles and its dimples softened, so it doesn't repeat across a field. It stays dark on the steep; shell holes
+  and their thrown earth, and wet spots in a bog, show as dark mud flecked with grey slush, and the tracks' prints
+  run dark through it. Dirt roads become a lane of slush between white verges with the ruts open to the mud and
+  the plough's low banks along the sides; town streets are ploughed, a rough bank along each kerb (shaded as a
+  ridge), black wet slush in the wheel paths and a grey film scraped between them; pavements, paths and the square
+  are trodden grey along meandering lanes over a light packing, and paths are worn through the gardens. Everything standing in it gathers snow on the
+  faces turned to the sky (by the face's own direction, not its bumps: roofs, ledges, fence tops, sandbags,
+  camouflage nets, trench spoil, the tops of trees and bushes, and the grass, which goes to winter straw), while
+  walls stay bare but for a patchy crust on the face toward the wind. It never lies as an even coat: on a roof or a
+  wall top a thin fall lies in the grooves first, a slope facing the wind is scoured and the one in its lee loaded,
+  the sunny one thins, steep sheet (past twenty degrees or so) and steep tiles shed most of it in streaks down the
+  fall line, and trees hold it in lumps on their boughs, one tree more than its neighbour. Each house's roof is
+  dressed for it the first time it snows (`Structure._snow_roof`): how much it holds, and whether the house is lived
+  in and warm (more than half are; barns are cold and keep a thick coat), ride in its `snow_k` with its chimney, so a
+  warm roof thaws round the chimney and over the rooms, through thin snow (the tiles faintly showing) and a band of
+  grey slush to bare tile darkened and glossy with meltwater; and `SnowRoof` gives it a body of snow its faces
+  can't: a rounded lip curling over the eaves (thicker on steep sheet, broken where some fell, thinner up the
+  gables), icicles in runs under a warm house's eaves, and on a flat roof drifts against the parapets, deep in the
+  lee of the one the wind comes over. Under the trees (`Woodland`) the leaf litter, toadstools and root flares are buried, every
+  trunk stands in a well of bare needles its crown kept the snow off, ferns and nettles go to winter brown with snow
+  in clumps on their upper fronds (the pine saplings keep their green), and deadwood and mossy stones
+  carry it on their tops. A vehicle
+  (`Vehicle._snow_view`, the `snow_k` instance value) keeps it only on its flat tops (deck, turret roof, fenders,
+  stowage), in patches of its own, while the glacis and sides shed it and the warm engine deck stays bare and wet;
+  standing still it gathers a full load, and driving or swinging its turret shakes most of it off, faster the
+  faster it goes, so a parked or wrecked hull carries far more than one in the fight. Its engine's warmth comes up
+  through the deck: the grilles over the engine clear first, to bare metal dark and glossy with the melt behind a
+  rim of grey slush, and the bare stretch creeps forward along the deck the longer the engine runs. A gun that has
+  fired is bare until its barrel cools, and a vehicle on fire
+  melts all of it off. Heat melts it (`SnowMelt`, fed by the fires and engines the heat haze knows): a fire thaws
+  the ground round it to bare, wet earth with a rim of grey slush, and melts the snow off whatever is burning, roof,
+  wreck or tree; a vehicle standing with its engine running works the snow its exhaust blows on to a small patch
+  of slush just beyond the outlet (none under the hull: its warmth goes up through the deck). The
+  ground and roads take the 24 thaws nearest the camera as a list (no extra texture), everything standing round
+  a fire (paving, yards, the neighbours' roofs) the nearest eight as global shader values (`snow_thaw_0..7`), and
+  the grass has them painted into its scar map, which the bushes and the woodland floor read too. The wind heaps it against whatever stands in its way (`SnowDrift`): every wall, house,
+  hedge, fence, wreck and car drifts a bank against its lee face that rises to a rounded crest a little way out and
+  tails off a few metres downwind, tapering toward its ends, (farther behind a tall wall, farther still behind a hedge or fence the wind half
+  passes through), deeper along some stretches than others, with a smaller bank on the windward face, and none
+  inside a roofed house. Each view stamps the drifts from the structures standing into a map a metre a texel (two on the bigger
+  battlefields), so every peer gets the same ones, and lays raised snow over the ground where there are any, its relief shaded toward the sun
+  and its colour the ground's own so the two meet without a seam; the grass in a drift is buried, a wall knocked down takes its drift with it, and a thaw or a scorch clears it. Thawed ground stays thawed once the fire is out and whitens again only slowly, while the snow keeps
+  falling. Running gear, glass, charred hulls and floors indoors take none, and men only a dusting. A
+  battle that opens in snow starts covered; snow that sets in mid-battle settles over four minutes, in the hollows
+  first, and thaws over a quarter of an hour. The deep snow hushes the wind and the distant battle. A random
+  battle's weather is snow about one time in twenty (a second draw from the seed, so no other seed's weather
+  changes and never in place of rain). It's looks only: nothing sees, moves or burns any differently in it.
 - **Cloud shadows fall on everything** (`cloud_shadow.gd`), not just the ground: soldiers, vehicles, buildings,
   trees, grass, roads and trenches darken in the same drifting shade, so a tank parked in it isn't lit up for the
   enemy to spot from above. Every surface reads one pattern at its own position (global shader uniforms the
@@ -1355,6 +1433,55 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   graphics setting (Cloud shadows on everything; on from High, and in Cinematic; off, the grass and bushes fold the
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
+- **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
+  far side of the field lies in layers. Mist lies level in the low ground, a few metres deep over the valley floor (deeper and thinner at dawn), filling the valley, the hollows and
+  the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet ground as it
+  dries after rain), and a hill rises out of it rather than wearing it up its flanks; it takes little of the sun
+  straight through it and is lit mostly by the sky, evenly (an emission in its fog shader), so it reads as a pale sheet
+  rather than flaring into a glowing band toward a low sun, thinning upward to a soft top so the ridges behind stand out as silhouettes.
+  Open water has a smaller extra pooling weight than enclosed hollows: the weather grid already makes it humid,
+  and applying both full weights had hidden nearby boats behind an opaque coastal band. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
+  at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
+  mist glows, and turned from it the sky lights it blue-grey. At dawn, golden hour and dusk a faint low haze fills the
+  first tens of metres with the fog's anisotropy near 0.7-0.8 and little skylight in it, so it glows close around a low sun
+  and stays clear across and away from it, and the air in shadow stays dark: the fog reads the sun's shadow map for
+  houses and trees, and the air shader marches the sun's ray a few times over the ground's height for the ridges. Close up, the smoke a barrage or a fire leaves is a plume
+  of its own (`smoke_plumes.gd`, up to 16 fog volumes laid along the wind): dense where it rose, drawn out, climbing and
+  breaking into rags downwind, lit on top and grey underneath, until it thins away; shells landing close together feed
+  one plume. A plume over a burning house or wreck stands as long as the fire burns and keeps its smoke lit: each puff of the fire's
+  smoke leaves the flames lit a dull orange-red and darkens to grey as it climbs (the smoke particles' own light,
+  set from the fire's strength), so the undersides of the billows nearest the fire glow, mottled as the smoke is, and a shell burst flashes the pall around it for a
+  frame or two. Over that, a coarse weather grid sized from the map (32 cells
+  across a 1 km map, 64 on the bigger ones) holds the mist, rain, dust and smoke over each patch of ground: rain
+  comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust (by the ground
+  under them, `WeatherGrid.dust_of`: most off a dirt road or bare, churned earth, a little off a paved street or the
+  leaf litter in a wood, none off thick grass or mud, out of the water, or in the rain; how fast each goes comes from
+  where it was half a second before, since a peer isn't sent the vehicles' speeds), and barrages,
+  burning buildings and smoke screens leave a pall (the far field's smoke, behind the close-up plumes). The grid drifts with the wind as a whole (a sub-cell offset the
+  shader reads, the grid shifting a cell downwind once it reaches one), mist and rain settle toward what the weather
+  makes of each cell, and dust and smoke thin away (half-lives of 22 s and 55 s); it's swept a few rows a frame
+  and uploaded once a sweep, plus immediately when a whole-cell drift wraps so the texture and sampling offset
+  move together. With volumetric fog it's one fog volume over the map with its own fog shader (ground
+  height from the terrain tiles, the grid, a drifting noise, the cloud pattern); without it, and in the browser, the
+  plain fog takes the air at the camera's focus and a height fog lays the mist in the low ground below it. All of it
+  thins as the camera pulls back, so it never veils the battle you're looking at. It's looks only: who can see whom
+  is the host's own smoke (`Combat.smoke_blocks`), so the grid runs on every peer from what it already has (the
+  mood, the rain's wetness, replicated fires, smoke rounds and vehicles, the blasts' effect events), sends nothing
+  and never touches the battle's seed. Close up, a vehicle's dust is a trail of its own (`dust_trails.gd`, up to 20
+  fog volumes, each a stretch of the route up to 36 m long): a low, pale bank that billows up behind it, spreads,
+  drifts off downwind and settles over about half a minute, so a column's route stays marked; a vehicle behind on the
+  same road thickens the stretch rather than laying another. After dark the air lights up round the lights: at night
+  a damp low haze lies over the field that the moon barely lights, and the street lamps (softly, a halo round each rather than a wash over the town), the flares, the muzzle and
+  burst flashes (each light's `light_volumetric_fog_energy`) and the headlights of the vehicles driving near the
+  camera (`headlights.gd`, a pair of narrow shadowless spot lights each for the six nearest on the move, none in the
+  browser) glow in it: soft halos round the lamps, a brief bloom with each flash. The fog's grid can't hold a beam's
+  edge, so each headlight draws its own: a glare spot on the lamp and a cone mesh whose shader follows the view ray
+  through the cone (24 steps, stopped at the depth buffer) and adds up the light thrown back along it, bright by the
+  lamp and dying away past about 15 m, with a firm edge; the spot light lays the pool on the road. A column's dust shows thinner after dark, when only the headlights light it. Under rain the
+  showers further off hang as grey curtains from the cloud base (`rain_curtains.gd`, 24 camera-facing quads scattered
+  over a 3.6 km tile that drifts with the clouds and wraps round the camera, none within 360 m, where the falling
+  streaks are): soft veils, uneven across, feathered into the cloud base and slanted by the wind, some trailing off
+  before they reach the ground, under both renderers.
 - **Light probes** (`light_probes.gd`): a grid of probes over the whole battlefield, one every 2 m at eight heights
   2 m apart following the ground, records how much sky each point sees, from which way, and the mean light off
   whatever hides the rest. Streets, courtyards, trench floors and the foot of walls take less skylight than open
@@ -1842,15 +1969,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   burnt to the wire), not black shapes. Every crew's load is its own: crate stacks, tarps, bags, bedrolls, cans and canvas tilts vary by
   seed, so a column of one kind isn't stamped from one mould. Bonnets, roofs, consoles and deckhouses have
   chamfered edges that catch the light. See "Ninth pass" in [the component guide](vehicle-components.md).
-- **Nets, bolted armour and weather** (tenth pass): crews camouflage about half the armour and trucks with nets
-  and cut branches; armour edges are chamfered and welded, with bolted modules, stowage baskets, walkways and
+- **Bolted armour and weather** (tenth pass): armour edges are chamfered and welded, with bolted modules, stowage baskets, walkways and
   gun covers; paint varies plate to plate and gathers dust and grime at a size the battle camera sees; car
   roofs show their paint; helicopter tails are aerofoils and cowlings carry panels; boats are wet at the
   waterline. See "Tenth pass" in [the component guide](vehicle-components.md).
-- **Gun boots, foliage and matte steel** (eleventh pass): tank guns wear canvas boots, camouflaged crews'
-  branches read from the battle camera along fenders and hull sides, truck cabs have rounded roofs with
-  gutters, helicopter fairings sit on the hull, the Merkava has its arrowhead turret, dark steel and
+- **Gun boots and matte steel** (eleventh pass): tank guns wear canvas boots, crews no longer heap cut
+  branches and camouflage nets on their vehicles (a vehicle carries the kit it's issued), truck cabs have
+  rounded roofs with gutters, helicopter fairings sit on the hull, the Merkava has its arrowhead turret, dark steel and
   ID panels are matte, and boats have moulded motors. See "Eleventh pass" in
+  [the component guide](vehicle-components.md).
+- **Cockpits, bellows and cab interiors** (twelfth pass): jets and the Kajman show their pilots under clear
+  canopies, aircraft carry position lights and red beacons, gun boots are strapped bellows, military wheels
+  are pierced steel, tracks show their pins, bolts and hatches stop glinting, soot fades into the paint, and
+  the M35 and FIA truck have cabs you can see into. See "Twelfth pass" in
   [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that

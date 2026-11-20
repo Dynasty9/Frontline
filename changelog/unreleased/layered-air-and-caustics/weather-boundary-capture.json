@@ -1,0 +1,51 @@
+{
+  "before_source": "d167f6631d32fc38422c64dfb70fa3b09196cfea",
+  "after_source": "6e867c850b3169591a69ef65b93005c0c4ad23f9",
+  "stage_sha256": "c6f94c2e1cef6ce1970f62b65f62586ba3b9b0a8836cfff6d29e418ccc7836c4",
+  "godot": "4.7.2.stable.official.ed1daf0bf",
+  "renderer": "Forward+",
+  "device": "Vulkan 1.4.305 - llvmpipe (LLVM 19.1.7, 256 bits)",
+  "mesa": "25.0.7-2+deb13u1",
+  "display": "Xvfb :99 -screen 0 1280x720x24 -nolisten tcp",
+  "source_resolution": [
+    960,
+    540
+  ],
+  "fps": 30,
+  "seed": 3,
+  "preset": "high",
+  "postprocessing": "Whole-frame scaling and labels outside the game frame only; no exposure adjustment or colour grading.",
+  "timing": "Fixed simulation fps; software rendering and PNG capture do not establish GPU performance. One renderer at a time in the 16 GiB cgroup.",
+  "capture_setup_file": "cloud-render-setup.txt",
+  "scenario": "naval, static, effective map-size=1024",
+  "mood": "dawn",
+  "pose": "shoreline at water.coast_x(70),70; zoom120, pitch-7, yaw4.5",
+  "scope": "Actual naval shoreline: freeze battle after one simulated second, finish scenery queues with drawing disabled, fix weather sweep phase, initialize drift half a metre before boundary, settle20 rendered frames, step weather60 frames. 2048-pixel shadows and AA off; volumetric fog and cloud shadows retained. After includes synchronized grid upload and reduced duplicate open-water pooling; enclosed terrain hollows retain their original weighting.",
+  "overrides": {
+    "shadows": 1,
+    "aa": 0,
+    "perf": 0
+  },
+  "limitations": "Full-town attempts were rejected because scenery continued streaming during capture. This reduced-shadow/AA shoreline diagnostic does not validate full-High town quality or hardware speed.",
+  "effective_map_size": 1024,
+  "warnings": "Asset UID fallback and ObjectDB leak warnings at capture shutdown; no script or shader errors in the completed shoreline pair.",
+  "encoding": "VP8 WebM, 5 Mbps cap with CRF10, one-second keyframes, no audio; full-frame scaling and outside labels.",
+  "encoded_resolution": [
+    1600,
+    486
+  ],
+  "duration_seconds": 2,
+  "audio": "silent",
+  "renderer_setup": "Workspace-only rendering setup, 2026-11-18\nGodot: /workspace/frontline-tools/godot/Godot_v4.7.2-stable_linux.x86_64\nDebian packages extracted with dpkg-deb -x into /workspace/frontline-tools/runtime:\nmesa-vulkan-drivers 25.0.7-2+deb13u1\nxvfb and xserver-common 2:21.1.16-1.3+deb13u3\nlibxfont2 1:2.0.6-1+deb13u1\nNo system packages installed; no local Windows access.\n\nDisplay command:\n/workspace/frontline-tools/runtime/usr/bin/Xvfb :99 -screen 0 1280x720x24 -nolisten tcp\n\nEnvironment:\nDISPLAY=:99\nVK_DRIVER_FILES=/workspace/frontline-tools/runtime/usr/share/vulkan/icd.d/lvp_icd.json\nLD_LIBRARY_PATH=/workspace/frontline-tools/runtime/usr/lib/x86_64-linux-gnu\nXDG_DATA_HOME=/workspace/frontline-tools/data\nXDG_CACHE_HOME=/workspace/frontline-tools/cache\nXDG_CONFIG_HOME=/workspace/frontline-tools/config\nGALLIVM_PERF=nopt\n\nGodot arguments: --audio-driver Dummy --rendering-method forward_plus --resolution 960x540 --fixed-fps 30\nUse a windowed offscreen game, not --headless (headless has no RenderingDevice).\nGodot reports:\nVulkan 1.4.305 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 19.1.7, 256 bits)\nCompatibility reports:\nOpenGL API 4.5 (Core Profile) Mesa 25.0.7-2+deb13u1 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 19.1.7, 256 bits)\n\nTiming limitations: no /dev/dri or /dev/nvidia device, including outside the sandbox.\nCold startup/scene compilation takes several minutes; first valid frame can take over ten minutes.\nTank frames took approximately seven seconds each with two concurrent renders; full-town weather is slower.\nActual cgroup memory.max is 17179869184 (16 GiB). Two simultaneous renders plus an import caused two OOM kills.\nRun exactly one renderer at a time and complete imports before capture; monitor memory.current and memory.events.\nFixed 30 fps is simulation/capture time, not wall-clock rendering throughput.\nGALLIVM_PERF=nopt disables LLVM optimizations to shorten compilation; unsuitable for hardware performance conclusions.\nKeep capture separate from any performance test. Hardware renderer cost remains unmeasured.\n",
+  "camera_match": "Identical pose sequence and numeric camera records within 1e-5; verified before encoding.",
+  "files": {
+    "webm": {
+      "sha256": "99f10455558b65925d22038b85b847cd2642646ebb63d8be5253eafa76c9ea41",
+      "bytes": 430404
+    },
+    "jpg": {
+      "sha256": "bdf6804a4e97a2ffbc526f172cc2455f0aa1df3dba4e211c8ceb13112584f9d3",
+      "bytes": 139340
+    }
+  }
+}
