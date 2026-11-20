@@ -793,20 +793,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				var a2 := TAU * i / 4.0
 				_beam(Vector3(cos(a2) * 0.9, 0.38, sin(a2) * 0.9), Vector3(cos(a2) * 0.2, 1.0, sin(a2) * 0.2), 0.04, "metal_dark", Color(0.6, 0.6, 0.6), false)
 		"water_tower":
-			var steel := Color(0.58, 0.6, 0.58)
-			for sx in [-1.0, 1.0]:
-				for sz in [-1.0, 1.0]:
-					_beam(Vector3(sx * 2.7, 0, sz * 2.7), Vector3(sx * 1.7, 9.2, sz * 1.7), 0.24, "paint", steel)
-					_m(Res.box(Vector3(0.7, 0.4, 0.7)), "concrete", Vector3(sx * 2.7, 0.2, sz * 2.7))
-			for y in [3.0, 6.2]:
-				var k: float = 2.7 - float(y) / 9.2
-				for e in [[Vector3(-k, y, -k), Vector3(k, y, -k)], [Vector3(k, y, -k), Vector3(k, y, k)], [Vector3(k, y, k), Vector3(-k, y, k)], [Vector3(-k, y, k), Vector3(-k, y, -k)]]:
-					_beam(e[0], e[1], 0.1, "paint", steel)
-			_m(Res.cyl(2.6, 2.6, 0.1, 18), "metal_dark", Vector3(0, 9.15, 0))
-			_m(Res.cyl(2.3, 2.3, 3.2, 18), "paint", Vector3(0, 10.8, 0), Color(0.62, 0.64, 0.6))
-			_m(Res.cyl(0.15, 2.45, 1.1, 18), "paint", Vector3(0, 12.95, 0), Color(0.5, 0.52, 0.5))
-			_beam(Vector3(2.75, 0, 0.25), Vector3(2.4, 12.4, 0.25), 0.05, "metal_dark")
-			_beam(Vector3(2.75, 0, -0.25), Vector3(2.4, 12.4, -0.25), 0.05, "metal_dark")
+			# the town's water tower (BuildingLandmarks)
+			BuildingLandmarks.water_tower(BuildingKit.baked(_bake, rng, _at), rng)
 		"hay":
 			# round bales by a farm (BuildingFarm): straw, or now and then silage
 			# wrapped in film
