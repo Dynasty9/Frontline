@@ -1,0 +1,39 @@
+{
+  "entry": "changelog/unreleased/battlefield-command.md",
+  "title": "Command the battle, not the screen",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "A quieter battle screen: orders show as you give them and then step aside, rest the cursor on a squad to see how it's doing, radio traffic comes over a command net, and a doctrine tree takes you from light vehicles to tanks, gunships and a patrol ship.",
+  "medium": "still",
+  "stage": "game capture flags",
+  "rationale": "A layout change: matched before/after stills of the same moment show what left the screen; stills of the hover card, the doctrine tree and the command net show what replaced it.",
+  "source_ref": "Before: 7e924ba2. After: this branch. Comparison and hover: --mission=bridgehead --play --autoplay --seed=2 --follow=0 --zoom=75 (hover 60) --pitch=-55 --shot-at=40 [--hover=squad] --perf=0. Doctrine: --scenario=showroom --play --team=0 --hud-panel=doctrine --research=armor,grenades,medicine,c_mech,c_aviation,c_riverine --research-q=c_armour,c_attack_aviation --shot-at=12. Command net: --host --team=0 --bot-cmds --select-all --shot-at=5.5. Forward+, off-screen windowed runs on Windows, 1600x900.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/battlefield-command/quiet-before.jpg",
+      "sha256": "b13badc7b0f0701413fc946b9ee6b191de25022bf4879c167baf0446606c8abd",
+      "caption": "Bridgehead at 0:39 on the old interface: every order on the ground and in the order of battle."
+    },
+    {
+      "file": "changelog/unreleased/battlefield-command/quiet-after.jpg",
+      "sha256": "c2f4b400d4f8ad97c6d1082df81163193116e8674318d292fee96c6ceff2d14a",
+      "caption": "The same moment and camera on this branch."
+    },
+    {
+      "file": "changelog/unreleased/battlefield-command/squad-hover.jpg",
+      "sha256": "21d608be2e3b4dcb38ae3cf9702cdfa3ba876e7e1eb5d79dbeb9b37915351de9",
+      "caption": "The cursor resting on Charlie 1 (--hover=squad)."
+    },
+    {
+      "file": "changelog/unreleased/battlefield-command/doctrine-tree.jpg",
+      "sha256": "da0dbf89df4794a717d52463b065ad582d7d63ef3d62ce5ede47d6b65256b83c",
+      "caption": "The doctrine tree with steps done, under way, queued, ready and locked."
+    },
+    {
+      "file": "changelog/unreleased/battlefield-command/command-net.jpg",
+      "sha256": "2168183baaa9feff1ae0c20784f18289ba1b59afb27fdb00bd54d9c9a20d6893",
+      "caption": "A selected squad answering a move order on the command net."
+    }
+  ],
+  "output": null
+}
