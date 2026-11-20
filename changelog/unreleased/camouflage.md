@@ -14,6 +14,10 @@ caption = "A Coalition base before and after: barracks, factory and research pos
 [[screenshots]]
 file = "nets.jpg"
 caption = "The FOB's net pitched over the block, and a Rebel desert net, before and after"
+[[videos]]
+file = "material-sweep.webm"
+poster = "material-sweep.jpg"
+caption = "Before (left) and after (right): native posed soldier fixture, matched camera distance and lighting. Compatibility on llvmpipe software; no combat or performance claim."
 +++
 
 - **Uniforms:** hard-edged prints at their real size that run on round sleeves and helmets: woodland, leaf,
@@ -28,3 +32,5 @@ caption = "The FOB's net pitched over the block, and a Rebel desert net, before 
 - **Camouflage nets** are cut into leaves on a diamond cord mesh, printed woodland for the Coalition and desert for
   the Rebels. The FOB's net now drapes over the block instead of floating flat above it.
 - From the usual camera height, fine detail fades to the colour the pattern averages to, so nothing shimmers.
+
+Digital camouflage now softens continuously as the camera pulls back. Distant patterns retain the brightness of their printed colours instead of darkening as their fine detail disappears.

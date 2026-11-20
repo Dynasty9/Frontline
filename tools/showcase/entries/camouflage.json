@@ -4,9 +4,9 @@
   "version": "unreleased",
   "kind": "improved",
   "summary": "Uniforms are printed in proper camouflage patterns, base buildings are painted in disruptive blotches, and camouflage nets look like cut garnish on a cord mesh.",
-  "medium": "still",
+  "medium": "motion",
   "stage": "game capture flags",
-  "rationale": "An appearance change: matched before/after stills of the same men, buildings and nets show it best.",
+  "rationale": "An appearance change: matched before/after stills of the same men, buildings and nets show it best. A matched native render sweep now accompanies the preserved earlier stills.",
   "source_ref": "Before: eb81260e. After: this branch. Soldiers: --soldier-sheet --sheet-unit=fighter --sheet-seeds=6 --sheet-pose=idle at 1600x900. Base: --scenario=showroom --shot-at=6 --focus=-12,-22 --zoom=30 --pitch=-28 --cam-yaw=0.4 --set=dof:false --nohud --perf=0. Nets: photo mode, --scenario=showroom --static --photo-at=4 --focus=42,-34 --zoom=10 --cam-yaw=0.5 --photo=blur:0,fov:45,aim:14:5.0 and --scenario=cache --static --photo-at=3 --focus=-6,-22 --zoom=10 --cam-yaw=0.5 --photo=blur:0,fov:40,aim:10:3.0, cropped clear of the photo panel. Forward+, off-screen windowed runs on Windows.",
   "sources": [
     {
@@ -23,7 +23,39 @@
       "file": "changelog/unreleased/camouflage/nets.jpg",
       "sha256": "cc174445ecb70925216bd4cd53b72f73cf77671c56c0b01fafdf7ca7172745b5",
       "caption": "The Coalition FOB's net and a Rebel camouflage net, before and after."
+    },
+    {
+      "file": "changelog/unreleased/camouflage/material-sweep.webm",
+      "sha256": "f40d6d081b95dc3257e0420a78e96bd34fa7cf1431da9367af1fb377e5079be1"
+    },
+    {
+      "file": "changelog/unreleased/camouflage/material-sweep.jpg",
+      "sha256": "0ac420ecdc49d10896a604db38d954632d370fd8a4679ff2d5b50b32338920df"
     }
   ],
-  "output": null
+  "output": null,
+  "followup_captures": [
+    {
+      "before_ref": "7f762159f20763e9bbd4053f342ad2f3b6d4b31f",
+      "after_ref": "a6218fcf04111a03ffa1aaffe3fba830eafea8a3",
+      "stage": "scripts/ui/soldier_sheet.gd --sheet-motion (posed native SoldierModel fixture, not combat)",
+      "fixture_sha256": "576eefee4b5ec85fdaccc0b1ce129a1adf58c57f06b4514e9fe905dc2dab782b",
+      "renderer": "Godot 4.7.2 Compatibility; Mesa llvmpipe LLVM 19.1.7 software renderer",
+      "command": "godot --path PROJECT --rendering-method gl_compatibility --fixed-fps 12 --resolution 1280x720 -- --soldier-sheet=OUT.png --sheet-unit=fighter --sheet-seed=1 --sheet-seeds=3 --sheet-pose=idle --sheet-motion=FRAMES",
+      "camera": "35 degree FOV; cosine sweep 5 to 28 to 5 metres, pitch 8 to 50 to 8 degrees",
+      "light": "elevation 48 to 12 to 48 degrees; azimuth 150 to 330 to 150; fixed stage environment and exposure",
+      "output": "Uncropped 960x540 panels, 1920x620 encoded, 96 frames at 12 fps, 8 seconds, silent VP9",
+      "validation": [
+        "Both native capture processes completed cleanly",
+        "Full WebM decode passed",
+        "Inspected encoded close, transition, far and return frames at embedded size; matching camera/seed/light metadata",
+        "Material code exact-commit CI passed before this media-only follow-up"
+      ],
+      "limitations": [
+        "Posed procedural fighters only; no combat, imported-rifleman LOD switching, building or net transition coverage in this clip",
+        "Fixture uses fixed 4x MSAA; this is not a Low-preset run",
+        "Software capture is not performance evidence"
+      ]
+    }
+  ]
 }

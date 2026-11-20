@@ -67,9 +67,12 @@ static func mean(name: String) -> Color:
 	var cols: Array = p.cols
 	var cover: Array = p.cover
 	for i in 5:
-		var k := Color(String(cols[i]))
+		var k := Color(String(cols[i])).srgb_to_linear()
 		c += Color(k.r, k.g, k.b) * float(cover[i])
-	return Color(c.r, c.g, c.b)
+	# Match the light returned by the resolved print; averaging sRGB values
+	# darkens high-contrast patterns when their detail fades out. The shader
+	# receives a source_color uniform, so return an sRGB colour here.
+	return Color(c.r, c.g, c.b).linear_to_srgb()
 
 
 ## The Mats preset for cloth printed in a pattern (kind "camo/NAME").
@@ -171,7 +174,8 @@ vec3 camo_print(vec3 p, vec3 w, float px) {
 		float f1 = camo_n(g + 3.0);
 		float f2 = camo_n(g * 1.17 + 31.0);
 		float f3 = camo_n(g * 1.6 + 57.0);
-		float s = keep(2.0 / pix, px) > 0.5 ? 0.0001 : 0.03;
+		// Soften the boundary continuously as printed pixels become too small.
+		float s = mix(0.03, 0.0001, keep(2.0 / pix, px));
 		c = mix(c, col_b, smoothstep(0.47 - s, 0.47 + s, f1));
 		c = mix(c, col_c, smoothstep(0.535 - s, 0.535 + s, f2));
 		c = mix(c, col_d, smoothstep(0.6 - s, 0.6 + s, f3));

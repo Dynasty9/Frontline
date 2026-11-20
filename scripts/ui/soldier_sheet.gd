@@ -9,6 +9,7 @@ extends Node3D
 ##   --sheet-unit=TYPE [--sheet-seed=N]   one man turned four ways instead
 ##                        (front, three-quarter, side, back), close up
 ##   --sheet-seeds=N      with --sheet-unit: N different men of that type, front on
+##   --sheet-motion=DIR  matched 8-second distance/light sweep at --fixed-fps 12
 ##   --sheet-stats        print each man's triangles, render instances and build time
 
 var args := {}
@@ -157,7 +158,41 @@ func _process(_dt: float) -> void:
 	_frames += 1
 	if _frames == 24 and not _saved:
 		_saved = true
+		if args.has("sheet-motion"):
+			set_process(false)
+			_motion()
+			return
 		var path := String(args["soldier-sheet"])
 		get_viewport().get_texture().get_image().save_png(path)
 		print("soldier sheet saved ", path)
 		TestRun.quit(get_tree())
+
+
+## Native material review: identical models, light and camera on both revisions.
+## Launch with --fixed-fps 12; this is a posed model fixture, not combat footage.
+func _motion() -> void:
+	var output := String(args["sheet-motion"])
+	assert(DirAccess.make_dir_recursive_absolute(output) == OK)
+	var cam := get_viewport().get_camera_3d()
+	var sun: DirectionalLight3D
+	for child in get_children():
+		if child is DirectionalLight3D:
+			sun = child
+	assert(sun != null)
+	cam.fov = 35.0
+	var records := []
+	for frame in 96:
+		var phase := (1.0 - cos(TAU * float(frame) / 95.0)) * 0.5
+		var distance := lerpf(5.0, 28.0, phase)
+		var pitch := deg_to_rad(lerpf(8.0, 50.0, phase))
+		cam.position = Vector3(0, 0.98, 0) + Vector3(0, sin(pitch), -cos(pitch)) * distance
+		cam.look_at(Vector3(0, 0.98, 0))
+		sun.rotation_degrees = Vector3(lerpf(-48.0, -12.0, phase), lerpf(150.0, 330.0, phase), 0)
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		assert(get_viewport().get_texture().get_image().save_png(output.path_join("%04d.png" % frame)) == OK)
+		records.append({"frame": frame, "distance_m": distance, "pitch_deg": rad_to_deg(pitch), "sun_degrees": str(sun.rotation_degrees)})
+	var metadata := {"args": args, "renderer": RenderingServer.get_current_rendering_method(), "resolution": str(get_viewport().size), "fps": 12, "frames": records, "stage": "Posed native SoldierModel fixture; continuous matched camera and directional-light sweep. No combat or performance claim."}
+	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(metadata, "\t"))
+	print("SOLDIER_MOTION complete ", output)
+	TestRun.quit(get_tree())
