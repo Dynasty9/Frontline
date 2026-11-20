@@ -1,0 +1,90 @@
+{
+  "before_ref": "e914aa86562b3ff43062d0c1856967fcf017bffa",
+  "source_ref": "9e2157dd3e1a7885e39ea6c0b8b153f28a93c1c3",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+  "comparisons": [
+    {
+      "file": "comparison.jpg",
+      "subjects": [
+        "town"
+      ],
+      "view": "stonewall",
+      "env": "FL_ONLY_VIEW=stonewall,-209,12,14,-38,1.0",
+      "crop": [
+        0,
+        100,
+        1600,
+        900
+      ]
+    },
+    {
+      "file": "comparison.jpg",
+      "subjects": [
+        "low_wall_stone"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=low_wall_stone",
+      "match": "--building-match=BEFORE/capture.json (one camera for every revision)",
+      "crop": [
+        250,
+        120,
+        1350,
+        720
+      ]
+    },
+    {
+      "file": "wall-top.jpg",
+      "before_ref": "a0cec28ce630f2efac6463df74fb6f8b91311f7f",
+      "subjects": [
+        "town"
+      ],
+      "view": "stonewall",
+      "env": "FL_ONLY_VIEW=stonewall,-209,12,14,-38,1.0",
+      "crop": [
+        0,
+        300,
+        1600,
+        800
+      ]
+    },
+    {
+      "file": "wall-top.jpg",
+      "before_ref": "a0cec28ce630f2efac6463df74fb6f8b91311f7f",
+      "subjects": [
+        "town"
+      ],
+      "view": "stonefar",
+      "env": "FL_ONLY_VIEW=stonefar,-209,12,32,-48,1.0",
+      "crop": [
+        150,
+        250,
+        1350,
+        750
+      ]
+    },
+    {
+      "file": "wall-top.jpg",
+      "before_ref": "a0cec28ce630f2efac6463df74fb6f8b91311f7f",
+      "subjects": [
+        "low_wall_stone"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=low_wall_stone",
+      "match": "--building-match=BEFORE/capture.json",
+      "crop": [
+        120,
+        40,
+        1480,
+        580
+      ]
+    }
+  ],
+  "sweep": {
+    "file": "fieldstone-sweep.webm",
+    "poster": "fieldstone-sweep.jpg",
+    "command": "godot --path . --rendering-method gl_compatibility --fixed-fps 12 --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-single --building-kinds=low_wall_stone --building-motion --building-out=OUT",
+    "encode": "48 frames scaled to 960x540 over a 40 px caption, VP9 (libvpx-vp9 -crf 32) at 12 fps"
+  },
+  "notes": "comparison.jpg is main against this branch; wall-top.jpg is the wall's top only: the saddleback coping this pull request had at a0cec28 against the stones on edge. The field cameras are on a line of field walls (MapGen hedgerow walls at x = -209) on seed 3, close (14 m) and at a battle camera's distance (32 m). Checked under gl_compatibility too.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

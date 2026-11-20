@@ -167,6 +167,15 @@ static func step(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector
 	k._box(mount, Vector3(size.x, 0.035, size.y), Vector3.ZERO, mat, col)
 	for side: float in [-1.0, 1.0]:
 		k._box(mount, Vector3(size.x, 0.035, 0.018), Vector3(0, -0.008, side * (size.y * 0.5 - 0.009)), mat, col)
+	if size.y > size.x * 4.0 and not k.wreck:
+		# A running board along a sill is moulded with its grip ribs running
+		# its length, in its own stuff (ribs across it, a short bar every
+		# 18 cm, read as piano keys from above).
+		var rib_col: Variant = (col as Color).lightened(0.06) if col is Color else Color(0.22, 0.23, 0.21)
+		for i in 3:
+			k._box(mount, Vector3(0.012, 0.007, size.y * 0.92), Vector3(lerpf(-size.x * 0.3, size.x * 0.3, i * 0.5), 0.020, 0), mat if col is Color else "steel", rib_col, Vector3.ZERO, false)
+		k._fold(mount)
+		return
 	var ribs := clampi(ceili(size.y / 0.06), 2, 8)
 	for i in ribs:
 		k._box(mount, Vector3(size.x * 0.9, 0.006, 0.009), Vector3(0, 0.020, lerpf(-size.y * 0.38, size.y * 0.38, float(i) / (ribs - 1))), "steel", Color(0.22, 0.23, 0.21), Vector3.ZERO, false)

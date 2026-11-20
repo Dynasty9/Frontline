@@ -39,7 +39,7 @@ const TIPS := [
 const OP_A := ["IRON", "SILENT", "BROKEN", "AMBER", "COLD", "GRANITE", "HOLLOW", "NORTHERN", "PALE", "SCARLET", "STEEL", "WINTER", "DUSTY", "BLACK", "LONG"]
 const OP_B := ["VEIL", "ANVIL", "HARVEST", "LANTERN", "SPEAR", "CROSSING", "RIDGE", "TIDE", "FALCON", "ORCHARD", "WATCH", "HAMMER", "CANAL", "GATE", "MERIDIAN"]
 const MOOD_TEXT := {"day": "Midday, clear", "golden": "Golden hour, long shadows", "dawn": "Dawn, low sun", "dusk": "Dusk, failing light",
-	"overcast": "Overcast, flat light", "hazy": "Hazy, poor visibility", "night": "Night, street lights and flares", "rain": "Rain and thunder", "random": "Unknown"}
+	"overcast": "Overcast, flat light", "hazy": "Hazy, poor visibility", "night": "Night, street lights and flares", "rain": "Rain and thunder", "snow": "Snow, cold flat light", "random": "Unknown"}
 
 const WAKE_AT := 0.35  # the title: when the wave goes out (seconds in)
 const TITLE_HOLD := 1.9  # and when the menu may take over
