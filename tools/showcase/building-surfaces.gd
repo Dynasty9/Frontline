@@ -381,6 +381,15 @@ func _subject(kind: String) -> Node3D:
 					br.seed = 3 + i
 					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
 			return row
+		"water_tower":
+			# the town's water tower (BuildingLandmarks, where it exists)
+			var wt := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_landmarks.gd"):
+				var wr := RandomNumberGenerator.new()
+				wr.seed = 9
+				var lm: GDScript = load("res://scripts/game/building_landmarks.gd")
+				lm.call("water_tower", BuildingKit.nodes(wt, wr), wr)
+			return wt
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:
