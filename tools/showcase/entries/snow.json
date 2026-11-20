@@ -13,7 +13,7 @@
     "note": "Each capture scaled to 798x448 and laid out 2x2 with OVERCAST / SNOW labels. The battle can differ slightly run to run. Compatibility renderer checked separately (--rendering-method gl_compatibility with forced vertex shading, the town and the tank close-up); not in the sheet.",
     "wide": "--aivai --seed=3 --mood=snow --nohud --focus-struct=town --zoom=220 --pitch=-22 --shot-at=15",
     "tank": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=snow --nohud --focus=-84,24 --focus-vehicle=tank --focus-vehicle-at=9 --zoom=12 --pitch=-34 --shot-at=10",
-    "melt": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=9,-6 --zoom=15 --pitch=-36 --shot-at=90, from a scratch copy whose fire scenario adds a burning wreck (variant 6 at 4,-6, given 600 s of fuel) and a stopped tank (13,-5); rendered on 51dfff0e plus the melt commit; the before/after for the pull request is the same setup from c0043fca. Compatibility checked with --rendering-method gl_compatibility (OpenGL 3.3)",
+    "melt": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=9,-6 --zoom=15 --pitch=-36 --shot-at=90, from a scratch copy whose fire scenario adds a burning wreck (variant 6 at 4,-6, given 600 s of fuel) and a stopped tank (13,-5); rendered on 51dfff0e plus the melt commit; the before/after for the pull request is the same setup from c0043fca. Compatibility checked with --rendering-method gl_compatibility (OpenGL 3.3). Superseded 2026-11-19 by engine_deck_thaw_2026_11_19.melt_still (the engine thaw moved onto the deck).",
     "drifts": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=2,15 --zoom=26 --pitch=-48 --shot-at=20, from a scratch copy whose fire scenario adds a hedgerow (4 low_wall variant 1) and a stone wall (3 low_wall variant 0) at yaw 1.178, across Fires.WIND; the pull request also shows a burning town house (--aivai --seed=3, roof at 2.6,30 lit at once) before/after",
     "cloud_review_2026_11_18": {
       "source_ref": "85169252e97c1934a77dfc514020e6940f79d081",
@@ -367,7 +367,8 @@
           ]
         },
         "finding": "In this overcast scene, disabling probe strengths barely changes the bank/ground contrast. Equal albedo still leaves a strong boundary, including with flat normals: the remaining discrepancy is not explained by texture colour or normals alone. The separate lighting/AO paths need further isolation. No shader fix is proposed from this limited diagnostic. Sunny conditions and border robustness remain unverified."
-      }
+      },
+      "superseded_by": "engine_deck_thaw_2026_11_19"
     },
     "natural_snow_pass": {
       "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window; Compatibility (--rendering-method gl_compatibility) checked for the street, roof and drift views, no script or shader errors",
@@ -379,6 +380,52 @@
       "drifts": "--fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=2,15 --zoom=26 --pitch=-48 --shot-at=20, from a scratch copy whose fire scenario adds a hedgerow (4 low_wall variant 1) and a stone wall (3 low_wall variant 0) across Fires.WIND",
       "tank": "--fixed-fps 30 -- --scenario=roster --seed=1 --mood=snow --nohud --focus=-84,24 --focus-vehicle=tank --focus-vehicle-at=9 --zoom=12 --pitch=-34 --shot-at=10",
       "note": "(--focus=0,0 stops the battle director before --focus-struct applies, so the town views repeat run to run)"
+    },
+    "engine_deck_thaw_2026_11_19": {
+      "reason": "Review on the pull request: the clip had black flecks, and the engine thaw belongs on the tank, not on the ground.",
+      "flecks": "The black flecks were the tank's sub-pixel bolt heads and small dark fittings, aliased to single pixels: the earlier clip came from Mesa llvmpipe, which offers MSAA 4x or none, so Medium's MSAA 2x drew with no anti-aliasing. They hold still on the hull from frame to frame (not falling flakes), and a NaN detector in the surface shader (any NaN or Inf in ALBEDO, NORMAL, ROUGHNESS, METALLIC, SPECULAR or EMISSION painted bright green) found none on a software Vulkan renderer (SwiftShader, Mobile renderer), which shows the same specks. On the GPU at Medium (MSAA 2x) neither renderer shows them. hedge-motion.webm has no black flakes (its flakes are white) and only a few one-pixel specks at car door handles, so it is kept.",
+      "change": "SnowMelt: an idling engine no longer thaws a disc of ground under the hull (reach ~0.55 of the hull's length); its exhaust leaves a patch of EXHAUST_REACH 0.9 m just beyond the outlet (engine_vent), none on a model without one. Mats.SURFACE_SHADER: the deck's warm patch runs from the engine end forward (snow_k.zw = the deck's middle on the hull's line), back to the rear plate, wider and further forward with engine run, the bare metal dark and glossy (thaw_wet) behind a rim of grey slush.",
+      "source_ref": "this commit's parent tree plus the change (see the pull request)",
+      "renderer": "Godot 4.7.2 on an NVIDIA GeForce RTX 3090: Forward+ (Vulkan) and Compatibility (OpenGL), Medium (MSAA 2x), 960x540 each, scaled to 800x450 side by side. Appearance only, not performance.",
+      "command": "godot [--rendering-method gl_compatibility] --path . --resolution 960x540 --fixed-fps 24 --script tests/fixtures/snow-sequence.gd -- --scenario=fire --seed=3 --mood=snow --nohud --preset=medium --set=perf:0 --focus=400,399 --zoom=26 --pitch=-38 --offscreen --capture-prefix=OUT",
+      "staging": "As before: three quiet hedge sections and one tank away from combat, driven by order_move/order_stop; nothing painted. Wide camera while it drives in; then from behind over its engine deck (focus 0.5 m behind the tank, zoom 11, pitch -55, yaw -PI/2) while it idles 200 s (48 shots of 100 ticks), and while it drives off.",
+      "timing": {
+        "fixed_fps": 24,
+        "playback_fps": 12,
+        "rolling_speed": 2,
+        "idle_speed": 50,
+        "reveal_speed": 2,
+        "idle_elapsed_seconds": 202,
+        "engine_run_at_end": 253.1,
+        "holds": "1 s control, 0.5 s parked-start, 0.5 s parked-end, 1 s final"
+      },
+      "records": {
+        "parked_end_spot": [
+          400.01,
+          401.05,
+          0.9,
+          0.55
+        ],
+        "tank": [
+          404.01,
+          400.18
+        ],
+        "note": "the exhaust's spot: x, z, reach (m), melt; 4 m behind the tank's centre, out of its rear plate"
+      },
+      "encode": "Labelled 12 fps JPEG sequence (PIL, Segoe UI) piped to ffmpeg 7.1 libvpx-vp9 -crf 33 -b:v 0 -pix_fmt yuv420p -row-mt 1 -g 48; poster: parked-start above parked-end, both renderers.",
+      "media": {
+        "duration_seconds": 13.5,
+        "frames": 162,
+        "fps": 12,
+        "width": 1600,
+        "height": 514,
+        "audio": "none",
+        "bytes": 1672901
+      },
+      "melt_still": "Forward+, 1600x900: --fixed-fps 30 -- --scenario=fire --seed=1 --mood=snow --nohud --focus=9,-6 --zoom=15 --pitch=-36 --shot-at=90 --offscreen --perf=0, from a scratch copy whose fire scenario adds a burning wreck (variant 6 at 4,-6, fuel 600) and a stopped tank (13,-5, yaw 0.35), as the earlier still was staged.",
+      "validation": [
+        "Both captures exit 0 with no script or shader errors; the fixture asserts the exhaust patch's reach <= EXHAUST_REACH, that it lies behind the hull, that it reaches slush, and that the idle outlasts ENGINE_WARM. Complete VP9 decode by ffmpeg; opening, driving, idling and final frames inspected."
+      ]
     }
   },
   "sources": [
@@ -400,7 +447,7 @@
     },
     {
       "file": "changelog/unreleased/snow/melt-in-snow.jpg",
-      "sha256": "1f1983e73f26efb113ca5d4381ab8d0fbb7ae3f04fa4f3cf6178b5969c2bb0cf"
+      "sha256": "e61b0ea47d77412f4e048685b0e792ddb4401b46424a9949750907552cafb13c"
     },
     {
       "file": "changelog/unreleased/snow/drifts-in-snow.jpg",
@@ -432,11 +479,11 @@
     },
     {
       "file": "changelog/unreleased/snow/track-engine-thaw.webm",
-      "sha256": "e156a3f01ccbe051527fbd78a73a94832fc64a52b647b8d01beb4f5b3fb60388"
+      "sha256": "2b150c754c5d05c37d19580d21903294ab7f63302ccd375e0b76680976a48717"
     },
     {
       "file": "changelog/unreleased/snow/track-engine-thaw.jpg",
-      "sha256": "1533a0e9720dfd12b056f2a8974e9b6b06e7b7298064056475d58efd5e8847a1"
+      "sha256": "017685c4929f43c8fe87b64a3c601954a06d1c221829c4c15df5d99e1e0a1d97"
     }
   ],
   "output": null

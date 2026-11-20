@@ -21,7 +21,7 @@ caption = "A tank that has been fighting carries snow only in patches on its fla
 
 [[screenshots]]
 file = "melt-in-snow.jpg"
-caption = "Heat melts it: a burning wreck has thawed the ground round it to dark, wet earth, a burning hedgerow has left a band of flattened winter grass, and the tank idling beside them has worked the snow behind its engine to slush and cleared its own engine deck."
+caption = "Heat melts it: a burning wreck has thawed the ground round it to dark, wet earth, a burning hedgerow has left a band of flattened winter grass, and the tank idling beside them has cleared its own engine deck, leaving only a small patch of slush behind its exhaust."
 
 [[screenshots]]
 file = "drifts-in-snow.jpg"
@@ -33,7 +33,7 @@ caption = "The same town and the same tank battle under an overcast sky and in s
 [[videos]]
 file = "track-engine-thaw.webm"
 poster = "track-engine-thaw.jpg"
-caption = "An untouched bank, a tank leaving tracks through the powder, then 96 seconds of engine thaw and the drive-away reveal. Actual gameplay in Compatibility, Medium: driving at 2× speed, idling at 36× time lapse, with brief control and result holds. Nearby powder stays unchanged."
+caption = "A tank drives in through untouched powder, leaving its tracks, then idles: its engine's warmth clears the deck from the grilles over the engine forward, to bare, wet metal, while the rest of the hull gathers snow. When it drives off, only a small patch of slush behind the exhaust is left on the ground. Actual gameplay, Forward+ (left) and Compatibility (right), Medium: driving at 2× speed, idling at 50× time lapse."
 
 [[videos]]
 file = "hedge-motion.webm"
@@ -60,6 +60,6 @@ caption = "Dry grass, current main above and the snow branch below: the grass an
 - **Vehicles** keep snow only on their flat tops (the deck, turret roof, fenders and stowage), in patches of their own; it slides off the glacis and sides, and the warm engine deck stays bare and wet. A vehicle standing still gathers a full load, and driving or swinging its turret shakes most of it off, so a parked or wrecked tank is far whiter than one in the fight.
 - **Drifts.** The wind heaps the snow against walls, houses, hedges, fences and wrecks: banked against the side away from the wind, rising to a rounded crest a little way out and tailing off a few metres beyond, tapering round the ends of the wall, deeper along some stretches than others, longer behind a tall wall or a hedge, with a smaller bank on the windward side standing off a scoop the wind scours at the wall's foot. The thin outer edge meets the ground instead of floating above it. The grass in a drift is buried; knock the wall down and its drift goes with it, even while nearby drifts are still being built. Where roofs overlap, the remaining roof keeps the ground sheltered after one is destroyed.
 - Opening a snow battle no longer leaves an unexplained thaw patch beneath the starting camera.
-- **Heat melts it.** A fire thaws the snow round it, the ground to bare, wet earth with a rim of grey slush, the bushes to bare, wet twigs, and the streets, yards and neighbouring roofs to wet stone and tile, and it melts the snow off whatever is burning: a roof, a wreck, a tree. A vehicle that stands with its engine running leaves a damp, dark patch under it, and the bare patch on its engine deck spreads the longer it runs. A gun that has fired sheds the snow off its barrel until it cools. Thawed ground stays bare after the fire is out and only whitens again slowly while the snow keeps falling.
+- **Heat melts it.** A fire thaws the snow round it, the ground to bare, wet earth with a rim of grey slush, the bushes to bare, wet twigs, and the streets, yards and neighbouring roofs to wet stone and tile, and it melts the snow off whatever is burning: a roof, a wreck, a tree. A vehicle that stands with its engine running clears its own engine deck, the grilles first, to bare, wet metal, the bare stretch creeping forward along the deck the longer it runs; on the ground its exhaust leaves only a small patch of slush. A gun that has fired sheds the snow off its barrel until it cools. Thawed ground stays bare after the fire is out and only whitens again slowly while the snow keeps falling.
 - Snow that starts mid-battle settles over a few minutes and thaws slowly when it stops. The deep snow muffles the wind and the distant battle.
 - It's looks only: nothing sees, moves or burns any differently in snow. It works in the browser too.

@@ -51,25 +51,33 @@ func capture() -> void:
 		await _shot("rolling", i)
 	tank.order_stop()
 	await _advance(24)
+	# Closer while it idles, from behind, over its engine deck: the warmth
+	# clears the deck from the engine end forward (in steps of a quarter of
+	# ENGINE_WARM). The tank faces +x.
+	_camera(tank.position + Vector3(-0.5, 0, 0), 11.0, -55.0, -PI * 0.5)
 	await _shot("parked-start", 0)
-	for i in 32:
-		await _advance(71)
+	for i in 48:
+		await _advance(100)
 		await _shot("idle", i)
 	await _shot("parked-end", 0)
-	tank.order_move(Vector3(416, 0, 400))
-	for i in 24:
+	# It drives off: where it stood, only the exhaust's patch of slush.
+	tank.order_move(Vector3(422, 0, 400))
+	for i in 30:
 		await _advance(3)
 		await _shot("reveal", i)
 	_write_records()
 	quit()
 
-func _camera(focus: Vector3, zoom: float, pitch: float) -> void:
+func _camera(focus: Vector3, zoom: float, pitch: float, yaw := 0.0) -> void:
 	world.cam.focus_pos = focus
 	world.cam.dist = zoom
 	world.cam.target_dist = zoom
 	world.cam.pitch_deg = pitch
-	world.cam.yaw = 0.0
+	world.cam.yaw = yaw
 	world.cam._apply()
+	# (draws for the new view's shadows to catch up after a cut; not footage)
+	for i in 2:
+		RenderingServer.force_draw(false, 1.0 / 24.0)
 
 func _advance(ticks: int) -> void:
 	for tick in ticks:
@@ -89,18 +97,25 @@ func _shot(phase: String, frame: int) -> void:
 	if phase == "control":
 		assert(spots.is_empty(), "Undisturbed powder must not inherit a shader warm-up thaw")
 	if phase == "parked-end":
+		# (game classes by path: this fixture compiles before the autoloads they need)
+		var exhaust_reach: float = load("res://scripts/game/snow_melt.gd").EXHAUST_REACH
+		var engine_warm: float = load("res://scripts/game/vehicle.gd").ENGINE_WARM
 		var engine_thaw := 0.0
 		for spot in spots:
 			if int(spot[4]) == -1 - tank.eid:
 				engine_thaw = float(spot[3])
+				assert(float(spot[2]) <= exhaust_reach + 0.01, "Only a small patch behind the exhaust, no disc under the hull")
+				# (behind the hull: the tank faces +x, its exhaust out of the rear plate)
+				assert(float(spot[0]) < tank.position.x - 3.0, "The patch lies behind the exhaust outlet")
 		assert(engine_thaw >= 0.45, "A long real idle must produce visible slush")
+		assert(tank._engine_run >= engine_warm, "The idle lasts long enough for the warmth to spread through the deck")
 	var prints: int = world.fx.vfx._tread_prints.visible_instance_count if world.fx.vfx._tread_prints else 0
 	records.append({"phase": phase, "frame": frame, "time": world.time, "tank": [tank.position.x, tank.position.y, tank.position.z], "engine_run": tank._engine_run, "spots": spots, "tread_instances": prints})
 	print("SNOW_SEQUENCE ", JSON.stringify(records[-1]))
 
 func _write_records() -> void:
 	var output := FileAccess.open(prefix + "/records.json", FileAccess.WRITE)
-	output.store_string(JSON.stringify({"renderer": RenderingServer.get_current_rendering_method(), "camera": str(world.cam.cam.global_transform), "fixed_fps": 24, "playback_fps": 12, "rates": {"rolling": 2, "idle": 36, "reveal": 2}, "source_hashes": {"vfx": FileAccess.get_sha256("res://scripts/game/vfx.gd"), "snow_melt": FileAccess.get_sha256("res://scripts/game/snow_melt.gd"), "fixture": String(get_script().source_code).sha256_text()}, "records": records}, "\t"))
+	output.store_string(JSON.stringify({"renderer": RenderingServer.get_current_rendering_method(), "camera": str(world.cam.cam.global_transform), "fixed_fps": 24, "playback_fps": 12, "rates": {"rolling": 2, "idle": 50, "reveal": 2}, "source_hashes": {"vfx": FileAccess.get_sha256("res://scripts/game/vfx.gd"), "snow_melt": FileAccess.get_sha256("res://scripts/game/snow_melt.gd"), "fixture": String(get_script().source_code).sha256_text()}, "records": records}, "\t"))
 
 
 ## Diagnostic images only: never splice these material overrides into gameplay footage.
