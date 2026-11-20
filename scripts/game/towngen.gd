@@ -26,7 +26,7 @@ const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
 const REACH := 56.0  # the main streets run this far each way from the middle
 const LOT_D := 14.5  # lot depth
-const BAY_L := 4.8  # a parking bay marked out at the kerb: its length along it
+const BAY_L := 5.8  # a parking bay marked out at the kerb: its length along it (room to pull in and out)
 const BAY_W := 2.0  # and its width, out from the kerb
 const PARK_OUT := CURB - BAY_W * 0.5  # a car parked in one: its middle from the middle of the road
 
@@ -1432,28 +1432,47 @@ func roadside(cars: int, wrecks: int) -> void:
 func kerbside() -> void:
 	var kr := RandomNumberGenerator.new()
 	kr.seed = int(absf(center.x) * 11.0) * 7919 + int(absf(center.z) * 11.0) * 31 + 113
-	# where nobody parks: [point, how far along the kerb either way]
+	# where nobody parks: [point, how far along the kerb either way, and
+	# whether across the road too] (a bus pulled in at its stop leaves no room
+	# to get by a car parked opposite)
 	var keep_off: Array = []
 	for e: Array in decor:
 		match String(e[0]):
 			"curb_crossing", "walk_crossing":
-				keep_off.append([e[1], ((e[3] as Array)[0] as Vector3).x * 0.5 + 0.8])
+				keep_off.append([e[1], ((e[3] as Array)[0] as Vector3).x * 0.5 + 0.8, false])
 			"zebra":
-				keep_off.append([e[1], 6.0])
+				keep_off.append([e[1], 6.0, true])
 			"hydrant":
-				keep_off.append([e[1], 2.5])
+				keep_off.append([e[1], 2.5, false])
 			"bus_stop":
-				keep_off.append([e[1], 7.0])
+				keep_off.append([e[1], 7.0, true])
 	# each street's runs of bays, both sides of it, measured along the whole
 	# street (so none is painted opposite a run on the next piece of it)
 	var streets := {}
-	var runs := 0
+	# every kerb of the main streets near the middle, where the shops are,
+	# tried in turn (shuffled from this stream: Array.shuffle draws on the
+	# global generator) until the town has its two to four runs
+	var kerbs: Array = []
 	for pc: Array in pieces:
 		var a: Vector3 = pc[0]
 		var b: Vector3 = pc[1]
-		# (only the main streets near the middle, where the shops are)
-		if not pc[2] or a.lerp(b, 0.5).distance_to(center) > 44.0:
-			continue
+		if pc[2] and a.lerp(b, 0.5).distance_to(center) <= 44.0:
+			kerbs.append([pc, 0])
+			kerbs.append([pc, 1])
+	for i in range(kerbs.size() - 1, 0, -1):
+		var j := kr.randi_range(0, i)
+		var swap: Array = kerbs[i]
+		kerbs[i] = kerbs[j]
+		kerbs[j] = swap
+	var want := kr.randi_range(2, 4)
+	var runs := 0
+	for kerb: Array in kerbs:
+		if runs >= want:
+			break
+		var pc: Array = kerb[0]
+		var si: int = kerb[1]
+		var a: Vector3 = pc[0]
+		var b: Vector3 = pc[1]
 		var d := (b - a).normalized()
 		var L := a.distance_to(b)
 		var axis := Vector3.RIGHT if absf(d.x) > 0.5 else Vector3.BACK
@@ -1462,61 +1481,57 @@ func kerbside() -> void:
 		if not streets.has(key):
 			streets[key] = [[], []]
 		var taken: Array = streets[key]
-		var first := 0 if kr.randf() < 0.5 else 1
-		for si: int in [first, 1 - first]:
-			if runs >= 4 or kr.randf() > 0.6:
-				continue
-			var s := -1.0 if si == 0 else 1.0
-			var n := _perp(d) * s  # (s = 1: the right-hand side going along d)
-			var side := 1 if s * flip > 0.0 else 0  # (the same side of the street from every piece of it)
-			var t0 := _mouth(a, d, n) + kr.randf_range(0.0, 1.5)
-			var t1 := L - _mouth(b, -d, n)
-			# the longest run (of three or four bays, two at a pinch) that fits
-			# between the no-parking spots, as near the junction as it can be
-			var count := kr.randi_range(3, 4)
-			var at := -1.0
-			var stretch := Vector2.ZERO
-			while at < 0.0 and count >= 2:
-				var t := t0
-				while t + count * BAY_L <= t1:
-					var ends := Vector2(a.dot(axis) + flip * t, a.dot(axis) + flip * (t + count * BAY_L))
-					stretch = Vector2(minf(ends.x, ends.y), maxf(ends.x, ends.y))
-					if _kerb_free(a, d, n, t, t + count * BAY_L, keep_off, taken[1 - side], stretch):
-						at = t
-						break
-					t += 1.0
-				if at < 0.0:
-					count -= 1
+		var s := -1.0 if si == 0 else 1.0
+		var n := _perp(d) * s  # (s = 1: the right-hand side going along d)
+		var side := 1 if s * flip > 0.0 else 0  # (the same side of the street from every piece of it)
+		var t0 := _mouth(a, d, n) + kr.randf_range(0.0, 1.5)
+		var t1 := L - _mouth(b, -d, n)
+		# the longest run (of three or four bays, two at a pinch) that fits
+		# between the no-parking spots, as near the junction as it can be
+		var count := kr.randi_range(3, 4)
+		var at := -1.0
+		var stretch := Vector2.ZERO
+		while at < 0.0 and count >= 2:
+			var t := t0
+			while t + count * BAY_L <= t1:
+				var ends := Vector2(a.dot(axis) + flip * t, a.dot(axis) + flip * (t + count * BAY_L))
+				stretch = Vector2(minf(ends.x, ends.y), maxf(ends.x, ends.y))
+				if _kerb_free(a, d, n, t, t + count * BAY_L, keep_off, taken[1 - side], stretch):
+					at = t
+					break
+				t += 1.0
 			if at < 0.0:
+				count -= 1
+		if at < 0.0:
+			continue
+		runs += 1
+		(taken[side] as Array).append(stretch)
+		# which of its bays are taken: about half, never none or all of them
+		var cars: Array[bool] = []
+		for i in count:
+			cars.append(kr.randf() < 0.5)
+		if not true in cars:
+			cars[kr.randi() % count] = true
+		elif not false in cars:
+			cars[kr.randi() % count] = false
+		var yaw_d := yaw_along(d)
+		# (which way across the bay, in its own frame, the road lies: its
+		# outer line is painted on that side)
+		var out := signf(Basis(Vector3.UP, yaw_d).z.dot(-n))
+		for i in count:
+			var bp := a + d * (at + (i + 0.5) * BAY_L) + n * PARK_OUT
+			_d("bays", bp, yaw_d, Vector3(BAY_L, out, 1.0 if i == count - 1 else 0.0))
+			world.stat("parking_bay")
+			if not cars[i]:
 				continue
-			runs += 1
-			(taken[side] as Array).append(stretch)
-			# which of its bays are taken: about half, never none or all of them
-			var cars: Array[bool] = []
-			for i in count:
-				cars.append(kr.randf() < 0.5)
-			if not true in cars:
-				cars[kr.randi() % count] = true
-			elif not false in cars:
-				cars[kr.randi() % count] = false
-			var yaw_d := yaw_along(d)
-			# (which way across the bay, in its own frame, the road lies: its
-			# outer line is painted on that side)
-			var out := signf(Basis(Vector3.UP, yaw_d).z.dot(-n))
-			for i in count:
-				var bp := a + d * (at + (i + 0.5) * BAY_L) + n * PARK_OUT
-				_d("bays", bp, yaw_d, Vector3(BAY_L, out, 1.0 if i == count - 1 else 0.0))
-				world.stat("parking_bay")
-				if not cars[i]:
-					continue
-				var p := bp + d * kr.randf_range(-0.2, 0.2)
-				var facing := d * s if kr.randf() < 0.85 else -d * s
-				var yaw := Defs.yaw_of(facing) + kr.randf_range(-0.02, 0.02)
-				var v := kr.randi() % 5
-				var extra := {"variant": v + 6, "burnt": true} if kr.randf() < 0.12 else {"variant": v}
-				if mg._is_free(p, Vector2(1.0, 2.3), yaw, 0.15, false):
-					mg._spawn("car", p, yaw, -1, extra)
-					world.stat("kerb_car")
+			var p := bp + d * kr.randf_range(-0.3, 0.3)
+			var facing := d * s if kr.randf() < 0.85 else -d * s
+			var yaw := Defs.yaw_of(facing) + kr.randf_range(-0.02, 0.02)
+			var v := kr.randi() % 5
+			var extra := {"variant": v + 6, "burnt": true} if kr.randf() < 0.12 else {"variant": v}
+			if mg._is_free(p, Vector2(1.0, 2.3), yaw, 0.15, false):
+				mg._spawn("car", p, yaw, -1, extra)
+				world.stat("kerb_car")
 
 
 ## How far from a street's end node to keep parking bays clear on side `n`
@@ -1533,14 +1548,14 @@ func _mouth(node: Vector3, d: Vector3, n: Vector3) -> float:
 
 
 ## Whether bays may be painted on side `n` between `from` and `to` along the
-## street from `a` (along `d`): clear of every no-parking spot on this side or
-## across the road (a zebra), and of the bays already painted opposite
+## street from `a` (along `d`): clear of every no-parking spot on this side (or
+## either side, for a zebra or a bus stop), and of the bays already painted opposite
 ## (`stretch`: the same, measured along the whole street, as `opposite` is).
 func _kerb_free(a: Vector3, d: Vector3, n: Vector3, from: float, to: float, keep_off: Array, opposite: Array, stretch: Vector2) -> bool:
 	for k: Array in keep_off:
 		var r: Vector3 = (k[0] as Vector3) - a
 		var across := Defs.flat(r).dot(n)
-		if across < -1.0 or across > WALK + 2.0:
+		if (across < -1.0 and not k[2]) or across < -WALK - 2.0 or across > WALK + 2.0:
 			continue
 		var along := Defs.flat(r).dot(d)
 		if along > from - float(k[1]) and along < to + float(k[1]):

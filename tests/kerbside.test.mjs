@@ -11,7 +11,7 @@ import { Game } from "./lib/game.mjs";
 const S = 40; // between the town's parallel streets (TownGen.S)
 const REACH = 56; // how far its main streets run from the middle (TownGen.REACH)
 const PARK_OUT = 1.9; // a parked car's middle from the middle of its street (TownGen.PARK_OUT)
-const BAY = 4.8; // a bay's length along the kerb (TownGen.BAY_L)
+const BAY = 5.8; // a bay's length along the kerb (TownGen.BAY_L)
 const CAR = 4.2; // a car's length
 
 let game;
@@ -60,8 +60,8 @@ test("the main streets have a few runs of parking bays, half of them taken, and 
   const parked = inStreet(structures, town, false);
   const bays = inStreet(decor, town, true);
   assert.equal(bays.length, counters.parking_bay, "every bay is marked out in one of the town's streets");
-  assert.ok(bays.length >= 6 && bays.length <= 16, `a few runs of bays (${bays.length})`);
-  assert.ok(counters.kerb_car >= 3, `cars in some of them (${counters.kerb_car})`);
+  assert.ok(bays.length >= 4 && bays.length <= 16, `a few runs of bays (${bays.length})`);
+  assert.ok(counters.kerb_car >= 2, `cars in some of them (${counters.kerb_car})`);
   assert.ok(counters.kerb_car < bays.length, `but not in all of them (${counters.kerb_car} cars, ${bays.length} bays)`);
   assert.equal(parked.length, counters.kerb_car, "no car is parked in the street but in a bay");
   for (const b of bays) {
