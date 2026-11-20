@@ -1127,7 +1127,13 @@ func _formation_ground(c: Vector3, radius: float, from: Vector3, search: Diction
 func group_spot_cached(p: Vector3, c: Vector3, radius: float, normal: Vector3, search: Dictionary) -> bool:
 	var key := [p, normal]
 	if not search.has(key):
-		search[key] = group_spot(p, c, radius, normal)
+		var ok := group_spot(p, c, radius, normal)
+		if ok and search.has("house"):
+			# (a place at a window is judged from the side it's taken from)
+			var home: Structure = search.house
+			var l: Vector3 = Basis(Vector3.UP, -home.yaw) * (p - normal * 0.8 - home.position)
+			ok = absf(l.x) < home.size.x * 0.5 and absf(l.z) < home.size.z * 0.5
+		search[key] = ok
 	return search[key]
 
 
@@ -1172,6 +1178,12 @@ func slots(c: Vector3, face: Vector3, n: int, wide := false) -> Array:
 	var out := []
 	var radius := 6.5 if wide else 5.5
 	var search := {}
+	# men put in the church hold it from inside: their places are within its
+	# walls, at its windows and doors, not out through them among the graves
+	# (a house is smaller than a squad's spread: holding it takes its yard too)
+	var home: Structure = SoldierBrain.house_at(world, c) if world is World else null
+	if home != null and home.variant == 3:
+		search.house = home
 	if n > 0:
 		search.ground = _formation_ground(c, radius, threat, search)
 	for i in n:

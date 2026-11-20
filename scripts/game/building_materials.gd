@@ -26,6 +26,9 @@ const PROFILES := {
 		"trim": "concrete", "sill": "concrete", "head": "concrete", "base": "concrete", "base_tone": -0.12, "cap": "concrete"},
 	"precast": {"surface": "precast", "color": Color(0.56, 0.55, 0.52), "finish": "panels", "joints": 2.0,
 		"trim": "precast", "sill": "precast", "head": "precast", "base": "precast", "base_tone": -0.1, "cap": "precast"},
+	"church": {"surface": "church_stone", "color": Color(0.62, 0.59, 0.53), "finish": "stone",
+		"trim": "stone", "sill": "stone", "head": "stone", "base": "stone", "base_tone": -0.2, "cap": "stone",
+		"trim_color": Color(0.74, 0.7, 0.62)},
 	"timber": {"surface": "wood_painted", "color": Color(0.3, 0.34, 0.22), "finish": "boards", "boards": 0.24,
 		"trim": "wood_dark", "sill": "wood_dark", "head": "wood_dark", "base": "concrete", "base_tone": 0.0, "cap": "wood_dark"},
 	"corrugated": {"surface": "corrugated", "color": Color(0.45, 0.46, 0.44), "finish": "sheet", "sheets": 1.05,
@@ -45,9 +48,10 @@ const PROFILES := {
 ## The materials a house can be built of, by its colour index (see
 ## Structure.HOUSE_COLORS): most are rendered and painted, the red-brown ones
 ## are bare brick, the grey-brown ones rough stone.
-## A house's material by its colour index (the town draws 0 to 4); a barn's
-## is the last, weatherboarding (see MapGen._house).
-const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "timber"]
+## A house's material by its colour index (the town draws 0 to 4); then the
+## parish church's coursed stone (see MapGen._church), and last a barn's
+## weatherboarding (see MapGen._house).
+const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "church", "timber"]
 
 
 ## What a town's pitched roofs are covered in. Clay tiles fired in different
@@ -127,7 +131,7 @@ const RENDERS := [Color(0.72, 0.66, 0.55), Color(0.73, 0.66, 0.54), Color(0.78, 
 static func house_color(ci: int, paint: Color) -> Color:
 	match house(ci):
 		"plaster":
-			var slot: int = [0, 1, 0, 2, 0, 0][posmod(ci, HOUSE.size())]
+			var slot: int = [0, 1, 0, 2, 0, 0, 0][posmod(ci, HOUSE.size())]
 			if posmod(ci, HOUSE.size()) in [0, 1, 3]:
 				return RENDERS[slot * 3 + posmod(ci / HOUSE.size(), 3)]
 			return paint
@@ -138,6 +142,9 @@ static func house_color(ci: int, paint: Color) -> Color:
 		"stone":
 			# (a local stone, a little warm: buff, grey, honey)
 			return [Color(0.6, 0.55, 0.46), Color(0.55, 0.53, 0.48), Color(0.63, 0.56, 0.45)][posmod(ci / HOUSE.size(), 3)]
+		"church":
+			# coursed stone: grey limestone, honey sandstone, or a dark grey
+			return [Color(0.64, 0.62, 0.57), Color(0.66, 0.57, 0.42), Color(0.5, 0.49, 0.46)][posmod(ci / HOUSE.size(), 3)]
 		"timber":
 			# a barn's boards: barn red, weathered grey, or dark green
 			return [Color(0.37, 0.14, 0.1), Color(0.42, 0.4, 0.37), Color(0.2, 0.26, 0.19)][posmod(ci / HOUSE.size(), 3)]
