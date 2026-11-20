@@ -137,6 +137,28 @@ func capture() -> void:
 				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
 				break
 		print("CAPTURE town bounds=", town)
+	if "--capture-set=hq" in OS.get_cmdline_user_args():
+		# each side's HQ as its own commander first sees it (the battle starts
+		# looking out from its lines: the HQ's yaw), closer from that side, from
+		# the enemy's side, and from straight above (its back to the bottom)
+		views = []
+		for st in world.structures:
+			if st.skind == "depot":
+				var hq := "hq%d-" % st.team
+				views.append([hq + "command", st.position, 50.0, -52.0, float(st.yaw)])
+				views.append([hq + "rear", st.position, 26.0, -36.0, float(st.yaw) + 0.55])
+				views.append([hq + "front", st.position, 26.0, -36.0, float(st.yaw) + PI + 0.55])
+				views.append([hq + "plan", st.position, 34.0, -89.0, float(st.yaw)])
+	if "--capture-set=hq-roadside" in OS.get_cmdline_user_args():
+		# The generated HQ's local +x is the roadside; +z is its own rear.
+		# Match both variants in the same generated world without moving them.
+		views = []
+		for st in world.structures:
+			if st.skind == "depot":
+				var frame := Basis(Vector3.UP, float(st.yaw))
+				var name := "coalition" if st.team == 0 else "rebels"
+				views.append([name + "-roadside-command", st.position + frame * Vector3(3, 0, 1), 50.0, -52.0, float(st.yaw) + 0.85])
+				views.append([name + "-roadside-close", st.position + frame * Vector3(7, 0, 1.5), 22.0, -32.0, float(st.yaw) + 1.05])
 	# (FL_ONLY_VIEW="name,x,z,distance,pitch,yaw": just that view, to match a
 	# camera another revision chose)
 	if OS.has_environment("FL_ONLY_VIEW"):
@@ -358,9 +380,21 @@ func capture() -> void:
 		settle_frames = 120
 	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
+	var roadside_label: Label
+	if "--capture-set=hq-roadside" in OS.get_cmdline_user_args():
+		var captions := CanvasLayer.new()
+		root.add_child(captions)
+		roadside_label = Label.new()
+		roadside_label.position = Vector2(20, 16)
+		roadside_label.add_theme_font_size_override("font_size", 25)
+		roadside_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+		roadside_label.add_theme_constant_override("shadow_offset_y", 2)
+		captions.add_child(roadside_label)
 	for view in views:
 		if not capture_views.is_empty() and view[0] not in capture_views:
 			continue
+		if roadside_label:
+			roadside_label.text = "CURRENT · " + String(view[0]).replace("-", " ").to_upper()
 		if view.size() > 6:
 			world.atmo.apply_mood(view[6])
 			if "--weather-review" in OS.get_cmdline_user_args():
