@@ -4,6 +4,9 @@ extends RefCounted
 
 ## How far a rolled body's top normals lean out at its shoulders (see _crowned).
 const CROWN := 0.2
+## A wheel-arch flare's faces shade round from segment to segment flatter
+## than this (degrees); its 45-degree chamfers stay crisp.
+const FLARE_ROLL := 40.0
 
 ## Insets a convex polygon: edge i (p[i] to p[i+1]) moves in by d[i].
 static func _inset(p: PackedVector2Array, d: Array) -> PackedVector2Array:
@@ -88,6 +91,11 @@ static func _clip(p: PackedVector2Array, f: Array, nrm: Vector2, c: float, cut: 
 ## `crown` > 0 (with `roll`) crowns the top as well (see _crowned); `span` is
 ## the whole body's (middle, half length) along z.
 static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, mat: String, col = null, rnd: Array = [], roll := 0.0, crown := 0.0, span := Vector2.ZERO) -> Variant:
+	return k._add(parent, _xprism_mesh(p, f, x0, x1, ch, rnd, roll, crown, span, key), mat, col, Vector3.ZERO)
+
+
+## _xprism's mesh (`key` caches an unrolled one).
+static func _xprism_mesh(p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, rnd: Array, roll: float, crown: float, span: Vector2, key: String) -> ArrayMesh:
 	var d := []
 	for fl in f:
 		d.append(ch if fl else 0.0)
@@ -96,7 +104,7 @@ static func _xprism(k: VehicleModels, parent: Node3D, key: String, p: PackedVect
 	var mesh: ArrayMesh = VehicleProfiles.loft(rings, roll) if roll > 0.0 else VehicleModels.solid(rings, key)
 	if roll > 0.0 and crown > 0.0:
 		mesh = _crowned(mesh, x0 + ch, x1 - ch, rnd, crown, span)
-	return k._add(parent, mesh, mat, col, Vector3.ZERO)
+	return mesh
 
 
 static var _crowns := {}
@@ -120,7 +128,20 @@ static func _crowned(mesh: ArrayMesh, xa: float, xb: float, rnd: Array, crown: f
 		return _crowns[key]
 	var src: Array = mesh.get_meta(&"src")
 	var vs: PackedVector3Array = src[Mesh.ARRAY_VERTEX]
-	var ns: PackedVector3Array = (src[Mesh.ARRAY_NORMAL] as PackedVector3Array).duplicate()
+	var ns := _crown_normals(vs, src[Mesh.ARRAY_NORMAL], xa, xb, rnd, crown, span)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vs
+	arrays[Mesh.ARRAY_NORMAL] = ns
+	var out := ArrayMesh.new()
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(out, arrays)
+	_crowns[key] = out
+	return out
+
+
+## _crowned's normals for a triangle list (vs, ns), its top's edges at xa and xb.
+static func _crown_normals(vs: PackedVector3Array, ns: PackedVector3Array, xa: float, xb: float, rnd: Array, crown: float, span: Vector2) -> PackedVector3Array:
 	for t in range(0, vs.size() - 2, 3):
 		var fc := (vs[t + 1] - vs[t]).cross(vs[t + 2] - vs[t])
 		if fc.length_squared() < 1e-14:
@@ -151,15 +172,7 @@ static func _crowned(mesh: ArrayMesh, xa: float, xb: float, rnd: Array, crown: f
 				continue
 			var along := clampf((v.z - span.x) / span.y, -1.0, 1.0) if span.y > 0.0 else 0.0
 			ns[t + j] = (np + Vector3(side * crown, 0.0, along * crown * 0.9) * w).normalized()
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vs
-	arrays[Mesh.ARRAY_NORMAL] = ns
-	var out := ArrayMesh.new()
-	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	Mats.keep_arrays(out, arrays)
-	_crowns[key] = out
-	return out
+	return ns
 
 
 ## A side-profile ring at x, pulled in (towards +x when s is 1) where the
@@ -192,7 +205,8 @@ static func _taper(z: float, rnd: Array) -> float:
 ## rnd [front length, front inset, rear length, rear inset] rounds the corners
 ## off in plan; `roll` shades its edges as rolled sheet metal (see _xprism)
 ## and crowns its top by `crown` (see _crowned; a wreck's top stays flat, as
-## it always was).
+## it always was). A live panel is one mesh per piece (_plate); a wreck keeps
+## a mesh per strip.
 static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x0: float, x1: float, ch: float, arches: Array, mat: String, col = null, segs := 8, rnd: Array = [], roll := 0.0, crown := CROWN) -> void:
 	var p := VehicleModels._v2(prof)
 	var zmin := INF
@@ -227,6 +241,7 @@ static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x
 	var flags := []
 	for i in p.size():
 		flags.append(true)
+	var strips := []
 	for i in bounds.size() - 1:
 		var za: float = bounds[i]
 		var zb: float = bounds[i + 1]
@@ -253,14 +268,353 @@ static func _xbody(k: VehicleModels, parent: Node3D, key: String, prof: Array, x
 				var r2 := _clip(poly, fl, nrm, nrm.dot(Vector2(za, ya)), true)
 				poly = r2[0]
 				fl = r2[1]
-		if poly.size() >= 3:
-			_xprism(k, parent, "%s_%d" % [key, i], poly, fl, x0, x1, ch, mat, col, rr, roll, 0.0 if k.wreck else crown, span)
+		strips.append([poly, fl, za, zb])
+	if k.wreck:
+		# (a wreck keeps its strips, each a mesh, as it always had)
+		for i in strips.size():
+			var sp: PackedVector2Array = strips[i][0]
+			if sp.size() >= 3:
+				_xprism(k, parent, "%s_%d" % [key, i], sp, strips[i][1], x0, x1, ch, mat, col, rr, roll, 0.0, span)
+		return
+	# The strips only lay out the panel's outline: a pressed or flame-cut
+	# panel is one sheet, so each piece of it (an arch reaching over the
+	# plate's top parts it) is one mesh, its chords edges of one outline.
+	# Strip by strip, every chord was a prism of its own: walls hidden inside
+	# the panel at every cut, and the top and the sill broken at each, so a
+	# rounder arch cost a strip where it now costs two edges; and the paint's
+	# worn edges (VehicleBody.paint_mesh, from each part's bounds) ran down
+	# every cut, a row of false seams across an armoured car's side plates.
+	var mk := var_to_str([key, prof, x0, x1, ch, arches, segs, rnd, roll, crown])
+	var mesh: ArrayMesh = _plates.get(mk)
+	if mesh == null:
+		mesh = _plate(strips, x0, x1, ch, rr, roll, crown, span)
+		_plates[mk] = mesh
+	if mesh.get_surface_count() > 0:
+		k._add(parent, mesh, mat, col, Vector3.ZERO)
+
+
+static var _plates := {}
+
+
+## A live _xbody's strips ([outline, edge flags, za, zb]) as one mesh: each
+## run of strips joined wall to wall is a piece, its outline extruded as
+## _xprism extrudes a strip (chamfered where flagged, rounded in plan by
+## `rnd`, rolled by `roll`, crowned by `crown`).
+static func _plate(strips: Array, x0: float, x1: float, ch: float, rnd: Array, roll: float, crown: float, span: Vector2) -> ArrayMesh:
+	var pieces := []
+	var run := []
+	for st: Array in strips:
+		if (st[0] as PackedVector2Array).size() < 3:
+			if not run.is_empty():
+				pieces.append(run)
+			run = []
+			continue
+		var s := _ccw(st)
+		if not run.is_empty() and not _joined(run[run.size() - 1], s):
+			pieces.append(run)
+			run = []
+		run.append(s)
+	if not run.is_empty():
+		pieces.append(run)
+	var vs := PackedVector3Array()
+	var ns := PackedVector3Array()
+	for pc: Array in pieces:
+		var outline := _outline(pc, rnd)
+		var arr: Array
+		if outline.is_empty():
+			# (an outline that won't close: its strips as they were)
+			for st: Array in pc:
+				var m := _xprism_mesh(st[0], st[1], x0, x1, ch, rnd, roll, crown, span, "xplate|" + var_to_str([st, x0, x1, ch, rnd]))
+				arr = m.get_meta(&"src")
+				vs.append_array(arr[Mesh.ARRAY_VERTEX])
+				ns.append_array(arr[Mesh.ARRAY_NORMAL])
+			continue
+		arr = _extrude(outline[0], outline[1], x0, x1, ch, rnd, roll)
+		var pv: PackedVector3Array = arr[0]
+		var pn: PackedVector3Array = arr[1]
+		if roll > 0.0 and crown > 0.0:
+			pn = _crown_normals(pv, pn, x0 + ch, x1 - ch, rnd, crown, span)
+		vs.append_array(pv)
+		ns.append_array(pn)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vs
+	arrays[Mesh.ARRAY_NORMAL] = ns
+	var out := ArrayMesh.new()
+	if not vs.is_empty():
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		Mats.keep_arrays(out, arrays)
+	return out
+
+
+## A strip [outline, flags, za, zb] wound counter-clockwise in (z, y).
+static func _ccw(st: Array) -> Array:
+	var p: PackedVector2Array = st[0]
+	var f: Array = st[1]
+	var n := p.size()
+	var area := 0.0
+	for i in n:
+		area += p[i].x * p[(i + 1) % n].y - p[(i + 1) % n].x * p[i].y
+	if area >= 0.0:
+		return st
+	var q := PackedVector2Array()
+	var g := []
+	for i in n:
+		q.append(p[n - 1 - i])
+		g.append(f[(2 * n - 2 - i) % n])
+	return [q, g, st[2], st[3]]
+
+
+## The lowest and highest point an outline has at z (x > y where it has none).
+static func _wall(p: PackedVector2Array, z: float) -> Vector2:
+	var lo := INF
+	var hi := -INF
+	for q in p:
+		if absf(q.x - z) < 1e-4:
+			lo = minf(lo, q.y)
+			hi = maxf(hi, q.y)
+	return Vector2(lo, hi)
+
+
+## Do strips a and b (a's zb at b's za) share a stretch of wall?
+static func _joined(a: Array, b: Array) -> bool:
+	var z: float = a[3]
+	var wa := _wall(a[0], z)
+	var wb := _wall(b[0], z)
+	return wa.x <= wa.y and wb.x <= wb.y and minf(wa.y, wb.y) - maxf(wa.x, wb.x) > 1e-3
+
+
+## A piece's strips joined into one counter-clockwise outline: every edge but
+## the walls between them, and what one wall stands proud of the next (the
+## upright edge of an arch's mouth, not chamfered, as a strip's cut wasn't).
+## Straight runs close up into one edge, except where `rnd` rounds the plan
+## (each point there takes its own inset). [points, flags], or [] if it won't close.
+static func _outline(pc: Array, rnd: Array) -> Array:
+	var edges := []
+	for si in pc.size():
+		var st: Array = pc[si]
+		var p: PackedVector2Array = st[0]
+		var f: Array = st[1]
+		var za: float = st[2]
+		var zb: float = st[3]
+		var n := p.size()
+		for i in n:
+			var a := p[i]
+			var b := p[(i + 1) % n]
+			if si > 0 and absf(a.x - za) < 1e-4 and absf(b.x - za) < 1e-4:
+				continue
+			if si < pc.size() - 1 and absf(a.x - zb) < 1e-4 and absf(b.x - zb) < 1e-4:
+				continue
+			edges.append([a, b, f[i]])
+		if si < pc.size() - 1:
+			var wl := _wall(p, zb)
+			var wr := _wall((pc[si + 1] as Array)[0], zb)
+			if absf(wl.x - wr.x) > 1e-4:
+				edges.append([Vector2(zb, wl.x), Vector2(zb, wr.x), false])
+			if absf(wr.y - wl.y) > 1e-4:
+				edges.append([Vector2(zb, wr.y), Vector2(zb, wl.y), false])
+	var used := []
+	used.resize(edges.size())
+	used.fill(false)
+	var pts := PackedVector2Array()
+	var fl := []
+	var start: Vector2 = edges[0][0]
+	var at: Vector2 = start
+	var e := 0
+	while true:
+		used[e] = true
+		pts.append(edges[e][0])
+		fl.append(edges[e][2])
+		at = edges[e][1]
+		if at.distance_to(start) < 1e-4:
+			break
+		e = -1
+		for j in edges.size():
+			if not used[j] and (edges[j][0] as Vector2).distance_to(at) < 1e-4:
+				e = j
+				break
+		if e < 0:
+			return []
+	if pts.size() != edges.size():
+		return []
+	# straight runs closed up
+	var q := PackedVector2Array()
+	var qf := []
+	var n := pts.size()
+	for i in n:
+		var a := pts[(i - 1 + n) % n]
+		var b := pts[i]
+		var c := pts[(i + 1) % n]
+		var z := b.x
+		var rounds := not rnd.is_empty() and ((float(rnd[2]) > 0.0 and z < float(rnd[0]) + float(rnd[2]) + 1e-3) or (float(rnd[4]) > 0.0 and z > float(rnd[1]) - float(rnd[4]) - 1e-3))
+		var u := (b - a).normalized()
+		var v := (c - b).normalized()
+		if not rounds and fl[(i - 1 + n) % n] == fl[i] and absf(u.cross(v)) < 1e-5 and u.dot(v) > 0.0:
+			continue
+		q.append(b)
+		qf.append(fl[i])
+	if q.size() < 3:
+		return []
+	return [q, qf]
+
+
+## An outline (z, y, counter-clockwise; it needn't be convex) extruded from x0
+## to x1 as _xprism extrudes a strip: [vertices, normals]. Each face's
+## outward side comes from the winding, not from a centre (an arch's mouth
+## faces into the hollow), and both ends are zipped from the leftmost point
+## to the rightmost along the sill and the top, so every triangle spans only
+## the outline's neighbouring points (true on a side rounded in plan).
+static func _extrude(p: PackedVector2Array, f: Array, x0: float, x1: float, ch: float, rnd: Array, roll: float) -> Array:
+	var d := []
+	for fl in f:
+		d.append(ch if fl else 0.0)
+	var pin := _inset(p, d)
+	var rings := [_xring(pin, x0, 1.0, rnd), _xring(p, x0 + ch, 1.0, rnd), _xring(p, x1 - ch, -1.0, rnd), _xring(pin, x1, -1.0, rnd)]
+	if ch <= 0.0:
+		# (no chamfers: a plain extrusion, one band)
+		rings = [_xring(p, x0, 1.0, rnd), _xring(p, x1, -1.0, rnd)]
+	var nb := rings.size() - 1
+	var n := p.size()
+	var fn := PackedVector3Array()
+	fn.resize(nb * n)
+	for i in nb:
+		var r0: PackedVector3Array = rings[i]
+		var r1: PackedVector3Array = rings[i + 1]
+		for j in n:
+			var j1 := (j + 1) % n
+			var e := (p[j1] - p[j]).normalized()
+			var ref := Vector3(0.0 if nb == 1 else 0.5 * float(i - 1), -e.x, e.y)
+			var v := (r1[j1] - r0[j]).cross(r0[j1] - r1[j])
+			if v.length_squared() < 1e-14:
+				v = ref
+			v = v.normalized()
+			if v.dot(ref) < 0.0:
+				v = -v
+			fn[i * n + j] = v
+	var cs := cos(deg_to_rad(roll))
+	var vs := PackedVector3Array()
+	var ns := PackedVector3Array()
+	for i in nb:
+		var r0: PackedVector3Array = rings[i]
+		var r1: PackedVector3Array = rings[i + 1]
+		for j in n:
+			var j1 := (j + 1) % n
+			var fc := fn[i * n + j]
+			var na := fc
+			var nn := fc
+			var nc := fc
+			var nd := fc
+			if roll > 0.0:
+				na = VehicleProfiles._vn(fn, nb + 1, n, i, j, fc, cs)
+				nn = VehicleProfiles._vn(fn, nb + 1, n, i, j1, fc, cs)
+				nc = VehicleProfiles._vn(fn, nb + 1, n, i + 1, j1, fc, cs)
+				nd = VehicleProfiles._vn(fn, nb + 1, n, i + 1, j, fc, cs)
+			VehicleProfiles._tri(vs, ns, r0[j], r0[j1], r1[j1], na, nn, nc, fc)
+			VehicleProfiles._tri(vs, ns, r0[j], r1[j1], r1[j], na, nc, nd, fc)
+	for e in [0, nb]:
+		_zip(vs, ns, pin, rings[e], Vector3(-1.0 if e == 0 else 1.0, 0.0, 0.0))
+	return [vs, ns]
+
+
+## A counter-clockwise outline's end face (`ring` its points in 3D, facing
+## `out`), zipped along its lower and upper chains from the leftmost point to
+## the rightmost: each triangle joins neighbours, so it stays inside an
+## outline whose top is convex however its underside is cut.
+static func _zip(vs: PackedVector3Array, ns: PackedVector3Array, p: PackedVector2Array, ring: PackedVector3Array, out: Vector3) -> void:
+	var n := p.size()
+	var lo := 0
+	var hi := 0
+	for i in n:
+		var q := p[i]
+		if q.x < p[lo].x - 1e-6 or (absf(q.x - p[lo].x) <= 1e-6 and q.y < p[lo].y):
+			lo = i
+		if q.x > p[hi].x + 1e-6 or (absf(q.x - p[hi].x) <= 1e-6 and q.y > p[hi].y):
+			hi = i
+	var lower: Array[int] = []
+	var i := lo
+	while true:
+		lower.append(i)
+		if i == hi:
+			break
+		i = (i + 1) % n
+	var upper: Array[int] = []
+	i = lo
+	while true:
+		upper.append(i)
+		if i == hi:
+			break
+		i = (i - 1 + n) % n
+	var a := 0
+	var b := 0
+	while a < lower.size() - 1 or b < upper.size() - 1:
+		var t0: int
+		var t1: int
+		var t2: int
+		if b == upper.size() - 1 or (a < lower.size() - 1 and p[lower[a + 1]].x <= p[upper[b + 1]].x):
+			t0 = lower[a]
+			t1 = lower[a + 1]
+			t2 = upper[b]
+			a += 1
+		else:
+			t0 = lower[a]
+			t1 = upper[b + 1]
+			t2 = upper[b]
+			b += 1
+		if t0 == t1 or t1 == t2 or t0 == t2:
+			continue
+		var c := (ring[t1] - ring[t0]).cross(ring[t2] - ring[t0])
+		if c.length_squared() < 1e-14:
+			continue
+		c = c.normalized()
+		if c.dot(out) < 0.0:
+			c = -c
+		VehicleProfiles._tri(vs, ns, ring[t0], ring[t1], ring[t2], c, c, c, c)
+
+
+## A band round an axle at (zc, yc), r0 to r1 out, from angle a0 to a1 (within
+## 0 to PI) in `segs` segments, extruded x0 to x1 as one outline (_extrude),
+## chamfered by `ch` all round (none at 0), shaded round from segment to
+## segment (FLARE_ROLL). Cached by its shape.
+static func _arc_band(zc: float, yc: float, r0: float, r1: float, a0: float, a1: float, segs: int, x0: float, x1: float, ch: float) -> ArrayMesh:
+	var mk := var_to_str(["band", zc, yc, r0, r1, a0, a1, segs, x0, x1, ch])
+	var mesh: ArrayMesh = _plates.get(mk)
+	if mesh != null:
+		return mesh
+	var band := PackedVector2Array()
+	for i in segs + 1:
+		var t := lerpf(a0, a1, float(i) / segs)
+		band.append(Vector2(zc + r0 * cos(t), yc + r0 * sin(t)))
+	for i in segs + 1:
+		var t := lerpf(a1, a0, float(i) / segs)
+		band.append(Vector2(zc + r1 * cos(t), yc + r1 * sin(t)))
+	var flags := []
+	for i in band.size():
+		flags.append(ch > 0.0)
+	var st := _ccw([band, flags, 0.0, 0.0])
+	var arr := _extrude(st[0], st[1], x0, x1, ch, [], FLARE_ROLL)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = arr[0]
+	arrays[Mesh.ARRAY_NORMAL] = arr[1]
+	mesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	_plates[mk] = mesh
+	return mesh
 
 
 ## A wheel-arch flare: a band round the arch from angle a0 to a1 (0 is the
 ## rear, PI the front), r0 to r1 from the axle, x0 to x1 across.
 static func _flare(k: VehicleModels, parent: Node3D, key: String, zc: float, yc: float, r0: float, r1: float, x0: float, x1: float, a0: float, a1: float, mat: String, col = null, segs := 6) -> void:
 	liner(k, parent, zc, yc, r0, x0, x1, a0, a1, segs)
+	if not k.wreck and a0 >= 0.0 and a1 <= PI:
+		# An arch extension is moulded in one piece, a smooth curve round the
+		# tyre that the light runs along: one outline (_extrude), its faces
+		# rolled from segment to segment (they meet at 20-30 degrees) and its
+		# chamfers left crisp. Segment by segment it was a ring of flat
+		# facets, hidden walls between them. (A wreck keeps its segments.)
+		k._add(parent, _arc_band(zc, yc, r0, r1, a0, a1, segs, x0, x1, minf(0.012, (x1 - x0) * 0.3)), mat, col, Vector3.ZERO)
+		return
 	for i in segs:
 		var t0 := lerpf(a0, a1, float(i) / segs)
 		var t1 := lerpf(a0, a1, float(i + 1) / segs)
@@ -323,7 +677,12 @@ static func tub(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3
 
 
 ## Wheel-well liner follows the authored arch radius, outside tyre clearance.
+## A live one is moulded in one piece, its inside shading round the tyre (the
+## old segments, each a mesh of its own size, stay on wrecks).
 static func liner(k: VehicleModels, parent: Node3D, zc: float, yc: float, radius: float, x0: float, x1: float, a0: float, a1: float, segments: int) -> void:
+	if not k.wreck and a0 >= 0.0 and a1 <= PI:
+		k._add(parent, _arc_band(zc, yc, radius + 0.002, radius + 0.018, a0, a1, segments, x0, x1, 0.0), "rubber", null, Vector3.ZERO)
+		return
 	for i in segments:
 		var a := lerpf(a0, a1, float(i) / segments)
 		var b := lerpf(a0, a1, float(i + 1) / segments)

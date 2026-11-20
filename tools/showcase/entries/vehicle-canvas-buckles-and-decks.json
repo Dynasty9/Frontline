@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-canvas-buckles-and-decks.md",
+  "summary": "Tarps that read as canvas pulled over boxes or draped over a loose load, dark buckles on stowed kit and harnesses, finely perforated engine decks on NATO tanks, shaded floors under truck tilts, salted cab panels, painted M35 wheels and cheaper spares.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Cloth shape, small material swaps and a deck pattern across several families: one matched studio sheet shows each, framed close where the change is small.",
+  "source_ref": "854d4dffcf7b964812488607d5da247cd2e12ff1",
+  "before_ref": "854d4dffcf7b964812488607d5da247cd2e12ff1",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-canvas-buckles-and-decks/comparison.jpg",
+      "sha256": "aca8aa2d0be1b5adf1b3ace35e5db2528f8e309f8d3f4bec9b41b0138afe16dc"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-canvas-buckles-and-decks/capture.json",
+      "sha256": "17a886cf097aa94f6390d331f1c3062723edc395d9f990e4bba51e3b764c8cc6"
+    }
+  ],
+  "output": null
+}
