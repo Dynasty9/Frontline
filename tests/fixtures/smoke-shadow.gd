@@ -153,7 +153,7 @@ func _check_screen() -> void:
 	world.smoke_projectiles = [can]
 	_sun(Vector3(0.2, 1.0, 0.1))
 	assert(sh._n >= 2, "the screen throws a shadow (%d blobs)" % sh._n)
-	assert(float(_blob(0)[4]) > 1.0, "its core is dense: %.2f" % float(_blob(0)[4]))
+	assert(float(_blob(0)[4]) > 0.6 and float(_blob(0)[4]) < 1.5, "its thick end lets through some of the sun: %.2f" % float(_blob(0)[4]))
 	var at: Vector2 = _blob(1)[0]
 	var downwind := (at - Vector2(20.0, 10.0)).dot(Vector2(Fires.WIND.x, Fires.WIND.z).normalized())
 	assert(downwind > 0.0, "its tail lies downwind")

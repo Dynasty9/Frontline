@@ -16,6 +16,8 @@ const PLUMES := {"M": [1.0, 30, 13.0, 6, 16.0, 7.0], "L": [1.7, 52, 20.0, 10, 24
 const MAX_PLUMES := {"M": 8, "L": 6}
 const SMALL_KINDS := ["dust", "smoke", "fire", "spark", "dirt_spurt", "brass", "water_spurt"]
 
+## FL_DEBUG_SMOKE_HIDE: smoke screens not drawn (their shadows still are), for measuring.
+static var _hide_screens := OS.has_environment("FL_DEBUG_SMOKE_HIDE")
 ## The browser build's renderer (OpenGL), which can't do everything Forward+ does.
 static var gl := RenderingServer.get_current_rendering_method() == "gl_compatibility"
 
@@ -1628,7 +1630,9 @@ func make_smoke_screen() -> Node3D:
 func set_smoke_screen(h: Node3D, r: float) -> void:
 	var volume := h.get_node_or_null("ScreenVolume") as MeshInstance3D
 	if volume:
-		volume.visible = r > 0.3
+		# (FL_DEBUG_SMOKE_HIDE: the screen not drawn, its shadow still cast, to
+		# see and measure the ground under it)
+		volume.visible = r > 0.3 and not _hide_screens
 		if volume.visible:
 			volume.scale = Vector3(3.15, 1.36, 2.7) * r
 			volume.position = (Fires.WIND * 0.58 + Vector3.UP * 0.44) * r

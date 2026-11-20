@@ -337,6 +337,8 @@ func _flip() -> void:
 			return
 		Engine.time_scale = 0.0
 		_flip_frame = Engine.get_process_frames()
+		var to_sun: Vector3 = atmo.sun.global_transform.basis.z.normalized()
+		print("AIR FLIP sun: elevation %.1f deg, toward (x %.3f, z %.3f); camera yaw %.3f" % [rad_to_deg(asin(clampf(to_sun.y, -1.0, 1.0))), to_sun.x, to_sun.z, world.cam.yaw if world.cam else 0.0])
 	var n := Engine.get_process_frames() - _flip_frame
 	var vp := get_viewport().get_viewport_rid()
 	RenderingServer.viewport_set_measure_render_time(vp, true)

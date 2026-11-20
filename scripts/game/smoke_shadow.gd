@@ -235,17 +235,23 @@ func puff(c: Vector3, sa: float, sb: float, sc: float, theta: float, tau: float,
 ## Everything smoking or dusty near enough to matter, as blobs.
 func _gather() -> void:
 	var w3 := Vector3(_wind.x, 0.0, _wind.y)
-	# smoke screens: a dense roll laid downwind of the canister, opening out
-	# and thinning along its length (the shape smoke_screen.gdshader traces)
+	# smoke screens: the roll laid downwind of the canister (the shape
+	# smoke_screen.gdshader traces through its box, Vfx.set_smoke_screen),
+	# as two blobs fitted to that shader's density: its depth straight down
+	# integrated over the box and averaged over the rolls and the noise, then
+	# matched blob by blob (the upwind and downwind halves) in total, centre and
+	# spread. All of it scales with the screen's size r: a full screen
+	# (r 6.5) is about 0.9 deep straight down through its thick end, so
+	# overhead it lets through about two fifths of the sun there.
 	for p in world.smoke_projectiles:
 		if not is_instance_valid(p) or p.smoke_r <= 0.3:
 			continue
 		var r: float = p.smoke_r
 		var seed_v := float(p.eid % 97) * 0.37
 		var base: Vector3 = p.position + Vector3(0.0, 0.6, 0.0) + (Fires.WIND * 0.58 + Vector3.UP * 0.44) * r
-		var k := clampf(r / 6.5, 0.0, 1.2)
-		puff(base + w3 * (0.2 * r) - Vector3.UP * (0.12 * r), 0.6 * r, 0.42 * r, 0.18 * r, _wind_theta, 2.2 * k, seed_v)
-		puff(base + w3 * (0.9 * r) - Vector3.UP * (0.02 * r), 0.7 * r, 0.55 * r, 0.24 * r, _wind_theta, 1.1 * k, seed_v + 3.1)
+		var low := Vector3.UP * (-0.17 * r)
+		puff(base + low - w3 * (0.02 * r), 0.31 * r, 0.3 * r, 0.2 * r, _wind_theta, 0.144 * r, seed_v)
+		puff(base + low + w3 * (0.78 * r), 0.21 * r, 0.43 * r, 0.2 * r, _wind_theta, 0.098 * r, seed_v + 3.1)
 	var vfx = world.fx.vfx if world.fx else null
 	if vfx:
 		# a shell's cloud: thrown up at once, hanging a few seconds as it settles

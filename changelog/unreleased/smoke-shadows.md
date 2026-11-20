@@ -1,31 +1,35 @@
 +++
 title = "Smoke and dust cast shadows"
-summary = "A smoke screen now throws a soft shadow across the ground, the soldiers and vehicles beneath it and the sunlit haze: under the smoke at midday, stretched out long away from the sun at golden hour. Dust clouds, burning houses and drifting palls do the same."
+summary = "A smoke screen now shades the ground, the soldiers and vehicles under it and the sunlit haze, on the side away from the sun. Dust clouds, burning houses, strike plumes and drifting palls do the same."
 kind = "improved"
 
 [[screenshots]]
-file = "golden-hour-off-on.jpg"
-caption = "Off and on at golden hour: the smoke screen in the town square throws a long, soft shadow away from the sun, across the paving and the grass, and the haze behind it darkens"
+file = "golden-hour-off-on-diff.jpg"
+caption = "Golden hour, the same frozen frame with the shadow off and on, and the difference four times over (dark is shade): the screens in the town square shade the paving, the grass and the haze on their far side from the sun"
 
 [[screenshots]]
-file = "midday-off-on.jpg"
-caption = "Off and on at midday: the same screen's shadow falls close beneath it"
+file = "midday-off-on-diff.jpg"
+caption = "Midday, the same: with the sun high the shade lies close under the smoke"
+
+[[screenshots]]
+file = "golden-hour-top-down-diff.jpg"
+caption = "Golden hour from straight above, the screens left undrawn so the ground under them shows: the shade falls the same way as the statue's and the benches' own shadows"
 
 [[videos]]
 file = "golden-hour-drift.webm"
 poster = "golden-hour-drift.jpg"
-caption = "Smoke screens rolling out and drifting downwind in the town square at golden hour: their shadows grow and move with them, soft and steady."
+caption = "Smoke screens rolling out and drifting downwind in the town square at golden hour: their shade grows and moves with them, soft and steady."
 +++
 
-- **Smoke screens** shade what's under and behind them: the ground, the soldiers and vehicles in the smoke and the
-  trees and houses beside it. At midday the shadow lies close under the smoke; at golden hour it stretches out long
-  away from the sun, and darker, as the low sun shines through more of the smoke.
+- **Smoke screens** shade what's under them and on their far side from the sun: the ground, the soldiers and vehicles
+  in the smoke, the trees and houses beside it. The shade is as thick as the smoke drawn there: under the thick end
+  of a full screen the ground loses about half its sunlight, under its thin tail much less.
 - **The haze stops at the smoke**: in the sunlit air at dawn, golden hour and dusk, the light shafts stop at a smoke
-  screen, leaving a darker wedge of air on its far side.
-- **Dust and fire smoke too**: a shell's dust cloud briefly shades the ground around the crater, a burning house or
-  wreck throws a dark band downwind, a strike's pillar of black smoke and a barrage's drifting pall shade the
-  ground beneath them, and a column's road dust leaves a faint strip.
-- It shades only what's below the smoke: a hilltop or the air above it stays in the sun.
-- Under a dense screen at golden hour the ground keeps about 70% of its light on average, and as little as 40% at
-  the screen's core; the rest of the view is unchanged.
-- It costs very little: about 0.03 ms a frame. Shadows only; who can see whom is unchanged. Not in the browser version.
+  screen, leaving darker air on its far side.
+- **Dust and fire smoke too**: a shell's dust cloud briefly shades the ground round the crater, a burning house or
+  wreck throws a dark band downwind, a strike's pillar of black smoke and a barrage's drifting pall shade the ground
+  beneath them, and a column's road dust leaves a faint strip. The higher the smoke, the further from it its shade
+  falls, and the lower the sun, the longer.
+- It shades only what's below the smoke: a hilltop or the air above it stays in the sun, and the smoke itself isn't
+  darkened.
+- It costs very little: about 0.03 ms a frame. Light only: who can see whom is unchanged. Not in the browser version.
