@@ -270,7 +270,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       client to join
 --test-port=N                                         (with --fixed-fps 30) take orders over a local socket: see
                                                       "The test port"; 0 takes any free port
---scenario=cover|lean|grenade|tank|drone|tunnel|heli|defense|air|support|showroom|trenches|poses|attack|solo
+--scenario=cover|lean|alley|grenade|tank|drone|tunnel|heli|defense|air|support|showroom|trenches|poses|attack|solo
                                                       (attack: two squads and a gun team attack a walled yard;
                                                       solo: one squad against a stronger position)
 --play --select-first --tactical --nohud              command a scenario's Coalition side / select a squad /
@@ -324,6 +324,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --focus-vehicle=kind[,n]                              camera on the nth vehicle of a kind (zero-based, first by default)
 --focus-vehicle-at=SECONDS                            switch to that vehicle at this simulation time (default 1 second)
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
+--destroy-near=X,Z,KIND,TIME                          the structure of that kind nearest X,Z destroyed at that time (a single house_wall, say)
                                                       X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
                                                       beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)

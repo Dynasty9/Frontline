@@ -1,0 +1,68 @@
+{
+  "entry": "changelog/unreleased/probe-reflections-and-soldiers.md",
+  "title": "Reflections in the shade lose the sky; soldiers take the light where they stand",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Glossy hulls, glass and wet ground in alleys and under eaves stop mirroring the sky; every soldier takes the light of where he stands; a single wall knocked down relays the probes.",
+  "medium": "motion",
+  "stage": "Primary matched motion: tools/showcase/cloud-alley-rain-pan.gd. Earlier evidence: Frozen A/B captures (FL_DEBUG_PROBES_AB=cycle FL_DEBUG_PROBES_FREEZE=<dir> FL_DEBUG_PROBES_FREEZE_AT=8, --fixed-fps 30, --set=light_probes:2). --scenario=alley --seed=3 --focus=1,-34 --zoom=9 --pitch=-32 --cam-yaw=1.57: reflections --mood=rain; bent normal alone the same with FL_DEBUG_PROBES_FREEZE_PART=so; the room's gunner --mood=day; the alley and sun men --focus=-7,-34 --cam-yaw=-1.57 --mood=day. Wall: --scenario=breach --static --seed=3 --mood=day --focus=0,-28 --zoom=11 --pitch=-48 --destroy-near=0,-27,house_wall,5, shots at 4 and 8 s (game, and FL_DEBUG_PROBES_VIEW=1).",
+  "rationale": "OFF and ON are one frozen instant (Engine.time_scale 0), so men, rain and smoke match; the soldier sheet crops two men from it; the wall pairs two shots of one fixed-fps run.",
+  "capture": {
+    "provenance": "Recaptured off-screen from this branch (Forward+, RTX 3090, High preset) with the commands in stage.",
+    "comparison": "Player sheets: probes off top left, on bottom left, probe term top right, ON minus OFF x4 on mid grey bottom right. Soldiers: off left, on right. Wall: before left, after right, game over probe term.",
+    "limits": "Measured (linear light, probes off to on): the car under the eaves 0.63 (roof) and 0.66 (windscreen), the bent normal alone a further 0.94 on its roof; the open roofs 0.90. The gunner in the room 0.51 by day; a man in the alley 0.80 (warmer: blue falls most); a man out in the sun 0.96. The wall: the probes are laid again on the frame it goes, but with the roof still on, the room floor stays at the indoor floor of sky (0.09 of the view-4 scale against 0.23 on open ground) before and after; the change is the sun through the gap. The Compatibility renderer compiles and runs both levels without errors."
+  },
+  "source_ref": "dines/probe-spec-chars: the reflection, soldier and single-wall pass after v2.0.2.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/reflections.jpg",
+      "caption": "Rain, the alley scenario, time frozen: probes OFF/ON, a close crop of the car (off | on) and the difference x4 with a 5x5 median (the rain sparkle runs on its own shader clock).",
+      "sha256": "dd90c005f7329f1a1d354bc266789474a2a551677b7d648b348b5159d4cc95fa"
+    },
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/soldiers.jpg",
+      "caption": "Crops, probes OFF over ON: a gunner in a room, a man in the alley, a man out in the sun.",
+      "sha256": "6f72fbbb902af9edee55240ea660974bc8376af23890fce04d5d23584bfc15e2"
+    },
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/wall-down.jpg",
+      "caption": "One house wall destroyed (--destroy-near): the game and the probe term before and after.",
+      "sha256": "517d9cbd672d7e8e7ff8a02ff01773f1330bb7cf6c524c561a447a6dc432d1f1"
+    },
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/review/bent-normal.jpg",
+      "caption": "Review only (PR): the probes on in both, the bent normal off and on, the difference x4.",
+      "sha256": "f73fb2668196bfab9dbc9d631b8338d90fc5fc3c2aba7d24a440f2c2f4151de6"
+    },
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/review/men-day.jpg",
+      "caption": "Review only (PR): the full day sheet the soldier crops come from.",
+      "sha256": "b3d6a53883117bac3fbe533a6947d6860bd0c7d4a94adbcca3f01533367fcf52"
+    },
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/review/wall-after.jpg",
+      "caption": "Review only (PR): after the wall, probes OFF/ON.",
+      "sha256": "3eb294f2d16fe18fdf5a8033ea80a92cf68dd9451b1c5caadbc1d5ec5e6b6e4f"
+    },
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/review/men-alley.jpg",
+      "caption": "Review only (PR): the full day sheet the alley and sun crops come from.",
+      "sha256": "12198a2cf7ccd7b77de36d74196f8249f6aebc6c1c91531aa495c568a30a84ce"
+    },
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/alley-rain-pan.webm",
+      "sha256": "023417402248e6b01c6d0e4444a74c4550f32202d7031999789c3dbc4d3e6643",
+      "caption": "Same rain pan with probes enabled in both: v2.0.2 renderer (66fcc404, same alley fixture backported) and #263 (f885d98). The sheltered car window reflects less sky and the crew takes the shade. Both already include #253: covered floors stay dry. Matching camera, sky, seed and High settings; normal-speed Forward+ software-Vulkan capture, without grading."
+    },
+    {
+      "file": "changelog/unreleased/probe-reflections-and-soldiers/alley-rain-pan.jpg",
+      "sha256": "ab10e5e906633df984aa5f84cc1a5c9f8e0161686713a594216bb0d60409f092",
+      "caption": "Frame from the matched motion capture."
+    }
+  ],
+  "output": null,
+  "matched_motion_capture": {
+    "file": "changelog/unreleased/probe-reflections-and-soldiers/alley-rain-pan-capture.json",
+    "caption": "Same rain pan with probes enabled in both: v2.0.2 renderer (66fcc404, same alley fixture backported) and #263 (f885d98). The sheltered car window reflects less sky and the crew takes the shade. Both already include #253: covered floors stay dry. Matching camera, sky, seed and High settings; normal-speed Forward+ software-Vulkan capture, without grading."
+  }
+}

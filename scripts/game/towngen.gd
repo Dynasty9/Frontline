@@ -14,6 +14,14 @@ extends RefCounted
 const ROAD_HW := 2.9
 const CURB := ROAD_HW  # the kerb meets the carriageway without a grass strip
 const WALK := 4.8  # back of the sidewalk
+const CORNER_R := 1.6  # the kerb's radius round a crossroads corner (the sidewalk is 1.9 m wide)
+
+
+## Where a post stands on a crossroads corner (from the crossing's middle,
+## toward the sx, sz corner): on the rounded paving, 0.55 m back from its kerb.
+static func corner_post(sx: float, sz: float) -> Vector3:
+	return Vector3(sx, 0, sz) * (CURB + CORNER_R - (CORNER_R - 0.55) * sqrt(0.5))
+
 const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
 const REACH := 56.0  # the main streets run this far each way from the middle
@@ -47,6 +55,7 @@ var _church_decor: Array = []  # its churchyard's dressing (decor, after everyth
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
 var _street_decor: Array = []  # the streets' furniture (decor, after the shops'; see _street_furniture)
 var _vacant: Array = []  # [front, n, d, W] of each car park and bombed-out lot, for the hoardings
+var farmsteads: Array = []  # {"base", "t", "n"} of each farm (its gate, along the road, away from it), for farmyards()
 
 
 func _init(m) -> void:
@@ -257,11 +266,10 @@ func streetscape() -> void:
 				var m := (CURB + WALK) * 0.5
 				var w := WALK - CURB
 				if hx and hz:
+					# the kerb turns the corner on a radius, as lorries need it to
 					var cp := p + Vector3(sx * m, 0, sz * m)
-					_d("walk", cp, 0.0, Vector3(w, 0.12, w))
+					_d("walk_corner", cp, 0.0, Vector3(sx * w, CORNER_R, sz * w))
 					_pave(cp, 0.0, Vector3(w, 0.12, w))
-					_d("curb", p + Vector3(sx * m, 0, sz * (CURB + 0.09)), 0.0, Vector3(w, 0.17, 0.18))
-					_d("curb", p + Vector3(sx * (CURB + 0.09), 0, sz * m), PI * 0.5, Vector3(w, 0.17, 0.18))
 				elif not hx and not hz and dirs.has(Vector2i(-sx, 0)) and dirs.has(Vector2i(0, -sz)):
 					# the outside of a bend
 					var r1 := p + Vector3(sx * WALK * 0.5, 0, sz * m)
@@ -920,7 +928,7 @@ func _street_furniture() -> void:
 			var k: String = e[0]
 			if k == "drive":
 				drives.append(e)
-			elif not k in ["walk", "curb", "junction", "zebra", "pave", "lot_pave", "yard", "wire", "drop", "garden", "fence", "soft"]:
+			elif not k in ["walk", "walk_corner", "curb", "junction", "zebra", "pave", "lot_pave", "yard", "wire", "drop", "garden", "fence", "soft"]:
 				taken.append([e[1], 1.0])
 	var clear := func(p: Vector3, r: float) -> bool:
 		for t: Array in taken:
@@ -943,7 +951,7 @@ func _street_furniture() -> void:
 	if (node_dirs.get(_key(center), {}) as Dictionary).size() >= 4:
 		for sx: float in [-1.0, 1.0]:
 			for sz: float in [-1.0, 1.0]:
-				var tp := center + Vector3(sx, 0, sz) * (CURB + 0.55)
+				var tp := center + corner_post(sx, sz)
 				var yaw := Defs.yaw_of(Vector3(sx, 0, 0))
 				var side := signf((Basis(Vector3.UP, yaw) * Vector3.RIGHT).dot(Vector3(0, 0, sz)))
 				put.call("traffic_light", tp, yaw, side, 0.4)
@@ -1175,6 +1183,7 @@ func farms(k: int) -> void:
 					mg._try("tree", oc + n * r * 5.0 + t * (c * 5.0 - 7.5) + Vector3(rng.randf_range(-0.4, 0.4), 0, rng.randf_range(-0.4, 0.4)), 0.0, -1, {"variant": 1})
 		_d("pole", base - n * 4.4 + t * 9.0, yaw_along(t), 1)
 		poles.append([base - n * 4.4 + t * 9.0, yaw_along(t), n])
+		farmsteads.append({"base": base, "t": t, "n": n})
 		made += 1
 
 
@@ -1283,6 +1292,145 @@ func _churchyard(c: Vector3, axis: float, size: Vector3, cr: RandomNumberGenerat
 	for side: float in [-1.0, 1.0]:
 		mg._try("tree", at.call(side * (hx - 1.6), front + 1.8), cr.randf() * TAU, -1, {"variant": 2})
 	_reserve(at.call(0.0, (front + back) * 0.5), Vector2(hx, (back - front) * 0.5), axis)
+
+
+## What each farmstead keeps round its yard (BuildingFarm), set out once the
+## whole map is laid (so nothing laid after it lies differently, and it keeps
+## clear of the hedges and woods laid since), from a stream of its own seeded
+## from where the farm is: the tractor parked in the yard or behind the barn,
+## a water trough at the barn's end, the plough and the harrow put away by
+## it, a churn stand at the gate, a hen house and its run by the farmhouse, a
+## wheelbarrow at the barn door. (In the farm's own frame: `t` along the road,
+## `n` away from it, the farmhouse at -t, the barn at +t: see farms().)
+func farmyards() -> void:
+	# the scenery about each farm, in one pass over the map's (filed by 84 m
+	# square: a farm's 42 m round touches at most four)
+	var cells := {}
+	var near_of: Array = []
+	for fs: Dictionary in farmsteads:
+		var base: Vector3 = fs.base
+		var list: Array = []
+		near_of.append(list)
+		for cx in range(floori((base.x - 42.0) / 84.0), floori((base.x + 42.0) / 84.0) + 1):
+			for cz in range(floori((base.z - 42.0) / 84.0), floori((base.z + 42.0) / 84.0) + 1):
+				var key := Vector2i(cx, cz)
+				if not cells.has(key):
+					cells[key] = []
+				(cells[key] as Array).append([base, list])
+	if not cells.is_empty():
+		for e: Array in decor:
+			var p: Vector3 = e[1]
+			var here = cells.get(Vector2i(floori(p.x / 84.0), floori(p.z / 84.0)))
+			if here != null:
+				for f: Array in here:
+					if Defs.flat(p - (f[0] as Vector3)).length() < 42.0:
+						(f[1] as Array).append(e)
+	for fi in farmsteads.size():
+		var fs: Dictionary = farmsteads[fi]
+		var base: Vector3 = fs.base
+		var t: Vector3 = fs.t
+		var n: Vector3 = fs.n
+		var fr := RandomNumberGenerator.new()
+		fr.seed = int(absf(base.x) * 13.0) * 7919 + int(absf(base.z) * 13.0) * 31 + 977
+		var near: Array = near_of[fi]
+		var mine: Array = []  # [kind, pos, yaw, extra] of what's set out here
+		# the tractor: a parked civilian vehicle (Structure "car", variant 5)
+		if fr.randf() < 0.7:
+			for spot: Vector2 in [Vector2(11.5, -0.3), Vector2(17.2, 6.0), Vector2(9.5, 13.6)]:
+				var along := t if spot.y < 1.0 or spot.y > 12.0 else n
+				var p := base + t * spot.x + n * spot.y
+				var yaw := atan2(along.x, along.z) + (PI if fr.randf() < 0.5 else 0.0)
+				if _yard_free(p, Vector2(1.1, 2.2), yaw, 0.4, near, mine):
+					mg._place([Vector2(p.x, p.z), Vector2(1.0, 2.1), yaw])
+					mg._late.append({"skind": "car", "pos": Vector3(p.x, world.terrain.landform.height(p), p.z), "yaw": yaw, "team": -1, "variant": 5})
+					mine.append(["tractor", p, yaw, null])
+					world.stat("farm_tractor")
+					break
+		# what stands about: [kind, chance, half size, where (t, n), x along (t or n)]
+		var kit := [
+			["trough", 0.8, Vector2(1.0, 0.35), [Vector2(15.6, 3.2), Vector2(15.6, 8.4), Vector2(-14.0, 3.5)], "n"],
+			["plough", 0.6, Vector2(1.3, 0.6), [Vector2(16.4, 10.2), Vector2(12.5, 13.3), Vector2(5.0, 13.3)], "t"],
+			["harrow", 0.5, Vector2(1.25, 0.85), [Vector2(8.5, 13.5), Vector2(16.6, 12.8), Vector2(3.0, 16.5)], "t"],
+			["churn_stand", 0.55, Vector2(1.25, 0.5), [Vector2(-4.0, -3.1), Vector2(-7.0, -3.1), Vector2(4.0, -3.1)], "t"],
+			["hen_house", 0.55, Vector2(1.85, 1.2), [Vector2(-15.0, 4.0), Vector2(-7.0, 16.5), Vector2(-15.0, 10.0)], "n"],
+			["barrow", 0.6, Vector2(0.35, 0.75), [Vector2(3.0, 0.75), Vector2(13.4, 0.8), Vector2(-0.2, 9.0)], "-"],
+		]
+		for item: Array in kit:
+			if fr.randf() >= float(item[1]):
+				continue
+			var half: Vector2 = item[2]
+			var spots: Array = item[3]
+			var first := fr.randi() % spots.size()
+			for j in spots.size():
+				var spot: Vector2 = spots[(first + j) % spots.size()]
+				var p := base + t * spot.x + n * spot.y
+				var yaw: float
+				match String(item[4]):
+					"t":
+						yaw = yaw_along(t if fr.randf() < 0.5 else -t)
+					"n":
+						yaw = yaw_along(n if fr.randf() < 0.5 else -n)
+					_:
+						yaw = fr.randf() * TAU
+				# (a churn stand's deck faces the road, where the lorry stops)
+				if item[0] == "churn_stand":
+					yaw = yaw_along(t) if Basis(Vector3.UP, yaw_along(t)).z.dot(n) > 0.0 else yaw_along(-t)
+				if _yard_free(p, half, yaw, 0.15, near, mine):
+					mine.append([item[0], p, yaw, fr.randi() % 4])
+					world.stat("farm_" + String(item[0]))
+					break
+		for e: Array in mine:
+			if e[0] != "tractor":
+				_d(e[0], e[1], e[2], e[3])
+				# (and the farms still to come keep clear of it)
+				for fj in range(fi + 1, farmsteads.size()):
+					if Defs.flat((e[1] as Vector3) - (farmsteads[fj].base as Vector3)).length() < 42.0:
+						(near_of[fj] as Array).append(decor[-1])
+
+
+## (for farmyards: whether a piece `half` across, turned `yaw`, has room at `p`:
+## on level ground off the road, clear of what's built and of the scenery
+## about, and of what's already been set out there)
+func _yard_free(p: Vector3, half: Vector2, yaw: float, margin: float, near: Array, mine: Array) -> bool:
+	if not mg._is_free(p, half, yaw, margin) or _road_dist(p, 6.0) < half.length() + 0.8:
+		return false
+	var inv := Basis(Vector3.UP, yaw).inverse()
+	for list: Array in [near, mine]:
+		for e: Array in list:
+			for pt: Array in _scenery_points(e):
+				var q: Vector3 = inv * Defs.flat((pt[0] as Vector3) - p)
+				var r: float = pt[1]
+				if absf(q.x) < half.x + r + margin and absf(q.z) < half.y + r + margin:
+					return false
+	return true
+
+
+## (the ground a piece of scenery stands on, as points and how far round each:
+## a fence bay its posts and middle, hay each bale; nothing for what lies flat
+## or hangs overhead)
+static func _scenery_points(e: Array) -> Array:
+	var kind := String(e[0])
+	var p: Vector3 = e[1]
+	match kind:
+		"fence":
+			var ax := Basis(Vector3.UP, float(e[2])).x * float((e[3] as Vector3).x) * 0.5
+			return [[p, 0.2], [p + ax, 0.2], [p - ax, 0.2]]
+		"hay":
+			var ax := Basis(Vector3.UP, float(e[2])).x * 1.35
+			var count := int(e[3]) if e[3] != null else 1
+			var out := []
+			for i in count:
+				out.append([p + ax * (i - (count - 1) * 0.5), 0.75])
+			return out
+		"tractor":
+			var ax := Basis(Vector3.UP, float(e[2])).z * 1.3
+			return [[p, 1.1], [p + ax, 1.1], [p - ax, 1.1]]
+		"yard", "walk", "curb", "walk_crossing", "curb_crossing", "junction", "zebra", "drive", "path", "pave", "lot_pave", "wire", "drop", "garden", "soft":
+			return []
+	if Decor.BREAKABLE.has(kind):
+		var sz: Vector3 = Decor.BREAKABLE[kind][0]
+		return [[p, minf(maxf(sz.x, sz.z) * 0.5, 2.0)]]
+	return [[p, 0.6]]
 
 
 ## A power line along each country road on the verge, pole every ~34 m.

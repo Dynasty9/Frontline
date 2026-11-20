@@ -363,7 +363,10 @@ func _freeze_step() -> bool:
 	if phase >= 4:
 		get_tree().quit()
 		return true
-	RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, 0.0 if phase == 0 else float(quality), 0.0))
+	# (FL_DEBUG_PROBES_FREEZE_PART=so: the first panel has the probes on but
+	# their specular occlusion off, for a before-and-after of that alone)
+	var so_off := phase == 0 and OS.get_environment("FL_DEBUG_PROBES_FREEZE_PART") == "so"
+	RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, float(quality) if phase > 0 or so_off else 0.0, 1.0 if so_off else 0.0))
 	RenderingServer.global_shader_parameter_set("probe_mix", Vector4(AO_STRENGTH, BOUNCE_STRENGTH, [0.0, 0.0, 1.0, 3.0][phase], _leak_test()))
 	if _freeze % 4 == 3:
 		var path := OS.get_environment("FL_DEBUG_PROBES_FREEZE").path_join(["off", "on", "term", "bent"][phase] + ".png")
@@ -1113,16 +1116,42 @@ void fragment() {
 	SPECULAR = 0.25;
 	ROUGHNESS = 0.85;
 	EMISSION = texture(texture_emission, UV).rgb;
-	// CLOUD_FRAGMENT (the probes' terms)
+	// CLOUD_FRAGMENT cloud_sun((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz)
 }
 """
 static var _skin_shader: Shader
 
+## The procedural men's flat colours (SoldierModel's Res.mat parts: uniforms,
+## faces, kit not on the shared surfaces), the same way: a StandardMaterial3D
+## with a colour, a roughness and perhaps a glow, plus the probes' terms.
+const FLAT_SHADER := """
+shader_type spatial;
+render_mode cull_back, diffuse_burley, specular_schlick_ggx;
+
+uniform vec4 albedo : source_color = vec4(1.0);
+uniform float roughness = 0.9;
+uniform float metallic = 0.0;
+uniform vec3 emission : source_color = vec3(0.0);
+// CLOUD_SHADOW
+
+void fragment() {
+	ALBEDO = albedo.rgb;
+	METALLIC = metallic;
+	ROUGHNESS = roughness;
+	SPECULAR = 0.5;
+	EMISSION = emission;
+	// CLOUD_FRAGMENT cloud_sun((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz)
+}
+"""
+static var _flat_shader: Shader
+static var _flat := {}  # StandardMaterial3D -> its probe-reading twin
+
 
 static func skin_material(m: StandardMaterial3D) -> ShaderMaterial:
 	if _skin_shader == null:
-		_skin_shader = Shader.new()
-		_skin_shader.code = inject(SKIN_SHADER)
+		# (through CloudShadow, as the world's surfaces are: the sun cut in a room
+		# and the fill light shut out with the sky, as well as the clouds' shade)
+		_skin_shader = CloudShadow.make(SKIN_SHADER, CloudShadow.PROBES)
 	var s := ShaderMaterial.new()
 	s.shader = _skin_shader
 	s.set_shader_parameter("albedo", m.albedo_color)
@@ -1130,6 +1159,51 @@ static func skin_material(m: StandardMaterial3D) -> ShaderMaterial:
 	s.set_shader_parameter("texture_normal", m.normal_texture)
 	s.set_shader_parameter("texture_emission", m.emission_texture)
 	return s
+
+
+## Every plain StandardMaterial3D under `root` (opaque, lit, untextured) swapped
+## for its twin that reads the probes, so a machine gunner or an officer in a
+## room or a wood takes its shade as the riflemen do. Shared materials are
+## swapped once and their twins shared too.
+static func probe_surfaces(root: Node) -> void:
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.material_override:
+			var o := _flat_twin(mi.material_override)
+			if o:
+				mi.material_override = o
+			continue
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var src: Material = mi.get_surface_override_material(i)
+			if src == null:
+				src = mi.mesh.surface_get_material(i)
+			var t := _flat_twin(src)
+			if t:
+				mi.set_surface_override_material(i, t)
+
+
+static func _flat_twin(m: Material) -> ShaderMaterial:
+	var sm := m as StandardMaterial3D
+	if sm == null or sm.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or sm.shading_mode != BaseMaterial3D.SHADING_MODE_PER_PIXEL \
+			or sm.albedo_texture != null or sm.vertex_color_use_as_albedo or sm.cull_mode != BaseMaterial3D.CULL_BACK:
+		return null
+	if _flat.has(sm):
+		return _flat[sm]
+	if _flat_shader == null:
+		_flat_shader = CloudShadow.make(FLAT_SHADER, CloudShadow.PROBES)
+	var t := ShaderMaterial.new()
+	t.shader = _flat_shader
+	t.set_shader_parameter("albedo", sm.albedo_color)
+	t.set_shader_parameter("roughness", sm.roughness)
+	t.set_shader_parameter("metallic", sm.metallic)
+	var e := Color(0, 0, 0)
+	if sm.emission_enabled:
+		e = sm.emission * sm.emission_energy_multiplier
+	t.set_shader_parameter("emission", Vector3(e.r, e.g, e.b))
+	_flat[sm] = t
+	return t
 
 
 ## A surface shader (one CloudShadow makes with its PROBES flag) taking its
@@ -1215,7 +1289,7 @@ varying vec3 probe_v_t;
 ## fade out above the top probes and at the map's edge.
 const PIXEL := """
 global uniform sampler2D probe_atlas : filter_linear, repeat_disable;
-global uniform vec4 probe_grid;  // map half-size, probe spacing, quality (0 off, 1 low, 2 high)
+global uniform vec4 probe_grid;  // map half-size, probe spacing, quality (0 off, 1 low, 2 high), specular occlusion off (debug)
 global uniform vec4 probe_mix;  // how far the sky is shut out, how much bounce comes back, debug view, wall test
 global uniform sampler2DArray probe_voxels : filter_nearest, repeat_disable;
 global uniform vec4 probe_ref;  // the light the bounce was kept relative to, now, and the sun's height (LightProbes._light_now)
@@ -1234,7 +1308,6 @@ global uniform vec4 probe_occ_rect;  // its centre (x, z), 1 / its span, on
 // it no longer reaches a room's floor to bounce, and at the floor alone the room
 // would go black at dusk where the eye sees it dim
 #define PROBE_MIN_SKY_DIM 0.5
-#define PROBE_SPEC_ROOM 0.5
 #define PROBE_LOCAL __LOCAL__
 #define PROBE_OCC_HEIGHT __OCC_HEIGHT__
 const float PROBE_DIP_R = 3.0;  // how far round a pixel the ground is looked at for a hollow, metres
@@ -1421,20 +1494,28 @@ const PIXEL_USE := """probe_fill = 1.0;
 		probe_room = smoothstep(0.3, 0.12, probe_m0) * probe_mix.x;
 		AO *= probe_k.x;
 		EMISSION += ALBEDO * probe_k.yzw;
-		// Specular occlusion (after Lagarde and de Rousiers, "Moving Frostbite to PBR",
-		// 2014): a reflection shows the sky only where the sky can be seen in the
-		// direction it's reflected. The probes' two bands give the share of sky seen
-		// in any one direction as m0 + 3 m1.r, a glossy reflection's narrow lobe; a
-		// rough one gathers from round about, nearer the cosine's m0 + 2 m1.n. What
-		// the sky doesn't show, the room does: the light off its walls, the bounce.
-		// So a wet floor in a house or under the eaves mirrors the dim room, not the
-		// bright sky over the roof.
+		// Specular occlusion: a reflection shows the sky only where the sky can be
+		// seen in the direction it's reflected. Godot works it out itself, after the
+		// battlefield's reflection probe has had its say (Jimenez et al. 2016, the
+		// cone the sky is seen through against the reflection's cone), from AO (how
+		// wide that cone is: the probes' share of sky is in it, above) and a bent
+		// normal (which way it points): the probes' own, handed over in the
+		// surface's tangent space. A reflection written straight into RADIANCE
+		// would come before the reflection probe, which paints over it. So a hull
+		// under the eaves, wet cobbles in an alley and a window across it mirror the
+		// walls round them, not the bright sky over the roofs.
 		{
-			vec3 probe_v = normalize((INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz);
-			vec3 probe_r = reflect(-probe_v, probe_n);
-			float probe_so = clamp(probe_sh.w + mix(3.0, 2.0, ROUGHNESS) * dot(probe_sh.xyz, probe_r), 0.0, 1.0);
-			probe_so = max(probe_so, probe_sh.w * 0.5);
-			RADIANCE = vec4(probe_lb * PROBE_SPEC_ROOM, 1.0 - probe_so);
+			float probe_bl = length(probe_sh.xyz);
+			vec3 probe_bw = probe_bl > 1e-4 ? probe_sh.xyz / probe_bl : probe_n;
+			// (above the surface, and leaning back to its normal where the probes
+			// see the sky nearly all round and their bent normal says little)
+			probe_bw = normalize(mix(probe_bw, probe_n, clamp(probe_sh.w * 1.25 - 0.25, 0.0, 1.0)));
+			probe_bw = normalize(probe_bw + probe_n * max(0.15 - dot(probe_bw, probe_n), 0.0));
+			if (probe_grid.w > 0.5) {
+				probe_bw = probe_n;  // (debug: the bent normal off)
+			}
+			vec3 probe_bv = (VIEW_MATRIX * vec4(probe_bw, 0.0)).xyz;
+			BENT_NORMAL_MAP = vec3(dot(probe_bv, TANGENT), dot(probe_bv, BINORMAL), dot(probe_bv, NORMAL)) * 0.5 + 0.5;
 		}
 		if (probe_mix.z > 0.5) {
 			// FL_DEBUG_PROBES_VIEW=1: the probes' own term on grey, the share of sky each
