@@ -950,14 +950,19 @@ func trench_depth() -> float:
 func _trench_changed(old_depth: float) -> void:
 	if skind != "trench" or is_equal_approx(old_depth, trench_depth()):
 		return
-	world.nav.remove_structure(self)
+	# only the host paths soldiers (a client has no nav); every peer reshapes
+	# the hole, its cover and fighting positions, so the view matches the dig
+	if world.nav:
+		world.nav.remove_structure(self)
 	_define_parts()
-	world.nav.add_structure(self)
+	if world.nav:
+		world.nav.add_structure(self)
 	if body:
 		remove_child(body)
 		body.queue_free()
 		body = null
-	if trench_depth() > 0.0:
+	# a client keeps bodies only for what it draws, as set_view_active does
+	if trench_depth() > 0.0 and (srv or (world.has_view and view_active)):
 		_make_body()
 	world.terrain.structure_changed(self, true)
 	_compute_cover_pts()
