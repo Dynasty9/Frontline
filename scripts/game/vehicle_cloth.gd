@@ -659,6 +659,15 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 	# The cloth's place at every sample.
 	var rows := zs.size()
 	var cols := points.size()
+	# Where the roof runs from eave to eave along the section (the widths'
+	# corners), for the sag.
+	var roof_a := -1.0
+	var roof_b := -1.0
+	for q in cols - 1:
+		if absf(face[seg[q]].y) >= 0.5:
+			if roof_a < 0.0:
+				roof_a = arc[q]
+			roof_b = arc[q + 1]
 	var grid := PackedVector3Array()
 	grid.resize(rows * cols)
 	for r in rows:
@@ -676,11 +685,25 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 			var h := minf(arc[q], total - arc[q])
 			var up := clampf(n.y, 0.0, 1.0)
 			var hold := smoothstep(0.0, 0.3, h)
-			# The cover sags between its bows: most across the middle of the
-			# roof, a little on the sides, nothing at the laced hem; deep
-			# enough on the roof that each bow throws a shadow line seen from
-			# above.
-			var sag := minf(0.075, 0.048 * length) * bell * (0.4 + 0.6 * up) * (0.7 + 0.3 * sin(PI * arc[q] / total)) * hold
+			# The cover hangs between its bows as any cloth does between its
+			# supports: in a dip deepest mid-bay that rises all the way to
+			# each bow and leaves it at an angle, pulled tight over it, so the
+			# light changes across every width and each bow stands as a ridge
+			# (a dip that flattened out a few centimetres from the bows read
+			# as a taut lid set lower). A few centimetres on the roof of a
+			# long bay, most in the middle of the roof and less toward the
+			# eaves it's pulled round (the eave scalloping between the bows);
+			# the side curtains drawn in a little between the bows, more
+			# toward the eaves, nothing at the laced hem. (Never more than
+			# 6.2 cm, so nothing under the cover comes through it and the
+			# liner, 8 cm in, stays out of sight.)
+			var across := 0.0
+			if roof_a >= 0.0 and arc[q] >= roof_a and arc[q] <= roof_b:
+				across = 0.55 + 0.45 * sin(PI * (arc[q] - roof_a) / maxf(roof_b - roof_a, 0.01))
+			else:
+				var eave := roof_a if arc[q] < roof_a else total - roof_b
+				across = 0.55 * sin(PI * 0.5 * clampf(h / maxf(eave, 0.01), 0.0, 1.0))
+			var sag := minf(0.062, 0.045 * length) * pow(maxf(sin(PI * u), 0.0), 0.8) * across * hold
 			# Pulled in at each eye and bellied out between them, the hem
 			# lifting a little between its eyes.
 			var belly := 0.013 * sin(PI * v) * (1.0 - smoothstep(0.05, 0.5, h)) * smoothstep(0.0, 0.06, h)
