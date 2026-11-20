@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/shop-interiors.md",
+  "summary": "Shops are fitted out inside: shelving down the middle and along the walls stocked with goods, coolers, a greengrocer's crates, a counter with its till.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "rationale": "Appearance change seen when a shop's roof lifts: matched studio rows of two shops with their roofs off, then each closer, from a double-resolution render.",
+  "source_ref": "f327bd8b1cd95c0473be72836a9aa7943ebe4bb4",
+  "before_ref": "326d3a4bed2c34b913aeb0b2326526518f007377",
+  "sources": [
+    {
+      "file": "changelog/unreleased/shop-interiors/comparison.jpg",
+      "sha256": "bf510f4185cf546dcb426c59fe5ac57c36d26bc5b76c30a9fd30cf379b5d22b2"
+    },
+    {
+      "file": "changelog/unreleased/shop-interiors/capture.json",
+      "sha256": "e5580edfc4bf2c08b546872e38a2699961d9bc39f2f0ad4d0cc08630184f2542"
+    }
+  ],
+  "output": null
+}

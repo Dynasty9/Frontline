@@ -493,6 +493,13 @@ static func gun_shield(k: VehicleModels, head: Node3D, center: Vector3, size: Ve
 	var m := _mount(k, head, center, Vector3(tilt, 0, 0))
 	k._add(m, BevelMesh.make(Vector3(size.x, size.y, thickness), minf(0.006, thickness * 0.3)), mat, col, Vector3.ZERO)
 	var face := -thickness * 0.5 - 0.003
+	# a doubler plate welded round its edge on the outside, stiffening it
+	# (standing no prouder than the slot's dark lining)
+	var rim := 0.03
+	for y: float in [-1.0, 1.0]:
+		k._box(m, Vector3(size.x - 0.01, rim, 0.005), Vector3(0, y * (size.y * 0.5 - rim * 0.5 - 0.005), -thickness * 0.5 - 0.0025), mat, col, Vector3.ZERO, false)
+	for x: float in [-1.0, 1.0]:
+		k._box(m, Vector3(rim, size.y - rim * 2.0 - 0.01, 0.005), Vector3(x * (size.x * 0.5 - rim * 0.5 - 0.005), 0, -thickness * 0.5 - 0.0025), mat, col, Vector3.ZERO, false)
 	k._box(m, Vector3(slot.x, slot.y, 0.006), Vector3(0, -size.y * 0.06, face), "plain_dark", null, Vector3.ZERO, false)
 	k._box(m, Vector3(size.x * 0.3, 0.025, 0.006), Vector3(size.x * 0.22, size.y * 0.32, face), "plain_dark", null, Vector3.ZERO, false)
 	VehicleFrames.tube(k, m, Vector3(-size.x * 0.5 + 0.01, size.y * 0.5, 0), Vector3(size.x * 0.5 - 0.01, size.y * 0.5, 0), thickness * 0.55, mat, col, 6, false)

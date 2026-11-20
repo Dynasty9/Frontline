@@ -65,7 +65,7 @@ export function Layout() {
     <QueryClientProvider client={queries}>
       <TooltipProvider delayDuration={150}>
         {/* the game's menu map, behind every page */}
-        <TopoBackdrop />
+        <TopoBackdrop page={location.pathname} />
         <SiteHeader overlay={location.pathname === "/"} accounts={health.data?.accounts} live={health.data?.lobbies} />
         {/* things slide in from the sides as they reveal: never let them widen the page */}
         <main id="main-content" tabIndex={-1} className="overflow-x-clip">

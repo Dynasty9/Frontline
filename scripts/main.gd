@@ -1219,6 +1219,23 @@ func _process(_dt: float) -> void:
 						bp = Vector3(v.position.x + float(ba[1]), 0.3, v.position.z)
 						break
 			world.combat.explode(bp, {"dmg": 160.0 * bsz, "radius": 4.0 + bsz * 3.0, "fling": 8.0 + bsz * 4.0, "at": 300.0, "top": true, "src": null, "team": -1, "size": bsz})
+	# --destroy-near=x,z,kind,time: the structure of that kind nearest x,z
+	# destroyed at that time, the way enough damage destroys it (a single wall
+	# knocked down, for the light probes' before-and-after)
+	if args.has("destroy-near") and world.srv and not has_meta("destroyed_near"):
+		var dn := String(args["destroy-near"]).split(",")
+		if world.time >= float(dn[3]):
+			set_meta("destroyed_near", true)
+			var at := Vector3(float(dn[0]), 0, float(dn[1]))
+			var best = null  # (untyped: the launch doesn't compile game classes)
+			var best_d := INF
+			for st in world.structures_near(at, 30.0):
+				var d: float = Vector2(st.position.x - at.x, st.position.z - at.z).length()
+				if not st.gone and st.skind == dn[2] and d < best_d:
+					best = st
+					best_d = d
+			if best:
+				best.take_damage(best.hp + 1.0)
 	# --focus-town[=dx,dz]: the camera on the middle of town (offset in metres)
 	if args.has("focus-town") and world.cam and world.time > 1.0 and not world.has_meta("town_focused") and world.town_rect.size.x > 0.0:
 		var off := Vector3.ZERO

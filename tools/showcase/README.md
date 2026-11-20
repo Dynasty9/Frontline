@@ -271,3 +271,24 @@ records 30 seconds and applies controlled damage at 18 seconds before repair.
 Use engine `--fixed-fps 30` so animation and simulation advance together.
 See [the trench review](../../docs/trench-realism-review.md) for exact commands,
 matched baseline provenance and coverage limits. Raw frames belong outside Git.
+
+### Surface-history correction comparison
+
+`ssgi-history-capture.patch` records the identical capture-only changes applied
+to revisions `5aac3f1` and `959238e` for the isolated correction comparison.
+Apply it to either historical checkout, import with Godot 4.7.2, then run:
+
+```sh
+FL_DEBUG_GI_CYCLE=/tmp/gi-before FL_DEBUG_GI_AT=1 FL_DEBUG_GI_MODES=ssgi2 \
+FL_DEBUG_GI_POSES='close:tank:10:auto:2.4;command:tank:55:auto:2.4' \
+FL_DEBUG_GI_PAN=1,0,60 godot --path . --rendering-method forward_plus \
+  --resolution 960x540 --fixed-fps 30 -- --scenario=tank --static --seed=3 \
+  --preset=high --set=perf:0 --mood=day --nohud --offscreen
+```
+
+It saves each full game frame and records the camera transforms. The historical
+fixture logs an out-of-range pose during deferred quit after saving all 120
+frames; the current harness prevents that extra callback. Current mainline
+harness controls also retain the newer zoom/probe options. These historical
+clips isolate the surface-history fix and do not validate later renderer edits.
+Do not grade the comparison or use software capture time as GPU performance.
