@@ -6,7 +6,15 @@ kind = "new"
 [[videos]]
 file = "flare-night.webm"
 poster = "flare-night.jpg"
-caption = "A night attack (the flares scenario): a star shell's flare swings under its chute as it comes down over the field and gutters out; its light falls away to dark beyond the house, and the shadows shift with it. Real gameplay, fixed 30 Hz, High preset."
+caption = "A flare's last ten seconds over a line of walls at night: the charge swings under its chute, the cold white light pools beyond the wall and fades to dark, and the shadows of the men and bushes swing with it until it gutters out."
+
+[[screenshots]]
+file = "with-and-without.jpg"
+caption = "The same moment without the flare (left) and with it (right): moonlight, then a hot pool of cold white light beyond the wall, bushes and men casting shadows toward the camera, and the dark again past it"
+
+[[screenshots]]
+file = "swing.jpg"
+caption = "Two seconds apart, the charge at either end of its swing: the bushes' shadows lean one way, then the other"
 +++
 
 - **Night is dark now.** In a night battle a Coalition soldier spots an enemy about 34 m off with his night sights,
@@ -19,4 +27,5 @@ caption = "A night attack (the flares scenario): a star shell's flare swings und
   70 m up, burns for 35 to 45 seconds, drifts on the wind and swings under its chute.
 - **The AI fights by flarelight:** where its men hear fire they can't see, it puts a star shell up, aimed a little
   upwind so the flare drifts over the spot.
-- The flare's light glows in the night haze, and the two nearest flares cast moving shadows.
+- The flare burns a cold, bluish white. Its light falls off as real light does, a bright pool under it fading to
+  dark a hundred metres out, glows in the night haze, and the two nearest flares cast moving shadows.

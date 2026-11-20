@@ -365,6 +365,9 @@ FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who
                                                       over it (ai_illum, flare_burst, seen_by_flare); played at night unless
                                                       --mood says otherwise (--mood works for any test run and test-port load)
 FL_DEBUG_FLARES=1 (env)                               print each illumination flare as it bursts: where, when, how long
+                                                      (with a window: where the ground 0-200 m from it is on screen, to measure)
+FL_DEBUG_FLARE_AT=X,Z,T (env)                         a flare bursts over (X, Z) at battle time T (renders); FL_DEBUG_FLARES_HIDE=1
+                                                      the same battle with no flare drawn (before/after pairs)
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=mounted                                    two halted IFVs drop only some of their men (Vehicle.dismount's n and squad)

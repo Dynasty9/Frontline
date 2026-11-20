@@ -863,19 +863,19 @@ void fragment() {
 static var _flare_canopy_mesh: ArrayMesh
 var _flare_glow_mat: ShaderMaterial
 var _flare_views := {}  # flare id -> [root, hang, light, glow, trail, charge]
-## Magnesium burns a hard bluish white, far whiter than fire; the light is
-## the brightest thing on a night battlefield, and lights the ground for a
-## hundred metres round.
-const FLARE_COLOR := Color(1.0, 0.97, 0.93)
-## (energy at the charge, falling off steeply with distance, nearly as light
-## does: from 70 m up it puts a few times the moon's light on the ground under
-## it, a quarter of that a hundred metres off, and then the dark)
-const FLARE_ENERGY := 1000.0
-const FLARE_DECAY := 1.6
-const FLARE_RANGE := 175.0
+## Magnesium burns a hard, cold, bluish white, far whiter than fire; the light
+## is the brightest thing on a night battlefield.
+const FLARE_COLOR := Color(0.80, 0.88, 1.0)
+## Energy at the charge, falling off with the square of the distance as real
+## light does (measured, flare 47 m up: the ground under it about eight times
+## the moonlit ground's brightness, a third of that 50 m out, the dark again
+## past 100 m). Low, near the end of its burn, it glares and the shadows run long.
+const FLARE_ENERGY := 3000.0
+const FLARE_DECAY := 2.0
+const FLARE_RANGE := 160.0
 ## (its light in the volumetric fog: the falloff makes it fierce close to the
 ## charge, a halo round it, and faint shafts further off)
-const FLARE_FOG := 0.06
+const FLARE_FOG := 0.03
 
 
 ## Each flare in the air (world.flares, the same on every player's machine)
@@ -885,6 +885,10 @@ const FLARE_FOG := 0.06
 ## round it, and the smoke it trails.
 func _flares_tick() -> void:
 	world.flares.tick()
+	if _debug_flares_hide:
+		return  # (FL_DEBUG_FLARES_HIDE: the same battle with no flare drawn, for before/after renders)
+	if _debug_flares and fmod(world.time, 0.5) < 0.034 and not world.flares.list.is_empty():
+		_debug_flare_samples()
 	var live := {}
 	for f in world.flares.list:
 		var id := int(f.id)
@@ -925,6 +929,30 @@ func _flares_tick() -> void:
 		if not live.has(id):
 			(_flare_views[id][0] as Node3D).queue_free()
 			_flare_views.erase(id)
+
+
+var _debug_flares := OS.has_environment("FL_DEBUG_FLARES")
+var _debug_flares_hide := OS.has_environment("FL_DEBUG_FLARES_HIDE")
+
+
+## FL_DEBUG_FLARES: where on the screen the ground lies 0, 25, 50, 100 and 200 m
+## from the point under the first flare (on the far side of it from the camera, so
+## all of them are in view), to measure its
+## light's falloff in a render.
+func _debug_flare_samples() -> void:
+	var f: Dictionary = world.flares.list[0]
+	var age := world.time - float(f.t0)
+	var c := Flares.charge_at(f.p, age, float(f.ph))
+	var cam := world.cam.cam
+	var away := Vector3(c.x - cam.global_position.x, 0.0, c.z - cam.global_position.z).normalized()
+	var sw := Flares.swing(age, float(f.ph))
+	var line := "FLARESAMPLE t=%.2f age=%.1f/%.1f height=%.1f swing=(%.2f, %.2f) at=(%.0f, %.0f)" % [world.time, age, float(f.life), c.y - world.ground_y(c), sw.x, sw.z, c.x, c.z]
+	for d: float in [0.0, 25.0, 50.0, 100.0, 200.0]:
+		var q := Vector3(c.x, 0.0, c.z) + away * d
+		q.y = world.ground_y(q)
+		var sp := cam.unproject_position(q)
+		line += " d%d=(%d,%d)%s" % [int(d), int(sp.x), int(sp.y), "" if cam.is_position_in_frustum(q) else "!"]
+	print(line)
 
 
 func _make_flare() -> Array:

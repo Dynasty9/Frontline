@@ -22,10 +22,14 @@ var world: World
 ## Every flare still in the air: {id, p (burst point), t0, life, ph (swing phase), team}.
 var list: Array[Dictionary] = []
 var _next_id := 1
+var _debug_at := Vector3(INF, INF, INF)
 
 
 func _init(w: World) -> void:
 	world = w
+	var at := OS.get_environment("FL_DEBUG_FLARE_AT").split(",")
+	if at.size() == 3:
+		_debug_at = Vector3(at[0].to_float(), at[1].to_float(), at[2].to_float())
 
 
 ## (host) Where a star shell fired at `target` (on the ground) is fuzed to
@@ -59,6 +63,11 @@ func add(id: int, p: Vector3, t0: float, life: float, ph: float, team: int) -> v
 
 ## Drops the flares that have burnt out and fallen (see tick).
 func tick() -> void:
+	# FL_DEBUG_FLARE_AT=X,Z,T: (host) a flare bursts over (X, Z) at battle time T,
+	# for renders that need one in a known place at a known moment
+	if world.srv and _debug_at.x < INF and world.time >= _debug_at.z:
+		burst(burst_point(Vector3(_debug_at.x, 0.0, _debug_at.y)), -1)
+		_debug_at = Vector3(INF, INF, INF)
 	if OS.has_environment("FL_DEBUG_FLARES") and fmod(world.time, 5.0) < 0.034:
 		for f in list:
 			var age := world.time - float(f.t0)

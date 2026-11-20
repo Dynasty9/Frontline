@@ -590,7 +590,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   are seen as by day. A **star shell** (mortar teams and pits: the **Illum** fire mission, two rounds 18 s apart; or the
   off-map **M853A1 Illumination** / **82 mm Illumination** from the support panel, cheap and ready from the start) is
   fuzed to burst about 70 m over the spot and hangs a magnesium flare under a small parachute. It burns 34-44 s with a
-  hard, flickering white light that lights the ground some 85 m round, falls about 1.5 m a second and drifts on the
+  cold, flickering bluish-white light (falling off as real light does: a bright pool under it, dark again
+  a hundred metres out) that shows men up some 85 m round, falls about 1.5 m a second and drifts on the
   wind, the charge swinging under its chute on its shroud lines, so the shadows below swing and lengthen as it
   comes down. The host bursts each flare from the battle's seed and sends it once (burst point, time, burn and
   swing); where it is at any moment is worked out from those alone, so every player, a replay and the host's rules
