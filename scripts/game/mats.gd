@@ -1374,6 +1374,10 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": preload("res://assets/terrain/rock_face_03_color_height.png")}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
+		"church_stone":
+			# a church's walls: coursed rubble, the stones smaller and more
+			# varied than a house's, a little lichen and grime in the joints
+			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.47, 0.44, 0.39), "col_c": Color(0.56, 0.5, 0.42), "rough": 0.92, "bump": 2.2, "grime": 0.8, "scale": 1.6}
 		"rubble":
 			return {"pattern": STONE, "col_a": Color(0.55, 0.52, 0.47), "col_b": Color(0.36, 0.34, 0.3), "col_c": Color(0.5, 0.33, 0.25), "rough": 0.95, "bump": 2.4, "grime": 0.5, "scale": 2.0}
 		"roof_tile":

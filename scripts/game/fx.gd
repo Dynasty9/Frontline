@@ -70,6 +70,7 @@ func _ready() -> void:
 		l.omni_range = 14.0
 		l.light_energy = 0.0
 		l.shadow_enabled = false
+		l.light_volumetric_fog_energy = 40.0  # (a burst's flash blooms in mist, haze and smoke)
 		l.add_to_group(&"fx_light")  # (Atmosphere may lend it a shadow: Shadows from fire and flares)
 		add_child(l)
 		_lights.append(l)
@@ -341,6 +342,8 @@ func _explode(p: Vector3, size: float, kind := "he", sound_bus := &"Effects", on
 	if not on_hull and not world.srv and world.terrain:
 		world.terrain.add_crater(p, size)
 	var wet: bool = not on_hull and world.water and not world.water.is_empty() and p.y < 3.0 and world.water.wet_at(p)
+	if world.atmo and world.atmo.air:
+		world.atmo.air.blast(p, size, wet, above_ground)  # (the pall it leaves, drifting off)
 	if wet and p.y < 1.2 and not _on_boat(p):
 		# in the water: a column of spray, a ring of foam, no crater
 		Sfx.play("explosion" if size >= 0.8 else "small_boom", p, 0.0, 1.0, sound_bus)
