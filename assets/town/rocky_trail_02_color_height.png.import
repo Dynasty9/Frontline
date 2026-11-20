@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bnuro1t367v6a"
-path="res://.godot/imported/gravel_floor_02_color.jpg-0510c4a5222970868eaf64fa098390bf.ctex"
+uid="uid://daoj73mu0615x"
+path="res://.godot/imported/rocky_trail_02_color_height.png-2d2ed4584bc268867a02cac752bf7a2b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/town/gravel_floor_02_color.jpg"
-dest_files=["res://.godot/imported/gravel_floor_02_color.jpg-0510c4a5222970868eaf64fa098390bf.ctex"]
+source_file="res://assets/town/rocky_trail_02_color_height.png"
+dest_files=["res://.godot/imported/rocky_trail_02_color_height.png-2d2ed4584bc268867a02cac752bf7a2b.ctex"]
 
 [params]
 
@@ -37,4 +37,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0
