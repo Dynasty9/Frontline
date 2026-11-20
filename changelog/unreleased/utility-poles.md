@@ -13,6 +13,6 @@ caption = "A pole carrying the street's transformer"
 +++
 
 - **The pole** is creosoted timber, darker where it stands in the ground, with a weather cap on top. Two steel braces hold up its crossarm.
-- **Steps** are staggered up the pole, starting out of a child's reach. The pole's number and a yellow danger plate are at eye height, and an earth wire runs down one side under a guard.
-- **Transformers** have cooling fins on the tank, a platform of steel channels under it, bushings on top and a fuse for each on the crossarm. Their cable runs down the pole in a conduit.
+- **Steps** are staggered up the pole, starting out of a child's reach. The pole's number and a yellow danger plate are at eye height, and a thin earth wire is stapled flat down one side.
+- **Transformers** have cooling fins on the tank, a platform of steel channels under it, bushings on top and a fuse for each on the crossarm. Their cable is clipped flat down the pole into the ground.
 - The wires still hang from the same insulators.

@@ -397,9 +397,12 @@ the cups of the three pin insulators.
 - **The pole** is tapered and creosoted timber, darker where it stands in the ground, under a weather cap. Its
   crossarm sits on two galvanised braces.
 - **Fittings**: staggered steps start out of a child's reach, the number plate and the yellow danger plate are at
-  eye height, and the earth wire runs down one side under a guard.
+  eye height, and a bare copper earth wire is stapled flat down the far side into the ground.
 - **With its transformer** (Decor `ex` 1), the pole carries a finned tank on a platform of channels, with bushings
-  on top, a fuse for each on the crossarm, and the cable down to the ground in a conduit.
+  on top, a fuse for each on the crossarm, and its cable clipped flat down the pole into the ground.
+- **What comes down a pole** is one plain wire a centimetre or so across, lying on the wood along an edge of it
+  (`on_pole`) and straight, as the pole's taper is, with no guard or conduit standing off it. The fixture keeps
+  everything below the plates within a couple of centimetres of the pole.
 
 Render them with `--building-kinds=poles`.
 

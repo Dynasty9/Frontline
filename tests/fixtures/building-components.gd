@@ -533,7 +533,10 @@ func _ready() -> void:
 	plain_floor.free()
 	# Utility poles: a pole (with or without its transformer) keeps to its
 	# crossarm's span and under its cap, and an insulator stands at every
-	# point the line's wires are strung to (Decor ties them at 7.66 m).
+	# point the line's wires are strung to (Decor ties them at 7.66 m). What
+	# comes down it to the ground (the earth wire, a transformer's cable) is
+	# a thin wire stapled flat to it: below its plates nothing stands more
+	# than a couple of centimetres off the pole.
 	for with_tank in [false, true]:
 		var uk := kit()
 		BuildingUtility.pole(uk, with_tank, uk.rng)
@@ -541,6 +544,15 @@ func _ready() -> void:
 		check(ub.position.y >= -0.01 and ub.end.y <= 8.5 and ub.position.z >= -1.05 and ub.end.z <= 1.05 and ub.position.x >= -0.4 and ub.end.x <= 0.8, "a utility pole keeps to its crossarm (%s)" % ub)
 		for z: float in [-0.8, 0.0, 0.8]:
 			check(occupied(uk.sink.root, Vector3(0, 7.62, z)), "a pole's wire at z %.1f has its insulator" % z)
+		var pole_parts: Array[AABB] = []
+		_part_boxes(uk.sink.root, Transform3D.IDENTITY, pole_parts)
+		for ppb: AABB in pole_parts:
+			if ppb.position.y < 1.7:
+				var pp_off := maxf(maxf(absf(ppb.position.x), absf(ppb.end.x)), maxf(absf(ppb.position.z), absf(ppb.end.z)))
+				check(pp_off <= 0.18, "what comes down a pole lies flat on it (%s)" % ppb)
+		check(occupied(uk.sink.root, BuildingUtility.on_pole(BuildingUtility.EARTH, 3.0, 0.002)), "a pole's earth wire is stapled down it")
+		if with_tank:
+			check(occupied(uk.sink.root, BuildingUtility.on_pole(BuildingUtility.CABLE, 3.0, 0.003)), "a transformer's cable is clipped down its pole")
 		uk.sink.root.free()
 	# The pillbox: its walls, drawn from the bunker's parts, fill every part
 	# that stops a bullet, short of them only at the corners' chamfer; its

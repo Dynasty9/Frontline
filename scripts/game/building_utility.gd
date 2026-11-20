@@ -6,15 +6,26 @@ extends RefCounted
 ## on top, the crossarm across the line (local z) on two steel braces, three
 ## pin insulators the wires hang from (Decor strings them to 7.66 m), steps up
 ## the pole out of a child's reach, its number and the danger plate at eye
-## height, the earth wire down one side under a guard. Every so often the pole
-## carries the street's transformer: a finned tank on a platform of channels,
-## its bushings, the fuses on the crossarm, the cable down in a conduit.
+## height, a thin earth wire stapled flat down one side. Every so often the
+## pole carries the street's transformer: a finned tank on a platform of
+## channels, its bushings, the fuses on the crossarm, its cable clipped flat
+## down the pole.
 
 const TIMBER := Color(0.3, 0.24, 0.17)
 const STEEL := Color(0.34, 0.35, 0.34)
 const GALV := Color(0.6, 0.61, 0.6)  # galvanised: steps, braces, bands
+const COPPER := Color(0.7, 0.46, 0.26)  # bare copper, dulled
+const SHEATH := Color(0.4, 0.41, 0.4)  # a cable's grey sheath, weathered
 const HEIGHT := 8.4
 const ARM := 7.45  # the crossarm's middle
+# What comes down a pole to the ground is stapled flat along an edge of it:
+# the earth wire on the far side (-z), a transformer's cable on the edge
+# between the plates and the earth wire. Each is one plain wire a centimetre
+# or so across, lying on the wood: no guard or conduit standing off the pole.
+const EARTH := Vector3(0, 0, -1)
+const CABLE := Vector3(0.7071, 0, -0.7071)
+const EARTH_R := 0.005
+const CABLE_R := 0.007
 
 
 static func pole(k: BuildingKit, transformer: bool, rng: RandomNumberGenerator) -> void:
@@ -45,11 +56,30 @@ static func pole(k: BuildingKit, transformer: bool, rng: RandomNumberGenerator) 
 		k.plate(Vector3(0.004, 0.022, 0.012), Vector3(face + 0.008, 1.88 - i * 0.035, -0.02 + rng.randi_range(0, 2) * 0.02), "paint", Color(0.08, 0.08, 0.08))
 	k.plate(Vector3(0.012, 0.22, 0.18), Vector3(face - 0.005, 2.3, 0), "paint", Color(0.85, 0.7, 0.1))
 	k.plate(Vector3(0.004, 0.12, 0.03), Vector3(face + 0.003, 2.3, 0), "paint", Color(0.1, 0.09, 0.08), Vector3(0.4, 0, 0))  # (the bolt of lightning)
-	# the earth wire down the far side, under a guard to head height
-	k.rod(Vector3(0, ARM - 0.3, -0.12), Vector3(0, 2.5, -0.165), 0.008, "steel", Color(0.55, 0.38, 0.22))
-	k.box(Vector3(0.06, 2.5, 0.035), Vector3(0, 1.25, -0.175), "paint", Color(0.3, 0.32, 0.3))
+	# the earth wire: bare copper stapled flat down the far edge, from the
+	# brace's foot (it bonds the ironwork) into the ground
+	_down(k, EARTH, 6.95, EARTH_R, "steel", COPPER)
 	if transformer:
 		_transformer(k, rng)
+
+
+## The pole's radius `y` up it: it tapers from 0.16 at the ground to 0.11.
+static func radius(y: float) -> float:
+	return lerpf(0.16, 0.11, y / HEIGHT)
+
+
+## The middle of a wire `r` thick lying on the pole's edge toward `dir` (a
+## level unit vector), `y` up it.
+static func on_pole(dir: Vector3, y: float, r: float) -> Vector3:
+	return dir * (radius(y) + r) + Vector3(0, y, 0)
+
+
+## A wire stapled flat down the pole's edge toward `dir`, from `top` into the
+## ground: the pole's taper is straight, so the wire is one straight piece.
+## (Drawn from the ground up: BuildingKit.aim turns a rod pointing all but
+## straight down to plumb, which would stand it off the taper.)
+static func _down(k: BuildingKit, dir: Vector3, top: float, r: float, kind: String, col: Color) -> void:
+	k.rod(on_pole(dir, 0.0, r), on_pole(dir, top, r), r, kind, col, 4)
 
 
 ## A pole transformer, hung on the pole's +x side at about 6 m.
@@ -73,8 +103,10 @@ static func _transformer(k: BuildingKit, rng: RandomNumberGenerator) -> void:
 		# the fuse on the crossarm above it, and the jumper down to the bushing
 		k.cyl(0.02, 0.02, 0.32, Vector3(0.0, ARM - 0.3, sz * 0.45), "paint", Color(0.55, 0.3, 0.2), Vector3(0.25 * sz, 0, 0), 5)
 		k.rod(Vector3(0.0, ARM - 0.45, sz * 0.45), c + Vector3(-0.05, 0.6, sz * 0.12), 0.007, "steel", Color(0.25, 0.25, 0.25))
-	# the cable from it down the pole to the ground, in a conduit
-	k.rod(c + Vector3(-0.2, -0.3, 0.15), Vector3(0.17, 3.0, 0.14), 0.02, "metal_dark", Color(0.15, 0.15, 0.14))
-	k.box(Vector3(0.07, 3.0, 0.07), Vector3(0.17, 1.5, 0.14), "metal_dark", Color(0.2, 0.21, 0.2))
+	# its cable out of the underside to the pole, and clipped flat down the
+	# edge beside the plates into the ground
+	var drop := 5.45
+	k.rod(c + Vector3(-0.18, -0.425, -0.08), on_pole(CABLE, drop, CABLE_R), CABLE_R, "plain_dark", SHEATH, 4)
+	_down(k, CABLE, drop, CABLE_R, "plain_dark", SHEATH)
 	if rng.randf() < 0.5:
 		k.plate(Vector3(0.008, 0.1, 0.16), c + Vector3(0.28, 0.0, 0), "paint", Color(0.85, 0.7, 0.1))
