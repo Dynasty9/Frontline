@@ -728,13 +728,15 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			BuildingPlay.climber(BuildingKit.baked(_bake, rng, _at), PAINT[rng.randi() % PAINT.size()])
 		"seesaw":
 			# (BuildingPlay)
-			BuildingPlay.seesaw(BuildingKit.baked(_bake, rng, _at), PAINT[2])
+			BuildingPlay.seesaw(BuildingKit.baked(_bake, rng, _at), PAINT[rng.randi() % PAINT.size()])
 		"sandbox":
 			# (BuildingPlay)
 			BuildingPlay.sandpit(BuildingKit.baked(_bake, rng, _at), rng)
 		"roundabout":
 			# (BuildingPlay)
-			BuildingPlay.roundabout(BuildingKit.baked(_bake, rng, _at), [PAINT[0], PAINT[1], PAINT[2], PAINT[3]])
+			# (its deck in two of the colours, a different pair from town to town)
+			var deck := rng.randi() % PAINT.size()
+			BuildingPlay.roundabout(BuildingKit.baked(_bake, rng, _at), [PAINT[deck], PAINT[(deck + 1 + rng.randi() % (PAINT.size() - 1)) % PAINT.size()]])
 		"spring_rider":
 			# (BuildingPlay)
 			BuildingPlay.spring_rider(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 0, rng)

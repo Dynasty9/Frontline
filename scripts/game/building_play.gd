@@ -17,7 +17,7 @@ const STAINLESS := Color(0.86, 0.87, 0.88)  # a chute's polished bed
 const RUBBER := Color(0.09, 0.09, 0.09)
 const DECK := Color(0.2, 0.21, 0.21)  # a tower's anti-slip deck
 const SAND := Color(0.84, 0.76, 0.56)
-const DAMP_SAND := Color(0.69, 0.55, 0.36)  # turned out of a bucket: the same sand, darker
+const DAMP_SAND := Color(0.77, 0.61, 0.4)  # turned out of a bucket: the same sand, a shade darker
 ## Panel colours councils buy their moulded boards in.
 const PANELS := [Color(0.95, 0.74, 0.15), Color(0.2, 0.45, 0.8), Color(0.25, 0.62, 0.32), Color(0.82, 0.22, 0.15)]
 
@@ -575,8 +575,8 @@ static func _sand_y(layout: int, x: float, z: float) -> float:
 		[Vector2(-0.4, 0.35), Vector2(0.45, -0.4)], [Vector2(0.35, 0.4), Vector2(0.4, -0.1)]][layout]
 	var hole: Vector2 = digs[0]
 	var heap: Vector2 = digs[1]
-	h -= 0.08 * exp(-Vector2(x, z).distance_squared_to(hole) / 0.05)
-	h += 0.09 * exp(-Vector2(x, z).distance_squared_to(heap) / 0.08)
+	h -= 0.1 * exp(-Vector2(x, z).distance_squared_to(hole) / 0.05)
+	h += 0.12 * exp(-Vector2(x, z).distance_squared_to(heap) / 0.08)
 	return h
 
 

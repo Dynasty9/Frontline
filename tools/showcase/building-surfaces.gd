@@ -328,7 +328,7 @@ func _subject(kind: String) -> Node3D:
 					# (and its spring riders, where it has them)
 					bp.call("spring_rider", pk.at_point(Vector3(-1.3, 0, 3.6), Vector3(0, PI * 0.5, 0)), 0, pr)
 					bp.call("spring_rider", pk.at_point(Vector3(-0.1, 0, 3.3), Vector3(0, PI * 0.5, 0)), 1, pr)
-					bp.call("spring_rider", pk.at_point(Vector3(5.4, 0, 0.6), Vector3(0, PI * 0.5, 0)), 2, pr)
+					bp.call("spring_rider", pk.at_point(Vector3(5.8, 0, -0.4), Vector3(0, PI * 0.5, 0)), 2, pr)
 			return play
 		"shop_rooms":
 			# two shops with their roofs off, as when men are inside (as they
