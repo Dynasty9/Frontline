@@ -10,6 +10,8 @@ class TrackedSoldier extends Soldier:
 		elapsed += dt
 
 func _ready() -> void:
+	for hz in [30, 60, 120]:
+		check_body_motion(hz)
 	var world := World.new()
 	var view := SoldierViewBatch.new()
 	view.world = world
@@ -89,3 +91,31 @@ func _ready() -> void:
 	world.free()
 	print("SOLDIER_BATCHES passed")
 	get_tree().quit()
+
+## A reversal should start under the old stride and turn across several frames.
+func check_body_motion(hz: int) -> void:
+	var s := Soldier.new()
+	s.srv = true
+	var dt := 1.0 / hz
+	s._update_body(dt)
+	for i in hz:
+		s.position.x += 4.0 * dt
+		s._update_body(dt)
+	var before := (s.transform * s.body_offset).origin.x
+	s.position.x -= 4.0 * dt
+	s.rotation.y = PI
+	s._update_body(dt)
+	var drawn := s.transform * s.body_offset
+	assert(drawn.origin.x > before, "the body finishes its outgoing step on a reversal")
+	assert(absf(drawn.basis.get_euler().y) <= TAU * dt + 0.00001, "the model cannot snap through a half-turn")
+	for i in hz:
+		s._update_body(dt)
+	assert((s.transform * s.body_offset).is_equal_approx(s.transform), "settles onto the exact resting pose")
+	s.position += Vector3(8.0, -1.0, 4.0)
+	s._update_body(dt)
+	assert(s.body_offset.is_equal_approx(Transform3D.IDENTITY), "a spawn or teleport must not glide across the map")
+	s.srv = false
+	s.position.x += 0.2
+	s._update_body(dt)
+	assert(s.body_offset.origin.is_zero_approx(), "network interpolation already eases client positions")
+	s.free()

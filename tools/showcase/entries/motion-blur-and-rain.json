@@ -1,0 +1,22 @@
+{
+  "entry": "changelog/unreleased/motion-blur-and-rain.md",
+  "summary": "Motion blur on moving things (camera optional) and rain wetness on every outdoor surface.",
+  "medium": "still",
+  "stage": "game capture flags (--screenshot, --offscreen, --fixed-fps 30)",
+  "rationale": "Both changes are appearance: a matched pair for each, cropped 1:1 where the difference shows (a spinning tail rotor; a tank's paint and canvas in the rain). Motion blur is also motion, but a still at the exact frame shows the blur itself; the LOD cross-fade is described in text because a dissolve between two distant meshes doesn't read in a still.",
+  "source_ref": "548239755c3466e6f675a975df527d74a29d6a0a",
+  "before_ref": "548239755c3466e6f675a975df527d74a29d6a0a",
+  "capture": {
+    "renderer": "Forward+ (Vulkan), NVIDIA GeForce RTX 3090, 1600x900, off-screen window, --preset=ultra",
+    "motion_blur": "--scenario=sling --seed=3 --mood=day --focus=-20,20 --zoom=26 --shot-at=8 --set=motion_blur:0 / 1, crop 1000,0-1500,282",
+    "rain": "--scenario=roster --seed=3 --mood=rain --focus=-84,24 --zoom=24 --shot-at=6; before from origin/main, now from this branch; crop 700,300-1500,750",
+    "note": "All runs use --fixed-fps 30. Before and now share the seed and moment, but the battle can differ slightly run to run."
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/motion-blur-and-rain/comparison.jpg",
+      "sha256": "a4179b4b366a27b18e8ae8c9178213e2ed601bcf17c8d1faf9f149cd81567f8f"
+    }
+  ],
+  "output": null
+}

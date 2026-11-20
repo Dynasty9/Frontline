@@ -1,0 +1,41 @@
+{
+  "entry": "changelog/unreleased/bridgehead-relief.md",
+  "summary": "Prepare the defence, react to incoming threats, and hold until Lancer reaches the bridgehead.",
+  "medium": "motion",
+  "stage": "mission=bridgehead",
+  "rationale": "A real-time silent gameplay excerpt shows the relief tanks at the crossing and the transition from the counterattack to the handover. Command-driven trials and completion checks assess mechanics; this is not a claim of human playtesting.",
+  "source_ref": "bd4f1b59 plus mission-pacing changes",
+  "sources": [
+    {
+      "file": "changelog/unreleased/bridgehead-relief/relief.webm",
+      "sha256": "e033695121432154ec5dee75dfd32d9f197435ed497784dade62209e4be6ba66"
+    },
+    {
+      "file": "changelog/unreleased/bridgehead-relief/defence.jpg",
+      "sha256": "43d112789b26fc7c38c9c8792c874246112627a86562d2b7dc4c2591ac311dee"
+    }
+  ],
+  "output": "changelog/unreleased/bridgehead-relief/defence.jpg",
+  "capture": {
+    "engine": "Godot 4.7.2",
+    "renderer": "Forward+",
+    "seed": 1,
+    "simulation": "fixed 30 Hz, mission autoplay with player HUD",
+    "resolution": "1600x900",
+    "time_seconds": 202,
+    "focus": [
+      -211,
+      168
+    ],
+    "zoom": 90,
+    "pitch": -55,
+    "yaw": 0.5,
+    "command": "godot --path . --fixed-fps 30 --resolution 1600x900 -- --mission=bridgehead --play --autoplay --offscreen --set=perf:0 --focus=-211,168 --zoom=90 --pitch=-55 --cam-yaw=0.5 --screenshot=frame.png --shot-at=202 --shots=420 --shot-every=0.033333333333",
+    "duration_seconds": 14,
+    "frames": 420,
+    "fps": 30,
+    "encoded_resolution": "1280x720",
+    "audio": false,
+    "encode": "ffmpeg -framerate 30 -i frame_%d.png -vf scale=1280:-2 -c:v libvpx-vp9 -crf 34 -b:v 0 -deadline good -cpu-used 4 -threads 2 -row-mt 1 -an relief.webm"
+  }
+}

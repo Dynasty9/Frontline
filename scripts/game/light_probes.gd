@@ -1,0 +1,1850 @@
+class_name LightProbes
+extends Node
+## A grid of light probes over the battlefield: how much sky each point can
+## see, from which way, and how much sunlight the walls, roofs and ground
+## round it throw back. A street between two rows of houses sees a strip of
+## sky, so its walls and cobbles take less of the skylight than a meadow does,
+## and the sunlit side throws a warm glow across onto the shaded one. Inside a
+## house the roof hides the sky altogether: what light there is comes in
+## through the windows and doors, off the sunlit ground outside.
+##
+## Screen-space occlusion (SSAO) sees only what's on screen and a metre or so
+## round each pixel; this sees whole streets and rooms, whether or not they're
+## in view, and costs a handful of texture reads a pixel rather than a pass
+## over the screen.
+##
+## The probes are few and the pixels many, so the probes are kept small and
+## the pixels rebuild the light from them:
+##
+##  - The scene, as the probes see it, is a coarse block model: every
+##    structure's boxes (walls, roofs, floors, sandbags, wrecks; tree crowns
+##    and nets half see-through) laid into 1 m cubes up to 16 m above the
+##    ground (`voxels`, a texture array of 64 m tiles). The ground itself is
+##    the terrain's own height texture, craters and all.
+##  - A probe every 2 m across the map, at eight heights 2 m apart following
+##    the lie of the land, traces 32 rays (16 on Low) through that model on
+##    the GPU (BAKE_SHADER). It keeps 8 bytes: the share of rays that reach
+##    the sky and their mean direction (the first two spherical-harmonic
+##    bands of what it can see, which is also its bent normal), and the mean
+##    light off whatever stopped the others. The open ground under the open
+##    sky counts as seen: the sky's own lower half already stands for it, so
+##    an open field comes out exactly as it did without the probes.
+##  - A pixel reads the probes round it (hardware-filtered, five reads; two on
+##    Low), offset along its normal so it reads the air in front of a wall
+##    rather than the wall, and turns the bands into the cosine-weighted share
+##    of sky its own normal sees: on Low by the exact formula for the two
+##    bands kept, on High through a tiny network with baked weights that
+##    learned to read more out of them (PIXEL). That multiplies the skylight
+##    (AO), and the rest of its view, lit by the bounce, comes back as a
+##    little emission.
+##
+## The probes change only where the scene does. A structure built, blown down
+## or burnt away marks its 64 m tile; the tile's cubes are laid again on the
+## CPU (a few milliseconds) and the probes within reach of it traced again,
+## two tiles' worth a frame, nearest the camera first. A crater does the same
+## a moment later, once its heights are up on the GPU. The bounce follows the
+## light's colour every frame on its own, and as the sun swings it's traced
+## again a tile a frame (RELIGHT_DEG). Tiles with nothing in reach aren't
+## traced at all: they're written as open sky.
+##
+## It's light and nothing else: no gameplay reads it, it never touches the
+## world's random numbers, and the server never builds it. The Light probes
+## setting turns it off (and the browser, which draws per vertex, gets the
+## two-read Low version).
+
+## Voxels across the map (MapDims.N metres): 1 m cubes on the standard map,
+## 2 m and 3 m on the larger ones, so the grid keeps its size and cost.
+const NV := 1024
+const TILE := 64  # voxels a side in a tile
+const TILES := NV / TILE  # tiles across
+const VH := 16  # voxel layers above the ground
+const P := NV / 2  # probe columns across (one every two voxels)
+const LAYERS := 8  # probe heights, two voxels apart
+const BRICK := TILE / 2  # probe columns across a tile
+## The probe atlas: the eight heights side by side, the visibility above the
+## bounce, and below them the height the columns stand on (for the pixels).
+const ATLAS := Vector2i(P * LAYERS, P * 3)
+
+## A roof's cubes: as solid as any to the sky (two of them pass under half a
+## percent), but marked, so the sun trace lets ROOF_SUN through them. The game
+## lifts a roof off to show the men inside and cuts the sun in the room to as
+## much (PROBE_ROOM_SUN): the probes see the same sunlit patch on the floor the
+## player does, and bounce it into the room's shade.
+const ROOF := 14.0 / 15.0
+const ROOF_SUN := 0.4
+
+## A tree crown's cubes: three fifths of the light stopped each (a crown's 4 m of
+## them pass a fortieth: a wood's floor sees its sky through the gaps between
+## crowns), and marked, so the tracer knows them for leaves: light
+## that comes through or off them comes out green (LEAF in BAKE_SHADER), and a
+## wood's floor sits in a dim green shade. No other box is laid at this.
+const FOLIAGE := 9.0 / 15.0
+
+## How far rays reach (in voxels, BAKE_SHADER's 18 steps of 0.9): a tile's
+## probes see into the next tile but no further.
+const REACH := 16.0
+
+## How much light the bounce gives back, and how far the sky occlusion
+## darkens, at full strength: the bounce errs low, since SSIL adds its own
+## near the camera on High and above.
+const AO_STRENGTH := 1.0
+const BOUNCE_STRENGTH := 0.8
+
+## Time budget for laying tiles each frame, and how many tiles of probes are
+## traced a frame (each is 32x32 columns at 8 heights, visibility and bounce).
+const LAY_BUDGET_US := 3000
+const BAKES_PER_FRAME := 2
+const BAKES_PER_FRAME_WEB := 1
+## A crater's heights take a few frames to reach the GPU (Atmosphere._update_deform).
+const DEFORM_DELAY := 0.6
+
+## Fires and lamps (lights in the probe_light group) light the probes round
+## them: a burning house throws a glow on the walls across the street and the
+## ground round the corner, past where its own light reaches. The probes keep
+## that light in the atlas's bottom block, beside the heights (one more read a
+## pixel), traced from each probe to each light through the cubes, so a wall
+## keeps it in. The LOCAL_MAX lights nearest the camera count; they're looked
+## at every LOCAL_EVERY seconds, and only a light that came, went, moved or
+## changed by a quarter has its tiles traced again, LOCAL_PER_FRAME tiles a
+## frame. Its steady brightness counts, not its flicker.
+const LOCAL_MAX := 16
+const LOCAL_EVERY := 0.25
+const LOCAL_PER_FRAME := 4
+const LOCAL_REACH := 1.6  # the glow reaches this far past a light's own range...
+const LOCAL_FAR := 20.0  # ...but no further than this, metres
+const LOCAL_STRENGTH := 0.6
+
+## The light moves on (Time passes, a new mood, the weather): the bounce is kept
+## relative to the light it was traced in (sun and sky together), so it follows
+## the light's colour and strength every frame on its own. Only the way the sun
+## falls needs tracing again: once it has swung RELIGHT_DEG or the sun's share
+## of the light has changed by RELIGHT_SHARE, the bounce alone of every tile with
+## something in it is traced again, RELIGHT_PER_FRAME a frame, after anything
+## the battle changed. A tile's step is then a degree or two of sun: too small
+## to see, where a whole fresh trace at sunset would pop.
+const RELIGHT_DEG := 2.0
+const RELIGHT_SHARE := 0.12
+const RELIGHT_PER_FRAME := 1
+
+## Vehicles and men shut out a little of the sky round their feet, as a tank
+## parked in shade or a man standing on a floor does (a soft dark pool under
+## them, after the capsule and box occlusion of Unreal and Frostbite). The
+## probes' cubes don't move with them, so they're drawn each frame, soft boxes
+## and discs, into a small map round the camera (OCC_SIZE texels over OCC_SPAN
+## metres) that a pixel reads once, as it reads the probes. Faded out over
+## OCC_HEIGHT above the ground: a hull's deck and a man's head see the sky.
+const OCC_SIZE := 256
+const OCC_SPAN := 96.0
+const OCC_HEIGHT := 1.8
+const OCC_VEHICLE := 0.75  # how much of the sky a hull's footprint shuts out under it
+const OCC_MAN := 0.35  # a man standing; less crouched or lying
+
+var atmo  # Atmosphere
+var world: World
+var quality := 0  # 0 off, 1 low (AO only, nearest height), 2 high
+
+var _vsz := 1.0  # voxel size, metres
+var _ready_size := -1  # the landform's sample count when the grid was laid out (clients get theirs late)
+var _voxels: Texture2DArray
+var _tile_full := PackedByteArray()  # 1: the tile has something in it
+var _tile_dirty := PackedByteArray()  # 1: queued for laying
+var _tile_queue: Array[int] = []
+var _brick_dirty := PackedByteArray()
+var _brick_queue: Array[int] = []
+var _late: Array = []  # [seconds left, tile] waiting for a crater's heights
+var _vp: SubViewport
+var _bake: Node2D
+var _fill: Node2D
+var _bake_mat: ShaderMaterial
+var _fill_mat: ShaderMaterial
+var _base_drawn := false
+var traced := 0  # bricks traced so far (tests, diagnostics)
+var laid := 0  # tiles laid so far
+var _ab := false
+var _trench_tex: Texture2D
+var _cycle := 0
+var _local: Node2D
+var _local_mat: ShaderMaterial
+var _local_dirty := PackedByteArray()
+var _local_queue: Array[int] = []
+var _local_t := 0.0
+var _lights := {}  # instance id -> [position, steady energy, colour, reach, clear radius]
+var _light_ema := {}  # instance id -> energy, averaged over the flicker
+var lit_bricks := 0  # tiles whose fire light was traced (tests, diagnostics)
+var _freeze := -1  # FL_DEBUG_PROBES_FREEZE: frames into the frozen capture
+var _light_dirty := PackedByteArray()
+var _light_queue: Array[int] = []  # bricks whose bounce alone is traced again (the light moved)
+var _baked_sun := Vector3.ZERO  # where the sun was, and its share of the light, when the bounce was last queued
+var _baked_share := -1.0
+var _ref := Vector3.ONE  # the light the bounce is kept relative to, now
+var _ref_sun_y := 2.0  # (and the sun's height, for the rooms' least skylight)
+var relit := 0  # bricks whose bounce was traced again for the light (tests, diagnostics)
+var _tile_dug := PackedByteArray()  # 1: cratered or dug: the ground itself shuts out sky there
+var _occ_vp: SubViewport
+var _occ: Node2D
+var occluders := 0  # vehicles and men drawn into the occlusion map last frame (tests, diagnostics)
+
+static var _globals := false
+
+
+## Wanted at all here: a view, and the setting on.
+static func level() -> int:
+	if DisplayServer.get_name() == "headless":
+		return 0
+	return clampi(int(Settings.get_v("light_probes")), 0, 2)
+
+
+func setup(a) -> void:
+	atmo = a
+	world = a.world
+	name = "LightProbes"
+	_vsz = MapDims.SIZE / NV
+	_ensure_globals()
+	apply_settings()
+
+
+func apply_settings() -> void:
+	var q := level()
+	if q == quality and _vp != null:
+		return
+	var was := quality
+	quality = q
+	_publish()
+	if quality == 0:
+		return
+	if _vp == null:
+		_build()
+	elif (was == 1) != (quality == 1):
+		# Low traces fewer rays and no bounce: trace it all again
+		_requeue_all_bricks()
+	if _bake_mat:
+		_bake_mat.set_shader_parameter("rays", 16.0 if quality == 1 else 32.0)
+		_bake_mat.set_shader_parameter("bounce", quality >= 2)
+
+
+## A new mood or weather: the bounce takes the new light's colour at once
+## (_follow_light) and is traced again for where its sun is.
+func relight() -> void:
+	if _bake_mat == null:
+		return
+	_set_light()
+	_queue_relight()
+
+
+## Every frame: the light the bounce is relative to, now; and once the sun has
+## swung far enough, the bounce queued to be traced again for it.
+func _follow_light() -> void:
+	var l := _light_now()
+	var ref: Vector3 = l[3]
+	if not ref.is_equal_approx(_ref) or not is_equal_approx((l[0] as Vector3).y, _ref_sun_y):
+		_ref_sun_y = (l[0] as Vector3).y
+		_ref = ref
+		RenderingServer.global_shader_parameter_set("probe_ref", Vector4(ref.x, ref.y, ref.z, (l[0] as Vector3).y))
+	var to_sun: Vector3 = l[0]
+	if _baked_share < 0.0 or rad_to_deg(to_sun.angle_to(_baked_sun)) > RELIGHT_DEG or absf(float(l[4]) - _baked_share) > RELIGHT_SHARE:
+		if OS.has_environment("FL_DEBUG_PROBES_RELIGHT"):
+			print("PROBES relight t=%.1f sun %s share %.2f ref %s sun_c %s sky_c %s energy %s queued %d relit %d" % [world.time, to_sun, float(l[4]), ref, l[1], l[2], atmo._d.energy, _light_queue.size(), relit])
+		_set_light()
+		_queue_relight()
+
+
+## Every brick with something in reach, queued for its bounce alone.
+func _queue_relight() -> void:
+	if _ready_size < 0:
+		return
+	for b in TILES * TILES:
+		if _light_dirty[b] == 0 and _in_reach(b):
+			_light_dirty[b] = 1
+			_light_queue.append(b)
+
+
+## A structure appeared, went or moved: its tiles are laid again.
+func structure_changed(st: Structure) -> void:
+	if _ready_size < 0 or st == null:
+		return
+	var r := st.radius + 4.0  # (a tree's crown spreads well past its trunk)
+	_mark_area(Rect2(st.position.x - r, st.position.z - r, r * 2.0, r * 2.0))
+
+
+## The trench network changed (TrenchNet.rebuild): its mask goes to the
+## tracer, and the probes round what changed (area, in metres; empty for the
+## first network or a whole new one) are traced again.
+func trench_changed(tex: Texture2D, area: Rect2) -> void:
+	_trench_tex = tex
+	for m: ShaderMaterial in [_bake_mat, _fill_mat, _local_mat]:
+		if m:
+			m.set_shader_parameter("trench_mask", tex)
+	if _ready_size < 0:
+		return
+	if area.size == Vector2.ZERO:
+		_requeue_all_bricks()
+		return
+	for t in _tiles_in(area):
+		_tile_dug[t] = 1
+	for t in _tiles_in(area.grow(REACH * _vsz)):
+		_queue_brick(t)
+
+
+## The ground changed (a crater, in cells of the deformation grid, TerrainMap.DN
+## across, half a metre each): the
+## probes in reach of it are traced again once the heights are on the GPU.
+func terrain_changed(cells: Rect2i) -> void:
+	if _ready_size < 0:
+		return
+	var m := TerrainMap.DN / float(NV)  # deformation cells per voxel
+	var t0 := Vector2i(floori(cells.position.x / m / TILE), floori(cells.position.y / m / TILE))
+	var t1 := Vector2i(floori(cells.end.x / m / TILE), floori(cells.end.y / m / TILE))
+	for tz in range(maxi(t0.y, 0), mini(t1.y, TILES - 1) + 1):
+		for tx in range(maxi(t0.x, 0), mini(t1.x, TILES - 1) + 1):
+			# (a crater's bowl shuts out a little sky of its own: out in the
+			# fields too, its tile is traced from now on)
+			_tile_dug[tz * TILES + tx] = 1
+			_late.append([DEFORM_DELAY, tz * TILES + tx])
+
+
+func _process(dt: float) -> void:
+	if quality == 0 or world == null or world.terrain == null or atmo.deform_tex == null:
+		return
+	var lf: Landform = world.terrain.landform
+	var size := lf.heights.size() if lf else 0
+	if size != _ready_size:
+		_start(size)
+	for i in range(_late.size() - 1, -1, -1):
+		_late[i][0] = float(_late[i][0]) - dt
+		if float(_late[i][0]) <= 0.0:
+			_touch_bricks_round(int(_late[i][1]), false)
+			_late.remove_at(i)
+	if OS.has_environment("FL_DEBUG_PROBES_BENCH") and _vp:
+		_bench()
+	if OS.get_environment("FL_DEBUG_PROBES_AB") == "cycle" and _vp:
+		# FL_DEBUG_PROBES_AB=cycle: off, on, the probes' term, the bent normal, three
+		# frames each, round and round: four panels of one moment from frames in a row.
+		# With FL_DEBUG_PROBES_FREEZE=<dir> (and _AT=<seconds>), time stops there (no
+		# sway, no flicker, no smoke drifting) and the four are saved to <dir> as
+		# off.png, on.png, term.png, bent.png: the same instant, lit four ways.
+		if OS.has_environment("FL_DEBUG_PROBES_FREEZE") and _freeze_step():
+			return
+		var phase := (_cycle / 3) % 4
+		_cycle += 1
+		RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, 0.0 if phase == 0 else float(quality), 0.0))
+		RenderingServer.global_shader_parameter_set("probe_mix", Vector4(AO_STRENGTH, BOUNCE_STRENGTH, [0.0, 0.0, 1.0, 3.0][phase], _leak_test()))
+	elif OS.has_environment("FL_DEBUG_PROBES_AB") and _vp:
+		# FL_DEBUG_PROBES_AB=1: the probes on and off on alternate frames, for a
+		# before-and-after of one moment from two frames in a row (two runs of a
+		# seed don't build the same town, and the clouds move on between shots)
+		_ab = not _ab
+		if OS.get_environment("FL_DEBUG_PROBES_AB") == "leak":
+			# =leak: the pixels' wall test off and on, frame about
+			RenderingServer.global_shader_parameter_set("probe_mix", Vector4(AO_STRENGTH, BOUNCE_STRENGTH, float(OS.get_environment("FL_DEBUG_PROBES_VIEW")) if OS.has_environment("FL_DEBUG_PROBES_VIEW") else 0.0, 1.0 if _ab else 0.0))
+		elif OS.get_environment("FL_DEBUG_PROBES_AB") != "ssil":
+			RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, float(quality) if _ab else 0.0, 0.0))
+	_follow_light()
+	_draw_occluders()
+	_local_t -= dt
+	if _local_t <= 0.0:
+		_local_t = LOCAL_EVERY
+		_gather_lights()
+	var t0 := Time.get_ticks_usec()
+	while not _tile_queue.is_empty() and Time.get_ticks_usec() - t0 < LAY_BUDGET_US:
+		_lay(_tile_queue.pop_front())
+	_bake_some()
+
+
+## FL_DEBUG_PROBES_FREEZE: once the world reaches FL_DEBUG_PROBES_FREEZE_AT, time
+## stops and each of the four views is drawn for a few frames (everything else
+## settles) and the last of them saved. True while it has the frame.
+func _freeze_step() -> bool:
+	if _freeze < 0:
+		if world.time < float(OS.get_environment("FL_DEBUG_PROBES_FREEZE_AT")):
+			return false
+		_freeze = 0
+		Engine.time_scale = 0.0
+	var phase := _freeze / 4
+	if phase >= 4:
+		get_tree().quit()
+		return true
+	# (FL_DEBUG_PROBES_FREEZE_PART=so: the first panel has the probes on but
+	# their specular occlusion off, for a before-and-after of that alone)
+	var so_off := phase == 0 and OS.get_environment("FL_DEBUG_PROBES_FREEZE_PART") == "so"
+	RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, float(quality) if phase > 0 or so_off else 0.0, 1.0 if so_off else 0.0))
+	RenderingServer.global_shader_parameter_set("probe_mix", Vector4(AO_STRENGTH, BOUNCE_STRENGTH, [0.0, 0.0, 1.0, 3.0][phase], _leak_test()))
+	if _freeze % 4 == 3:
+		var path := OS.get_environment("FL_DEBUG_PROBES_FREEZE").path_join(["off", "on", "term", "bent"][phase] + ".png")
+		RenderingServer.frame_post_draw.connect(func() -> void:
+			get_viewport().get_texture().get_image().save_png(path)
+			print("PROBES frozen %s" % path), CONNECT_ONE_SHOT)
+	_freeze += 1
+	return true
+
+
+## FL_DEBUG_PROBES_BENCH=<frames> (with FL_DEBUG_PROBES_AB=1, or =ssil to
+## flip screen-space indirect light instead): the GPU time of frames with the
+## thing on and off, interleaved so a busy machine weighs on both alike; and
+## the atlas pass's own GPU time on frames that traced probes.
+func _bench() -> void:
+	var main_vp := get_viewport().get_viewport_rid()
+	if not has_meta("bench"):
+		set_meta("bench", [[], [], []])
+		RenderingServer.viewport_set_measure_render_time(main_vp, true)
+		RenderingServer.viewport_set_measure_render_time(_vp.get_viewport_rid(), true)
+	var b: Array = get_meta("bench")
+	if OS.get_environment("FL_DEBUG_PROBES_AB") == "ssil":
+		atmo.env.ssil_enabled = not atmo.env.ssil_enabled
+	var bake_ms := RenderingServer.viewport_get_measured_render_time_gpu(_vp.get_viewport_rid())
+	if _vp.render_target_update_mode == SubViewport.UPDATE_ONCE or bake_ms > 0.0:
+		(b[2] as Array).append([bake_ms, traced, lit_bricks, relit])
+	if _brick_queue.is_empty() and _tile_queue.is_empty():
+		(b[1 if _ab else 0] as Array).append(RenderingServer.viewport_get_measured_render_time_gpu(main_vp))
+	var n := int(OS.get_environment("FL_DEBUG_PROBES_BENCH"))
+	if (b[0] as Array).size() >= n and (b[1] as Array).size() >= n and not has_meta("benched"):
+		set_meta("benched", true)
+		for i in 2:
+			var a: Array = b[i]
+			a.sort()
+			print("PROBES BENCH parity %d: median %.3f ms, mean %.3f ms over %d frames" % [i, a[a.size() / 2], a.reduce(func(x, y): return x + y, 0.0) / a.size(), a.size()])
+		print("PROBES BENCH atlas pass (ms, tiles traced so far, tiles lit by fires so far, tiles relit for the sun so far): ", b[2])
+		get_tree().quit()
+
+
+# --- the grid -------------------------------------------------------------------------
+
+func _build() -> void:
+	_voxels = Texture2DArray.new()
+	var blank := Image.create(TILE, TILE * VH, false, Image.FORMAT_R8)
+	var layers: Array[Image] = []
+	for i in TILES * TILES:
+		layers.append(blank)
+	_voxels.create_from_images(layers)
+	_tile_full.resize(TILES * TILES)
+	_tile_dirty.resize(TILES * TILES)
+	_brick_dirty.resize(TILES * TILES)
+	_vp = SubViewport.new()
+	_vp.name = "ProbeAtlas"
+	_vp.size = ATLAS
+	_vp.disable_3d = true
+	_vp.transparent_bg = true
+	_vp.use_hdr_2d = false
+	_vp.render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER
+	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(_vp)
+	var sh := Shader.new()
+	sh.code = BAKE_SHADER.replace("__TILE__", "%d.0" % TerrainTexture.TILE).replace("__ROOF_SUN__", "%.2f" % ROOF_SUN)
+	_bake_mat = ShaderMaterial.new()
+	_bake_mat.shader = sh
+	_fill_mat = ShaderMaterial.new()
+	_fill_mat.shader = sh
+	for m: ShaderMaterial in [_bake_mat, _fill_mat]:
+		m.set_shader_parameter("voxels", _voxels)
+		m.set_shader_parameter("map_half", MapDims.HALF)
+		m.set_shader_parameter("vsz", _vsz)
+	_fill_mat.set_shader_parameter("mode", 0.0)
+	for m: ShaderMaterial in [_bake_mat, _fill_mat]:
+		m.set_shader_parameter("trench_floor", TrenchNet.FLOOR_Y)
+		if _trench_tex:
+			m.set_shader_parameter("trench_mask", _trench_tex)
+	_bake_mat.set_shader_parameter("mode", 1.0)
+	_fill = _Rects.new()
+	_fill.material = _fill_mat
+	_vp.add_child(_fill)
+	_bake = _Rects.new()
+	_bake.material = _bake_mat
+	_vp.add_child(_bake)
+	_local_mat = ShaderMaterial.new()
+	_local_mat.shader = sh
+	_local_mat.set_shader_parameter("voxels", _voxels)
+	_local_mat.set_shader_parameter("map_half", MapDims.HALF)
+	_local_mat.set_shader_parameter("vsz", _vsz)
+	_local_mat.set_shader_parameter("mode", 2.0)
+	_local_mat.set_shader_parameter("trench_floor", TrenchNet.FLOOR_Y)
+	if _trench_tex:
+		_local_mat.set_shader_parameter("trench_mask", _trench_tex)
+	_local = _Rects.new()
+	_local.material = _local_mat
+	_vp.add_child(_local)
+	_local_dirty.resize(TILES * TILES)
+	_light_dirty.resize(TILES * TILES)
+	_tile_dug.resize(TILES * TILES)
+	_build_occ()
+	_set_light()
+	_publish()
+
+
+## Starts over: every tile with something in it laid, every column written.
+func _start(size: int) -> void:
+	_ready_size = size
+	_tile_full.fill(0)
+	_tile_dirty.fill(0)
+	_tile_queue.clear()
+	_brick_dirty.fill(0)
+	_brick_queue.clear()
+	_base_drawn = false
+	# (a network dug before the probes existed never told them)
+	if _trench_tex == null and atmo.trench_net:
+		_trench_tex = atmo.trench_net.tex
+	for m: ShaderMaterial in [_bake_mat, _fill_mat, _local_mat]:
+		m.set_shader_parameter("heights", atmo.deform_tex)
+		if _trench_tex:
+			m.set_shader_parameter("trench_mask", _trench_tex)
+	_local_dirty.fill(0)
+	_local_queue.clear()
+	_lights.clear()
+	_light_dirty.fill(0)
+	_light_queue.clear()
+	_tile_dug.fill(0)
+	var seen := PackedByteArray()
+	seen.resize(TILES * TILES)
+	for st: Structure in world.structures:
+		if is_instance_valid(st) and not st.gone:
+			var r := st.radius + 4.0
+			for t in _tiles_in(Rect2(st.position.x - r, st.position.z - r, r * 2.0, r * 2.0)):
+				seen[t] = 1
+	for t in TILES * TILES:
+		if seen[t]:
+			_queue_tile(t)
+		_queue_brick(t)
+
+
+func _requeue_all_bricks() -> void:
+	if _ready_size < 0:
+		return
+	for t in TILES * TILES:
+		_queue_brick(t)
+
+
+func _publish() -> void:
+	RenderingServer.global_shader_parameter_set("probe_grid", Vector4(MapDims.HALF, _vsz * 2.0, float(quality) if _vp else 0.0, 0.0))
+	RenderingServer.global_shader_parameter_set("probe_mix", Vector4(AO_STRENGTH, BOUNCE_STRENGTH, float(OS.get_environment("FL_DEBUG_PROBES_VIEW")) if OS.has_environment("FL_DEBUG_PROBES_VIEW") else 0.0, _leak_test()))
+	if _vp:
+		RenderingServer.global_shader_parameter_set("probe_atlas", _vp.get_texture())
+		RenderingServer.global_shader_parameter_set("probe_voxels", _voxels)
+		RenderingServer.global_shader_parameter_set("probe_occ", _occ_vp.get_texture())
+
+
+## The pixels' wall test on (1) or off (FL_DEBUG_PROBES_LEAK=0, for a before-and-after).
+static func _leak_test() -> float:
+	return 0.0 if OS.get_environment("FL_DEBUG_PROBES_LEAK") == "0" else 1.0
+
+
+## The light now: [to the sun, sun colour, sky colour, the reference the bounce
+## is kept relative to, the sun's share of it]. The reference is the light on
+## open ground (the sun's at its height, never below a quarter, so a wall facing
+## a low sun stays in range, plus the sky's), so the bounce follows the evening
+## as it dims and reddens, between traces.
+func _light_now() -> Array:
+	var sun: DirectionalLight3D = atmo.sun
+	var to_sun := sun.global_transform.basis.z.normalized() if sun.is_inside_tree() else sun.basis.z.normalized()
+	var d: Dictionary = atmo._d
+	var sun_c: Color = (d.sun as Color).srgb_to_linear() * float(d.energy)
+	var sky_c: Color = ((d.zenith as Color).lerp(d.horizon as Color, 0.6)).srgb_to_linear() * float(d.ambient)
+	var sv := Vector3(sun_c.r, sun_c.g, sun_c.b) * maxf(to_sun.y, 0.25)
+	var kv := Vector3(sky_c.r, sky_c.g, sky_c.b)
+	var ref := (sv + kv).max(Vector3(0.002, 0.002, 0.002))
+	var share := (sv.x + sv.y + sv.z) / (ref.x + ref.y + ref.z)
+	return [to_sun, sun_c, sky_c, ref, share]
+
+
+func _set_light() -> void:
+	var l := _light_now()
+	var sun_c: Color = l[1]
+	var sky_c: Color = l[2]
+	_bake_mat.set_shader_parameter("sun_dir", l[0])
+	_bake_mat.set_shader_parameter("sun_col", Vector3(sun_c.r, sun_c.g, sun_c.b))
+	_bake_mat.set_shader_parameter("sky_col", Vector3(sky_c.r, sky_c.g, sky_c.b))
+	_bake_mat.set_shader_parameter("light_ref", l[3])
+	_baked_sun = l[0]
+	_baked_share = float(l[4])
+
+
+func _tiles_in(r: Rect2) -> Array[int]:
+	var out: Array[int] = []
+	var tw := TILE * _vsz
+	var x0 := clampi(floori((r.position.x + MapDims.HALF) / tw), 0, TILES - 1)
+	var x1 := clampi(floori((r.end.x + MapDims.HALF) / tw), 0, TILES - 1)
+	var z0 := clampi(floori((r.position.y + MapDims.HALF) / tw), 0, TILES - 1)
+	var z1 := clampi(floori((r.end.y + MapDims.HALF) / tw), 0, TILES - 1)
+	for tz in range(z0, z1 + 1):
+		for tx in range(x0, x1 + 1):
+			out.append(tz * TILES + tx)
+	return out
+
+
+func _mark_area(r: Rect2) -> void:
+	for t in _tiles_in(r):
+		_queue_tile(t)
+
+
+func _queue_tile(t: int) -> void:
+	if _tile_dirty[t] == 0:
+		_tile_dirty[t] = 1
+		_tile_queue.append(t)
+
+
+func _queue_brick(b: int) -> void:
+	if _brick_dirty[b] == 0:
+		_brick_dirty[b] = 1
+		_brick_queue.append(b)
+
+
+## The tile and its neighbours (whose probes reach into it) are traced again.
+## Bricks with nothing in reach are only written as open sky, so a crater out
+## in the fields costs nothing.
+func _touch_bricks_round(t: int, always := true) -> void:
+	var tx := t % TILES
+	var tz := t / TILES
+	for z in range(maxi(tz - 1, 0), mini(tz + 1, TILES - 1) + 1):
+		for x in range(maxi(tx - 1, 0), mini(tx + 1, TILES - 1) + 1):
+			var b := z * TILES + x
+			if always or _in_reach(b):
+				_queue_brick(b)
+
+
+func _in_reach(b: int) -> bool:
+	var bx := b % TILES
+	var bz := b / TILES
+	for z in range(maxi(bz - 1, 0), mini(bz + 1, TILES - 1) + 1):
+		for x in range(maxi(bx - 1, 0), mini(bx + 1, TILES - 1) + 1):
+			if _tile_full[z * TILES + x] or _tile_dug[z * TILES + x]:
+				return true
+	return false
+
+
+# --- laying the cubes -----------------------------------------------------------------
+
+## Lays tile t's cubes from the structures standing in it. Each byte is a
+## cube: how much light it stops (high four bits) and how much it throws back
+## (low four, its albedo).
+func _lay(t: int) -> void:
+	_tile_dirty[t] = 0
+	laid += 1
+	var tx := t % TILES
+	var tz := t / TILES
+	var tw := TILE * _vsz
+	var ox := tx * tw - MapDims.HALF
+	var oz := tz * tw - MapDims.HALF
+	var bytes := PackedByteArray()
+	bytes.resize(TILE * TILE * VH)
+	var lf: Landform = world.terrain.landform
+	var geo := PackedFloat32Array()
+	geo.resize(TILE * TILE)
+	for z in TILE:
+		for x in TILE:
+			geo[z * TILE + x] = lf.height(Vector3(ox + (x + 0.5) * _vsz, 0, oz + (z + 0.5) * _vsz))
+	var any := false
+	var c := Vector3(ox + tw * 0.5, 0, oz + tw * 0.5)
+	for st in world.structures_near(c, tw * 0.75 + 6.0):
+		var s: Structure = st
+		for box in _boxes(s):
+			var took := _rasterize(box, ox, oz, geo, bytes)
+			if took:
+				any = true
+			if OS.has_environment("FL_DEBUG_PROBES_TRACE"):
+				print("LAY t=%d %s %s %s took=%s" % [t, s.skind, s.position, (box[0] as Transform3D).origin, took])
+	if any and OS.has_environment("FL_DEBUG_PROBES_TILES"):
+		# FL_DEBUG_PROBES_TILES=<dir>: each laid tile's cubes and ground, for offline study
+		var dir := OS.get_environment("FL_DEBUG_PROBES_TILES")
+		FileAccess.open(dir.path_join("tile_%d.bin" % t), FileAccess.WRITE).store_buffer(bytes)
+		FileAccess.open(dir.path_join("geo_%d.bin" % t), FileAccess.WRITE).store_buffer(geo.to_byte_array())
+	var was := _tile_full[t] == 1
+	_tile_full[t] = 1 if any else 0
+	if any or was:
+		_voxels.update_layer(Image.create_from_data(TILE, TILE * VH, false, Image.FORMAT_R8, bytes), t)
+	_touch_bricks_round(t, any or was)
+
+
+## The boxes a structure blocks light with: [world transform of its centre,
+## half extents, how much it stops 0..1, albedo]. Its parts, as bullets see
+## them, plus what only looks solid: roofs, tree crowns, nets.
+func _boxes(st: Structure) -> Array:
+	var out := []
+	if st.gone:
+		return out
+	var xf := Transform3D(Basis(Vector3.UP, st.yaw), st.position)
+	match st.skind:
+		"roof":
+			var h := st.size.y
+			# (marked ROOF: the sun trace lets some through, as the game does under a lifted roof)
+			out.append([xf * Transform3D(Basis(), Vector3(0, h + 0.15, 0)), Vector3(st.size.x * 0.5 + 0.3, 0.2, st.size.z * 0.5 + 0.3), ROOF, 0.18])
+			if st.variant % 2 == 0:
+				# pitched: the attic's wedge, as a box two thirds as wide and a third as high
+				var long_x := st.size.x >= st.size.z
+				var w := minf(st.size.x, st.size.z)
+				var rise := w * 0.5 * tan(deg_to_rad(28.0))
+				var half := Vector3(st.size.x * 0.5, rise / 3.0, w / 3.0) if long_x else Vector3(w / 3.0, rise / 3.0, st.size.z * 0.5)
+				out.append([xf * Transform3D(Basis(), Vector3(0, h + 0.35 + rise / 3.0, 0)), half, ROOF, 0.18])
+			return out
+		"tree":
+			if not st.burnt:
+				# the crown, as Structure.tree_model grows it: a fir's cone in two
+				# tiers, a field tree's broad dome, an orchard tree's small one
+				var v := st.variant & 15
+				if v == 2 or (v != 1 and (st.eid * 2654435761) % 100 < 34):
+					out.append([xf * Transform3D(Basis(), Vector3(0, 5.0, 0)), Vector3(2.4, 2.0, 2.4), FOLIAGE, 0.1])
+					out.append([xf * Transform3D(Basis(), Vector3(0, 9.0, 0)), Vector3(1.4, 2.0, 1.4), FOLIAGE, 0.1])
+				elif v == 1:
+					out.append([xf * Transform3D(Basis(), Vector3(0, 3.3, 0)), Vector3(1.8, 1.4, 1.8), FOLIAGE, 0.1])
+				else:
+					out.append([xf * Transform3D(Basis(), Vector3(0, 5.4, 0)), Vector3(3.0, 2.8, 3.0), FOLIAGE, 0.1])
+		"camo_net":
+			out.append([xf * Transform3D(Basis(), Vector3(0, 2.0, 0)), Vector3(maxf(st.size.x, 4.0) * 0.5, 0.15, maxf(st.size.z, 4.0) * 0.5), 0.55, 0.14])
+			return out
+		"wire", "mines":
+			return out
+	for p: Dictionary in st.parts:
+		if not st.door_shut and p.get("door", false):
+			continue  # (a client keeps the leaf among the parts: it swung open)
+		var s: Vector3 = p.s
+		var top: float = (p.p as Vector3).y + s.y * 0.5
+		if s.y < 0.05 or top < 0.35:
+			# a floor slab, a kerb, a doorstep: the ground, as far as the sky is
+			# concerned (laid as cubes, it would shut out the lower half of every
+			# room and leave the sky's own ground half counted twice)
+			continue
+		var col: Color = p.get("color", Color(0.5, 0.5, 0.5))
+		out.append([xf * Transform3D(Basis(Vector3.UP, float(p.get("r", 0.0))), p.p), s * 0.5, 1.0, col.srgb_to_linear().get_luminance()])
+	return out
+
+
+## Lays one box into the tile's bytes; true if any cube took it.
+func _rasterize(box: Array, ox: float, oz: float, geo: PackedFloat32Array, bytes: PackedByteArray) -> bool:
+	var bxf: Transform3D = box[0]
+	var half: Vector3 = box[1]
+	# a thin wall still fills the cubes it passes through, but a window in it
+	# stays open: only the thin way is fattened to a cube
+	var e := Vector3(maxf(half.x, _vsz * 0.51), maxf(half.y, _vsz * 0.51), maxf(half.z, _vsz * 0.51))
+	var b := bxf.basis.orthonormalized()
+	var inv := b.transposed()
+	var reach := absf(b.x.x) * e.x + absf(b.y.x) * e.y + absf(b.z.x) * e.z
+	var reach_z := absf(b.x.z) * e.x + absf(b.y.z) * e.y + absf(b.z.z) * e.z
+	var reach_y := absf(b.x.y) * e.x + absf(b.y.y) * e.y + absf(b.z.y) * e.z
+	var c := bxf.origin
+	var x0 := maxi(floori((c.x - reach - ox) / _vsz), 0)
+	var x1 := mini(floori((c.x + reach - ox) / _vsz), TILE - 1)
+	var z0 := maxi(floori((c.z - reach_z - oz) / _vsz), 0)
+	var z1 := mini(floori((c.z + reach_z - oz) / _vsz), TILE - 1)
+	if x0 > x1 or z0 > z1:
+		return false
+	var dens := clampi(roundi(float(box[2]) * 15.0), 1, 15)
+	var alb := clampi(roundi(float(box[3]) / 0.8 * 15.0), 1, 15)
+	var code := dens * 16 + alb
+	var hit := false
+	for z in range(z0, z1 + 1):
+		for x in range(x0, x1 + 1):
+			var g: float = geo[z * TILE + x]
+			var y0 := maxi(floori((c.y - reach_y - g) / _vsz), 0)
+			var y1 := mini(floori((c.y + reach_y - g) / _vsz), VH - 1)
+			if y0 > y1:
+				continue
+			var px := ox + (x + 0.5) * _vsz
+			var pz := oz + (z + 0.5) * _vsz
+			for y in range(y0, y1 + 1):
+				var l := inv * (Vector3(px, g + (y + 0.5) * _vsz, pz) - c)
+				if absf(l.x) > e.x or absf(l.y) > e.y or absf(l.z) > e.z:
+					continue
+				var i := (y * TILE + z) * TILE + x
+				if (bytes[i] >> 4) < dens:
+					bytes[i] = code
+				hit = true
+	return hit
+
+
+# --- tracing the probes ---------------------------------------------------------------
+
+## Traces the next few tiles of probes, nearest the camera first, once every
+## tile is laid (a probe traced through half-laid cubes would only need doing
+## again).
+func _bake_some() -> void:
+	if not _tile_queue.is_empty() and _base_drawn:
+		return
+	var fill_rects: Array[Rect2] = []
+	var bake_rects: Array[Rect2] = []
+	if not _base_drawn:
+		# the heights the columns stand on, once, and every column open sky
+		_base_drawn = true
+		fill_rects.append(Rect2(Vector2.ZERO, Vector2(ATLAS)))
+	if _tile_queue.is_empty() and not _brick_queue.is_empty():
+		_sort_bricks()
+		var n := BAKES_PER_FRAME_WEB if OS.has_feature("web") else BAKES_PER_FRAME
+		while not _brick_queue.is_empty():
+			var b: int = _brick_queue.pop_front()
+			_brick_dirty[b] = 0
+			var traced_now := _in_reach(b)
+			var bx := (b % TILES) * BRICK
+			var bz := (b / TILES) * BRICK
+			for block in 2:
+				for layer in LAYERS:
+					var r := Rect2(layer * P + bx, block * P + bz, BRICK, BRICK)
+					if traced_now:
+						bake_rects.append(r)
+					else:
+						fill_rects.append(r)
+			# and the heights its columns stand on (a crater or trench may have moved them)
+			(bake_rects if traced_now else fill_rects).append(Rect2(bx, 2 * P + bz, BRICK, BRICK))
+			if traced_now:
+				traced += 1
+				n -= 1
+				# (the cubes round it changed: so may what its lights reach)
+				if _lit_near(b):
+					_queue_local(b)
+				if n <= 0:
+					break
+	if _tile_queue.is_empty() and _brick_queue.is_empty() and _base_drawn:
+		var m := BAKES_PER_FRAME_WEB if OS.has_feature("web") else RELIGHT_PER_FRAME
+		while not _light_queue.is_empty() and m > 0:
+			var b: int = _light_queue.pop_front()
+			_light_dirty[b] = 0
+			if not _in_reach(b):
+				continue
+			relit += 1
+			m -= 1
+			for layer in LAYERS:
+				bake_rects.append(Rect2(layer * P + (b % TILES) * BRICK, P + (b / TILES) * BRICK, BRICK, BRICK))
+	var local_rects: Array[Rect2] = []
+	if _tile_queue.is_empty() and _brick_queue.is_empty() and _base_drawn:
+		var m := 0
+		while not _local_queue.is_empty() and m < LOCAL_PER_FRAME:
+			var b: int = _local_queue.pop_front()
+			_local_dirty[b] = 0
+			lit_bricks += 1
+			m += 1
+			for layer in range(1, LAYERS):
+				local_rects.append(Rect2(layer * P + (b % TILES) * BRICK, 2 * P + (b / TILES) * BRICK, BRICK, BRICK))
+	if fill_rects.is_empty() and bake_rects.is_empty() and local_rects.is_empty():
+		if OS.has_environment("FL_DEBUG_PROBES") and _brick_queue.is_empty() and not has_meta("dumped"):
+			# FL_DEBUG_PROBES=<png>: the atlas, once everything is traced
+			set_meta("dumped", true)
+			_vp.get_texture().get_image().save_png(OS.get_environment("FL_DEBUG_PROBES"))
+			print("PROBES traced=%d laid=%d atlas saved" % [traced, laid])
+		return
+	(_fill as _Rects).rects = fill_rects
+	(_bake as _Rects).rects = bake_rects
+	(_local as _Rects).rects = local_rects
+	_fill.queue_redraw()
+	_bake.queue_redraw()
+	_local.queue_redraw()
+	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+# --- vehicles and men: the occlusion map round the camera -----------------------------
+
+func _build_occ() -> void:
+	_occ_vp = SubViewport.new()
+	_occ_vp.name = "ProbeOccluders"
+	_occ_vp.size = Vector2i(OCC_SIZE, OCC_SIZE)
+	_occ_vp.disable_3d = true
+	_occ_vp.transparent_bg = false
+	_occ_vp.use_hdr_2d = false
+	_occ_vp.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
+	_occ_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_occ_vp)
+	var bg := ColorRect.new()
+	bg.color = Color.WHITE
+	bg.size = Vector2(OCC_SIZE, OCC_SIZE)
+	_occ_vp.add_child(bg)
+	_occ = _Occ.new()
+	var m := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = OCC_SHADER
+	m.shader = sh
+	_occ.material = m
+	_occ_vp.add_child(_occ)
+
+
+## The vehicles and men round the camera, as soft footprints: [centre (texels),
+## yaw, half size of the box drawn (texels), how much they shut out, the
+## footprint's share of the box (the rest is its soft edge)].
+func _draw_occluders() -> void:
+	if _occ == null:
+		return
+	var f: Vector3 = world.cam.focus_pos if world.cam else Vector3.ZERO
+	var tx := OCC_SPAN / OCC_SIZE
+	# (snapped to whole texels, so a footprint doesn't shimmer as the camera pans)
+	var c := Vector2(roundf(f.x / tx) * tx, roundf(f.z / tx) * tx)
+	var k := OCC_SIZE / OCC_SPAN
+	var half := OCC_SPAN * 0.5
+	var mid := Vector2(half, half) * k
+	var out: Array = (_occ as _Occ).items
+	out.clear()
+	for v in world.vehicles:
+		if not is_instance_valid(v) or v.gone:
+			continue
+		var veh: Vehicle = v
+		var d := Vector2(veh.position.x - c.x, veh.position.z - c.y)
+		if absf(d.x) > half + 6.0 or absf(d.y) > half + 6.0:
+			continue
+		var fp := vehicle_print(veh._hull_size(), veh.position.y - world.ground_y(veh.position))
+		if not fp.is_empty():
+			out.append([d * k + mid, veh.rotation.y, (fp[0] as Vector2) * k, fp[1], fp[2]])
+	for s in world.soldiers_near(Vector3(c.x, 0.0, c.y), half * 1.42):
+		var man: Soldier = s
+		if not is_instance_valid(man) or man.gone:
+			continue
+		var d := Vector2(man.position.x - c.x, man.position.z - c.y)
+		if absf(d.x) > half + 1.0 or absf(d.y) > half + 1.0:
+			continue
+		var fp := man_print(man.posture == Soldier.Post.PRONE or man.life != Soldier.Life.ALIVE, man.posture == Soldier.Post.CROUCH)
+		out.append([d * k + mid, man.rotation.y, (fp[0] as Vector2) * k, fp[1], fp[2]])
+	occluders = out.size()
+	_occ.queue_redraw()
+	RenderingServer.global_shader_parameter_set("probe_occ_rect", Vector4(c.x, c.y, 1.0 / OCC_SPAN, 1.0))
+
+
+## A hull's footprint, its size (x wide, y high, z long) standing `up` metres
+## off the ground: [half the box drawn (metres), how much it shuts out, the
+## hull's share of the box]. Its pad of soft shade grows with its height, from
+## a metre round a car to a metre and a half round a tank; one off the ground shades less, and
+## a helicopter in the air none ([]).
+static func vehicle_print(size: Vector3, up: float) -> Array:
+	if up > 4.0:
+		return []
+	var pad := clampf(size.y * 0.5, 1.0, 1.5)
+	var hb := Vector2(size.x * 0.5 + pad, size.z * 0.5 + pad)
+	return [hb, OCC_VEHICLE * (1.0 - maxf(up, 0.0) / 4.0), Vector2(size.x * 0.5, size.z * 0.5) / hb]
+
+
+## A man's: a faint disc round his feet standing (fainter crouched), a longer,
+## fainter patch along him lying down (prone, wounded or dead).
+static func man_print(lying: bool, crouched: bool) -> Array:
+	if lying:
+		return [Vector2(0.75, 1.4), OCC_MAN * 0.7, Vector2(0.33, 0.64)]
+	return [Vector2(0.85, 0.85), OCC_MAN * (0.8 if crouched else 1.0), Vector2(0.25, 0.25)]
+
+
+## Draws the footprints it's given: each a box (UV 0..1 over it) the shader
+## softens past its inner part.
+class _Occ extends Node2D:
+	var items: Array = []
+	var white: Texture2D
+
+	func _draw() -> void:
+		if white == null:
+			var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+			img.fill(Color.WHITE)
+			white = ImageTexture.create_from_image(img)
+		for it: Array in items:
+			var h: Vector2 = it[2]
+			var f: Vector2 = it[4]
+			# (a yaw turns +z toward +x; on the map +z is down, so the turn is the other way)
+			draw_set_transform(it[0], -float(it[1]), Vector2.ONE)
+			draw_texture_rect(white, Rect2(-h, h * 2.0), false, Color(float(it[3]), f.x, f.y, 1.0))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Multiplied into the white map: 1 - strength under the footprint, the
+## footprint a rounded box (corners of half a metre or so, a man's a disc), its
+## shade darkest along the contact line under tracks, wheels and boots and
+## falling away smoothly across its pad, so from the camera it reads as a soft
+## contact shadow, not a decal. Worked in pads: the pad is the unit across the
+## box both ways, whatever its size.
+const OCC_SHADER := """
+shader_type canvas_item;
+render_mode blend_mul;
+
+void fragment() {
+	vec2 f = COLOR.gb;  // the footprint's share of the box drawn, each way
+	vec2 pad = max(vec2(1.0) - f, vec2(0.001));
+	vec2 p = abs(UV * 2.0 - 1.0) / pad;  // from the middle, in pads
+	vec2 h = f / pad;  // the footprint's half size, in pads
+	float r = min(0.4, min(h.x, h.y));  // its corners' radius
+	vec2 q = p - h + r;
+	float d = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;  // out from its edge, in pads
+	float w = d <= 0.0 ? 1.0 : exp(-3.0 * d) * (1.0 - smoothstep(0.6, 1.0, d));
+	COLOR = vec4(vec3(1.0 - COLOR.r * w), 1.0);
+}
+"""
+
+
+## Looks at the lights in the probe_light group: the nearest LOCAL_MAX to the
+## camera, at their steady brightness, go to the tracer, and the tiles round any
+## that came, went, moved or changed are queued to have their glow traced again.
+func _gather_lights() -> void:
+	if _local_mat == null or _ready_size < 0:
+		return
+	var f: Vector3 = world.cam.focus_pos if world and world.cam else Vector3.ZERO
+	var found: Array = []
+	for n: Node in get_tree().get_nodes_in_group(&"probe_light"):
+		var l := n as OmniLight3D
+		if l == null or not l.is_inside_tree():
+			continue
+		var id := l.get_instance_id()
+		var e := l.light_energy  # (the browser hides fires' lights, but not their glow)
+		# (the flicker averaged out: what's left is the fire's steady glow)
+		var avg: float = lerpf(float(_light_ema.get(id, e)), e, 0.35)
+		_light_ema[id] = avg
+		if avg < 0.05:
+			continue
+		var p := l.global_position
+		# what's burning (a fire's flames fill its box: Vfx.make_fire) doesn't stand
+		# in its own light's way
+		var clear := 1.5
+		var host := l.get_parent()
+		if host and host.has_meta("ext"):
+			var ext: Vector3 = host.get_meta("ext")
+			clear = maxf(clear, maxf(ext.x, ext.z) + 1.0)
+		found.append([p.distance_squared_to(f), id, p, avg, l.light_color, minf(l.omni_range * LOCAL_REACH, LOCAL_FAR), clear])
+	found.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	found.resize(mini(found.size(), LOCAL_MAX))
+	var now := {}
+	for x: Array in found:
+		now[x[1]] = [x[2], x[3], x[4], x[5], x[6]]
+	for id: int in _light_ema.keys():
+		if not is_instance_id_valid(id):
+			_light_ema.erase(id)
+	# what changed: lights gone, come, moved a metre, or a quarter brighter or dimmer
+	for id: int in _lights:
+		if not now.has(id):
+			_queue_lit(_lights[id])
+	for id: int in now:
+		var a: Array = now[id]
+		if _lights.has(id):
+			var o: Array = _lights[id]
+			if (a[0] as Vector3).distance_to(o[0]) < 1.0 and absf(float(a[1]) - float(o[1])) < 0.25 * maxf(float(o[1]), 0.2):
+				now[id] = o  # (near enough the same: the tracer keeps what it has)
+				continue
+			_queue_lit(o)
+		_queue_lit(a)
+	_lights = now
+	var pos := PackedVector4Array()
+	var col := PackedVector4Array()
+	pos.resize(LOCAL_MAX)
+	col.resize(LOCAL_MAX)
+	var i := 0
+	for id: int in _lights:
+		var a: Array = _lights[id]
+		var p: Vector3 = a[0]
+		var c: Color = (a[2] as Color).srgb_to_linear()
+		pos[i] = Vector4(p.x, p.y, p.z, float(a[3]))
+		col[i] = Vector4(c.r * float(a[1]), c.g * float(a[1]), c.b * float(a[1]), float(a[4]))
+		i += 1
+	_local_mat.set_shader_parameter("lights", pos)
+	_local_mat.set_shader_parameter("light_cols", col)
+	_local_mat.set_shader_parameter("light_count", i)
+	if OS.has_environment("FL_DEBUG_PROBES_TRACE"):
+		print("PROBES lights=%d queued=%d lit=%d %s" % [i, _local_queue.size(), lit_bricks, pos.slice(0, i)])
+
+
+## The tiles a light's glow reaches.
+func _queue_lit(a: Array) -> void:
+	var p: Vector3 = a[0]
+	var r: float = a[3]
+	for t in _tiles_in(Rect2(p.x - r, p.z - r, r * 2.0, r * 2.0)):
+		_queue_local(t)
+
+
+func _queue_local(b: int) -> void:
+	if _local_dirty[b] == 0:
+		_local_dirty[b] = 1
+		_local_queue.append(b)
+
+
+## Does any light's glow reach tile b?
+func _lit_near(b: int) -> bool:
+	var tw := TILE * _vsz
+	var r := Rect2((b % TILES) * tw - MapDims.HALF, (b / TILES) * tw - MapDims.HALF, tw, tw)
+	for id: int in _lights:
+		var a: Array = _lights[id]
+		var p: Vector3 = a[0]
+		if r.grow(float(a[3])).has_point(Vector2(p.x, p.z)):
+			return true
+	return false
+
+
+## The camera's own tiles first: what the player is looking at fills in first.
+func _sort_bricks() -> void:
+	if world.cam == null or _brick_queue.size() < 2:
+		return
+	var f: Vector3 = world.cam.focus_pos
+	var tw := TILE * _vsz
+	var fc := Vector2((f.x + MapDims.HALF) / tw - 0.5, (f.z + MapDims.HALF) / tw - 0.5)
+	_brick_queue.sort_custom(func(a: int, b: int) -> bool:
+		return Vector2(a % TILES, a / TILES).distance_squared_to(fc) < Vector2(b % TILES, b / TILES).distance_squared_to(fc))
+
+
+## Draws the rectangles it's given, nothing else: the shader works out which
+## probe each pixel is from where it is.
+class _Rects extends Node2D:
+	var rects: Array[Rect2] = []
+
+	func _draw() -> void:
+		for r in rects:
+			draw_rect(r, Color.WHITE)
+
+
+# --- the shaders ------------------------------------------------------------------------
+
+static func _ensure_globals() -> void:
+	if _globals:
+		return
+	_globals = true
+	# (added here rather than in project.godot: they're this file's alone, and
+	# the static flag keeps a second battle from adding them again)
+	var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	img.set_pixel(0, 0, Color(0.5, 0.5, 0.5, 1.0))
+	RenderingServer.global_shader_parameter_add(&"probe_atlas", RenderingServer.GLOBAL_VAR_TYPE_SAMPLER2D, ImageTexture.create_from_image(img))
+	RenderingServer.global_shader_parameter_add(&"probe_grid", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(512, 2, 0, 0))
+	RenderingServer.global_shader_parameter_add(&"probe_mix", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(1, 1, 0, 1))
+	var blank := Image.create(1, 1, false, Image.FORMAT_R8)
+	var arr := Texture2DArray.new()
+	arr.create_from_images([blank])
+	RenderingServer.global_shader_parameter_add(&"probe_voxels", RenderingServer.GLOBAL_VAR_TYPE_SAMPLER2DARRAY, arr)
+	RenderingServer.global_shader_parameter_add(&"probe_ref", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(1, 1, 1, 1))
+	var white := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	white.fill(Color.WHITE)
+	RenderingServer.global_shader_parameter_add(&"probe_occ", RenderingServer.GLOBAL_VAR_TYPE_SAMPLER2D, ImageTexture.create_from_image(white))
+	RenderingServer.global_shader_parameter_add(&"probe_occ_rect", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(0, 0, 0, 0))
+
+
+## The skinned soldiers' imported StandardMaterial3D (SkinnedRifleman), as a
+## shader that does what it did and reads the probes too: a man in a room, in a
+## wood or under the eaves takes the same shade and bounce as the walls and
+## ground round him (and his kit reflects the room, not the sky). Godot's own
+## light, as before: only the probes' terms are added.
+const SKIN_SHADER := """
+shader_type spatial;
+render_mode cull_back, diffuse_burley, specular_schlick_ggx;
+
+uniform vec4 albedo : source_color = vec4(1.0);
+uniform sampler2D texture_albedo : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D texture_normal : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D texture_emission : source_color, hint_default_black, filter_linear_mipmap, repeat_enable;
+// CLOUD_SHADOW
+
+void fragment() {
+	ALBEDO = albedo.rgb * texture(texture_albedo, UV).rgb;
+	NORMAL_MAP = texture(texture_normal, UV).rgb;
+	NORMAL_MAP_DEPTH = 1.0;
+	METALLIC = 0.0;
+	SPECULAR = 0.25;
+	ROUGHNESS = 0.85;
+	EMISSION = texture(texture_emission, UV).rgb;
+	// CLOUD_FRAGMENT cloud_sun((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz)
+}
+"""
+static var _skin_shader: Shader
+
+## The procedural men's flat colours (SoldierModel's Res.mat parts: uniforms,
+## faces, kit not on the shared surfaces), the same way: a StandardMaterial3D
+## with a colour, a roughness and perhaps a glow, plus the probes' terms.
+const FLAT_SHADER := """
+shader_type spatial;
+render_mode cull_back, diffuse_burley, specular_schlick_ggx;
+
+uniform vec4 albedo : source_color = vec4(1.0);
+uniform float roughness = 0.9;
+uniform float metallic = 0.0;
+uniform vec3 emission : source_color = vec3(0.0);
+// CLOUD_SHADOW
+
+void fragment() {
+	ALBEDO = albedo.rgb;
+	METALLIC = metallic;
+	ROUGHNESS = roughness;
+	SPECULAR = 0.5;
+	EMISSION = emission;
+	// CLOUD_FRAGMENT cloud_sun((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz)
+}
+"""
+static var _flat_shader: Shader
+static var _flat := {}  # StandardMaterial3D -> its probe-reading twin
+
+
+static func skin_material(m: StandardMaterial3D) -> ShaderMaterial:
+	if _skin_shader == null:
+		# (through CloudShadow, as the world's surfaces are: the sun cut in a room
+		# and the fill light shut out with the sky, as well as the clouds' shade)
+		_skin_shader = CloudShadow.make(SKIN_SHADER, CloudShadow.PROBES)
+	var s := ShaderMaterial.new()
+	s.shader = _skin_shader
+	s.set_shader_parameter("albedo", m.albedo_color)
+	s.set_shader_parameter("texture_albedo", m.albedo_texture)
+	s.set_shader_parameter("texture_normal", m.normal_texture)
+	s.set_shader_parameter("texture_emission", m.emission_texture)
+	return s
+
+
+## Every plain StandardMaterial3D under `root` (opaque, lit, untextured) swapped
+## for its twin that reads the probes, so a machine gunner or an officer in a
+## room or a wood takes its shade as the riflemen do. Shared materials are
+## swapped once and their twins shared too.
+static func probe_surfaces(root: Node) -> void:
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.material_override:
+			var o := _flat_twin(mi.material_override)
+			if o:
+				mi.material_override = o
+			continue
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var src: Material = mi.get_surface_override_material(i)
+			if src == null:
+				src = mi.mesh.surface_get_material(i)
+			var t := _flat_twin(src)
+			if t:
+				mi.set_surface_override_material(i, t)
+
+
+static func _flat_twin(m: Material) -> ShaderMaterial:
+	var sm := m as StandardMaterial3D
+	if sm == null or sm.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or sm.shading_mode != BaseMaterial3D.SHADING_MODE_PER_PIXEL \
+			or sm.albedo_texture != null or sm.vertex_color_use_as_albedo or sm.cull_mode != BaseMaterial3D.CULL_BACK:
+		return null
+	if _flat.has(sm):
+		return _flat[sm]
+	if _flat_shader == null:
+		_flat_shader = CloudShadow.make(FLAT_SHADER, CloudShadow.PROBES)
+	var t := ShaderMaterial.new()
+	t.shader = _flat_shader
+	t.set_shader_parameter("albedo", sm.albedo_color)
+	t.set_shader_parameter("roughness", sm.roughness)
+	t.set_shader_parameter("metallic", sm.metallic)
+	var e := Color(0, 0, 0)
+	if sm.emission_enabled:
+		e = sm.emission * sm.emission_energy_multiplier
+	t.set_shader_parameter("emission", Vector3(e.r, e.g, e.b))
+	_flat[sm] = t
+	return t
+
+
+## A surface shader (one CloudShadow makes with its PROBES flag) taking its
+## skylight and bounce from the probes: the reads go in among its uniforms,
+## the use at the end of its fragment(), with the albedo and normal final.
+static func inject(src: String) -> String:
+	_ensure_globals()
+	var out := src.replace("// CLOUD_SHADOW", _pixel() + "\n// CLOUD_SHADOW")
+	return out.replace("// CLOUD_FRAGMENT ", PIXEL_USE + "\t// CLOUD_FRAGMENT ")
+
+
+## The same for grass, ferns and undergrowth, once a vertex: they cover most of
+## a wood's floor and a field, drawn many times over, so a per-pixel read
+## would cost far more than it shows. Each blade takes the probes' term at its
+## own position, as if it faced up (a meadow's blades see the sky over it):
+## under the crowns they're shaded and tinted green like the ground under them.
+const VERTEX_USE := """
+	probe_v_k = 1.0;
+	probe_v_e = vec3(0.0);
+	probe_v_t = vec3(1.0);
+	if (probe_grid.z > 0.5) {
+		float probe_vm0;
+		vec4 probe_vsh;
+		vec3 probe_vlb;
+		float probe_vleaf;
+		vec4 probe_vk = probe_light((MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz, vec3(0.0, 1.0, 0.0), probe_vm0, probe_vsh, probe_vlb, probe_vleaf);
+		probe_v_k = probe_vk.x;
+		probe_v_e = probe_vk.yzw;
+		probe_v_t = probe_canopy(probe_vk.x, probe_vleaf);
+	}
+"""
+const VERTEX_FRAGMENT := """probe_fill = probe_v_k;
+	probe_room = 0.0;
+	ALBEDO *= probe_v_t;
+	AO *= probe_v_k;
+	EMISSION += ALBEDO * probe_v_e;
+"""
+
+
+static func _pixel() -> String:
+	return PIXEL.replace("__LOCAL__", "%.2f" % LOCAL_STRENGTH).replace("__OCC_HEIGHT__", "%.2f" % OCC_HEIGHT)
+
+
+static func inject_vertex(src: String) -> String:
+	_ensure_globals()
+	var out := src.replace("// CLOUD_SHADOW", _pixel() + "varying float probe_v_k;
+varying vec3 probe_v_e;
+varying vec3 probe_v_t;
+// CLOUD_SHADOW")
+	# at the end of vertex(), where the blade stands where it's drawn
+	var at := out.find("void vertex() {")
+	assert(at >= 0, "a shader reading the probes per vertex has a vertex()")
+	var depth := 0
+	var i := out.find("{", at)
+	while i < out.length():
+		var ch := out[i]
+		if ch == "{":
+			depth += 1
+		elif ch == "}":
+			depth -= 1
+			if depth == 0:
+				break
+		i += 1
+	out = out.substr(0, i) + VERTEX_USE + out.substr(i)
+	return out.replace("// CLOUD_FRAGMENT ", VERTEX_FRAGMENT + "	// CLOUD_FRAGMENT ")
+
+
+## What a pixel does with the probes round it. A probe keeps the share of sky
+## it sees (m0) and the mean direction it sees it in, weighted by how much it
+## sees (m1): the first two spherical-harmonic bands of its view. With only
+## those two bands, the share a surface facing n sees, weighted by the cosine
+## as light falls, comes out as m0 + 2 m1.n (half the sky over flat ground: 1
+## facing up, 1/2 facing sideways, 0 facing down, as it should). That's what
+## Low does. High hands the same eight numbers, its normal and where it stands
+## between the probes to a tiny network (10 inputs, 16 hidden, 1 out: 176
+## multiply-adds and 16 tanh a pixel) trained offline against sky occlusion
+## traced from every pixel itself (ground, wall faces and roof tops): on two
+## towns it hadn't seen it came within 0.09 of the traced answer where the
+## formula came within 0.12 (see the pull request). Its weights are below,
+## fitted with numpy on dumps of the cubes (FL_DEBUG_PROBES_TILES). What a pixel doesn't see is lit by the
+## bounce, the mean light off whatever is in the way. Reads are offset 0.6 of a
+## probe out along the normal (the air in front of a wall, not the wall), and
+## fade out above the top probes and at the map's edge.
+const PIXEL := """
+global uniform sampler2D probe_atlas : filter_linear, repeat_disable;
+global uniform vec4 probe_grid;  // map half-size, probe spacing, quality (0 off, 1 low, 2 high), specular occlusion off (debug)
+global uniform vec4 probe_mix;  // how far the sky is shut out, how much bounce comes back, debug view, wall test
+global uniform sampler2DArray probe_voxels : filter_nearest, repeat_disable;
+global uniform vec4 probe_ref;  // the light the bounce was kept relative to, now, and the sun's height (LightProbes._light_now)
+global uniform sampler2D probe_occ : filter_linear, repeat_disable;  // vehicles' and men's footprints round the camera
+global uniform vec4 probe_occ_rect;  // its centre (x, z), 1 / its span, on
+// the share of sky this pixel sees, for light() (CloudShadow.LIGHT, the ground's own):
+// the cool fill light opposite the sun stands for skylight too, so it's shut out
+// with it; and somewhere shut in all round, a room, the sun is cut to PROBE_ROOM_SUN.
+// A room is seen with its roof lifted off to show the men in it, and with the roof
+// went its shadow: this gives a room back its indoors, without hiding the men.
+// Wall feet and narrow streets see far more sky than a room and keep their sun.
+#define PROBE_LIGHT
+#define PROBE_ROOM_SUN 0.4
+#define PROBE_MIN_SKY 0.3
+// ...and more once the sun is low (from about 27 degrees, all of it below 9):
+// it no longer reaches a room's floor to bounce, and at the floor alone the room
+// would go black at dusk where the eye sees it dim
+#define PROBE_MIN_SKY_DIM 0.5
+#define PROBE_LOCAL __LOCAL__
+#define PROBE_OCC_HEIGHT __OCC_HEIGHT__
+const float PROBE_DIP_R = 3.0;  // how far round a pixel the ground is looked at for a hollow, metres
+const float PROBE_DIP_K = 0.9;
+// the light through leaves, (0.35, 0.55, 0.2) scaled to the brightness of grey
+const vec3 PROBE_CANOPY = vec3(0.35, 0.55, 0.2) / 0.484;
+const float PROBE_CANOPY_K = 1.5;
+varying float probe_fill;
+varying float probe_room;  // how surely this is indoors: the probes see little sky in any direction
+float probe_sun() {
+	return mix(1.0, PROBE_ROOM_SUN, probe_room);
+}
+
+const float PROBE_W1[160] = float[160](16.35525, 0.10844, 28.88235, -2.50913, -8.36765, -7.18285, 8.20931, -0.02737, 1.27300, -0.04152, 0.93147, -1.06860, 1.24206, 1.01093, 2.06359, 1.01021, 0.19069, 0.20271, 0.55991, 0.09771, 1.07381, -5.36421, 59.69660, -2.93629, 2.39840, -8.19777, 2.23443, 0.53418, -4.64796, -0.09692, 0.77911, -0.09140, -4.15199, 1.99062, -0.44229, 1.91695, -0.51150, 0.15265, -0.76393, 0.11769, -5.92241, -13.67315, -9.21620, -2.94765, 1.11997, 2.49735, 0.01493, 8.74274, 0.22183, -0.30535, 2.99622, 1.70974, -31.26694, 0.24131, -0.87645, 0.54767, -1.02470, -0.25322, 2.81158, 0.09491, -4.82721, -5.84184, 1.20522, 3.77991, 1.01497, -2.06145, 4.68222, -0.55579, 0.32749, 0.20654, -1.52604, 2.51795, 20.27398, 6.82618, -0.70514, -0.25224, 5.22872, -0.01829, -3.61851, 0.10440, 5.80822, -7.76106, 5.02818, -1.01288, -1.03239, -1.40084, 5.76114, -0.81005, -2.01921, 0.36415, 2.43261, -1.59774, 19.59061, -4.98993, 1.13411, -0.04590, 8.29156, 0.43931, 3.09562, 0.23350, 0.20121, 11.80478, -13.29959, -1.19729, 1.57075, -2.57847, -4.15368, 0.63121, 1.03794, -0.23792, 0.37964, -0.78130, -20.54515, -0.27646, 0.55419, -0.54864, 2.49967, -0.37236, 3.93901, -0.00392, -4.26408, -2.72323, -3.84717, -9.54619, 2.36277, 3.62349, 4.12894, 0.07387, 0.06237, 0.12890, -1.07686, -6.03024, -5.12329, 10.08467, 2.00806, -2.55980, -1.52165, -0.44789, 1.27632, 0.19301, 4.15344, 4.21593, -4.08457, -4.10686, 2.01011, -1.26974, 1.40246, 0.04337, 0.08968, -0.07673, 1.10335, 0.42318, -14.94356, 14.34088, -2.67636, -2.63678, -0.27415, -0.10558, 1.16046, 0.34143);
+const float PROBE_B1[16] = float[16](-9.64967, -1.20780, -0.05285, 0.17979, -0.54329, -2.44557, 3.51397, 0.69315, -2.42715, -5.27203, 1.43680, -0.01863, 0.66606, 3.16735, -2.25713, 0.69506);
+const float PROBE_W2[16] = float[16](3.01186, 2.44531, 0.89847, 2.15907, -0.22687, 1.06772, -1.07449, -1.21392, -0.59297, 0.63017, -0.65081, -1.31305, -0.77455, 0.91361, 1.42401, -0.68120);
+const float PROBE_B2 = 0.39591;
+
+vec4 probe_read(vec2 col, float layer, float block) {
+	vec2 c = clamp(col, vec2(0.5), vec2(511.5));
+	return textureLod(probe_atlas, vec2(layer * 512.0 + c.x, block * 512.0 + c.y) / vec2(4096.0, 1536.0), 0.0);
+}
+
+// the height a column of probes stands on (the ground, craters and trenches in)
+float probe_height(vec2 col) {
+	vec4 bh = probe_read(col, 0.0, 2.0);
+	return (bh.r * 65280.0 + bh.g * 255.0) * 0.05 - 200.0;
+}
+
+// the share of sky a surface facing n sees, from the probes round it (High)
+float probe_decode(float m0, vec3 m1, vec3 n, vec3 fr) {
+	float x[10] = float[10](m0, m1.x, m1.y, m1.z, n.x, n.y, n.z, fr.x, fr.y, fr.z);
+	float o = PROBE_B2;
+	for (int j = 0; j < 16; j++) {
+		float s = PROBE_B1[j];
+		for (int i = 0; i < 10; i++) {
+			s += PROBE_W1[j * 10 + i] * x[i];
+		}
+		o += PROBE_W2[j] * tanh(s);
+	}
+	return 1.0 / (1.0 + exp(-o));
+}
+
+// is the cube at q solid (a wall, a roof; not leaves)? base: the ground the probes stand on
+bool probe_solid(vec3 q, float base) {
+	float vs = probe_grid.y * 0.5;
+	float rel = (q.y - base) / vs;
+	vec2 v = (q.xz + probe_grid.x) / vs;
+	if (rel < 0.0 || rel >= 16.0 || v.x < 0.0 || v.y < 0.0 || v.x >= 1024.0 || v.y >= 1024.0) {
+		return false;
+	}
+	ivec2 iv = ivec2(v);
+	ivec2 t = iv / ivec2(64);
+	ivec2 l = iv - t * 64;
+	return texelFetch(probe_voxels, ivec3(l.x, (int(rel) << 6) + l.y, t.y * 16 + t.x), 0).r > 0.5;
+}
+
+// Light leaks: the probes are 2 m apart and a wall is a cube thick, so a pixel
+// on a floor beside a wall sits between a probe in the room and one outside it,
+// and blending the two lets the sky in along the foot of the wall indoors (and
+// darkens the foot of it outside). So before it blends, a pixel looks for a
+// wall halfway to the probes on either side of it, each way (six cube reads):
+// a probe with a wall between them it leaves out, and leans on the one on its
+// own side. (Unity's probe volumes test the probes' validity; DDGI keeps a
+// depth map in each probe and weighs them by it: Majercik et al. 2019. A cube
+// read halfway does the same job here for a fraction of the cost.)
+vec2 probe_side(vec2 col, vec3 p, float base, float ps, out float t_lo, out float t_hi) {
+	vec2 lo = floor(col - 0.5);
+	vec2 f = col - 0.5 - lo;
+	vec2 w0 = (lo + 0.5) * ps - probe_grid.x;  // where the lower probes stand
+	vec2 w1 = w0 + ps;
+	bool x0 = probe_solid(vec3(mix(p.x, w0.x, 0.5), p.y, p.z), base);
+	bool x1 = probe_solid(vec3(mix(p.x, w1.x, 0.5), p.y, p.z), base);
+	bool z0 = probe_solid(vec3(p.x, p.y, mix(p.z, w0.y, 0.5)), base);
+	bool z1 = probe_solid(vec3(p.x, p.y, mix(p.z, w1.y, 0.5)), base);
+	f.x = x0 && !x1 ? 1.0 : (x1 && !x0 ? 0.0 : f.x);
+	f.y = z0 && !z1 ? 1.0 : (z1 && !z0 ? 0.0 : f.y);
+	// and up and down: a roof between a pixel and the probes over it (or a floor under it)
+	t_lo = float(probe_solid(vec3(p.x, mix(p.y, base + (floor((p.y - base) / ps - 0.5) + 0.5) * ps, 0.5), p.z), base));
+	t_hi = float(probe_solid(vec3(p.x, mix(p.y, base + (floor((p.y - base) / ps - 0.5) + 1.5) * ps, 0.5), p.z), base));
+	return lo + 0.5 + f;
+}
+
+// m0: the share of the whole sky the probes round here see, whichever way the
+// surface faces. A room sees a few percent of it; a wall foot, a roof top or a
+// narrow street about half, so this tells indoors apart where the facing can't
+vec4 probe_light(vec3 wp, vec3 wn, out float m0, out vec4 sh, out vec3 lb_raw, out float leaf) {
+	float ps = probe_grid.y;
+	vec3 p = wp + wn * ps * 0.6;
+	vec2 col = (p.xz + probe_grid.x) / ps;
+	vec4 bh = probe_read(col, 0.0, 2.0);
+	float base = (bh.r * 65280.0 + bh.g * 255.0) * 0.05 - 200.0;
+	float lf = (p.y - base) / ps - 0.5;
+	vec2 edge = abs(p.xz) / probe_grid.x;
+	float fade = (1.0 - smoothstep(6.5, 8.0, lf)) * (1.0 - smoothstep(0.97, 1.0, max(edge.x, edge.y)));
+	float seen;
+	vec3 lb = vec3(0.0);
+	vec3 ll;
+	leaf = 0.0;
+	if (probe_grid.z > 1.5) {
+		float l0 = clamp(floor(lf), 0.0, 6.0);
+		float t = clamp(lf - l0, 0.0, 1.0);
+		if (probe_mix.w > 0.5) {
+			float t_lo;
+			float t_hi;
+			col = probe_side(col, p, base, ps, t_lo, t_hi);
+			t = t_lo > t_hi ? 1.0 : (t_hi > t_lo ? 0.0 : t);
+		}
+		vec4 a = mix(probe_read(col, l0, 0.0), probe_read(col, l0 + 1.0, 0.0), t);
+		vec4 b4 = mix(probe_read(col, l0, 1.0), probe_read(col, l0 + 1.0, 1.0), t);
+		vec3 b = b4.rgb;
+		lb = b * b * 4.0 * probe_ref.rgb;
+		leaf = b4.a * fade * probe_mix.x;
+		float l1 = min(l0, 5.0);
+		vec3 lc = mix(probe_read(col, l1 + 1.0, 2.0).rgb, probe_read(col, l1 + 2.0, 2.0).rgb, clamp(lf - l1, 0.0, 1.0));
+		ll = lc * lc * 8.0;
+		seen = probe_decode(a.a, a.rgb * 2.0 - 1.0, wn, vec3(fract(col.x - 0.5), t, fract(col.y - 0.5)));
+		// a hollow narrower than the probes can see (a shell crater's bowl, a ditch):
+		// the ground PROBE_DIP_R round sits above this column's, and shuts out the
+		// sky low down. A bowl a metre deep and six across loses about a quarter at
+		// its floor (a little more than its rim's horizon alone would take, so it
+		// reads as a hollow from the camera); its sides less; a mound nothing.
+		{
+			float dr = PROBE_DIP_R / ps;
+			vec4 h4 = vec4(probe_height(col + vec2(dr, 0.0)), probe_height(col - vec2(dr, 0.0)), probe_height(col + vec2(0.0, dr)), probe_height(col - vec2(0.0, dr)));
+			float dip = dot(h4, vec4(0.25)) - base;
+			// (squared past the lip, so the floor of the bowl reads darker than its sides)
+			float dk = clamp(dip / PROBE_DIP_R * PROBE_DIP_K, 0.0, 0.35);
+			seen *= 1.0 - dk * smoothstep(0.0, 0.25, dk);
+		}
+		m0 = mix(1.0, a.a, fade);
+		sh = vec4(a.rgb * 2.0 - 1.0, a.a);
+	} else {
+		vec4 a = probe_read(col, clamp(floor(lf + 0.5), 0.0, 7.0), 0.0);
+		vec3 lc = probe_read(col, clamp(floor(lf + 0.5), 0.0, 6.0) + 1.0, 2.0).rgb;
+		ll = lc * lc * 8.0;
+		seen = clamp(a.a + 2.0 * dot(a.rgb * 2.0 - 1.0, wn), 0.0, 1.0);
+		m0 = mix(1.0, a.a, fade);
+		sh = vec4(a.rgb * 2.0 - 1.0, a.a);
+	}
+	sh = mix(vec4(0.0, 0.0, 0.0, 1.0), sh, fade * probe_mix.x);
+	lb_raw = lb;
+	float k = fade * probe_mix.x;
+	// never darker than PROBE_MIN_SKY of the skylight: a corner of a room is dark,
+	// not black, and a man's surroundings stay readable however shut in he is
+	// (the fires' glow comes in on top, from all round: it's light thrown about off
+	// everything near them)
+	// the vehicles and men round it: a soft pool of shade under each, fading
+	// out up their sides (the deck of a hull, a man's head see the sky)
+	float occ = 1.0;
+	vec2 ouv = (wp.xz - probe_occ_rect.xy) * probe_occ_rect.z + 0.5;
+	if (probe_occ_rect.w > 0.5 && all(greaterThan(ouv, vec2(0.0))) && all(lessThan(ouv, vec2(1.0)))) {
+		float o = textureLod(probe_occ, ouv, 0.0).r;
+		vec2 oe = abs(ouv - 0.5) * 2.0;
+		float of = (1.0 - smoothstep(0.0, PROBE_OCC_HEIGHT, wp.y - base - 0.1)) * (1.0 - smoothstep(0.85, 1.0, max(oe.x, oe.y)));
+		occ = mix(1.0, o, of * probe_mix.x);
+	}
+	float floor_sky = mix(PROBE_MIN_SKY_DIM, PROBE_MIN_SKY, smoothstep(0.15, 0.45, probe_ref.w));
+	return vec4(mix(1.0, max(seen, floor_sky), k) * occ, (lb * (1.0 - seen) * probe_mix.y + ll * PROBE_LOCAL) * fade * occ);
+}
+
+// Light under a wood comes through the leaves, and a leaf passes on the green it
+// reflects (about its albedo squared) and drinks the red and blue. The skylight
+// the probes take away (1 - fill) is grey; the part of it the crowns took comes
+// back as a tint, of the same brightness, so a wood's shade is greener as well
+// as darker. It's laid on the albedo, since the ambient is one grey factor here;
+// in a crown's shade the sun is shadowed anyway, so it's the shade that tints.
+vec3 probe_canopy(float fill, float leaf) {
+	return mix(vec3(1.0), PROBE_CANOPY, clamp(leaf * (1.0 - fill) * PROBE_CANOPY_K, 0.0, 1.0));
+}
+"""
+
+const PIXEL_USE := """probe_fill = 1.0;
+	probe_room = 0.0;
+	if (probe_grid.z > 0.5) {
+		float probe_m0;
+		vec4 probe_sh;
+		vec3 probe_lb;
+		vec3 probe_n = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		float probe_leaf;
+		vec4 probe_k = probe_light((INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz, probe_n, probe_m0, probe_sh, probe_lb, probe_leaf);
+		probe_fill = probe_k.x;
+		ALBEDO *= probe_canopy(probe_k.x, probe_leaf);
+		probe_room = smoothstep(0.3, 0.12, probe_m0) * probe_mix.x;
+		AO *= probe_k.x;
+		EMISSION += ALBEDO * probe_k.yzw;
+		// Specular occlusion: a reflection shows the sky only where the sky can be
+		// seen in the direction it's reflected. Godot works it out itself, after the
+		// battlefield's reflection probe has had its say (Jimenez et al. 2016, the
+		// cone the sky is seen through against the reflection's cone), from AO (how
+		// wide that cone is: the probes' share of sky is in it, above) and a bent
+		// normal (which way it points): the probes' own, handed over in the
+		// surface's tangent space. A reflection written straight into RADIANCE
+		// would come before the reflection probe, which paints over it. So a hull
+		// under the eaves, wet cobbles in an alley and a window across it mirror the
+		// walls round them, not the bright sky over the roofs.
+		{
+			float probe_bl = length(probe_sh.xyz);
+			vec3 probe_bw = probe_bl > 1e-4 ? probe_sh.xyz / probe_bl : probe_n;
+			// (above the surface, and leaning back to its normal where the probes
+			// see the sky nearly all round and their bent normal says little)
+			probe_bw = normalize(mix(probe_bw, probe_n, clamp(probe_sh.w * 1.25 - 0.25, 0.0, 1.0)));
+			probe_bw = normalize(probe_bw + probe_n * max(0.15 - dot(probe_bw, probe_n), 0.0));
+			if (probe_grid.w > 0.5) {
+				probe_bw = probe_n;  // (debug: the bent normal off)
+			}
+			vec3 probe_bv = (VIEW_MATRIX * vec4(probe_bw, 0.0)).xyz;
+			BENT_NORMAL_MAP = vec3(dot(probe_bv, TANGENT), dot(probe_bv, BINORMAL), dot(probe_bv, NORMAL)) * 0.5 + 0.5;
+		}
+		if (probe_mix.z > 0.5) {
+			// FL_DEBUG_PROBES_VIEW=1: the probes' own term on grey, the share of sky each
+			// surface sees (grey) and the bounce it gets (colour, amplified); =2: the raw
+			// heights block (one flat colour on flat ground); =3: the bent normal, the way
+			// the sky it sees lies (x red, y green, z blue; open sky reads mid-grey)
+			vec3 probe_w = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
+			ALBEDO = vec3(0.0);
+			EMISSION = vec3(probe_k.x) * 0.18 + probe_k.yzw * 0.8;
+			if (probe_mix.z > 3.5) {
+				// =4: the share of sky alone, brighter (light leaks show as bright seams)
+				EMISSION = vec3(probe_k.x) * 0.3;
+			} else if (probe_mix.z > 2.5) {
+				vec3 probe_p = probe_w + normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz) * probe_grid.y * 0.6;
+				vec2 probe_c = (probe_p.xz + probe_grid.x) / probe_grid.y;
+				vec4 probe_b = probe_read(probe_c, 0.0, 2.0);
+				float probe_l = (probe_p.y - ((probe_b.r * 65280.0 + probe_b.g * 255.0) * 0.05 - 200.0)) / probe_grid.y - 0.5;
+				vec4 probe_a = probe_read(probe_c, clamp(floor(probe_l + 0.5), 0.0, 7.0), 0.0);
+				vec3 probe_bent = clamp((probe_a.rgb * 2.0 - 1.0) / max(probe_a.a, 0.05), -1.0, 1.0);
+				EMISSION = clamp(probe_bent * 0.8 + 0.5, 0.0, 1.0) * 0.3;
+			} else if (probe_mix.z > 1.5) {
+				EMISSION = probe_read((probe_w.xz + probe_grid.x) / probe_grid.y, 0.0, 2.0).rgb * 0.3;
+			}
+		}
+	}
+"""
+
+## Traces the probes: one pixel of the atlas is one probe's visibility (top
+## block), bounce (middle) or the height its column stands on (bottom), and
+## the pixel works out which from where it is. mode 0 writes open sky (and the
+## heights) without tracing anything.
+##
+## A ray steps 0.9 of a cube at a time out to 16 cubes. Through a cube it loses
+## the share the cube stops; under the ground it ends, and the ground counts
+## as in the way only if the ray was climbing (a bank, a crater's rim, the
+## hillside above: ground standing above the probe's horizon) or has something
+## over it (a floor under a roof). Ground below the horizon is the sky's own
+## lower half, which already lights everything: counted again, every slope
+## would glow with a bounce off the ground beside it.
+## What stops a ray is lit by the sun, if it can see the sun (a second trace),
+## and by half the sky, or a tenth of it under a roof.
+const BAKE_SHADER := """
+shader_type canvas_item;
+render_mode unshaded, blend_disabled;
+
+uniform sampler2DArray heights : filter_linear, repeat_disable;
+uniform sampler2DArray voxels : filter_nearest, repeat_disable;
+// the trench network's mask (TrenchNet): trenches are cut into the ground by the
+// ground's own shader, not the height texture, so the probes cut them here too
+uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+uniform float trench_floor = -1.2;
+uniform float mode = 0.0;
+uniform float map_half = 512.0;
+uniform float vsz = 1.0;
+uniform float rays = 32.0;
+uniform bool bounce = true;
+uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+uniform vec3 sun_col = vec3(1.0);
+uniform vec3 light_ref = vec3(1.0);  // the bounce is kept relative to this light (LightProbes._light_now)
+uniform vec3 sky_col = vec3(0.4);
+uniform vec3 ground_albedo = vec3(0.15, 0.14, 0.1);
+// what floors under roofs are, near enough: tiles, boards and flags, lighter than the field
+uniform vec3 floor_albedo = vec3(0.36, 0.3, 0.24);
+// mode 2: fires and lamps (LightProbes._gather_lights): where each is and how far its
+// glow reaches (w), and its colour times its steady brightness (w: how far round it
+// the cubes are the burning thing itself, which doesn't stand in its own light's way)
+uniform vec4 lights[16];
+uniform vec4 light_cols[16];
+uniform int light_count = 0;
+
+varying vec2 px;
+
+void vertex() {
+	px = VERTEX;
+}
+
+// the ground's height (with craters) and the undisturbed geology under it
+vec2 ground_at(vec2 xz) {
+	vec2 uv = (xz + map_half) / (map_half * 2.0);
+	float tiles = sqrt(float(textureSize(heights, 0).z));
+	vec2 margin = vec2(0.5 / (tiles * __TILE__));
+	vec2 grid = clamp(uv, margin, vec2(1.0) - margin) * tiles;
+	vec2 cell = floor(grid);
+	vec2 local_uv = (fract(grid) * __TILE__ + 1.0) / (__TILE__ + 2.0);
+	vec2 h = textureLod(heights, vec3(local_uv, cell.y * tiles + cell.x), 0.0).rg;
+	float cut = smoothstep(0.3, 0.7, textureLod(trench_mask, uv, 0.0).r);
+	return vec2(min(h.x, h.y + trench_floor * cut), h.y);
+}
+
+// leaves, linear: the light a leaf lets through, about its albedo squared (a leaf
+// passes on the green it reflects and drinks the red and blue), so a wood's shade
+// is greener than the light the crowns take from it, not just darker
+const vec3 LEAF = vec3(0.35, 0.55, 0.2) * 0.6;
+
+bool leafy(float dn) {
+	return abs(dn - 9.0 / 15.0) < 0.01;
+}
+
+// how much the cube at q stops, and its albedo
+float cube(vec3 q, float geo, out float alb) {
+	alb = 0.0;
+	float rel = (q.y - geo) / vsz;
+	vec2 v = (q.xz + map_half) / vsz;
+	if (rel < 0.0 || rel >= 16.0 || v.x < 0.0 || v.y < 0.0 || v.x >= 1024.0 || v.y >= 1024.0) {
+		return 0.0;
+	}
+	ivec2 iv = ivec2(v);
+	ivec2 t = iv / ivec2(64);
+	ivec2 l = iv - t * 64;
+	int b = int(texelFetch(voxels, ivec3(l.x, (int(rel) << 6) + l.y, t.y * 16 + t.x), 0).r * 255.0 + 0.5);
+	alb = float(b & 15) * (0.8 / 15.0);
+	return float(b >> 4) / 15.0;
+}
+
+// is there a floor, roof or crown over this bit of ground?
+bool covered(vec2 xz, float geo) {
+	float a;
+	for (int k = 0; k < 16; k++) {
+		if (cube(vec3(xz.x, geo + (float(k) + 0.5) * vsz, xz.y), geo, a) > 0.5) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// how much sunlight reaches o
+float sunlit(vec3 o) {
+	float T = 1.0;
+	bool roof = false;  // through a roof: as much sun as the game lets in under a lifted one
+	for (int i = 0; i < 18; i++) {
+		vec3 q = o + sun_dir * (float(i) * 0.9 + 0.5) * vsz;
+		vec2 h = ground_at(q.xz);
+		if (q.y < h.x) {
+			return 0.0;
+		}
+		if (q.y - h.y >= 16.0 * vsz) {
+			break;
+		}
+		float a;
+		float dn = cube(q, h.y, a);
+		if (abs(dn - 14.0 / 15.0) < 0.01) {
+			roof = true;
+		} else {
+			T *= 1.0 - dn;
+		}
+		if (T < 0.03) {
+			return 0.0;
+		}
+	}
+	return roof ? T * __ROOF_SUN__ : T;
+}
+
+// where the probe at layer (0..7) over xz stands: a probe that fell inside a wall
+// or a roof steps out of it, down first (out of a roof, into the room it
+// covers), then to either side (out of a wall), then up
+vec3 probe_pos(vec2 xz, float layer, vec2 h0, float ps) {
+	float base = min(h0.y, h0.x);
+	vec3 o = vec3(xz.x, base + (layer + 0.5) * ps, xz.y);
+	o.y = max(o.y, h0.x + 0.3);
+	float a;
+	if (cube(o, h0.y, a) >= 0.5) {
+		vec3 steps[6] = vec3[](vec3(0.0, -1.0, 0.0), vec3(1.0, 0.0, 0.0), vec3(-1.0, 0.0, 0.0),
+			vec3(0.0, 0.0, 1.0), vec3(0.0, 0.0, -1.0), vec3(0.0, 1.0, 0.0));
+		for (int k = 0; k < 6; k++) {
+			vec3 q = o + steps[k] * vsz;
+			if (q.y > h0.x + 0.2 && cube(q, h0.y, a) < 0.5) {
+				return q;
+			}
+		}
+	}
+	return o;
+}
+
+// the light of the fires and lamps round o: each one's light, falling off
+// with distance, through whatever cubes stand between. Flames climb out of
+// what's burning, so the light is traced to a metre over it, and the cubes
+// round it (the burning roof or wreck itself) don't count.
+vec3 local_light(vec3 o) {
+	vec3 sum = vec3(0.0);
+	for (int i = 0; i < light_count; i++) {
+		vec3 d = lights[i].xyz + vec3(0.0, vsz, 0.0) - o;
+		float dist = length(d);
+		float reach = lights[i].w;
+		if (dist >= reach) {
+			continue;
+		}
+		vec3 dir = d / max(dist, 0.001);
+		float T = 1.0;
+		float run = dist - max(light_cols[i].w, 1.5 * vsz);
+		for (int s = 0; s < 24; s++) {
+			float u = (float(s) * 0.9 + 0.5) * vsz;
+			if (u >= run || T < 0.03) {
+				break;
+			}
+			vec3 q = o + dir * u;
+			vec2 h = ground_at(q.xz);
+			if (q.y < h.x - 0.3) {
+				T = 0.0;
+				break;
+			}
+			float a;
+			T *= 1.0 - cube(q, h.y, a);
+		}
+		float fall = 1.0 / (1.0 + 0.3 * dist * dist) * (1.0 - smoothstep(reach * 0.5, reach, dist));
+		sum += light_cols[i].rgb * fall * T;
+	}
+	return sum;
+}
+
+void fragment() {
+	ivec2 p = ivec2(floor(px));
+	int block = p.y / 512;
+	int iz = p.y - block * 512;
+	int layer = p.x / 512;
+	int ix = p.x - layer * 512;
+	float ps = vsz * 2.0;
+	vec2 xz = (vec2(float(ix), float(iz)) + 0.5) * ps - map_half;
+	vec2 h0 = ground_at(xz);
+	// the probes stand on the geology, or down in a trench or crater cut below it
+	float base = min(h0.y, h0.x);
+	if (block >= 2 && layer >= 1) {
+		// the fires' and lamps' light, layers 0 to 6 (to 14 m up), as sqrt(L / 8)
+		COLOR = vec4(0.0, 0.0, 0.0, 1.0);
+		if (mode > 1.5) {
+			vec3 L = local_light(probe_pos(xz, float(layer - 1), h0, ps));
+			COLOR = vec4(sqrt(clamp(L / 8.0, 0.0, 1.0)), 1.0);
+		}
+	} else if (block >= 2) {
+		// the geology, to 5 cm, in two bytes (they filter apart and add back exactly)
+		float g = clamp(floor((base + 200.0) / 0.05 + 0.5), 0.0, 65535.0);
+		float hi = floor(g / 256.0);
+		COLOR = vec4(hi / 255.0, (g - hi * 256.0) / 255.0, 0.0, 1.0);
+	} else if (mode < 0.5 || (block == 1 && !bounce)) {
+		COLOR = block == 0 ? vec4(0.5, 0.5, 0.5, 1.0) : vec4(0.0);
+	} else {
+		vec3 o = probe_pos(xz, float(layer), h0, ps);
+		float seen = 0.0;
+		vec3 m1 = vec3(0.0);
+		vec3 lsum = vec3(0.0);
+		float wsum = 0.0;
+		float fsum = 0.0;  // how much of what's in the way is leaves
+		int n = int(rays);
+		for (int i = 0; i < n; i++) {
+			// an even spread of directions over the sphere (a Fibonacci spiral)
+			float y = 1.0 - 2.0 * (float(i) + 0.5) / rays;
+			float r = sqrt(max(0.0, 1.0 - y * y));
+			float ph = float(i) * 2.39996323;
+			vec3 d = vec3(cos(ph) * r, y, sin(ph) * r);
+			float T = 1.0;
+			int kind = 0;  // 0: out to the sky (or the open ground), 1: a solid cube, 2: the ground, in the way, 3: a floor under a roof
+			vec3 hit = o;
+			float halb = 0.0;
+			float palb = 0.0;
+			bool leaf = false;  // the last thing it went through: a crown
+			for (int s = 0; s < 18; s++) {
+				vec3 q = o + d * (float(s) * 0.9 + 0.5) * vsz;
+				if (abs(q.x) >= map_half || abs(q.z) >= map_half) {
+					break;
+				}
+				vec2 h = ground_at(q.xz);
+				if (q.y < h.x) {
+					if (covered(q.xz, h.y)) {
+						kind = 3;  // a floor under a roof
+						hit = vec3(q.x, h.x, q.z);
+					} else if (d.y > 0.05) {
+						kind = 2;
+						hit = vec3(q.x, h.x, q.z);
+					}
+					break;
+				}
+				if (q.y - h.y >= 16.0 * vsz && d.y >= 0.0) {
+					break;
+				}
+				float va;
+				float dn = cube(q, h.y, va);
+				if (dn > 0.0) {
+					T *= 1.0 - dn;
+					palb = va;
+					leaf = leafy(dn);
+					if (T < 0.03) {
+						kind = 1;
+						hit = q;
+						halb = va;
+						break;
+					}
+				}
+			}
+			float vis = kind == 0 ? T : 0.0;
+			seen += vis;
+			m1 += d * vis;
+			if (block == 1 && vis < 0.999) {
+				vec3 lh;
+				if (leaf && kind < 2) {
+					// leaves, in the way or let through: green light, the sky's and the
+					// sun's sent on through and off them (a crown's top and sides sunlit)
+					lh = LEAF * (sky_col + sun_col * 0.5 * max(sun_dir.y, 0.0));
+				} else if (kind == 0) {
+					// through netting: lit from all round, a little sun through it
+					lh = vec3(palb) * vec3(0.9, 1.0, 0.8) * (sky_col * 0.5 + sun_col * 0.2);
+				} else {
+					vec3 nh = vec3(0.0, 1.0, 0.0);
+					vec3 alb3 = ground_albedo;
+					if (kind == 3) {
+						alb3 = floor_albedo;
+					} else if (kind == 1) {
+						// the face of the cube the ray went in by
+						vec3 ad = abs(d);
+						nh = ad.x > ad.y && ad.x > ad.z ? vec3(-sign(d.x), 0.0, 0.0) : (ad.y > ad.z ? vec3(0.0, -sign(d.y), 0.0) : vec3(0.0, 0.0, -sign(d.z)));
+						alb3 = vec3(halb) * vec3(1.04, 1.0, 0.94);
+					}
+					float ndl = max(dot(nh, sun_dir), 0.0);
+					float lit = ndl > 0.0 ? sunlit(hit + nh * 0.6 * vsz) : 0.0;
+					// a surface under a roof sees little sky itself: only what comes in round it
+					float sky_seen = covered(hit.xz, ground_at(hit.xz).y) ? 0.1 : 0.5;
+					lh = alb3 * (sun_col * ndl * lit + sky_col * sky_seen);
+				}
+				lsum += lh * (1.0 - vis);
+				wsum += 1.0 - vis;
+				fsum += leaf && kind < 2 ? 1.0 - vis : 0.0;
+			}
+		}
+		seen /= rays;
+		m1 /= rays;
+		if (block == 0) {
+			COLOR = vec4(clamp(m1 * 0.5 + 0.5, 0.0, 1.0), seen);
+		} else {
+			vec3 lb = lsum / max(wsum, 0.001);
+			COLOR = vec4(sqrt(clamp(lb / light_ref / 4.0, 0.0, 1.0)), fsum / max(wsum, 0.001));
+		}
+	}
+}
+"""

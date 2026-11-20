@@ -448,6 +448,9 @@ class _Page extends Control:
 	func begin() -> bool:
 		tips.clear()
 		p.moving = false
+		# The container assigns its page width after the first draw.
+		if size.x < 32.0:
+			return false
 		settle()
 		return not waiting()
 

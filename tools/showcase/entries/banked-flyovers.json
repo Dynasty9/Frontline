@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/banked-flyovers.md",
+  "summary": "Jets and reconnaissance planes lean into curved approaches and departures. The A-10 eases into its climb as it pulls out of the pass.",
+  "medium": "still",
+  "stage": "Native Godot 4.7.2, trenches, seed 3, high preset, golden lighting, fixed 30 fps. Tracking camera at the same offset from the A-10, 93 fixed ticks after spawn.",
+  "rationale": "At the same point in the flyover, the A-10 previously held its wings level. Now it banks into the curve.",
+  "source_ref": "Main afe46c41 compared with the same revision plus this change.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/banked-flyovers/comparison.jpg",
+      "sha256": "79925e261e70f83640ff8e35f441cf34ec351a97e38329c13513c731d464a228",
+      "caption": "At the same point in the flyover, the A-10 previously held its wings level. Now it banks into the curve."
+    }
+  ],
+  "output": null
+}

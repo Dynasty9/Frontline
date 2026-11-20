@@ -17,8 +17,11 @@ var scar_tex: ImageTexture
 var _scar_dirty := false
 var bush: ArrayMesh
 var stone: ArrayMesh
+var woodland: Woodland
+var canopy_img: Image
 var _shrub_noise := FastNoiseLite.new()
 var level := -1
+var _wildlife_level := -1
 var _queue: Array = []
 var _rebuild_t := -1.0
 var _blocked := PackedByteArray()
@@ -33,29 +36,39 @@ func _ready() -> void:
 	clump = _make_clump()
 	bush = _make_bush()
 	stone = _make_stone()
+	woodland = Woodland.new()
+	woodland.setup()
 	scar_img = Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_L8)
 	scar_tex = ImageTexture.create_from_image(scar_img)
 	mat = ShaderMaterial.new()
 	# (the clouds' shade, CloudShadow.FOLD: in the albedo with Cloud shadows off)
-	mat.shader = CloudShadow.make(MapDims.shader(GRASS_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
+	mat.shader = CloudShadow.make(MapDims.shader(GRASS_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX)
 	mat.set_shader_parameter("scar", scar_tex)
 	bush_mat = ShaderMaterial.new()
-	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD)
+	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX)
 	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
 	# (a shader, not a StandardMaterial3D, so that the stones go into cloud shade too)
 	stone_mat = ShaderMaterial.new()
 	stone_mat.shader = CloudShadow.make(STONE_SHADER)
+	stone_mat.set_shader_parameter("stone_color", preload("res://assets/foliage/woodland/rock_moss_set_01-color.png"))
+	stone_mat.set_shader_parameter("stone_surface", preload("res://assets/foliage/woodland/rock_moss_set_01-surface.png"))
 	request_rebuild(1.2)
 
 
 func set_deform(t: Texture2DArray) -> void:
 	mat.set_shader_parameter("deform_tex", t)
 	bush_mat.set_shader_parameter("deform_tex", t)
+	if woodland:
+		for material in woodland.materials:
+			material.set_shader_parameter("deform_tex", t)
 
 
 func set_trench_mask(t: Texture2D) -> void:
 	mat.set_shader_parameter("trench_mask", t)
 	bush_mat.set_shader_parameter("trench_mask", t)
+	if woodland:
+		for material in woodland.materials:
+			material.set_shader_parameter("trench_mask", t)
 
 
 ## Marks a blast scar on the grass (craters: full, near misses: lighter).
@@ -77,7 +90,7 @@ func scar(p: Vector3, r: float, strength := 1.0) -> void:
 
 func apply_settings() -> void:
 	var lvl := int(Settings.get_v("grass"))
-	if lvl != level:
+	if lvl != level or int(Settings.get_v("wildlife")) != _wildlife_level:
 		request_rebuild(0.1)
 
 
@@ -131,15 +144,13 @@ func _exit_tree() -> void:
 
 func _start_rebuild(first_view := false) -> void:
 	level = int(Settings.get_v("grass"))
+	_wildlife_level = int(Settings.get_v("wildlife"))
 	_shrub_noise.seed = int(atmo.world.settings.get("seed", 1)) + 219
 	_shrub_noise.frequency = 0.035
 	if _task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_task)  # (a rebuild already on its way: redone from now)
 		_task = -1
-	if level == 0:
-		_job = null
-		_clear()
-		return
+	# The forest floor remains visible with grass disabled.
 	_job = _blocked_job()
 	if first_view or OS.has_feature("nothreads"):
 		_job.run()
@@ -152,6 +163,10 @@ func _start_rebuild(first_view := false) -> void:
 ## queue up, the nearest the camera first.
 func _lay_out() -> void:
 	_blocked = _job.blocked
+	canopy_img = Image.create_from_data(MapDims.N >> 1, MapDims.N >> 1, false, Image.FORMAT_R8, _job.canopy)
+	if is_instance_valid(_job.biome):
+		atmo.biome_tex.set_image(_job.biome)
+	atmo.ground_mat.set_shader_parameter("woodland_ready", woodland != null)
 	_job = null
 	_clear()
 
@@ -233,18 +248,28 @@ var _task := -1
 ## second and more of script that held up a frame).
 func _blocked_job() -> BlockedJob:
 	var j := BlockedJob.new()
+	if is_instance_valid(atmo.biome_img):
+		j.biome = atmo.biome_img.duplicate()
 	var w := atmo.world
 	for st in w.structures:
 		if st.gone:
 			continue
+		if st.skind == "tree":
+			j.trees.append(Vector3(st.position.x, 4.0 if st.variant == 1 else 7.0, st.position.z))
 		var big: bool = st.skind in ["floor", "fob", "barracks", "factory", "medic_tent", "research", "depot", "helipad", "bunker", "mortar_pit", "hmg_nest", "mg_nest", "at_post", "tunnel", "house_wall", "tall_wall", "concrete_wall", "hesco", "barricade", "ammo_cache", "wreck", "car", "crates", "bridge", "town"]
 		if big:
-			j.boxes.append([Vector2(st.position.x, st.position.z), st.foot + Vector2(0.4, 0.4), float(st.yaw)])
+			var cleared: Vector2 = st.foot + Vector2(0.4, 0.4)
+			if st.skind == "bunker":
+				# The two-metre earth bank buries plants beyond the building walls.
+				cleared = cleared.max(Vector2(5.2, 5.2))
+			j.boxes.append([Vector2(st.position.x, st.position.z), cleared, float(st.yaw)])
 	# sidewalks, squares, gardens and the like
 	for e in w.decor:
-		if not String(e[0]) in ["walk", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
+		if not String(e[0]) in ["walk", "walk_corner", "walk_crossing", "pave", "junction", "soft", "lot_pave", "drive", "path", "garden", "yard"]:
 			continue
 		var s3: Vector3 = e[3][0] if e[0] == "walk_crossing" else e[3]
+		if e[0] == "walk_corner":
+			s3 = Vector3(absf(s3.x), 0.12, absf(s3.z))  # (the signs say which corner)
 		var c3: Vector3 = e[1]
 		j.boxes.append([Vector2(c3.x, c3.z), Vector2(s3.x * 0.5 + 0.2, s3.z * 0.5 + 0.2), float(e[2])])
 	# the water, and the sand and mud along its shores
@@ -252,14 +277,19 @@ func _blocked_job() -> BlockedJob:
 		j.water = w.water.mask.get_data()
 	for t in 3:
 		j.roads.append_array(w.roads[t])
+	j.gravel.append_array(w.roads[2])  # (the civilian roads are gravelled; the sides' supply routes are bare earth)
 	return j
 
 
 ## 1 m grid of places grass must not grow: building floors, walls, roads.
 class BlockedJob:
+	var biome: Image
+	var trees: Array[Vector3] = []  # x, litter radius, z
+	var canopy := PackedByteArray()
 	var boxes: Array = []  # [centre, half size, yaw] (x, z)
 	var water := PackedByteArray()  # the water mask's pixels (RGBA8)
 	var roads: Array = []  # PackedVector3Array polylines
+	var gravel: Array = []  # the ones of them that are gravel roads
 	var blocked := PackedByteArray()
 
 	func run() -> void:
@@ -291,9 +321,24 @@ class BlockedJob:
 					var p := a.lerp(b, float(k) / steps)
 					for dx in range(-4, 5):
 						for dz in range(-4, 5):
-							# Include the grass clump radius beyond the 2.9 m carriageway.
-							if dx * dx + dz * dz <= 16:
+							# Keep clumps from overhanging the 2.9 m carriageway; past
+							# it they grow into a track's soil shoulder.
+							if dx * dx + dz * dz <= 10:
 								_mark(floori(p.x) + dx, floori(p.z) + dz)
+		var n := MapDims.N >> 1
+		var half := float(MapDims.N) * 0.5
+		canopy.resize(n * n)
+		for tree: Vector3 in trees:
+			for z in range(maxi(0, floori((tree.z - tree.y + half) * 0.5)), mini(n, ceili((tree.z + tree.y + half) * 0.5))):
+				for x in range(maxi(0, floori((tree.x - tree.y + half) * 0.5)), mini(n, ceili((tree.x + tree.y + half) * 0.5))):
+					if blocked[((z << 1) + 1) * MapDims.N + (x << 1) + 1] != 0:
+						continue
+					var distance := Vector2(float(x * 2 + 1) - half - tree.x, float(z * 2 + 1) - half - tree.z).length()
+					var weight := 1.0 - smoothstep(tree.y * 0.2, tree.y, distance)
+					var index := z * n + x
+					canopy[index] = mini(255, canopy[index] + int(weight * 215.0))
+		if is_instance_valid(biome):
+			biome = Grass.pack_biome(biome, Image.create_from_data(n, n, false, Image.FORMAT_R8, canopy), Grass.road_field(roads, biome.get_width(), gravel))
 
 	func _mark(x: int, z: int) -> void:
 		var ix := x + MapDims.N / 2
@@ -308,12 +353,86 @@ func bare(p: Vector3) -> bool:
 	return level == 0 or (not _blocked.is_empty() and _is_blocked(p))
 
 
+func _near_bare(p: Vector3, r: float) -> bool:
+	for d: Vector3 in [Vector3(r, 0, 0), Vector3(-r, 0, 0), Vector3(0, 0, r), Vector3(0, 0, -r)]:
+		if _is_blocked(p + d):
+			return true
+	return false
+
+
 func _is_blocked(p: Vector3) -> bool:
 	var ix := floori(p.x) + MapDims.N / 2
 	var iz := floori(p.z) + MapDims.N / 2
 	if ix < 0 or iz < 0 or ix >= MapDims.N or iz >= MapDims.N:
 		return false
 	return _blocked[iz * MapDims.N + ix] == 1
+
+
+## How near each texel of a size-by-size map grid is to the middle of a road,
+## 1 on it and falling to 0 at ROAD_REACH metres, and whether the nearest is
+## one of the gravel roads: two bytes a texel (the ground shader draws the
+## roads from it: see Atmosphere.GROUND_SHADER).
+const ROAD_REACH := 4.5
+static func road_field(polys: Array, size: int, gravel := []) -> PackedByteArray:
+	var field := PackedByteArray()
+	field.resize(size * size * 2)
+	var half := float(size) * 0.5
+	var scale := float(size) / MapDims.SIZE
+	for poly in polys + gravel:
+		var kind := 255 if gravel.has(poly) else 0
+		var pts: PackedVector3Array = poly
+		for i in pts.size() - 1:
+			var a := Vector2(pts[i].x, pts[i].z)
+			var b := Vector2(pts[i + 1].x, pts[i + 1].z)
+			var lo := (a.min(b) - Vector2.ONE * ROAD_REACH) * scale + Vector2.ONE * half
+			var hi := (a.max(b) + Vector2.ONE * ROAD_REACH) * scale + Vector2.ONE * half
+			for z in range(maxi(0, floori(lo.y)), mini(size, ceili(hi.y) + 1)):
+				for x in range(maxi(0, floori(lo.x)), mini(size, ceili(hi.x) + 1)):
+					var q := (Vector2(x, z) + Vector2.ONE * 0.5 - Vector2.ONE * half) / scale
+					var d := Geometry2D.get_closest_point_to_segment(q, a, b).distance_to(q)
+					if d < ROAD_REACH:
+						var near := int(round((1.0 - d / ROAD_REACH) * 255.0))
+						var at := (z * size + x) << 1
+						if near > field[at] or (near == field[at] and kind > field[at + 1]):
+							field[at] = near
+							field[at + 1] = kind
+	return field
+
+
+## Share a sampler with biome noise without changing its red channel or CPU
+## image: the canopy in green, the roads (road_field) in blue and alpha.
+static func pack_biome(source: Image, canopy: Image, roads := PackedByteArray()) -> Image:
+	var noise: Image = source.duplicate()
+	noise.convert(Image.FORMAT_R8)
+	var mask: Image = canopy.duplicate()
+	mask.resize(noise.get_width(), noise.get_height(), Image.INTERPOLATE_BILINEAR)
+	var red := noise.get_data()
+	var green := mask.get_data()
+	var packed := PackedByteArray()
+	if roads.size() != red.size() * 2:
+		packed.resize(red.size() * 2)
+		for i in red.size():
+			packed[i << 1] = red[i]
+			packed[(i << 1) + 1] = green[i]
+		return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RG8, packed)
+	packed.resize(red.size() * 4)
+	for i in red.size():
+		var at := i << 2
+		packed[at] = red[i]
+		packed[at + 1] = green[i]
+		packed[at + 2] = roads[i << 1]
+		packed[at + 3] = roads[(i << 1) + 1]
+	return Image.create_from_data(noise.get_width(), noise.get_height(), false, Image.FORMAT_RGBA8, packed)
+
+
+func canopy_at(p: Vector3) -> float:
+	if canopy_img == null or woodland == null:
+		return 0.0
+	var x := floori((p.x + HALF) * 0.5)
+	var z := floori((p.z + HALF) * 0.5)
+	if x < 0 or z < 0 or x >= canopy_img.get_width() or z >= canopy_img.get_height():
+		return 0.0
+	return canopy_img.get_pixel(x, z).r
 
 
 func _build_chunk(c: Vector2i) -> void:
@@ -343,7 +462,8 @@ func _build_chunk(c: Vector2i) -> void:
 		var g := atmo.grass_amount(p)
 		var m := _wet_at(wet, (p.x - origin.x) / CHUNK, (p.z - origin.z) / CHUNK)
 		# Damp ground grows thick, tall grass; a dry crest keeps thin short tufts.
-		var lush := g * lerpf(0.55, 1.15, m)
+		var shade := canopy_at(p)
+		var lush := g * lerpf(0.55, 1.15, m) * lerpf(1.0, 0.16, shade)
 		if lush <= 0.001 or rng.randf() > lush * 0.92 + 0.04:
 			if rng.randf() < 0.004:
 				stones.append(p)
@@ -355,7 +475,9 @@ func _build_chunk(c: Vector2i) -> void:
 		xf.append(Transform3D(basis, p))
 		cd.append(Color(g, rng.randf(), m, 0))
 		if rng.randf() < 0.035 and g > 0.6 and _shrub_noise.get_noise_2d(p.x, p.z) > 0.08:
-			bushes.append(p)
+			# grass grows up to a track's edge; a shrub would be cut back from it
+			if not _near_bare(p, 1.5):
+				bushes.append(p)
 		elif rng.randf() < 0.003:
 			stones.append(p)
 	var nodes := []
@@ -375,12 +497,14 @@ func _build_chunk(c: Vector2i) -> void:
 		var sx := []
 		var sc := []
 		for p in stones:
-			var s3 := rng.randf_range(0.25, 0.8)
-			sx.append(Transform3D(Basis.from_euler(Vector3(rng.randf() * TAU, rng.randf() * TAU, 0)).scaled(Vector3(s3, s3 * 0.6, s3)), Vector3(p.x, atmo.world.ground_y(p) + s3 * 0.15, p.z)))
+			var s3 := rng.randf_range(0.15, 0.4)
+			sx.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s3, s3 * 0.6, s3)), Vector3(p.x, atmo.world.ground_y(p) + s3 * 0.15, p.z)))
 			sc.append(Color(0, 0, 0, 0))
 		var sn := _mm(stone, stone_mat, sx, sc, 140.0)
 		sn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		nodes.append(sn)
+	if woodland:
+		woodland.build(self, c, nodes)
 	_built[c] = nodes
 
 
@@ -434,7 +558,9 @@ func _make_clump() -> ArrayMesh:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
-	# More narrow, pointed blades keep the previous clump's 90-triangle budget.
+	# Blades are drawn a little broader and taller than real grass: seen from a
+	# commander's height a true 5 mm blade is thinner than a pixel, and the meadow
+	# reads as bare ground (as it did after the woodland scans, PR #232).
 	for blade in 30:
 		var angle := rng.randf() * TAU
 		var radius := sqrt(rng.randf()) * 0.32
@@ -453,6 +579,9 @@ func _make_clump() -> ArrayMesh:
 	return st.commit()
 
 
+## A meadow shrub: a dense ball of leaf cards. (The scanned woodland shrub is
+## an open spray of twigs, lovely underfoot but invisible at battle range, so
+## it stays in the woods' understory.)
 func _make_bush() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -479,19 +608,8 @@ func _make_bush() -> ArrayMesh:
 
 
 func _make_stone() -> ArrayMesh:
-	var sph := SphereMesh.new()
-	sph.radial_segments = 7
-	sph.rings = 4
-	var arrays := sph.get_mesh_arrays()
-	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 99
-	for i in verts.size():
-		verts[i] *= rng.randf_range(0.8, 1.15)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	var m := ArrayMesh.new()
-	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return m
+	# Retain the baked distance LODs; rebuilding surface arrays discards them.
+	return preload("res://assets/foliage/woodland/rock_moss_set_01-2.res")
 
 
 const GRASS_SHADER := """
@@ -505,6 +623,7 @@ uniform vec3 dry_col : source_color = vec3(0.55, 0.49, 0.3);
 uniform float wind = 0.11;
 uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+#include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
@@ -530,7 +649,7 @@ void vertex() {
 	// shell holes and blast scars flatten and scorch the grass
 	burnt = texture(scar, (o.xz + __MAP_HALF__) / __MAP_SIZE__).r;
 	// nothing grows in a trench
-	if (textureLod(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
+	if (trench_disturbed(trench_mask, (o.xz + __MAP_HALF__) / __MAP_SIZE__, 0.85 / __MAP_SIZE__) > 0.1) {
 		VERTEX *= 0.0;
 	}
 	VERTEX.y *= 1.0 - burnt * 0.85;
@@ -557,7 +676,9 @@ void fragment() {
 	float cured = clamp((1.0 - wet) * 0.8 + (1.0 - g) * 0.4 + (rnd - 0.7) * 0.6 - 0.08, 0.0, 0.9);
 	col = mix(col, dry_col, cured * smoothstep(0.2, 1.0, h));
 	col *= mix(1.0, 0.86, wet) * (0.85 + 0.3 * rnd);
-	col = mix(col, vec3(0.09, 0.075, 0.05), burnt * 0.85);
+	// scorched brown at the edge of a scar, burnt to black stubble where it burnt through
+	vec3 scorched = mix(vec3(0.09, 0.075, 0.05), vec3(0.026, 0.024, 0.021), smoothstep(0.55, 1.0, burnt));
+	col = mix(col, scorched, burnt * 0.9);
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
 	BACKLIGHT = vec3(0.35, 0.4, 0.15) * h * (1.0 - burnt);
@@ -575,6 +696,7 @@ render_mode specular_disabled, cull_disabled;
 varying float plant_height;
 varying float rnd;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
+#include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
@@ -586,7 +708,7 @@ void vertex() {
 #ifdef CLOUD_PATTERN
 	cloud_v = cloud_sun(MODEL_MATRIX[3].xyz);
 #endif
-	if (textureLod(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).r > 0.3) {
+	if (trench_disturbed(trench_mask, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.85 / __MAP_SIZE__) > 0.1) {
 		VERTEX *= 0.0;
 	}
 	float gd = terrain_height(deform_tex, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__);
@@ -626,18 +748,26 @@ void fragment() {
 }
 """
 
-## The stones in the grass: grey and rough.
+## Scanned stones share the woodland geology and cloud lighting.
 const STONE_SHADER := """
 shader_type spatial;
-uniform vec3 col : source_color = vec3(0.42, 0.4, 0.37);
+uniform sampler2D stone_color : source_color, filter_linear_mipmap_anisotropic;
+uniform sampler2D stone_surface : hint_normal, filter_linear_mipmap_anisotropic;
 // CLOUD_SHADOW
 varying vec3 wpos;
 void vertex() {
+	VERTEX.y -= 0.25; // The established scatter origin sits slightly above the soil.
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
-	ALBEDO = col;
-	ROUGHNESS = 0.9;
+	vec4 photograph = texture(stone_color, UV);
+	ALBEDO = photograph.rgb;
+	vec4 detail = texture(stone_surface, UV);
+	NORMAL_MAP = vec3(detail.rg, 1.0);
+	NORMAL_MAP_DEPTH = 0.8;
+	ROUGHNESS = clamp(detail.a, 0.65, 1.0);
+	AO = detail.b;
+	AO_LIGHT_AFFECT = 0.5;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """

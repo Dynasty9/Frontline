@@ -17,9 +17,9 @@ const PROFILES := {
 	# walls
 	"plaster": {"surface": "plaster", "color": Color(0.72, 0.66, 0.55), "finish": "render",
 		"trim": "plaster", "sill": "plaster", "head": "plaster", "base": "plaster", "base_tone": -0.3, "cap": "plaster"},
-	"brick": {"surface": "brick", "color": Color(0.56, 0.3, 0.21), "finish": "brick",
+	"brick": {"surface": "brick", "color": Color(0.42, 0.27, 0.22), "finish": "brick",
 		"trim": "concrete", "sill": "concrete", "head": "concrete", "base": "brick", "base_tone": -0.35, "cap": "concrete",
-		"trim_color": Color(0.62, 0.6, 0.56)},
+		"trim_color": Color(0.53, 0.52, 0.49)},
 	"stone": {"surface": "stone", "color": Color(0.56, 0.53, 0.48), "finish": "stone",
 		"trim": "stone", "sill": "stone", "head": "stone", "base": "stone", "base_tone": -0.18, "cap": "stone"},
 	"concrete": {"surface": "concrete", "color": Color(0.5, 0.49, 0.46), "finish": "cast",
@@ -45,7 +45,43 @@ const PROFILES := {
 ## The materials a house can be built of, by its colour index (see
 ## Structure.HOUSE_COLORS): most are rendered and painted, the red-brown ones
 ## are bare brick, the grey-brown ones rough stone.
-const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone"]
+## A house's material by its colour index (the town draws 0 to 4); a barn's
+## is the last, weatherboarding (see MapGen._house).
+const HOUSE := ["plaster", "plaster", "brick", "plaster", "stone", "timber"]
+
+
+## What a town's pitched roofs are covered in. Clay tiles fired in different
+## kilns and aged differently: a newer orange clay, the usual terracotta gone
+## brown with the years, a dark red-brown, and the concrete tiles of later
+## houses in brown and in a sooty red; the rest slate or grey concrete tile.
+## None as bright as a new tile: a roof is out in all weathers, its surface
+## dulled by dirt and lichen (and the tile photograph carries its own
+## variation tile by tile on top of this).
+const ROOF_CLAY := [Color(0.45, 0.26, 0.19), Color(0.4, 0.25, 0.2), Color(0.35, 0.21, 0.17), Color(0.32, 0.24, 0.2), Color(0.34, 0.18, 0.15)]
+const ROOF_SLATE := [Color(0.25, 0.25, 0.26), Color(0.32, 0.31, 0.29), Color(0.21, 0.21, 0.21)]
+## A barn's sheet roof: rusted, galvanised gone dull grey, or painted red.
+const BARN_SHEET := [Color(0.34, 0.25, 0.21), Color(0.3, 0.31, 0.31), Color(0.32, 0.16, 0.13)]
+
+
+## What a flat roof is covered in: bitumen felt gone dull black-grey, green-
+## grey mineral felt, the bare concrete deck or pale chippings, old asphalt.
+## Drawn by `deck_color`, felt the most often (it's what goes on a house).
+const FLAT_DECKS := [Color(0.27, 0.27, 0.27), Color(0.34, 0.36, 0.32), Color(0.5, 0.49, 0.46), Color(0.41, 0.39, 0.36)]
+
+
+static func deck_color(rng: RandomNumberGenerator) -> Color:
+	var r := rng.randf()
+	var c: Color = FLAT_DECKS[0 if r < 0.35 else (1 if r < 0.6 else (2 if r < 0.85 else 3))]
+	return c.lightened(rng.randf_range(-0.02, 0.04))
+
+
+## A pitched roof's tint: clay (shade its few per cent lighter or darker) or
+## slate, which one drawn from `rng`.
+static func roof_color(clay: bool, shade: float, rng: RandomNumberGenerator) -> Color:
+	var pick: Array = ROOF_CLAY if clay else ROOF_SLATE
+	var c: Color = pick[rng.randi() % pick.size()]
+	var k := 1.0 + shade
+	return Color(clampf(c.r * k, 0, 1), clampf(c.g * k, 0, 1), clampf(c.b * k, 0, 1))
 
 
 static func profile(material: String) -> Dictionary:
@@ -76,14 +112,35 @@ static func house(ci: int) -> String:
 	return HOUSE[posmod(ci, HOUSE.size())]
 
 
+## The colours a rendered house is painted, three to each of the rendered
+## colour indices (0, 1 and 3; which of the three is ci / HOUSE.size(), as
+## for brick and stone): limewash and cream, a pale ochre, warm white; beige,
+## a faded pink, grey render; off-white, a dull sage, a pale yellow. All of
+## them old paint, a little dirty, none of them bright.
+const RENDERS := [Color(0.72, 0.66, 0.55), Color(0.73, 0.66, 0.54), Color(0.78, 0.76, 0.7),
+	Color(0.66, 0.6, 0.52), Color(0.72, 0.61, 0.55), Color(0.62, 0.61, 0.58),
+	Color(0.75, 0.72, 0.66), Color(0.62, 0.63, 0.57), Color(0.76, 0.72, 0.62)]
+
+
 ## The colour its walls show: rendered walls take the house's paint, bare
 ## brick and stone their own (a little different from house to house).
 static func house_color(ci: int, paint: Color) -> Color:
 	match house(ci):
+		"plaster":
+			var slot: int = [0, 1, 0, 2, 0, 0][posmod(ci, HOUSE.size())]
+			if posmod(ci, HOUSE.size()) in [0, 1, 3]:
+				return RENDERS[slot * 3 + posmod(ci / HOUSE.size(), 3)]
+			return paint
 		"brick":
-			return [Color(0.56, 0.3, 0.21), Color(0.5, 0.29, 0.22), Color(0.6, 0.36, 0.25)][posmod(ci / HOUSE.size(), 3)]
+			# (old brick: red-brown, a darker purple-brown, a sandier red;
+			# never a new brick's orange)
+			return [Color(0.42, 0.27, 0.22), Color(0.38, 0.25, 0.22), Color(0.46, 0.32, 0.26)][posmod(ci / HOUSE.size(), 3)]
 		"stone":
-			return [Color(0.6, 0.57, 0.51), Color(0.55, 0.53, 0.49), Color(0.62, 0.58, 0.5)][posmod(ci / HOUSE.size(), 3)]
+			# (a local stone, a little warm: buff, grey, honey)
+			return [Color(0.6, 0.55, 0.46), Color(0.55, 0.53, 0.48), Color(0.63, 0.56, 0.45)][posmod(ci / HOUSE.size(), 3)]
+		"timber":
+			# a barn's boards: barn red, weathered grey, or dark green
+			return [Color(0.37, 0.14, 0.1), Color(0.42, 0.4, 0.37), Color(0.2, 0.26, 0.19)][posmod(ci / HOUSE.size(), 3)]
 	return paint
 
 

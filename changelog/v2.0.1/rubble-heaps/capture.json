@@ -1,0 +1,65 @@
+{
+  "before_ref": "9016b011b1c39454bc5bf9e6777c116a4b5ddbad",
+  "source_ref": "493afe8dc7ef0ed7d0b96ccdfcf811f6e7060cb5",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "rubble"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=rubble"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "rubble": [
+          -0.193184614181519,
+          0.550000011920929,
+          0.267882585525513,
+          4.33609008789063,
+          21.7993831634521
+        ]
+      },
+      "crop": [
+        100,
+        120,
+        1500,
+        800
+      ]
+    },
+    {
+      "subjects": [
+        "house_ruin"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=house_ruin"
+      ],
+      "after_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "cameras": {
+        "house_ruin": [
+          0.120637893676758,
+          1.25,
+          0.0,
+          9.30273914337158,
+          41.4931716918945
+        ]
+      },
+      "crop": [
+        150,
+        100,
+        1450,
+        820
+      ]
+    }
+  ],
+  "notes": "Both sides render the source_ref studio stage (its rubble subject is new; the baseline draws rubble as it did). The baseline is the farm barns change this builds on. At the town's 130 m camera the heaps are a few pixels, so no town row.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/shop-fronts.md",
+  "summary": "Shops get fascias with names, striped awnings, blade signs and wares on the pavement.",
+  "medium": "still",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd (town)",
+  "rationale": "Appearance change: a matched studio parade shows three kinds of shop whole and close up, and a town view shows a shop front at the game's own scale.",
+  "source_ref": "02a0892fa67ca09c87ced4811282bd7d86c79f13",
+  "before_ref": "b4a4e3c2dc6fa1c3e9994b560483b816cfc24fed",
+  "sources": [
+    {
+      "file": "changelog/unreleased/shop-fronts/comparison.jpg",
+      "sha256": "27e871dba424e25b274845524e31faf4281265e39278043af9aae700b53a711d"
+    },
+    {
+      "file": "changelog/unreleased/shop-fronts/capture.json",
+      "sha256": "fac11983abe2c0a09306f4f534180d8ff09b68655ad98627e0bb5df7794cd19f"
+    }
+  ],
+  "output": null
+}

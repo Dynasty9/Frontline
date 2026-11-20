@@ -1,21 +1,31 @@
 extends Node
 
 func _ready() -> void:
+	if "--track-normals-only" in OS.get_cmdline_user_args():
+		TestRun.watch()
+		await check_track_normals()
+		print("TRACK_NORMALS passed")
+		Sfx._ensure()
+		while Music._task >= 0:
+			await get_tree().process_frame
+		TestRun.quit(get_tree())
+		return
 	check_release_forest_atlas()
 	var arrays := Atmosphere.terrain_materials()
 	assert(arrays.size() == 2)
 	assert(arrays[0] == Atmosphere.terrain_materials()[0], "Map reloads must reuse the material allocation")
 	for channel in 2:
 		var array := arrays[channel]
-		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() + Atmosphere.DETAIL_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
+		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() + Atmosphere.DETAIL_MATERIALS.size() + Atmosphere.TRACK_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
 		assert(array.has_mipmaps() and array.get_format() == Image.FORMAT_RGBA8, "All packed channels and distant filtering must survive import")
-		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS + Atmosphere.DETAIL_MATERIALS
+		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS + Atmosphere.DETAIL_MATERIALS + Atmosphere.TRACK_MATERIALS
 		for layer in names.size():
 			var name: String = names[layer]
 			if name == "":
 				continue  # (the shore gravel, checked below)
 			var suffix := "color_height" if channel == 0 else "surface"
-			var path := "res://assets/terrain/%s_%s.png" % [name, suffix]
+			var folder := "town" if name in Atmosphere.TRACK_MATERIALS else "terrain"
+			var path := "res://assets/%s/%s_%s.png" % [folder, name, suffix]
 			var original := Image.new()
 			assert(original.load_png_from_buffer(FileAccess.get_file_as_bytes(path)) == OK)
 			var texture: Texture2D = load(path)
@@ -43,9 +53,13 @@ func _ready() -> void:
 		await check_surf_continuity()
 		await check_vertex_ground_normals()
 		await check_rain_splashes()
+		await check_track_normals()
 		await check_road_surfaces()
 		await check_ground_grime()
 		await check_shrub_leaves()
+		await check_trench_vegetation()
+		await check_trench_horizons()
+		await check_bunker_trench_cut()
 		await check_tree_leaves()
 		await check_batched_tints()
 	print("TERRAIN_MATERIALS passed")
@@ -197,7 +211,7 @@ void fragment() { float tar; ALBEDO = street_surface(scan, noise, vec2(0.0), tar
 	var road := view.get_texture().get_image().get_pixel(32, 32)
 	assert(absf(road.r - 0.3065) < 0.008, "Street blending must use linear scan values in both renderers: %s" % road)
 	var track_shader := Shader.new()
-	track_shader.code = Mats.code(MapDims.shader(Atmosphere.ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))).replace("render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;", "render_mode unshaded;")
+	track_shader.code = Mats.code(MapDims.shader(Atmosphere.ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER).replace("// RAIN_DROPS", Mats.RAIN_DROPS))).replace("render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;", "render_mode unshaded;")
 	var track_material := ShaderMaterial.new()
 	track_material.shader = track_shader
 	var flat_noise := Image.create(4, 4, false, Image.FORMAT_RF)
@@ -210,9 +224,15 @@ void fragment() { float tar; ALBEDO = street_surface(scan, noise, vec2(0.0), tar
 	mesh.material_override = track_material
 	for frame in 3:
 		await RenderingServer.frame_post_draw
-	var track := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
-	var track_expected := Color(0.115, 0.09, 0.0615) * lerpf(0.65, 1.2, smoothstep(0.25, 0.70, 0.5))
-	assert(Vector3(track.r, track.g, track.b).distance_to(Vector3(track_expected.r, track_expected.g, track_expected.b)) < 0.008, "Country tracks must blend dirt and wear in linear light in both renderers: %s" % track)
+	var track := view.get_texture().get_image().get_pixel(32, 32)
+	mesh.visible = false
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var bare := view.get_texture().get_image().get_pixel(32, 32)
+	mesh.visible = true
+	# Outside town the ground itself draws the roads, gravel and earth alike
+	# (GROUND_SHADER, from Grass.road_field); the ribbon draws only the town's asphalt.
+	assert(track.is_equal_approx(bare), "Outside town the road ribbon leaves the ground to draw the road: %s vs %s" % [track, bare])
 	for kind in ["roof_tile", "roof_concrete", "wood_dark", "bark"]:
 		var photographed := Mats.get_mat(kind).duplicate() as ShaderMaterial
 		assert(photographed.get_shader_parameter("pattern") == Mats.WEATHERED_PHOTO)
@@ -336,7 +356,7 @@ func check_ground_grime() -> void:
 			assert(shared.get_shader_parameter("crater_tex") == heights, "Ground weathering must follow new maps in shared, batched and Compatibility materials")
 		var debug := material.duplicate() as ShaderMaterial
 		var shader := Shader.new()
-		shader.code = material.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;").replace("ALBEDO = col;", "ALBEDO = vec3(low); if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }")
+		shader.code = material.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;").replace("void fragment() {", "void fragment() { float grime_low = 0.0;").replace("dirt = low * grime * (0.6 + 0.4 * gn);", "dirt = low * grime * (0.6 + 0.4 * gn); grime_low = low;").replace("ALBEDO = col;", "ALBEDO = vec3(grime_low); if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }")
 		debug.shader = shader
 		mesh.material_override = debug
 		for above in [0.1, 0.45, 1.2]:
@@ -648,3 +668,185 @@ void fragment() {
 			assert(maxf(pixel.r, pixel.g) < 0.01, "Cloud noise must remain continuous across neighboring grid cells: %s" % pixel)
 	view.free()
 	print("TERRAIN_MATERIALS native cloud continuity passed")
+
+
+func check_trench_vegetation() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.transparent_bg = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	view.add_child(camera)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var size := int(MapDims.SIZE * TrenchNet.RES)
+	var mid := size >> 1
+	var cut := Image.create(size, size, false, Image.FORMAT_R8)
+	cut.fill_rect(Rect2i(mid - 2, mid - 32, 4, 64), Color.WHITE)
+	var cut_texture := ImageTexture.create_from_image(cut)
+	var ground := Image.create(MapDims.N, MapDims.N, false, Image.FORMAT_RGF)
+	var terrain := TerrainTexture.new(ground)
+	var leaf := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	leaf.fill(Color.WHITE)
+	for code in [Grass.GRASS_SHADER, Grass.BUSH_SHADER]:
+		var material := ShaderMaterial.new()
+		var shader := Shader.new()
+		shader.code = CloudShadow.shader(MapDims.shader(code.replace("render_mode cull_disabled, specular_disabled;", "render_mode unshaded, cull_disabled;").replace("render_mode specular_disabled, cull_disabled;", "render_mode unshaded, cull_disabled;")), CloudShadow.FOLD)
+		material.shader = shader
+		material.set_shader_parameter("trench_mask", cut_texture)
+		material.set_shader_parameter("deform_tex", terrain.texture)
+		material.set_shader_parameter("leaf_texture", ImageTexture.create_from_image(leaf))
+		material.set_shader_parameter("wind", 0.0)
+		mesh.material_override = material
+		for x in [0.0, 1.1, 3.0]:
+			mesh.position.x = x
+			camera.position = Vector3(x, 5, 0)
+			camera.look_at(Vector3(x, 0, 0), Vector3.FORWARD)
+			for frame in 3:
+				await RenderingServer.frame_post_draw
+			var visible := view.get_texture().get_image().get_pixel(16, 16).a > 0.5
+			assert(visible == (x > 2.0), "Plants clear the cut and its buried rim, while undisturbed ground keeps its vegetation")
+	view.queue_free()
+	print("TERRAIN_MATERIALS trench vegetation clearance passed")
+
+
+func check_trench_horizons() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(64, 64)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	view.add_child(camera)
+	camera.position = Vector3(0, 2, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded;
+#include "res://scripts/game/trench_earth.gdshaderinc"
+uniform float test_depth;
+uniform float test_wet;
+void fragment() {
+	vec3 col; vec4 surface;
+	earth_material(UV, vec3(UV.x * 3.0, 0.0, UV.y * 3.0), test_depth, test_wet, col, surface);
+	ALBEDO = earth_output(col);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	TrenchNet._bind_earth(material)
+	mesh.material_override = material
+	var light: Array[float] = []
+	for sample in [Vector2(0.1, 0.0), Vector2(0.8, 0.0), Vector2(0.8, 1.0)]:
+		material.set_shader_parameter("test_depth", sample.x)
+		material.set_shader_parameter("test_wet", sample.y)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var shot := view.get_texture().get_image()
+		var total := 0.0
+		for y in range(8, 56, 4):
+			for x in range(8, 56, 4):
+				var col := shot.get_pixel(x, y).srgb_to_linear()
+				total += (col.r + col.g + col.b) / 3.0
+		light.append(total / 144.0)
+	assert(light[0] > 0.001 and light[1] > light[0] * 1.3, "The upper organic horizon must remain visibly darker than exposed subsoil: %s" % [light])
+	assert(light[2] < light[1] * 0.7, "Wet exposed soil darkens rather than bleaching out: %s" % [light])
+	view.free()
+	print("TERRAIN_MATERIALS trench horizons and wetness passed ", light)
+
+
+func check_bunker_trench_cut() -> void:
+	var view := SubViewport.new()
+	view.size = Vector2i(64,64)
+	view.own_world_3d = true
+	view.transparent_bg = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 2.0
+	view.add_child(camera)
+	camera.position = Vector3(0,2,0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var cut := Image.create(4,4,false,Image.FORMAT_R8)
+	cut.fill(Color.BLACK)
+	for y in 4:
+		for x in 2:
+			cut.set_pixel(x,y,Color.WHITE)
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = TrenchNet.BERM_SHADER.replace("shader_type spatial;", "shader_type spatial;\nrender_mode unshaded;")
+	TrenchNet._bind_earth(material)
+	material.set_shader_parameter("bank_surface", 1.0)
+	material.set_shader_parameter("trench_mask", ImageTexture.create_from_image(cut))
+	material.set_shader_parameter("map_half", 1.0)
+	mesh.material_override = material
+	for cut_trench in [false, true]:
+		material.set_shader_parameter("cut_trench", cut_trench)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var shot := view.get_texture().get_image()
+		assert(shot.get_pixel(48,32).a > 0.95, "Intact ground retains its bunker bank")
+		if cut_trench:
+			assert(shot.get_pixel(16,32).a < 0.05, "A new trench cuts through the existing bank rather than hiding its walkway")
+		else:
+			assert(shot.get_pixel(16,32).a > 0.95, "Roof soil remains a solid roof above an excavation")
+	view.free()
+	print("TERRAIN_MATERIALS bunker bank trench cut passed")
+
+
+## Compare the rendered normal with the tangent of a depressed wheel track.
+func check_track_normals() -> void:
+	assert(DisplayServer.get_name() != "headless", "Track normals need a real renderer")
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(0, 2, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var source := Atmosphere.GROUND_SHADER
+	var begin := source.find("vec3 track_normal(")
+	var end := source.find("\n}", begin) + 2
+	assert(begin >= 0 and end > begin)
+	var shader := Shader.new()
+	shader.code = "shader_type spatial; render_mode unshaded; uniform float sample_slope;\n" + source.substr(begin, end - begin) + """
+void fragment() {
+	vec3 n = track_normal(vec3(0.0, 1.0, 0.0), vec2(1.0, 0.0), sample_slope, 1.0);
+	ALBEDO = n * 0.5 + 0.5;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	mesh.material_override = material
+	for x in [-0.16, 0.16]:
+		var dx := 0.0001
+		# Five-centimetre depression, sampled on both sides of its centre.
+		var derivative := (-0.05 * exp(-pow((x + dx) / 0.24, 2)) + 0.05 * exp(-pow((x - dx) / 0.24, 2))) / (2.0 * dx)
+		material.set_shader_parameter("sample_slope", derivative)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var c := view.get_texture().get_image().get_pixel(16, 16).srgb_to_linear()
+		var normal := Vector3(c.r, c.g, c.b) * 2.0 - Vector3.ONE
+		assert(absf(normal.dot(Vector3(1, derivative, 0))) < 0.025, "Track normal must be perpendicular to its rising/falling surface: %s" % normal)
+	view.queue_free()

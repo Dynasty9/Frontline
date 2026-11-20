@@ -1,0 +1,35 @@
+{
+  "before_ref": "66fcc4044a3d9cb87afc922557776d5a7c490e64",
+  "after_ref": "f885d98742728ead78cad73e702ebae7155cc77f",
+  "caption": "Same rain pan with probes enabled in both: v2.0.2 renderer (66fcc404, same alley fixture backported) and #263 (f885d98). The sheltered car window reflects less sky and the crew takes the shade. Both already include #253: covered floors stay dry. Matching camera, sky, seed and High settings; normal-speed Forward+ software-Vulkan capture, without grading.",
+  "stage": "tools/showcase/cloud-alley-rain-pan.gd",
+  "stage_sha256": "dcc6889dee34fe8377a8d2f9b2d475be5495633e4f8cca6a39fe037b8a03df7f",
+  "renderer_setup": "Workspace-only rendering setup, 2026-11-18\nGodot: /workspace/frontline-tools/godot/Godot_v4.7.2-stable_linux.x86_64\nDebian packages extracted with dpkg-deb -x into /workspace/frontline-tools/runtime:\nmesa-vulkan-drivers 25.0.7-2+deb13u1\nxvfb and xserver-common 2:21.1.16-1.3+deb13u3\nlibxfont2 1:2.0.6-1+deb13u1\nNo system packages installed; no local Windows access.\n\nDisplay command:\n/workspace/frontline-tools/runtime/usr/bin/Xvfb :99 -screen 0 1280x720x24 -nolisten tcp\n\nEnvironment:\nDISPLAY=:99\nVK_DRIVER_FILES=/workspace/frontline-tools/runtime/usr/share/vulkan/icd.d/lvp_icd.json\nLD_LIBRARY_PATH=/workspace/frontline-tools/runtime/usr/lib/x86_64-linux-gnu\nXDG_DATA_HOME=/workspace/frontline-tools/data\nXDG_CACHE_HOME=/workspace/frontline-tools/cache\nXDG_CONFIG_HOME=/workspace/frontline-tools/config\nGALLIVM_PERF=nopt\n\nGodot arguments: --audio-driver Dummy --rendering-method forward_plus --resolution 960x540 --fixed-fps 30\nUse a windowed offscreen game, not --headless (headless has no RenderingDevice).\nGodot reports:\nVulkan 1.4.305 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 19.1.7, 256 bits)\nCompatibility reports:\nOpenGL API 4.5 (Core Profile) Mesa 25.0.7-2+deb13u1 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 19.1.7, 256 bits)\n\nTiming limitations: no /dev/dri or /dev/nvidia device, including outside the sandbox.\nCold startup/scene compilation takes several minutes; first valid frame can take over ten minutes.\nTank frames took approximately seven seconds each with two concurrent renders; full-town weather is slower.\nActual cgroup memory.max is 17179869184 (16 GiB). Two simultaneous renders plus an import caused two OOM kills.\nRun exactly one renderer at a time and complete imports before capture; monitor memory.current and memory.events.\nFixed 30 fps is simulation/capture time, not wall-clock rendering throughput.\nGALLIVM_PERF=nopt disables LLVM optimizations to shorten compilation; unsuitable for hardware performance conclusions.\nKeep capture separate from any performance test. Hardware renderer cost remains unmeasured.\n\nBounded follow-up: one renderer at a time throughout. Full High 960x540 coastal\nframes take roughly 5\u201310 wall seconds apiece on this software setup; a 3-second\nfixed-30 clip therefore takes many minutes plus atlas preparation. #263's matched\npair additionally uses LP_NUM_THREADS=4 on both sides to fit the4CPU quota.\nNo timing here estimates a discrete or integrated GPU's frame time.\n\nFor this263 pair only: LP_NUM_THREADS=4 in both runs.\n",
+  "command": "LP_NUM_THREADS=4 GALLIVM_PERF=nopt FL_FOLLOW_CAPTURE=<output> /workspace/frontline-tools/godot-run --path <checkout> --rendering-method forward_plus --resolution 960x540 --fixed-fps 30 --script tools/showcase/cloud-alley-rain-pan.gd -- --scenario=alley --seed=3 --preset=high --mood=rain --nohud --offscreen --set=perf:0",
+  "fps": 30,
+  "frames": 72,
+  "duration_seconds": 2.4,
+  "encoded_resolution": [
+    1600,
+    486
+  ],
+  "audio": "silent",
+  "camera_match": "Per-frame camera matrix, world time, scenery count and warming state compared within1e-5.",
+  "preparation": "Pause simulation during scenery setup, replay probe atlas GPU jobs with drawing enabled, await queues empty and20 rendered warmup frames. Resume simulation for capture. No grading/interpolation/speed change.",
+  "limits": "Software driver only; shader-clock rain sparkle and foliage need not align pixel for pixel. No hardware-performance claim. The visible car-edge stippling remains in both builds. One alley entry does not establish all unit models, weather or camera transitions. Wall removal is checked separately in local-only footage.",
+  "files": {
+    "webm": {
+      "sha256": "023417402248e6b01c6d0e4444a74c4550f32202d7031999789c3dbc4d3e6643",
+      "bytes": 1512666
+    },
+    "jpg": {
+      "sha256": "ab10e5e906633df984aa5f84cc1a5c9f8e0161686713a594216bb0d60409f092",
+      "bytes": 150587
+    }
+  },
+  "captured_frames": 90,
+  "trim": "Encode captured frames0\u201371 at30fps; omit the last0.6seconds where the camera passes the subjects. No speed change, synthetic hold or interpolation.",
+  "fixture": "The exact 18-line alley case from f885d98 is backported only into the temporary baseline mapgen.gd. Baseline lighting/material code is untouched.",
+  "fixture_source": "\t\t\"alley\":\n\t\t\t# two houses across a narrow alley with a car parked in it under the\n\t\t\t# eaves, a gun team holding the houses and a rifle squad out in the\n\t\t\t# street, all one side's: the light probes' shade on men indoors and in\n\t\t\t# the open, and on wet paint and glass the sky can't reach (--mood=rain)\n\t\t\t_house(Vector3(0, 0, -30), 8.0, 6.0, 0.0, 1.0, false, 0.0)\n\t\t\t_house(Vector3(0, 0, -38.5), 8.0, 6.0, 0.0, -1.0, false, 0.0)\n\t\t\t_spawn(\"car\", Vector3(1.0, 0, -34.25), PI * 0.5, -1, {\"variant\": 1})\n\t\t\tvar gq := r.spawn_squad(\"mg_team\", 0, a, Vector3(0, 0, -30))\n\t\t\tgq.order_defend(Vector3(0, 0, -30), Vector3(0, 0, 1))\n\t\t\tvar rq := r.spawn_squad(\"rifle_squad\", 0, a, Vector3(0, 0, -20))\n\t\t\trq.order_defend(Vector3(0, 0, -20), Vector3(0, 0, 1))\n\t\t\t# and an AT team put in the alley's shade, a squad out in the sun at its mouth\n\t\t\tvar aq := r.spawn_squad(\"at_team\", 0, a, Vector3(-2.5, 0, -34.25))\n\t\t\tfor i in aq.members.size():\n\t\t\t\taq.members[i].position = Vector3(-3.0 + i * 1.6, 0, -34.25)\n\t\t\tvar sq := r.spawn_squad(\"rifle_squad\", 0, a, Vector3(-12, 0, -34.25))\n\t\t\tsq.order_move(Vector3(-12, 0, -34.25), Vector3(-1, 0, 0), 0, false)\n",
+  "movement": "At capture start, the open-mouth rifle squad receives the same jog order to(-2.5,0,-34.25), facing+X,tactical=false. All per-frame member positions are compared within1e-5."
+}

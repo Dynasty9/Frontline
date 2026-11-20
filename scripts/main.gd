@@ -504,12 +504,17 @@ func _on_game_start(s: Dictionary) -> void:
 		cur = _curtain("loading")
 		var mt := _mission_text(s)
 		cur.brief(int(s.get("seed", 1)), String(mt[0]), mt[1], String(mt[2]) if mt.size() > 2 else "", String(mt[3]) if mt.size() > 3 else "")
+		cur.set_stage("Preparing the battlefield", 0.02)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		# Starting immediately after launch must not block the curtain on script compilation.
+		while ResourceLoader.load_threaded_get_status(GameScripts.WORLD) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			if not is_instance_valid(cur):
+				return
+			await get_tree().process_frame
+		if not is_instance_valid(cur):
+			return
 		cur.set_stage("Surveying the ground", 0.14)
-		if multiplayer.is_server():
-			# let it reach the screen before the long build (clients build at once:
-			# their world is small and the host's state is on its way)
-			await get_tree().process_frame
-			await get_tree().process_frame
 	if menu:
 		menu.visible = false
 	Settings.set_ui_menu(false)
@@ -1214,6 +1219,23 @@ func _process(_dt: float) -> void:
 						bp = Vector3(v.position.x + float(ba[1]), 0.3, v.position.z)
 						break
 			world.combat.explode(bp, {"dmg": 160.0 * bsz, "radius": 4.0 + bsz * 3.0, "fling": 8.0 + bsz * 4.0, "at": 300.0, "top": true, "src": null, "team": -1, "size": bsz})
+	# --destroy-near=x,z,kind,time: the structure of that kind nearest x,z
+	# destroyed at that time, the way enough damage destroys it (a single wall
+	# knocked down, for the light probes' before-and-after)
+	if args.has("destroy-near") and world.srv and not has_meta("destroyed_near"):
+		var dn := String(args["destroy-near"]).split(",")
+		if world.time >= float(dn[3]):
+			set_meta("destroyed_near", true)
+			var at := Vector3(float(dn[0]), 0, float(dn[1]))
+			var best = null  # (untyped: the launch doesn't compile game classes)
+			var best_d := INF
+			for st in world.structures_near(at, 30.0):
+				var d: float = Vector2(st.position.x - at.x, st.position.z - at.z).length()
+				if not st.gone and st.skind == dn[2] and d < best_d:
+					best = st
+					best_d = d
+			if best:
+				best.take_damage(best.hp + 1.0)
 	# --focus-town[=dx,dz]: the camera on the middle of town (offset in metres)
 	if args.has("focus-town") and world.cam and world.time > 1.0 and not world.has_meta("town_focused") and world.town_rect.size.x > 0.0:
 		var off := Vector3.ZERO
@@ -1364,6 +1386,18 @@ func _process(_dt: float) -> void:
 				world.input.set_standing(kv.get_slice(":", 0), int(kv.get_slice(":", 1)))
 	if args.has("nohud") and world.hud and world.hud.root.visible:
 		world.hud.root.visible = false
+	# --gpu-bench[=out.json]: what each graphics setting costs the graphics card,
+	# measured on the battle held still --gpu-bench-at seconds in (scripts/test/gpu_bench.gd)
+	if args.has("gpu-bench") and not has_meta("gpu_bench") and not world.client_loading() and view_time >= float(args.get("gpu-bench-at", 8.0)):
+		set_meta("gpu_bench", true)
+		var gb: Node = (load("res://scripts/test/gpu_bench.gd") as Script).new()
+		gb.set("world", world)
+		gb.set("out", "" if String(args["gpu-bench"]) == "1" else String(args["gpu-bench"]))
+		gb.set("frames", maxi(2, int(args.get("gpu-bench-frames", 20))))
+		gb.set("cycles", maxi(1, int(args.get("gpu-bench-cycles", 10))))
+		if args.has("gpu-bench-only"):
+			gb.set("only", String(args["gpu-bench-only"]).split(",", false))
+		add_child(gb)
 	# --photo-at=S: photo mode opens S seconds into the battle, its values set from
 	# --photo=key:value,... (fov:30,mood:dusk,blur:0.6,pos:x:y:z,yaw:deg,pitch:deg). The battle
 	# is held from then on, so the rest counts real seconds: after --photo-wait (3)

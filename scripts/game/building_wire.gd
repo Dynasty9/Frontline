@@ -56,22 +56,129 @@ static func insulator(k: BuildingKit, p: Vector3, col := Color(0.82, 0.82, 0.78)
 	k.cyl(0.025, 0.03, 0.025, p + Vector3(0, 0.187, 0), "paint", col, Vector3.ZERO, 8, false)
 
 
-## A barbed strand from `a` to `b`, sagging `sag`, its barbs every `every`.
-static func barbed(k: BuildingKit, a: Vector3, b: Vector3, sag := 0.02, every := 0.12) -> void:
+## The surfaces wire comes in: bright new galvanised, rusted brown from years
+## on a farm post, and the armies' dull dark issue wire.
+const FINISHES := {"clean": "wire", "rust": "wire_rust", "military": "wire_military"}
+
+
+## A barbed strand from `a` to `b`, sagging `sag`, its barbs every `every`, in
+## a `finish` (FINISHES). Rusted wire has lost its tension: it sags further.
+static func barbed(k: BuildingKit, a: Vector3, b: Vector3, sag := 0.02, every := 0.11, finish := "clean") -> void:
 	var v := PackedVector3Array()
 	var n := PackedVector3Array()
-	var pts := catenary(a, b, sag, maxi(4, int(a.distance_to(b) / 0.25)))
-	strand(v, n, pts, 0.0045)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(absf(a.x * 31.0 + a.z * 17.0 + b.y * 7.0) * 100.0)
-	barbs(v, n, pts, every, 0.02, rng)
-	k.part(BuildingKit._commit(v, n), "wire", Transform3D.IDENTITY, null, false)
+	var slack := sag * (1.5 if finish == "rust" else 1.0)
+	var pts := catenary(a, b, slack, maxi(4, int(a.distance_to(b) / 0.25)))
+	barbed_wire(v, n, pts, every, rng)
+	k.part(BuildingKit._commit(v, n), FINISHES.get(finish, "wire"), Transform3D.IDENTITY, null, false)
+
+
+## Barbed wire along `pts` as it's made: two 2.5 mm line wires twisted tight
+## together (a turn every 7.5 cm), and every `every` a barb, two short wires wrapped round
+## the pair with their four cut ends standing out.
+static func barbed_wire(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, every: float, rng: RandomNumberGenerator) -> void:
+	var line := resample(pts, 0.025)
+	twisted(v, n, line, 0.0011, 0.075, 0.0017)
+	var run := every * rng.randf()
+	for i in range(1, line.size()):
+		var seg := line[i] - line[i - 1]
+		run += seg.length()
+		if run < every:
+			continue
+		run -= every
+		barb(v, n, line[i], seg.normalized(), 0.017, rng)
+
+
+## The same line every `step` metres along it (so a twist or a barb spacing
+## comes out the same however finely the line was given).
+static func resample(pts: PackedVector3Array, step: float) -> PackedVector3Array:
+	var out := PackedVector3Array([pts[0]])
+	var carry := 0.0
+	for i in range(1, pts.size()):
+		var a := pts[i - 1]
+		var seg := pts[i] - a
+		var ln := seg.length()
+		var d := step - carry
+		while d <= ln:
+			out.append(a + seg * (d / ln))
+			d += step
+		carry = ln - (d - step)
+	if out[out.size() - 1].distance_to(pts[pts.size() - 1]) > step * 0.3:
+		out.append(pts[pts.size() - 1])
+	return out
+
+
+## Two wires of radius `r` twisted round the line `pts`, `apart` from its
+## centre, a full turn every `pitch` metres.
+static func twisted(v: PackedVector3Array, n: PackedVector3Array, pts: PackedVector3Array, apart: float, pitch: float, r: float) -> void:
+	var a_pts := PackedVector3Array()
+	var b_pts := PackedVector3Array()
+	var up := Vector3.UP
+	var dist := 0.0
+	for i in pts.size():
+		if i > 0:
+			dist += pts[i].distance_to(pts[i - 1])
+		var t := (pts[mini(i + 1, pts.size() - 1)] - pts[maxi(i - 1, 0)]).normalized()
+		var side := t.cross(up)
+		if side.length_squared() < 1e-6:
+			side = t.cross(Vector3.RIGHT)
+		side = side.normalized()
+		up = side.cross(t).normalized()
+		var ph := dist / pitch * TAU
+		var o := (side * cos(ph) + up * sin(ph)) * apart
+		a_pts.append(pts[i] + o)
+		b_pts.append(pts[i] - o)
+	strand(v, n, a_pts, r)
+	strand(v, n, b_pts, r)
+
+
+## One barb at `p` on a line running `t`, as the barbing machine makes it: two
+## short wires each coiled twice round the twisted pair, their four cut ends
+## standing out at right angles round the line as round tapered points `size`
+## long, one pair leaning a little forward along the wire and the other back,
+## none quite where the next one is.
+static func barb(v: PackedVector3Array, n: PackedVector3Array, p: Vector3, t: Vector3, size: float, rng: RandomNumberGenerator) -> void:
+	var s := t.cross(Vector3.UP if absf(t.y) < 0.9 else Vector3.RIGHT).normalized()
+	var u := s.cross(t)
+	var a0 := rng.randf() * TAU
+	for w in 2:
+		# the wrap: two turns of a 2 mm wire round the pair, side by side
+		var start := p + t * (-0.006 + w * 0.006)
+		var coil := PackedVector3Array()
+		for k in 13:
+			var a := a0 + w * PI * 0.5 + k * TAU * 2.0 / 12.0
+			coil.append(start + t * (k * 0.0045 / 12.0) + (s * cos(a) + u * sin(a)) * 0.0042)
+		strand(v, n, coil, 0.0011)
+		# its two cut ends, opposite each other, leaning one forward and one back
+		for e in 2:
+			var a := a0 + w * PI * 0.5 + e * PI + rng.randf_range(-0.3, 0.3)
+			var out := s * cos(a) + u * sin(a)
+			var lean := t * (0.32 if (w + e) % 2 == 0 else -0.32) + t * rng.randf_range(-0.12, 0.12)
+			var root := start + t * 0.0022 + out * 0.004
+			var tip := root + (out + lean).normalized() * size * rng.randf_range(0.8, 1.1)
+			point(v, n, root, tip, 0.0012)
+
+
+## A sharpened wire end from `root` to `tip`: a round rod `r` thick tapering to
+## a point (four sides: it is a few pixels across at most).
+static func point(v: PackedVector3Array, n: PackedVector3Array, root: Vector3, tip: Vector3, r: float) -> void:
+	var d := (tip - root).normalized()
+	var x := d.cross(Vector3.UP if absf(d.y) < 0.9 else Vector3.RIGHT).normalized()
+	var y := d.cross(x)
+	for k in 4:
+		var a0 := TAU * k / 4.0
+		var a1 := TAU * (k + 1) / 4.0
+		var o0 := x * cos(a0) + y * sin(a0)
+		var o1 := x * cos(a1) + y * sin(a1)
+		var nm := (o0 + o1).normalized()
+		_tri(v, n, root + o0 * r, root + o1 * r, tip, o0, o1, nm)
 
 
 ## Barbed wire along the top of a wall `length` long whose top is at `y`:
 ## angle-iron arms cranked out over the `lean` side (+1 is +z), three strands
 ## strained between them.
-static func topping(k: BuildingKit, length: float, y: float, lean := 1.0, strands := 3) -> void:
+static func topping(k: BuildingKit, length: float, y: float, lean := 1.0, strands := 3, finish := "clean") -> void:
 	var n := maxi(2, int(ceil(length / 2.4)) + 1)
 	var arm := Vector3(0, 0.42, lean * 0.3)
 	var xs: Array[float] = []
@@ -84,7 +191,7 @@ static func topping(k: BuildingKit, length: float, y: float, lean := 1.0, strand
 	for s in strands:
 		var f := float(s + 1) / strands
 		var off := Vector3(0, y, lean * 0.06) + arm * f + Vector3(0, 0.02, 0)
-		barbed(k, Vector3(xs[0], off.y, off.z), Vector3(xs[xs.size() - 1], off.y, off.z), 0.025)
+		barbed(k, Vector3(xs[0], off.y, off.z), Vector3(xs[xs.size() - 1], off.y, off.z), 0.025, 0.11, finish)
 
 
 ## A wire along `pts`: a thin three-sided tube, its frame carried along so it

@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/graphics-cost-benchmark.md",
+  "summary": "Measured GPU cost of each graphics setting, from the new --gpu-bench mode.",
+  "medium": "measurement",
+  "stage": "--gpu-bench (scripts/test/gpu_bench.gd)",
+  "rationale": "A performance change is shown by measured numbers with their conditions: two runs on one card and resolution, each setting switched off and on ten times, with render scale as the control. No image would prove a cost.",
+  "source_ref": "claude/gpu-cost-bench",
+  "capture": {
+    "machine": "NVIDIA GeForce RTX 3090, Forward+ (Vulkan), 1920x1080 off-screen window",
+    "command": "--offscreen --nohud --perf=0 --scenario=roster --seed=3 --mood=golden --preset=cinematic --focus=-84,24 --zoom=34 --gpu-bench=costs.json --gpu-bench-at=10 (second run with --gpu-bench-only for the Cinematic and noisy settings)",
+    "control": "render scale 100% vs 50%: +7.40 ms (spread 0.76) and +6.86 ms (spread 0.63)",
+    "caveat": "Other programs drawing on the same card widen the spread; settings marked too small to measure stayed within about half a millisecond in both runs."
+  },
+  "sources": [],
+  "output": null
+}
