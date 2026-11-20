@@ -1667,6 +1667,10 @@ func _view_process(dt: float) -> void:
 			tb[0].queue_free()
 			_timed.remove_at(i)
 	var t := Time.get_ticks_msec() / 1000.0
+	# FL_DEBUG_STEADY_FIRE: fires hold one brightness, so pictures taken one
+	# after another compare like with like
+	if OS.has_environment("FL_DEBUG_STEADY_FIRE"):
+		t = 0.0
 	for i in range(_burners.size() - 1, -1, -1):
 		if not is_instance_valid(_burners[i]):
 			_burners.remove_at(i)
