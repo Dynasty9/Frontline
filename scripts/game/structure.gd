@@ -4002,15 +4002,12 @@ func _build_model() -> void:
 			for x in [-2.2, 2.2]:
 				for z in [-2.2, 2.2]:
 					_mk(Res.cyl(0.06, 0.06, 3.6, 6), "wood_dark", Vector3(x * 1.6, 1.8, z * 1.6))
+			# (pitched over the corner poles and the block, a little higher in the
+			# middle, its skirts hanging down to head height all round)
 			var net := MeshInstance3D.new()
-			var nm := PlaneMesh.new()
-			nm.size = Vector2(8.6, 8.6)
-			nm.subdivide_width = 8
-			nm.subdivide_depth = 8
-			net.mesh = nm
-			net.material_override = Mats.netting()
-			Mats.set_inst(net, &"tint", Color(0.3, 0.34, 0.2) if team != 1 else Color(0.44, 0.39, 0.27))
-			net.position = Vector3(0, 3.45, 0)
+			net.mesh = WorksModels.net_mesh(eid % 2, 4.6, 3.52, 3.85, 3.45, 1.7)
+			net.material_override = Mats.netting_tent(9.2)
+			Camo.dress_net(net, 1 if team == 1 else 0)
 			model.add_child(net)
 			var fk := _kit(rng)
 			# the net's corner poles guyed out to pegs
@@ -4254,6 +4251,8 @@ func _build_model() -> void:
 				# the steel doors open at the back, a whip aerial; the grime of a
 				# season and the bullet strikes round the slits
 				var bk := _kit(rng)
+				if team == 0:
+					bk.paint = team  # (the Coalition's painted over in its camouflage)
 				var wc := BuildingPillbox.CONCRETE
 				BuildingPillbox.walls(bk, parts, wc)
 				BuildingPillbox.roof(bk, BuildingPillbox.WEATHERED, rng)
@@ -4541,6 +4540,15 @@ static func _skinnable(sm: StandardMaterial3D) -> bool:
 
 
 func _surf_kind(c: Color, mesh: Mesh) -> String:
+	var kind := _plain_surf_kind(c, mesh)
+	# (the Coalition's concrete bunker is painted over in its camouflage, as
+	# pillboxes were; the base's barracks, works and labs keep their own paint)
+	if skind == "bunker" and team == 0:
+		return Camo.painted("precast" if kind == "concrete" else kind, team)
+	return kind
+
+
+func _plain_surf_kind(c: Color, mesh: Mesh) -> String:
 	var v := maxf(c.r, maxf(c.g, c.b))
 	var dark := v < 0.16
 	match skind:
