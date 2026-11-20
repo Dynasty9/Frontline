@@ -617,7 +617,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Stuck watchdogs: infantry re-plan if they stop making progress; vehicles back off, turn and re-plan.
 
 **The map** (`mapgen.gd`, `landform.gd`, `towngen.gd`, `decor.gd`)
-- Town asphalt combines fine photographed aggregate with larger cracks and repairs, continuous across street junctions. Traffic wears it by lane: polished wheel paths, oil down each lane's middle, grit and damp in the gutters, with drain grates along the kerbs and manhole covers in the lanes. Repairs are saw-cut patches edged with sealant and cracks are filled with tar. Zebra crossings and parking lines are paint on that same asphalt, worn through in places, and junctions and markings take the rain as the roads do. Sidewalk slabs are shaded along the photograph's own stretcher-bond joints; the square is laid in larger slabs of the same concrete. Road and pavement normal maps follow their actual slopes. Photographic roof, concrete, wood and bark materials are calibrated to their intended colours, so grey roofs remain grey and terracotta stays distinct at distance.
+- Town asphalt combines fine photographed aggregate with larger cracks and repairs, continuous across street junctions. Traffic wears it by lane: polished wheel paths, oil down each lane's middle, grit and damp in the gutters, with drain grates along the kerbs and manhole covers in the lanes. Repairs are saw-cut patches edged with sealant and cracks are filled with tar. Zebra crossings and parking lines are paint on that same asphalt, worn through in places, and junctions and markings take the rain as the roads do. Sidewalk slabs are shaded along the photograph's own stretcher-bond joints; the square is laid in larger slabs of the same concrete. Outside town every road is drawn by the terrain shader itself, not a mesh: the grass job rasterises each texel's nearness to a road (Grass.road_field) into the packed biome texture's blue, and in its alpha whether that road is gravelled (the civilian network; the sides' supply routes are earth). The ground blends the trail scan (terrain layer 11) in by its height against the turf's, and on gravel roads the aggregate scan (layer 12) over it, banked where no wheel runs, with potholes in clusters, with wandering wheel ruts and rolled shoulders in the normal and the meadow's rutted soil at the edges. The road ribbon draws only the town's asphalt. Asphalt cracks run along and across the street grid. At crossroads the kerb turns each corner on a 1.6 m radius (TownGen.CORNER_R; Decor builds the corner as a terrain-following fan of paving with asphalt in the bite). Car parks are kerbed on three sides, and playgrounds are surfaced in poured rubber crumb. Road and pavement normal maps follow their actual slopes. Photographic roof, concrete, wood and bark materials are calibrated to their intended colours, so grey roofs remain grey and terracotta stays distinct at distance.
 - Standard battlefields have seeded mountain belts, hills, valleys and rivers. Domain-warped ridged noise,
   jointed bedrock shelves, thermal weathering and seeded rainfall erosion shape the relief. Roads, bridges, starting bases and settlements
   occupy graded valley corridors; forests stay below the snow line and off steep faces.
@@ -694,8 +694,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Houses stand on lots facing the street with their door to it, some on two floors and some with a wing out of
   the back (an L or a T); behind them, gardens closed off by hedges or
   walls, fences down the sides, vegetable patches, washing lines and trees; some have a drive with the car on it.
-  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs), seen when
-  the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
+  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs) and the shops
+  fitted out (shelving down the middle and along the walls stocked with goods, a cooler of drinks, a greengrocer's
+  crates, a counter and till), seen when the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
   floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards; the fountain a stone basin with two bowls, the planters concrete troughs of bedding flowers
@@ -744,20 +745,28 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
   water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
-  its clouds are reflected, more the flatter you look across it. The sun glitters off every ripple (a moon path
+  its clouds are reflected, more the flatter you look across it. Where something stands above the water on screen
+  - a bank, trees, a bridge, a boat (not flames or smoke: they're drawn after) - it's mirrored instead (a ray marched over the screen; looked down on
+  steeply, where calm water mirrors only a couple of percent, none is marched). Rivers run: a flow map baked from
+  their courses carries the ripples down the stream and round its bends, quick in mid-stream and slack under the
+  banks, with lanes of glassy water and strings of bubbles drifting with the current; ponds lie still. The sun
+  shines green through the thin tops of the sea's waves when it's behind them, and the bed is dimmed by the water
+  the sunlight came down through as well as the water looked through, so a river's channel goes dark. The sun glitters off every ripple (a moon path
   at night, only a sheen under cloud), rain dimples the water with rings, the chop roughens in gusts, and foam
   gathers wherever the water meets a bank, a hull or a pile. Impacts throw up narrow sheets of spray that fall
   back into the spreading foam. Boats ride the same waves the player sees (the
   CPU samples the waves the shader draws). **Water quality** (Settings > Graphics) trades this against speed:
   Low draws no see-through water (copying the screen for it is the costly part, most of all in a browser) and
-  fewer waves on a coarser grid; Medium is the full surface; High adds the light on the bed and the wind's
-  streaks; Ultra a finer grid for the swell.
+  fewer waves on a coarser grid; Medium is the full surface; High adds the reflections, the light on the bed
+  and the wind's streaks; Ultra a finer grid for the swell and longer reflections.
 - On the 1 km map, country lanes branch off the main road to a village in each quarter (mirrored between the
   sides), and on the west the lanes run on over the river - each on its own bridge - to farming villages on
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
   cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, round bales of straw (the spiral of the roll on their ends) and silage wrapped in black or green film, a fenced road frontage, an orchard; the barn weatherboarded
-  under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
+  under a corrugated sheet roof with loft doors in its gables; inside, hay stacked in a corner, stalls with mangers
+  and hay racks, a cart, a workbench and churns, tools hung on its walls; round the yard a parked tractor, a water
+  trough, a plough and a harrow, a churn stand at the gate, a hen house and its run) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
   Photographed gravel roads blend compacted wheel tracks into loose aggregate and irregular dirt edges,
   with small, ground-aligned stone deposits and reflector posts
@@ -1378,10 +1387,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   sky without tracing. Map size comes from `MapDims` (2 m and 3 m cubes on the larger maps, the same grid). It's
   light only (no gameplay reads it, no RNG, never on the server) and a graphics setting: High (from the High preset),
   Low (sky shade only, two reads, no bounce: the Medium preset and the browser) or Off. Reflections are shut in with
-  the sky too (specular occlusion, after Frostbite): the probes' two bands give the share of sky seen in the
-  reflected direction, m0 + 3 m1.r for a glossy surface easing to the cosine's m0 + 2 m1.n for a rough one, and the
-  rest of the reflection shows the room's own bounce instead (Godot's RADIANCE), so wet floors indoors, under eaves
-  and in trenches stop mirroring the bright sky. Tree crowns are laid as leaves, sized to the tree the game grows (a
+  the sky too (specular occlusion): Godot's own cone-against-cone test (after Jimenez et al. 2016), which runs after
+  the battlefield's reflection probe, takes the visible sky's cone from AO (which carries the probes' share of sky) and
+  its axis from a bent normal, so every surface that reads the probes hands it theirs (`BENT_NORMAL_MAP`, in the
+  surface's tangent space, leaning back to its normal where the sky is seen nearly all round). Writing the reflection
+  into RADIANCE, as this first did, came before the reflection probe, which painted over it. Hulls parked under the
+  eaves, wet cobbles in an alley and windows across it stop mirroring the open sky, as do wet floors in
+  trenches. Tree crowns are laid as leaves, sized to the tree the game grows (a
   fir's cone in two tiers, a field tree's dome, an orchard tree's small one), three fifths of the light stopped a
   cube; the trace tells them apart and what comes through or off them is green, so a wood's floor and the men in it
   sit in a dimmer, greener shade. The occlusion itself is one grey factor on the ambient, which would take away
@@ -1396,8 +1408,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   so walls keep the glow in (the burning thing's own cubes aside: the flames fill its box), into the atlas's bottom
   block beside the heights; a light that comes, goes, moves a metre or changes by a quarter retraces only its own
   tiles, four a frame. It reaches the browser too, which has no fire lights of its own. The skinned riflemen, whose
-  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, so a
-  man in a room or a wood takes its shade. Vehicles and men shut out a little sky round their feet (after Unreal's
+  imported material can't read the probes, get a small shader that does what it did plus the probes' terms, and the
+  procedural men's flat colours (`LightProbes.probe_surfaces`: every other soldier's uniform, face and kit, and the
+  distant men's baked poses copied from them) a twin that does the same; both go through `CloudShadow` like the
+  world's surfaces, so a man in a room or an alley has the sun cut and the fill light shut out with the sky as the
+  walls round him do, and in a wood takes its green shade, rather than standing in open-sky light. Vehicles and men shut out a little sky round their feet (after Unreal's
   capsule and Frostbite's box occlusion): every frame their footprints, rounded boxes for hulls (half-metre
   corners), darkest along the contact line under tracks and wheels and fading out over a pad of 1 to 1.5 m that
   grows with their height, and faint discs for men (fainter crouched, a longer patch lying down), are
