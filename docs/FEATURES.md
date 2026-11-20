@@ -701,8 +701,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or war memorial, benches, planters, a flagpole, market
   stalls, bollards; the fountain a stone basin with two bowls, the planters concrete troughs of bedding flowers
-  round a clipped box ball): the memorial a bronze soldier at rest on his rifle on a granite pedestal with plaques of
-  names, wreaths at its foot, and the stalls under striped canopies over crates of produce; glazed bus shelters with
+  round a clipped box ball): the memorial a bronze soldier resting on his arms reversed, head bowed, on a granite
+  pedestal with plaques of names, poppy wreaths laid at its foot, and the stalls under striped canopies over crates of produce; glazed bus shelters with
   their timetable and flag, slatted litter bins, a yellow name board where each road comes into town, a fenced playground (swings, slide, climbing frame, sandbox, seesaw, roundabout), a small
   park, allotments, a car park, a bombed-out lot and a water tower on the edge of town.
 - Fences are built as the real ones are (`BuildingFences`), one bay between two posts, climbing with the ground.

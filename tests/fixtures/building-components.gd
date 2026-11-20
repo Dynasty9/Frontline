@@ -18,15 +18,31 @@ func check(ok: bool, what: String) -> void:
 ## (A cached shape is several solids in one mesh, so its bounding box says
 ## nothing: count the faces a ray from the point crosses.)
 func occupied(root: Node3D, point: Vector3) -> bool:
+	return _inside(_solids(root, AABB(point, Vector3.ZERO)), point)
+
+
+## The parts built as nodes under `root` that reach into `near` (in the
+## root's space), for _inside(): [their inverse transforms, boxes, faces].
+func _solids(root: Node3D, near: AABB) -> Array:
+	var out := []
 	for child in root.get_children():
 		var mi := child as MeshInstance3D
 		if mi == null or mi.mesh == null:
 			continue
-		var local := mi.transform.affine_inverse() * point
-		if not mi.mesh.get_aabb().grow(0.001).has_point(local):
+		var box := mi.mesh.get_aabb().grow(0.001)
+		if (mi.transform * box).intersects(near) or (mi.transform * box).has_point(near.position):
+			out.append([mi.transform.affine_inverse(), box, mi.mesh.get_faces()])
+	return out
+
+
+## Is `point` inside one of `solids` (see occupied())?
+func _inside(solids: Array, point: Vector3) -> bool:
+	var dir := Vector3(0.137, 0.913, 0.384).normalized()
+	for s: Array in solids:
+		var local: Vector3 = (s[0] as Transform3D) * point
+		if not (s[1] as AABB).has_point(local):
 			continue
-		var faces := mi.mesh.get_faces()
-		var dir := Vector3(0.137, 0.913, 0.384).normalized()
+		var faces: PackedVector3Array = s[2]
 		var hits := 0
 		for i in range(0, faces.size(), 3):
 			if Geometry3D.ray_intersects_triangle(local, dir, faces[i], faces[i + 1], faces[i + 2]) != null:
@@ -34,6 +50,18 @@ func occupied(root: Node3D, point: Vector3) -> bool:
 		if hits % 2 == 1:
 			return true
 	return false
+
+
+## Every corner of the parts built as nodes under `root`, in its space, once
+## each.
+func _points(root: Node3D) -> PackedVector3Array:
+	var seen := {}
+	for child in root.get_children():
+		var mi := child as MeshInstance3D
+		if mi != null and mi.mesh != null:
+			for p in mi.transform * mi.mesh.get_faces():
+				seen[p] = true
+	return PackedVector3Array(seen.keys())
 
 
 func valid(root: Node3D, what: String) -> void:
@@ -382,6 +410,58 @@ func _ready() -> void:
 		var mb := _bounds(mk.sink.root, Transform3D.IDENTITY)
 		check(mb.size.x <= 3.05 and mb.size.z <= 3.05 and mb.position.y >= -0.01 and mb.end.y > 4.0 and mb.end.y < 6.0, "the war memorial stands on its steps (%s)" % mb)
 		mk.sink.root.free()
+	# Its soldier is one cast figure, larger than life (a man of 1.8 m cast
+	# 2.1 m tall, on his base), no wider than the top of his pedestal.
+	var mwsk := kit()
+	BuildingSquare.soldier(mwsk)
+	var mwsb := _bounds(mwsk.sink.root, Transform3D.IDENTITY)
+	check(mwsk.sink.parts == 1 and mwsb.position.y > -0.005 and mwsb.end.y > 2.0 and mwsb.end.y < 2.3 and mwsb.size.x < 0.9 and mwsb.size.z < 0.9,
+		"the memorial's soldier is one figure 2.1 m tall on his base (%d parts, %s)" % [mwsk.sink.parts, mwsb])
+	mwsk.sink.root.free()
+	# Its wreaths are laid at its foot, in front: none in its stone, the statue
+	# or another wreath, and each stands on the top step leaning back on the
+	# plinth (moved 3 cm down, or back, it would be in the stone).
+	for mwobelisk in [false, true]:
+		for mwseed in 3:
+			var mwk := kit()
+			mwk.rng.seed = mwseed
+			BuildingSquare.monument(mwk, mwobelisk, mwk.rng)
+			var mwspots := BuildingSquare.wreath_spots(mwk.rng)
+			check(mwspots.size() >= 2, "wreaths are laid at the memorial (%d)" % mwspots.size())
+			var mwstone := _points(mwk.sink.root)
+			var mwroots: Array[Node3D] = []
+			for mwspot in mwspots:
+				var mwwk := kit()
+				BuildingSquare.wreath(mwwk.moved(mwspot))
+				mwroots.append(mwwk.sink.root)
+			for mwi in mwroots.size():
+				var mwat := mwspots[mwi].origin
+				var mwpts := _points(mwroots[mwi])
+				var mwbox := _bounds(mwroots[mwi], Transform3D.IDENTITY)
+				var mwsolids := _solids(mwk.sink.root, mwbox.grow(0.04))
+				var mwin_stone := mwpts.size() == 0
+				var mwon_step := false
+				var mwon_plinth := false
+				for mwp in mwpts:
+					mwin_stone = mwin_stone or _inside(mwsolids, mwp)
+					mwon_step = mwon_step or _inside(mwsolids, mwp + Vector3(0, -0.03, 0))
+					mwon_plinth = mwon_plinth or _inside(mwsolids, mwp + Vector3(0, 0, 0.03))
+				var mwwsolid := _solids(mwroots[mwi], mwbox)
+				for mwq in mwstone:
+					mwin_stone = mwin_stone or (mwbox.has_point(mwq) and _inside(mwwsolid, mwq))
+				var mwin_wreath := false
+				for mwj in mwroots.size():
+					if mwj != mwi:
+						for mwo in _points(mwroots[mwj]):
+							mwin_wreath = mwin_wreath or (mwbox.has_point(mwo) and _inside(mwwsolid, mwo))
+				var mwwhat := "(%s, seed %d, at %s)" % ["obelisk" if mwobelisk else "soldier", mwseed, mwat]
+				check(not mwin_stone, "a wreath at the memorial is in its stone " + mwwhat)
+				check(not mwin_wreath, "a wreath at the memorial is in another " + mwwhat)
+				check(mwon_step and mwon_plinth, "a wreath at the memorial stands on its step leaning on the plinth " + mwwhat)
+				check(mwat.z < -BuildingSquare.PLINTH * 0.5 and absf(mwat.x) < BuildingSquare.PLINTH * 0.5, "a wreath at the memorial is laid in front of it " + mwwhat)
+			for mwr in mwroots:
+				mwr.free()
+			mwk.sink.root.free()
 	for ci in 5:
 		var stk := kit()
 		BuildingSquare.stall(stk, ci, stk.rng)
