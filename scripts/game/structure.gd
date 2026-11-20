@@ -3165,7 +3165,7 @@ func _mk(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, 
 ## their models that end up merged straight into the merged meshes (see
 ## Mats.Bake), with the surfaces _skin would have given them. The rest are made
 ## as nodes as ever: the door leaves (they swing), anything glassy or glowing.
-const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof"]
+const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof", "medic_tent"]
 var _bake: Mats.Bake = null
 
 
@@ -3236,6 +3236,8 @@ func _build_model() -> void:
 			col = Res.vary(col, 0.05, rng)
 		if skind == "rubble":
 			continue  # (drawn as a heap, below)
+		if skind == "medic_tent":
+			continue  # (its tent stands where its part is, below)
 		if skind == "house_wall":
 			# (what it was tinted, for stains to fade into: see _tone)
 			var drawn := Res.mat(col).albedo_color
@@ -3474,37 +3476,9 @@ func _build_model() -> void:
 			BuildingFittings.flagpole(fk, Vector3(-size.x * 0.4 - 0.66, 5.3, 0), 1.5, Color(0.6, 0.6, 0.58), false)
 			_flag = _box(Vector3(-size.x * 0.4, 6.4, 0), Vector3(1.2, 0.7, 0.04), tc)
 		"medic_tent":
-			# (the placeholder block goes now: a deferred free would still be
-			# baked into the merged model below)
-			for c in model.get_children():
-				model.remove_child(c)
-				c.queue_free()
-			var hz := size.z * 0.5
-			# an olive-drab ward tent with the red cross on white panels
-			_mk(Res.prism(Vector3(size.z, 2.8, size.x)), "canvas", Vector3(0, 1.4, 0), Vector3(0, PI / 2, 0), Color(0.4, 0.41, 0.31))
-			for sx in [-1.0, 1.0]:
-				_mk(Res.box(Vector3(0.05, 2.75, 0.05)), "wood_dark", Vector3(sx * (size.x * 0.5 - 0.1), 1.375, 0))
-			var ang := atan2(2.8, hz)
-			for sd in [-1.0, 1.0]:
-				var nrm := Vector3(0, hz, sd * 2.8).normalized()
-				var cpos := Vector3(0, 1.4, sd * hz * 0.5) + nrm * 0.03
-				var rot := Vector3(sd * (PI * 0.5 - ang), 0, 0)
-				_mk(Res.box(Vector3(1.9, 0.02, 1.9)), "paint", cpos, rot, Color(0.9, 0.9, 0.88), false)
-				_mk(Res.box(Vector3(1.4, 0.03, 0.42)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
-				_mk(Res.box(Vector3(0.42, 0.03, 1.4)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
-				for x in [-size.x * 0.4, 0.0, size.x * 0.4]:
-					BuildingWire.guy(_kit(rng), Vector3(x, 1.4, sd * hz * 0.5), Vector3(x, 0.0, sd * (hz + 1.4)), true, "peg")
-			_mk(Res.box(Vector3(0.06, 2.0, 1.5)), "canvas", Vector3(-size.x * 0.5 - 0.02, 1.0, 0), Vector3.ZERO, Color(0.25, 0.25, 0.22))
-			_mk(Res.box(Vector3(size.x + 0.6, 0.06, size.z + 0.6)), "canvas", Vector3(0, 0.03, 0), Vector3.ZERO, Color(0.3, 0.28, 0.24), false)
-			for i in 2:
-				var sp := Vector3(-size.x * 0.5 - 1.6, 0.35, -1.0 + i * 1.6)
-				_mk(Res.box(Vector3(2.0, 0.05, 0.6)), "canvas", sp, Vector3(0, 0.1, 0), Color(0.35, 0.38, 0.28))
-				_mk(Res.box(Vector3(2.4, 0.05, 0.05)), "wood", sp + Vector3(0, -0.02, 0.32), Vector3(0, 0.1, 0))
-				_mk(Res.box(Vector3(2.4, 0.05, 0.05)), "wood", sp + Vector3(0, -0.02, -0.32), Vector3(0, 0.1, 0))
-			_mk(Res.cyl(0.03, 0.03, 4.2, 4), "steel", Vector3(size.x * 0.5 + 0.8, 2.1, hz + 0.5))
-			_mk(Res.box(Vector3(1.0, 0.65, 0.03)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.92, 0.92, 0.9), false)
-			_mk(Res.box(Vector3(0.6, 0.16, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
-			_mk(Res.box(Vector3(0.16, 0.5, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
+			# a field hospital: a frame tent with the red cross, stretchers and
+			# stores at its door (BuildingTents; it stands where its part is)
+			BuildingTents.field_hospital(_kit(rng), size, team, rng)
 		"research":
 			# a precast block under a slab: ribbon glazing round it, a steel
 			# door, a dish, a guyed mast with the flag, plant on the roof and

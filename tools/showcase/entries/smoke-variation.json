@@ -1,0 +1,16 @@
+{
+  "entry": "changelog/unreleased/smoke-variation.md",
+  "summary": "Smoke screens billow from their source and thin downwind on high native effects settings. Helicopter downdraft spreads dust low across dry ground, and successive blasts have different silhouettes.",
+  "medium": "still",
+  "stage": "Native Godot 4.7.2, Forward+, high effects, golden lighting, static trenches, seed 3, fixed 30 fps. Three radius-4 screens at 3.8 seconds, dry radius-5 rotor wash at frame 99, and three size-2 bursts at 1.5 seconds. Cosmetic seeds 2383, 2384, and 2381 respectively.",
+  "rationale": "Matched camera offsets, timing and source positions show the change in plume shape and the footprint of the dust.",
+  "source_ref": "afe46c41 before, same revision plus the smoke and particle changes after.",
+  "sources": [
+    {
+      "file": "changelog/unreleased/smoke-variation/comparison.jpg",
+      "sha256": "4d740ce4b343afb7a1df25b14d92e485d020d52de4b03b626c740d561051fa76",
+      "caption": "Left is before, right is after. Each row uses the same camera and effect timing on both builds."
+    }
+  ],
+  "output": null
+}

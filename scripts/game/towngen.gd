@@ -790,6 +790,10 @@ func _square(c: Vector3, q: Vector3) -> void:
 	for i in 4:
 		var a := PI * 0.25 + i * PI * 0.5
 		var off := Vector3(cos(a), 0, sin(a)) * 5.2
+		# The dump's rear panel stays need room beyond the mesh, including their
+		# concrete feet. Move this bench before later street furniture chooses space.
+		if String(world.settings.get("mission", "")) == "" and off.x * q.x < 0.0 and off.z * q.z > 0.0:
+			off.x += q.x * 1.4
 		_d("bench", c + off, Defs.yaw_of(-off))
 		_d("lamp_deco", c + Vector3(signf(cos(a)) * 8.6, 0, signf(sin(a)) * 8.6))
 	# trees in the far corner, planters and a flag along the edges
