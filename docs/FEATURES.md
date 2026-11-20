@@ -947,8 +947,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **A quiet command display.** Orders are given, acknowledged and then left to the men: a new order draws its
   path and its tag on the ground for a couple of seconds (`Hud.ACK_SECS`) and the squad answers on the command
   net, then it goes out of sight. A unit's orders show again while it is selected or while the hand is over it
-  (`Hud.focus_sid`: the unit on the ground, its symbol on the map, or its row in the order of battle); the Orders
-  map layer shows everyone's. Speech bubbles are capped at the few that matter (a man hit, then shouts, then the
+  (`Hud.focus_sid`: the unit on the ground, its symbol on the map, or its row in the order of battle); the tactical
+  map (Tab) and the Orders map layer show everyone's. Speech bubbles are capped at the few that matter (a man hit, then shouts, then the
   radio, then banter, the nearest the middle first). The left column (the order of battle and the fire missions)
   steps back while the cursor is out on the battlefield and comes up as it goes to it (Settings > Interface >
   Quiet side panels). Finished mission objectives fold into one line (3 DONE) after a few seconds.
@@ -974,7 +974,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **Map layers** (the column beside the minimap): unit symbols at any zoom, orders and attack plans for all your
   units (off by default: see above), intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
   selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols and contacts, with the
-  A-H / 1-8 grid on the ground (orders as above: the selection's, the hand's, or all of them with the Orders layer).
+  A-H / 1-8 grid on the ground, and every order and plan: the planning board, where the battlefield view keeps them out of sight.
 - **The doctrine tree** (Y, or the Research Post's card; `hud_doctrine.gd`): research as a tree of four branches,
   land, air, sea and the infantry's kit, each a few steps deep, joined by rules to what each step needs. Every step
   shows what it costs and takes, what it unlocks, and whether it's done, under way (how far), ready (lit) or still

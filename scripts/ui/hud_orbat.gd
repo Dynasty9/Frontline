@@ -226,12 +226,12 @@ func _draw_content() -> void:
 			y = _team_header(y, t, top, bottom)
 		if not mine_sqs.is_empty():
 			_add_section(y, mine_sqs, [])
-			y = _section(y, "Infantry", top, bottom)
+			y = _section(y, "Infantry", top, bottom, mine_sqs.size())
 			for sid in mine_sqs:
 				y = _squad_row(y, int(sid), by_sid[sid], top, bottom)
 		if not support.is_empty():
 			_add_section(y, support, [])
-			y = _section(y, "Support", top, bottom)
+			y = _section(y, "Support", top, bottom, support.size())
 			for sid in support:
 				y = _squad_row(y, int(sid), by_sid[sid], top, bottom)
 		for dom in DOMAINS:
@@ -239,7 +239,7 @@ func _draw_content() -> void:
 			if dv.is_empty():
 				continue
 			_add_section(y, [], dv)
-			y = _section(y, String(dom[1]), top, bottom)
+			y = _section(y, String(dom[1]), top, bottom, dv.size())
 			for v in dv:
 				y = _vehicle_row(y, v, top, bottom)
 	_content_h = y + _scroll + 4.0
@@ -307,9 +307,11 @@ func _team_header(y: float, t: int, top: float, bottom: float) -> float:
 	return y + SEC_H
 
 
-func _section(y: float, label: String, top: float, bottom: float) -> float:
+func _section(y: float, label: String, top: float, bottom: float, n := -1) -> float:
 	if _visible_row(y, SEC_H, top, bottom):
-		UiKit.caps_at(self, Vector2(0, y + 15), label, 10, UiKit.FAINT)
+		var lx := UiKit.caps_at(self, Vector2(0, y + 15), label, 10, UiKit.FAINT)
+		if n >= 0:
+			UiKit.mono_at(self, Vector2(lx + 6.0, y + 15), "%02d" % n, 10, UiKit.FAINT)
 	return y + SEC_H
 
 

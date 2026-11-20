@@ -1088,7 +1088,8 @@ func marker_at(p: Vector2) -> Array:
 
 ## Is this squad's order one the commander should see now? Its own side's
 ## while it is selected or under the hand, for a moment after it is given
-## (the acknowledgement), or all of them with the Orders layer on. Returns
+## (the acknowledgement), or all of them on the tactical map (Tab: the
+## planning board) or with the Orders layer on. Returns
 ## the strength to draw it at (0: not at all).
 func order_alpha(sid: int, o: Array, lt: int, sel: bool) -> float:
 	var mine := int(o[4]) == lt or lt < 0
@@ -1096,7 +1097,7 @@ func order_alpha(sid: int, o: Array, lt: int, sel: bool) -> float:
 		return 0.0
 	if sel or sid == hud.focus_sid:
 		return 1.0
-	if hud.map_layer("orders"):
+	if hud.map_layer("orders") or hud.tactical:
 		return 0.6
 	if int(o[5]) < 0:
 		return 0.0

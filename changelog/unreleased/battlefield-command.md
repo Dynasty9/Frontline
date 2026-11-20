@@ -27,7 +27,7 @@ caption = "A squad answering its order on the command net"
 
 - **Orders step aside.** A new order shows its route for a moment as you give it, the squad answers, and then it's
   out of sight. Select a unit or rest the cursor on it (on the ground, its map symbol or its line in the order of
-  battle) to see its orders again; the Orders map layer still shows everyone's.
+  battle) to see its orders again; the tactical map (Tab) shows everyone's.
 - **Hover a squad** for its card: callsign and type, how many are fit to fight, their nerve, their ammunition, what
   they were told and what they're doing, and the man under the cursor. Vehicles show their role, damage and who's
   aboard.
