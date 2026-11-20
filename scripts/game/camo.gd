@@ -272,7 +272,7 @@ vec3 camo_paint(vec3 col, vec3 base, vec3 wp, vec3 wn, float above, inout float 
 
 ## Surfaces a base's buildings are painted over on (not glass, concrete
 ## footings, rubber, the red cross...).
-const PAINTABLE := ["timber", "corrugated", "roof_sheet", "precast", "steel", "metal_dark", "paint", "wood_painted"]
+const PAINTABLE := ["timber", "corrugated", "roof_sheet", "precast", "shuttered", "slab", "steel", "metal_dark", "paint", "wood_painted"]
 
 ## Paint schemes by side: the Coalition's green, brown and black; the Rebels'
 ## sand, earth and olive.
