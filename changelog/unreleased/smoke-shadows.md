@@ -19,6 +19,11 @@ caption = "Golden hour from straight above, the screens left undrawn so the grou
 file = "golden-hour-drift.webm"
 poster = "golden-hour-drift.jpg"
 caption = "Smoke screens rolling out and drifting downwind in the town square at golden hour: their shade grows and moves with them, soft and steady."
+
+[[videos]]
+file = "zoom-threshold.webm"
+poster = "zoom-threshold.jpg"
+caption = "Renderer diagnostic, before and after: fixed scene and lighting while the zoom input crosses 70 m and 180 m. Map resolution now changes gradually. Inert fixture, not gameplay; no grading or amplified differences."
 +++
 
 - **Smoke screens** shade what's under them and on their far side from the sun: the ground, the soldiers and vehicles
@@ -33,3 +38,5 @@ caption = "Smoke screens rolling out and drifting downwind in the town square at
 - It shades only what's below the smoke: a hilltop or the air above it stays in the sun, and the smoke itself isn't
   darkened.
 - It costs very little: about 0.03 ms a frame. Light only: who can see whom is unchanged. Not in the browser version.
+
+- Zooming through the shadow map’s detail boundaries now changes its resolution gradually, avoiding a sudden brightness step in stationary shade.

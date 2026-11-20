@@ -40,7 +40,26 @@
       "file": "changelog/unreleased/smoke-shadows/golden-hour-drift.jpg",
       "sha256": "6b8d8e52de6c1ec77c3ea712de6d2dbbb485c9a12439594c1c35dd14e23fbbdf",
       "caption": "Frame at 20 s of the clip."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/zoom-threshold.webm",
+      "sha256": "206761411ecea7d63f709c65085756645d5c8b144cb71dbb9901e98afa048865"
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/zoom-threshold.jpg",
+      "sha256": "c09ed37ddec2716b029513c5f6aa69f1c1fe4ae69720bc3ed4c06cc4e6700067"
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/zoom-threshold-capture.json",
+      "sha256": "a05007d279fc6c81c6a3456175c5298b217ecd8c2c6a46bf8de177f26224d1ae"
     }
   ],
-  "output": null
+  "output": null,
+  "supplemental_zoom_review": {
+    "base_head": "22b8f94e80b7c352ec13c19d32891c553d0c4866",
+    "candidate_source_sha256": "51c25b6c5310b28c5d0b41a45e41b278e1c77b5ac0b08efa6d433d427754cba7",
+    "stage": "Embedded inert harness in zoom-threshold-capture.json",
+    "rationale": "Isolates the generic map-resolution discontinuity at fixed scene/phase. Existing gameplay clip and stills remain the primary evidence.",
+    "hardware": "Software Vulkan only; no performance measurement."
+  }
 }

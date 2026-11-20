@@ -125,6 +125,15 @@ static func supported() -> bool:
 	return not Vfx.gl
 
 
+## Ease the map's texel size through each zoom boundary. Jumping straight to
+## twice the span changes the reconstruction filter's width in one frame,
+## making stationary shade brighten as the camera crosses the boundary.
+static func map_span(distance: float) -> float:
+	if distance < 100.0:
+		return lerpf(SPANS[0], SPANS[1], smoothstep(60.0, 80.0, distance))
+	return lerpf(SPANS[1], SPANS[2], smoothstep(160.0, 200.0, distance))
+
+
 func tick(_dt: float) -> void:
 	if world.cam == null or air.atmo == null or air.atmo.sun == null:
 		return
@@ -134,7 +143,7 @@ func tick(_dt: float) -> void:
 	_sin_elev = maxf(to_sun.y, 0.1)
 	_s = Vector2(to_sun.x, to_sun.z) / _sin_elev
 	var d: float = world.cam.dist
-	_span = SPANS[0] if d < 70.0 else (SPANS[1] if d < 180.0 else SPANS[2])
+	_span = map_span(d)
 	var texel := _span / MAP
 	var focus: Vector3 = world.cam.focus_pos
 	_ref = snappedf(world.ground_y(focus), REF_STEP)

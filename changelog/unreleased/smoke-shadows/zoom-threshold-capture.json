@@ -1,0 +1,135 @@
+{
+  "base_head": "22b8f94e80b7c352ec13c19d32891c553d0c4866",
+  "source_file": "scripts/game/smoke_shadow.gd",
+  "before_sha256": "e90c53959f0bfe31ce76a99fdc50e5dced1e1dfeea9cd1d57140aebba786a619",
+  "after_sha256": "51c25b6c5310b28c5d0b41a45e41b278e1c77b5ac0b08efa6d433d427754cba7",
+  "scope": "Inert generic map-resolution fixture: fixed Gaussian input, fixed sun/receiver/camera/phase; only virtual camera distance changes. No combat or effects simulation. Diagnostic footage, not gameplay. No grading or amplified differences. Existing gameplay media retained.",
+  "frames": 120,
+  "fps": 30,
+  "duration_seconds": 4,
+  "size": [
+    1280,
+    416
+  ],
+  "metrics": {
+    "before": {
+      "threshold_samples": [
+        {
+          "from": 69.9,
+          "to": 70.0,
+          "mean_abs_8bit": 0.37371238425925923,
+          "peak_abs_8bit": 11.0
+        },
+        {
+          "from": 70.0,
+          "to": 70.1,
+          "mean_abs_8bit": 0.0,
+          "peak_abs_8bit": 0.0
+        },
+        {
+          "from": 179.9,
+          "to": 180.0,
+          "mean_abs_8bit": 0.9088266782407407,
+          "peak_abs_8bit": 15.0
+        },
+        {
+          "from": 180.0,
+          "to": 180.1,
+          "mean_abs_8bit": 0.0,
+          "peak_abs_8bit": 0.0
+        }
+      ],
+      "ramp_peak_mean": [
+        0.37371238425925923,
+        0.9088266782407407
+      ],
+      "ramp_peak_pixel": [
+        11.0,
+        15.0
+      ]
+    },
+    "after": {
+      "threshold_samples": [
+        {
+          "from": 69.9,
+          "to": 70.0,
+          "mean_abs_8bit": 0.007311921296296296,
+          "peak_abs_8bit": 1.0
+        },
+        {
+          "from": 70.0,
+          "to": 70.1,
+          "mean_abs_8bit": 0.007013888888888889,
+          "peak_abs_8bit": 1.0
+        },
+        {
+          "from": 179.9,
+          "to": 180.0,
+          "mean_abs_8bit": 0.004670138888888889,
+          "peak_abs_8bit": 1.0
+        },
+        {
+          "from": 180.0,
+          "to": 180.1,
+          "mean_abs_8bit": 0.006744791666666666,
+          "peak_abs_8bit": 1.0
+        }
+      ],
+      "ramp_peak_mean": [
+        0.03409143518518518,
+        0.027349537037037037
+      ],
+      "ramp_peak_pixel": [
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "renderer": "Godot 4.7.2 ed1daf0bf; Vulkan 1.4.305 Forward+; llvmpipe LLVM 19.1.7 256 bits; Mesa 25.0.7-2+deb13u1; Xvfb :99 1280x720x24",
+  "timing": "Software rendering. Fixed-fps playback is not measured hardware throughput. No performance claim.",
+  "command": "GALLIVM_PERF=nopt LP_NUM_THREADS=4 /workspace/frontline-tools/godot-run --path /workspace/pr302 --rendering-method forward_plus --resolution 640x360 --fixed-fps 30 --script /workspace/captures/qa302/inert-shadow.gd -- --output=/workspace/captures/qa302/after",
+  "reproduction": "Write the embedded harness and inert-map scripts to the command paths (or update their absolute references); run against the base head and candidate source. The harness only invokes the renderer map, overriding source gathering with one fixed Gaussian. The final harness also supports --offset-phase and Compatibility fallback; the published Forward+ pair uses the default phase.",
+  "harness": "extends SceneTree\nclass CameraInput:\n\textends RefCounted\n\tvar dist := 69.9\n\tvar focus_pos := Vector3.ZERO\nclass WorldInput:\n\textends RefCounted\n\tvar cam = CameraInput.new()\n\tfunc ground_y(_p: Vector3) -> float: return 0.0\nclass AirInput:\n\textends RefCounted\n\tvar atmo = {\"sun\":null}\n\tvar _flip_frame := -1\nvar output := \"/workspace/captures/qa302/before\"\nfunc _initialize() -> void: call_deferred(\"capture\")\nfunc capture() -> void:\n\tfor arg in OS.get_cmdline_user_args():\n\t\tif arg.begins_with(\"--output=\"): output = arg.get_slice(\"=\",1)\n\tDirAccess.make_dir_recursive_absolute(output)\n\tvar scene := Node3D.new()\n\troot.add_child(scene)\n\tvar sun := DirectionalLight3D.new()\n\tscene.add_child(sun)\n\tsun.global_transform = Transform3D(Basis.looking_at(-Vector3(0.35,0.8,0.45).normalized(),Vector3.UP),Vector3.ZERO)\n\tvar world := WorldInput.new()\n\tif \"--offset-phase\" in OS.get_cmdline_user_args(): world.cam.focus_pos = Vector3(1.5,0.0,-3.0)\n\tvar air := AirInput.new()\n\tair.atmo.sun = sun\n\tvar shadow = load(\"/workspace/captures/qa302/inert-map.gd\").new()\n\tscene.add_child(shadow)\n\tvar supported := RenderingServer.get_current_rendering_method() != \"gl_compatibility\"\n\tif supported: shadow.setup(world,air)\n\tvar plane := MeshInstance3D.new()\n\tvar mesh := PlaneMesh.new()\n\tmesh.size = Vector2(40,40)\n\tplane.mesh = mesh\n\tvar material := ShaderMaterial.new()\n\tvar shader := Shader.new()\n\tshader.code = \"shader_type spatial; render_mode unshaded;\\n\" + shadow.PATTERN + \"\\nvarying vec3 p; void vertex(){ p=(MODEL_MATRIX*vec4(VERTEX,1.0)).xyz; } void fragment(){ ALBEDO=vec3(0.42,0.46,0.39)*(0.25+0.75*smoke_sun(p)); }\"\n\tmaterial.shader = shader\n\tplane.material_override = material\n\tscene.add_child(plane)\n\tvar camera := Camera3D.new()\n\tcamera.projection = Camera3D.PROJECTION_ORTHOGONAL\n\tcamera.size = 24.0\n\tcamera.position = Vector3(0,30,0.01)\n\tscene.add_child(camera)\n\tcamera.look_at(Vector3.ZERO,Vector3.FORWARD)\n\tcamera.current = true\n\tfor i in 24:\n\t\tif supported: shadow.tick(0.0)\n\t\tawait process_frame\n\t\tawait RenderingServer.frame_post_draw\n\tvar values := [69.9,70.0,70.1,179.9,180.0,180.1]\n\tvar records := []\n\tfor d in values:\n\t\tworld.cam.dist = d\n\t\tfor i in 3:\n\t\t\tif supported: shadow.tick(0.0)\n\t\t\tawait process_frame\n\t\t\tawait RenderingServer.frame_post_draw\n\t\troot.get_texture().get_image().save_png(output + \"/distance-%.1f.png\" % d)\n\t\trecords.append({\"distance\":d,\"span\":shadow._span,\"peak\":shadow.buf[8] if supported else 0.0})\n\tfor frame in 120:\n\t\tvar phase := frame % 60\n\t\tvar threshold := 70.0 if frame < 60 else 180.0\n\t\tworld.cam.dist = threshold + 5.0 * sin(TAU * (phase / 60.0 - 0.25))\n\t\tif supported: shadow.tick(0.0)\n\t\tawait process_frame\n\t\tawait RenderingServer.frame_post_draw\n\t\troot.get_texture().get_image().save_png(output + \"/%04d.png\" % frame)\n\tFileAccess.open(output+\"/capture.json\",FileAccess.WRITE).store_string(JSON.stringify({\"source\":\"22b8f94e80b7c352ec13c19d32891c553d0c4866\",\"renderer\":RenderingServer.get_current_rendering_method(),\"records\":records,\"fps\":30,\"frames\":120,\"fixture\":\"Inert fixed Gaussian map input and fixed receiver/camera. Only virtual camera distance changes. No emitters, combat, smoke simulation or altered art.\"},\"\\t\"))\n\tprint(\"INERT_SHADOW_COMPLETE \",records)\n\tquit()\n",
+  "inert_map": "extends \"res://scripts/game/smoke_shadow.gd\"\nfunc _gather() -> void:\n\t# Fixed renderer input. No effect emitter, world simulation or animation.\n\tpuff(Vector3(0.0, 3.0, 0.0), 3.0, 3.0, 1.5, 0.0, 0.65, 1.11)\n",
+  "offset_phase_check": {
+    "focus": [
+      1.5,
+      0,
+      -3
+    ],
+    "columns": [
+      "from",
+      "to",
+      "mean_absolute_8bit",
+      "peak_absolute_8bit"
+    ],
+    "samples": [
+      [
+        69.9,
+        70.0,
+        0.007326388888888889,
+        1.0
+      ],
+      [
+        70.0,
+        70.1,
+        0.007016782407407407,
+        1.0
+      ],
+      [
+        179.9,
+        180.0,
+        0.004673032407407407,
+        1.0
+      ],
+      [
+        180.0,
+        180.1,
+        0.0067390046296296295,
+        1.0
+      ]
+    ]
+  },
+  "compatibility": "Unchanged no-map fallback: identical threshold images, no shader/script errors.",
+  "component_checks": "play {\n  time: 1.045224,\n  duration: 4,\n  width: 1280,\n  height: 416,\n  controls: true,\n  error: null\n}\npause/seek { paused: true, time: 2.7 }\nonscreen resumed true\nphone { viewport: 390, content: 375 }\n"
+}
