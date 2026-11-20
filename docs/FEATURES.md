@@ -312,7 +312,8 @@ Every release also comes as a browser build (WebAssembly and WebGL 2), the same 
 plays alone: **Play vs AI**, **Missions** and **Watch AI Battle**, the Field Manual and Settings, and signing in for
 a service record. Multiplayer needs the desktop game, since a browser can't make the direct connections a battle
 between players runs over; the menu links to the downloads instead. It looks a little different (no screen-space
-lighting, volumetric fog or particle trails, which the browser's renderer doesn't have) and, with no threads to
+lighting, volumetric fog or particle trails, which the browser's renderer doesn't have: the mist and the weather's
+smoke and dust thicken the plain fog where you look instead, and the water's caustics are a single web) and, with no threads to
 spread the work over, the map takes about 30 seconds to lay out, a stage at a time behind the loading screen. The
 simulation runs about as fast as on the desktop. The first battle also waits while the browser compiles the game's
 shaders (it keeps them, so only the first time); to keep that short, surface lighting is worked out per vertex and emitter particles run on the processor. Animated blast clouds and
@@ -744,7 +745,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   crests and streaks of foam laid down the wind. Breakers rise as they shoal, spill unevenly along the beach and
   surge up the sand, leaving it dark and wet. The bed shows through the water, bent by the ripples and dimmed
   with depth (red light dies first, so sand under the sea turns turquoise and the open sea goes deep blue; fresh
-  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows, and the sky and
+  water is peaty green-brown), with the light the ripples focus dancing on it in the shallows (laid on the bed along the sun's way
+  down through the water, crisp in the first metre and broadening deeper down; from High a net of wandering cells
+  worked out per pixel, thin lines brightest at the nodes where they meet and tinted by the sun, so it re-forms
+  rather than slides; the same net is thrown back up onto hulls, piles and banks, moving with the bed's,
+  `caustics.gd`, faint, since that light is a small share of the sun's; both fade out as the camera pulls back, where
+  the lines would be finer than the eye picks out and only brighten the shore), and the sky and
   its clouds are reflected, more the flatter you look across it. Where something stands above the water on screen
   - a bank, trees, a bridge, a boat (not flames or smoke: they're drawn after) - it's mirrored instead (a ray marched over the screen; looked down on
   steeply, where calm water mirrors only a couple of percent, none is marched). Rivers run: a flow map baked from
@@ -1356,6 +1362,55 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   graphics setting (Cloud shadows on everything; on from High, and in Cinematic; off, the grass and bushes fold the
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
+- **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
+  far side of the field lies in layers. Mist lies level in the low ground, a few metres deep over the valley floor (deeper and thinner at dawn), filling the valley, the hollows and
+  the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet ground as it
+  dries after rain), and a hill rises out of it rather than wearing it up its flanks; it takes little of the sun
+  straight through it and is lit mostly by the sky, evenly (an emission in its fog shader), so it reads as a pale sheet
+  rather than flaring into a glowing band toward a low sun, thinning upward to a soft top so the ridges behind stand out as silhouettes.
+  Open water has a smaller extra pooling weight than enclosed hollows: the weather grid already makes it humid,
+  and applying both full weights had hidden nearby boats behind an opaque coastal band. A haze lies aloft, lit by the sun, so a cloud's shadow falls through it as a shaft;
+  at a low sun the air throws its light forward (the fog's anisotropy follows the mood), so looking toward the sun the
+  mist glows, and turned from it the sky lights it blue-grey. At dawn, golden hour and dusk a faint low haze fills the
+  first tens of metres with the fog's anisotropy near 0.7-0.8 and little skylight in it, so it glows close around a low sun
+  and stays clear across and away from it, and the air in shadow stays dark: the fog reads the sun's shadow map for
+  houses and trees, and the air shader marches the sun's ray a few times over the ground's height for the ridges. Close up, the smoke a barrage or a fire leaves is a plume
+  of its own (`smoke_plumes.gd`, up to 16 fog volumes laid along the wind): dense where it rose, drawn out, climbing and
+  breaking into rags downwind, lit on top and grey underneath, until it thins away; shells landing close together feed
+  one plume. A plume over a burning house or wreck stands as long as the fire burns and keeps its smoke lit: each puff of the fire's
+  smoke leaves the flames lit a dull orange-red and darkens to grey as it climbs (the smoke particles' own light,
+  set from the fire's strength), so the undersides of the billows nearest the fire glow, mottled as the smoke is, and a shell burst flashes the pall around it for a
+  frame or two. Over that, a coarse weather grid sized from the map (32 cells
+  across a 1 km map, 64 on the bigger ones) holds the mist, rain, dust and smoke over each patch of ground: rain
+  comes over in heavier and lighter bands, shells on dry ground and vehicles on dry tracks raise dust (by the ground
+  under them, `WeatherGrid.dust_of`: most off a dirt road or bare, churned earth, a little off a paved street or the
+  leaf litter in a wood, none off thick grass or mud, out of the water, or in the rain; how fast each goes comes from
+  where it was half a second before, since a peer isn't sent the vehicles' speeds), and barrages,
+  burning buildings and smoke screens leave a pall (the far field's smoke, behind the close-up plumes). The grid drifts with the wind as a whole (a sub-cell offset the
+  shader reads, the grid shifting a cell downwind once it reaches one), mist and rain settle toward what the weather
+  makes of each cell, and dust and smoke thin away (half-lives of 22 s and 55 s); it's swept a few rows a frame
+  and uploaded once a sweep, plus immediately when a whole-cell drift wraps so the texture and sampling offset
+  move together. With volumetric fog it's one fog volume over the map with its own fog shader (ground
+  height from the terrain tiles, the grid, a drifting noise, the cloud pattern); without it, and in the browser, the
+  plain fog takes the air at the camera's focus and a height fog lays the mist in the low ground below it. All of it
+  thins as the camera pulls back, so it never veils the battle you're looking at. It's looks only: who can see whom
+  is the host's own smoke (`Combat.smoke_blocks`), so the grid runs on every peer from what it already has (the
+  mood, the rain's wetness, replicated fires, smoke rounds and vehicles, the blasts' effect events), sends nothing
+  and never touches the battle's seed. Close up, a vehicle's dust is a trail of its own (`dust_trails.gd`, up to 20
+  fog volumes, each a stretch of the route up to 36 m long): a low, pale bank that billows up behind it, spreads,
+  drifts off downwind and settles over about half a minute, so a column's route stays marked; a vehicle behind on the
+  same road thickens the stretch rather than laying another. After dark the air lights up round the lights: at night
+  a damp low haze lies over the field that the moon barely lights, and the street lamps (softly, a halo round each rather than a wash over the town), the flares, the muzzle and
+  burst flashes (each light's `light_volumetric_fog_energy`) and the headlights of the vehicles driving near the
+  camera (`headlights.gd`, a pair of narrow shadowless spot lights each for the six nearest on the move, none in the
+  browser) glow in it: soft halos round the lamps, a brief bloom with each flash. The fog's grid can't hold a beam's
+  edge, so each headlight draws its own: a glare spot on the lamp and a cone mesh whose shader follows the view ray
+  through the cone (24 steps, stopped at the depth buffer) and adds up the light thrown back along it, bright by the
+  lamp and dying away past about 15 m, with a firm edge; the spot light lays the pool on the road. A column's dust shows thinner after dark, when only the headlights light it. Under rain the
+  showers further off hang as grey curtains from the cloud base (`rain_curtains.gd`, 24 camera-facing quads scattered
+  over a 3.6 km tile that drifts with the clouds and wraps round the camera, none within 360 m, where the falling
+  streaks are): soft veils, uneven across, feathered into the cloud base and slanted by the wind, some trailing off
+  before they reach the ground, under both renderers.
 - **Light probes** (`light_probes.gd`): a grid of probes over the whole battlefield, one every 2 m at eight heights
   2 m apart following the ground, records how much sky each point sees, from which way, and the mean light off
   whatever hides the rest. Streets, courtyards, trench floors and the foot of walls take less skylight than open

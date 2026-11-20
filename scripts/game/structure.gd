@@ -3221,6 +3221,8 @@ func _build_model() -> void:
 			break
 		if skind == "bunker" and team != 1:
 			break  # (the pillbox draws its walls from its parts itself, as one pour)
+		if skind == "fob" and p.s.y > 2.0:
+			continue  # (the command post: HESCO, drawn below)
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
 			continue
@@ -3340,7 +3342,10 @@ func _build_model() -> void:
 		"tree":
 			tree_model(model, eid, variant)
 		"fob":
-			# command post: HESCO block under camouflage netting, radio mast, ammo
+			# command post: a square of tall HESCO cells under a roof of sheets
+			# and bags (WorksModels.command_post), camouflage netting over it all,
+			# the radio mast, stores
+			WorksModels.command_post(model, rng, bags)
 			for x in [-2.2, 2.2]:
 				for z in [-2.2, 2.2]:
 					_mk(Res.cyl(0.06, 0.06, 3.6, 6), "wood_dark", Vector3(x * 1.6, 1.8, z * 1.6))
