@@ -10,6 +10,10 @@ caption = "A town's street lamp, a village's, the square's lantern, a hydrant, a
 [[screenshots]]
 file = "comparison.jpg"
 caption = "By the square, before and after"
+[[videos]]
+file = "detail-motion.webm"
+poster = "detail-motion.jpg"
+caption = "Before and after the detail repair: STOP stays in front of the sign at an angle, and the lamp arm joins its head. Matched native component fixture, Forward+ software rendering; existing street-view stills above show context."
 +++
 
 - **Town street lamps** are steel columns with a service door at the base and an arm sweeping out to a cast lantern, with a socket joining the two. **Village lamps** hang an enamelled shade from a bracket on a wooden pole.
