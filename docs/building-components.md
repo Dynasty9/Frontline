@@ -411,6 +411,11 @@ parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
 | `BuildingCargo.stack`, `shipping_crate`, `ammo_box`, `pallet_load`, `ammo_row` | Cover crate stacks, the town's supply dumps, the FOB's stores |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
+The FOB's command post is `WorksModels.command_post`, built over the block its part gives:
+- twelve tall HESCO cells (`_hesco` with `h` 2.0) in a square four to a side, with one cell left out at the back
+  as the way in (`skip`) behind a baffle of bags;
+- a roof of sheets on timber bearers under a burst layer of bags.
+
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the
 concertina's coils, sandbags, HESCO cells, the camouflage net itself, trees, cars and wrecks.
 

@@ -948,6 +948,7 @@ func _apply_mood_chunk(key: Vector2i) -> void:
 		l.omni_range = 15.0
 		l.omni_attenuation = 1.1
 		l.shadow_enabled = false
+		l.light_volumetric_fog_energy = 40.0  # (a soft halo in the night's damp air, not a wash over the town: AirLayers)
 		l.position = p
 		l.add_to_group(&"fx_light")
 		l.add_to_group(&"probe_light")  # (its glow lights the probes round it: LightProbes)
