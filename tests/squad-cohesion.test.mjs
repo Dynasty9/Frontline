@@ -54,3 +54,13 @@ test("moving squads stay together and arrive as a compact group", async (t) => {
     assert.equal(game.errors, 0);
   }
 });
+
+
+test("followers choose nearby places on the new heading when a long order reverses", async () => {
+  const { stdout, stderr } = await run(process.env.GODOT || "godot", [
+    "--headless", "--fixed-fps", "30", "--path", ROOT, "--quit-after", "300",
+    "res://tests/fixtures/squad-turn.tscn", "--", "--static", "--scenario=trenches", "--seed=3",
+  ], { timeout: 120_000 });
+  assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error/);
+  assert.match(stdout, /SQUAD_TURN passed/);
+});
