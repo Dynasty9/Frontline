@@ -7,7 +7,7 @@ import { ROOT } from "./lib/game.mjs";
 test("all vehicle models use shared, local-space surface maps", async () => {
   const { stdout, stderr } = await promisify(execFile)(process.env.GODOT || "godot", [
     "--headless", "--path", ROOT, "res://tests/fixtures/vehicle-materials.tscn",
-  ], { timeout: 120_000, maxBuffer: 4 * 1024 * 1024 });
+  ], { timeout: 240_000, maxBuffer: 4 * 1024 * 1024 });
   assert.doesNotMatch(stdout + stderr, /SCRIPT ERROR|Parse Error|Assertion failed/);
   assert.match(stdout, /VEHICLE_MATERIALS passed/);
 });

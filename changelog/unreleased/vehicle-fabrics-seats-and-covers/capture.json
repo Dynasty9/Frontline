@@ -1,0 +1,122 @@
+{
+  "before_ref": "44fe2b2776dc666de898ae76facea37f7e0c7ab7",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    8550
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82. Both columns rendered from checkouts of before_ref (rounds 6 and 7's code), the after column with this change's files copied in (rounds 8 and 9).",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> [--surface-flight] [--surface-rear] --surface-seed=<seed> [--surface-focus=<focus> --surface-size=<size>] --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "hemtt",
+      "flight": true,
+      "label": "HEMTT from above: one draped cover, a sun-faded roof"
+    },
+    {
+      "model": "hemtt",
+      "focus": "0.6,2.4,0.5",
+      "size": 3.0,
+      "label": "HEMTT: a side curtain rolled up, the hem laced to the bed"
+    },
+    {
+      "model": "zamak",
+      "rear": true,
+      "label": "Zamak: canvas pulled over the hoops, a laced hem, a recognition panel"
+    },
+    {
+      "model": "m35",
+      "label": "M35: the drape, a curtain rolled up"
+    },
+    {
+      "model": "hemtt_cargo",
+      "focus": "0.6,2.4,1.5",
+      "size": 3.0,
+      "label": "HEMTT load: a tarp over boxes, straps that wrap the crates"
+    },
+    {
+      "model": "mora",
+      "rear": true,
+      "focus": "0,1.9,2.4",
+      "size": 2.4,
+      "label": "Warrior: bedrolls pinched by their straps, wound ends"
+    },
+    {
+      "model": "hunter",
+      "rear": true,
+      "focus": "0,2.0,2.2",
+      "size": 2.4,
+      "label": "M-ATV: packs with lids, nylon and canvas kit, a recognition panel"
+    },
+    {
+      "model": "technical",
+      "flight": true,
+      "label": "Technical: worn paint, no white roof glint"
+    },
+    {
+      "model": "quadbike",
+      "flight": true,
+      "label": "Quad bike: moulded plastics, a vinyl seat"
+    },
+    {
+      "model": "ghosthawk",
+      "flight": true,
+      "focus": "0,3.2,-1.0",
+      "size": 2.5,
+      "label": "Ghost Hawk: the rotor head no longer glints white"
+    },
+    {
+      "model": "motorboat",
+      "seed": 4,
+      "label": "Motorboat, seed 4: life jackets, vinyl seats"
+    },
+    {
+      "model": "sdv",
+      "label": "SDV: a smooth duct, the fins inside it"
+    },
+    {
+      "model": "tempest",
+      "rear": true,
+      "label": "Tempest: webbing straps on the tarp, nothing hanging through"
+    },
+    {
+      "model": "ghosthawk",
+      "rear": true,
+      "focus": "-0.9,1.8,-1.0",
+      "size": 3.2,
+      "label": "Ghost Hawk: the cabin door slid open on troop seats"
+    },
+    {
+      "model": "jet",
+      "focus": "0,2.0,-2.3",
+      "size": 4.0,
+      "label": "F-16: an ejection seat, harness, oxygen mask and consoles"
+    },
+    {
+      "model": "hunter",
+      "focus": "0,2.6,0",
+      "size": 3.5,
+      "label": "M-ATV: an air-recognition panel tied on the roof"
+    },
+    {
+      "model": "mb4wd",
+      "rear": true,
+      "label": "MB 4WD: a vinyl spare-wheel cover, a vinyl top"
+    },
+    {
+      "model": "hatchback",
+      "label": "Hatchback: a soft glint on the bonnet instead of a white streak"
+    },
+    {
+      "model": "suv",
+      "label": "SUV: a longer roof and wider arches, standing like an SUV"
+    }
+  ]
+}

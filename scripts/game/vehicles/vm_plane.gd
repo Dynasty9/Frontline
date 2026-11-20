@@ -253,11 +253,13 @@ static func clear_glass(sheen: Color) -> ShaderMaterial:
 ## helmet over a dark tub, where opaque glass read as a blue blob. The tub,
 ## cockpit grey, fills the canopy's lower `floor` over the fuselage top; for
 ## each seat at z in `seats` (front first) an ejection seat raked back with its
-## headrest and the yellow firing handle over it, the pilot's shoulders in his
-## flying suit and his helmet with the visor down; ahead of each seat the
-## black coaming over the instrument panel, the front one carrying the HUD's
-## combiner glass. Wrecks and burnt hulks keep their old glass and no cockpit.
-static func cockpit(k: VehicleModels, p: Node3D, key: String, cst: Array, canopy: Variant, seats: Array, sheen := Color(0.33, 0.37, 0.41), floor := 0.3, helmet := Color(0.3, 0.31, 0.28), suit := Color(0.3, 0.32, 0.25)) -> void:
+## cushion, guide rails, headbox and the yellow firing handle over it, the
+## pilot's shoulders in his nylon flying suit under his harness's webbing, his
+## helmet with the visor down and his oxygen mask, and the side consoles by his
+## elbows with the throttle; ahead of each seat the black glareshield over the
+## instrument panel, the front one carrying the HUD's combiner glass. Wrecks
+## and burnt hulks keep their old glass and no cockpit.
+static func cockpit(k: VehicleModels, p: Node3D, key: String, cst: Array, canopy: Variant, seats: Array, sheen := Color(0.33, 0.37, 0.41), floor := 0.3, helmet := Color(0.3, 0.31, 0.28), suit := Color(0.4, 0.42, 0.33)) -> void:
 	if k.wreck or k.burnt or canopy == null:
 		return
 	k._restyle(canopy, clear_glass(sheen))
@@ -265,34 +267,86 @@ static func cockpit(k: VehicleModels, p: Node3D, key: String, cst: Array, canopy
 	# a solid one; a surface of its own shader casting would also cost the
 	# model its one shadow proxy)
 	k._unshadow(canopy)
+	# Everything under the glass sits in the fuselage's own shadow and is seen
+	# only through the canopy, close up: none of it casts a shadow (each part
+	# cast into the shadow maps is drawn a second time there), and it is made
+	# of as few faces as still read through the glass: small fittings as
+	# plain blocks, the pilot's rounded kit in a few smooth facets.
 	var tub := []
 	for s: Array in cst:
 		var q := _sp(s)
 		tub.append([q[0], q[1], float(q[2]) * 0.9, float(q[3]) * floor, q[4], q[5], q[6], q[7]])
-	body(k, p, key + "_tub", tub, "plain_dark", Color(0.2, 0.21, 0.22), 12, 50.0)
+	# (the tub's floor and walls are dark under the glass: eight sides round)
+	k._unshadow(body(k, p, key + "_tub", tub, "plain_dark", Color(0.2, 0.21, 0.22), 8, 50.0))
 	var z_first := float(_sp(cst[0])[0])
+	# (the seat's cushions olive drab, the harness's webbing a darker olive)
+	var cushion := Color(0.26, 0.27, 0.2)
+	var harness := Color(0.17, 0.18, 0.14)
 	for i in seats.size():
 		var z: float = seats[i]
 		var q := st_at(cst, z)
 		var x := float(q[7])
 		var hc := float(q[1]) + float(q[3]) - 0.2
-		# the seat: its back raked 17 degrees, the headrest, the firing handle
-		k._box(p, Vector3(0.42, 0.6, 0.1), Vector3(x, hc - 0.2, z + 0.25), "plain_dark", Color(0.11, 0.115, 0.12), Vector3(0.3, 0, 0))
-		k._box(p, Vector3(0.3, 0.17, 0.14), Vector3(x, hc + 0.02, z + 0.28), "plain_dark", Color(0.16, 0.17, 0.15), Vector3(0.3, 0, 0))
-		k._box(p, Vector3(0.12, 0.03, 0.035), Vector3(x, hc + 0.12, z + 0.25), "paint", Color(0.72, 0.58, 0.1), Vector3(0.3, 0, 0), false)
-		# the pilot
-		k._add(p, Res.sphere(0.22, 10), "fabric", suit, Vector3(x, hc - 0.3, z + 0.02), Vector3.ZERO, Vector3(1.0, 0.85, 0.72))
-		k._add(p, Res.sphere(0.135, 10), "paint", helmet, Vector3(x, hc, z - 0.03))
-		k._add(p, Res.sphere(0.128, 8), "glass", null, Vector3(x, hc - 0.015, z - 0.08), Vector3.ZERO, Vector3(0.98, 0.6, 0.8), false)
+		# The ejection seat (an ACES II or a Martin-Baker), its back raked 17
+		# degrees: a pressed bucket wider than the pilot's shoulders, its back
+		# cushion in olive nylon showing round them, the catapult's guide rails
+		# standing up its sides, the headbox (the parachute container) behind
+		# his head, and the yellow firing handle over it.
+		# (One black box read as a crate behind the helmet.)
+		var sp := k._pivot(p, Vector3(x, hc - 0.2, z + 0.25))
+		sp.rotation = Vector3(0.3, 0, 0)
+		# (the bucket and headbox rolled along their top and bottom edges, the
+		# ones the light runs along from above; the thin cushion in it a slab)
+		k._add(sp, VehicleCab._rolled(Vector3(0.48, 0.6, 0.1), 0.025), "plain_dark", Color(0.11, 0.115, 0.12), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+		k._add(sp, VehicleEquipment._plate(Vector3(0.4, 0.5, 0.05)), "fabric", cushion, Vector3(0, -0.03, -0.07), Vector3.ZERO, Vector3.ONE, false)
+		for s: float in [-1.0, 1.0]:
+			# (they stop under the headbox's top: the canopy curves down low
+			# over the seat's back corners)
+			k._add(sp, VehicleEquipment._plate(Vector3(0.035, 0.5, 0.06)), "steel", null, Vector3(s * 0.225, -0.03, 0.0), Vector3.ZERO, Vector3.ONE, false)
+		k._add(sp, VehicleCab._rolled(Vector3(0.32, 0.17, 0.14), 0.035), "plain_dark", Color(0.19, 0.2, 0.17), Vector3(0, 0.219, -0.03), Vector3.ZERO, Vector3.ONE, false)
+		k._fold(sp)
+		k._add(p, VehicleEquipment._plate(Vector3(0.12, 0.03, 0.035)), "plain", Color(0.72, 0.58, 0.1), Vector3(x, hc + 0.12, z + 0.25), Vector3(0.3, 0, 0), Vector3.ONE, false)
+		# The pilot: his shoulders in a sage nylon flying suit, the harness's
+		# two olive webbing straps coming off the seat back over them and down
+		# his chest; his helmet, its visor down, and the dark rubber oxygen
+		# mask over his face, its hose down to the chest connector.
+		k._add(p, Res.sphere(0.22, 6), "fabric", suit, Vector3(x, hc - 0.3, z + 0.02), Vector3.ZERO, Vector3(1.0, 0.85, 0.72), false)
+		# (his shoulders square across the seat, so the suit shows round his
+		# helmet above the cockpit's sill, where the torso alone sank into it)
+		k._add(p, Res.sphere(0.2, 6), "fabric", suit, Vector3(x, hc - 0.2, z + 0.03), Vector3.ZERO, Vector3(1.15, 0.38, 0.4), false)
+		for s: float in [-1.0, 1.0]:
+			var xs := x + s * 0.09
+			# (off the seat back, over the top of his shoulder and down his
+			# chest, lying on the suit)
+			VehicleCloth.strap(k, p, [Vector3(xs, hc - 0.1, z + 0.2), Vector3(x + s * 0.083, hc - 0.118, z - 0.01), Vector3(x + s * 0.07, hc - 0.183, z - 0.12)], 0.045, harness, Vector3.RIGHT, 0.005)
+		# (the helmet's shell in a matte finish, as flying helmets are, and off
+		# the hull's own paint: a part on a casting surface is drawn into the
+		# shadow maps with the rest of that surface)
+		k._add(p, Res.sphere(0.135, 8), "plain", helmet, Vector3(x, hc, z - 0.03), Vector3.ZERO, Vector3.ONE, false)
+		k._add(p, Res.sphere(0.128, 6), "glass", null, Vector3(x, hc - 0.015, z - 0.08), Vector3.ZERO, Vector3(0.98, 0.6, 0.8), false)
+		k._add(p, Res.sphere(0.05, 4), "rubber", Color(0.2, 0.21, 0.19), Vector3(x, hc - 0.1, z - 0.15), Vector3(-0.4, 0, 0), Vector3(0.95, 1.1, 0.9), false)
+		# (the hose's ends are buried in the mask and the connector)
+		VehicleFrames.tube(k, p, Vector3(x + 0.02, hc - 0.13, z - 0.16), Vector3(x + 0.07, hc - 0.23, z - 0.13), 0.016, "rubber", Color(0.2, 0.21, 0.19), 4, false, -1.0, 0)
+		# The side consoles either side of his seat, from his hips to the
+		# panel, under his elbows, in a lighter grey than the tub, the
+		# throttle's grip on the left one.
+		var qs := st_at(cst, z - 0.2)
+		var w := float(qs[2]) * 0.9
+		var y_t := float(qs[1]) + float(qs[3]) * floor
+		for s: float in [-1.0, 1.0]:
+			k._add(p, VehicleEquipment._plate(Vector3(w * 0.3, 0.1, 0.5).snappedf(0.005)), "plain_dark", Color(0.17, 0.175, 0.18), Vector3(x + s * w * 0.6, y_t - 0.03, z - 0.22), Vector3.ZERO, Vector3.ONE, false)
+		k._add(p, VehicleEquipment._plate(Vector3(0.05, 0.09, 0.07)), "plain_dark", Color(0.09, 0.095, 0.1), Vector3(x - w * 0.6, y_t + 0.065, z - 0.3), Vector3(-0.25, 0, 0), Vector3.ONE, false)
 		# the coaming over the panel, low under the glass ahead of the seat
 		var zc := maxf(z - 0.62, z_first + 0.22)
 		var qc := st_at(cst, zc)
 		var hh := float(qc[3])
 		var yt := float(qc[1]) + clampf(hh * 0.55, hh * floor + 0.04, hh - 0.1)
-		k._box(p, Vector3(float(qc[2]) * 1.1, 0.09, 0.28), Vector3(x, yt - 0.045, zc), "metal_dark", null)
+		# (the glareshield is a matte black moulding, its rear lip rolled
+		# toward the pilot: in ribbed gunmetal it read as a radiator grille)
+		k._add(p, VehicleCab._rolled(Vector3(float(qc[2]) * 1.1, 0.09, 0.28), 0.03), "plain_dark", Color(0.06, 0.065, 0.07), Vector3(x, yt - 0.045, zc), Vector3.ZERO, Vector3.ONE, false)
 		if i == 0:
 			# the HUD: its glass combiner on a dark frame, leaning toward the pilot
-			k._box(p, Vector3(0.15, 0.04, 0.08), Vector3(x, yt + 0.02, zc + 0.06), "metal_dark", null, Vector3.ZERO, false)
+			k._add(p, VehicleEquipment._plate(Vector3(0.15, 0.04, 0.08)), "plain_dark", Color(0.1, 0.1, 0.11), Vector3(x, yt + 0.02, zc + 0.06), Vector3.ZERO, Vector3.ONE, false)
 			k._box(p, Vector3(0.13, 0.12, 0.008), Vector3(x, yt + 0.09, zc + 0.08), "glass", null, Vector3(0.45, 0, 0), false)
 
 
@@ -605,13 +659,30 @@ static func nav_light(k: VehicleModels, p: Node3D, center: Vector3, size: Vector
 	k._add(p, Res.sphere(r, 10), "signal_lens", col, center + Vector3(s * r * 0.45, r * 0.12, 0), Vector3.ZERO, Vector3(0.85, 0.7, 1.45), false)
 
 
-## A team panel flat on a wing's upper surface at span x, both wings.
+## The side's mark `s` across painted on both wings' upper skins at span x,
+## where the old panel sat: the ground vehicles' chevron or band
+## (VehicleModels._mark_outline), its apex or lean toward the nose and
+## mirrored wing to wing, in the airframe's own paint so it weathers with the
+## wing and follows the airfoil's curve instead of standing on its crest as a
+## dark slab. Gone with the paint on a wreck.
 static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, x: float, s: float) -> void:
+	if k.wreck or team < 0:
+		return
 	var w := surf_at(secs, x)
 	var le: Vector3 = w[0]
-	var y := le.y + float(w[2]) * 0.5 + 0.008
-	for sd in [-1.0, 1.0]:
-		k._team_mark(p, team, Vector3(sd * x, y, le.z + float(w[1]) * 0.38), Vector3(s, 0.015, s))
+	var outline := VehicleModels._mark_outline(team, Vector2(s, s))
+	for sd: float in [-1.0, 1.0]:
+		var pts := PackedVector2Array()
+		for q in outline:
+			pts.append(Vector2(q.x * sd, q.y))
+		if sd < 0.0:
+			pts.reverse()
+		var tris := PackedVector2Array()
+		var idx := Geometry2D.triangulate_polygon(pts)
+		for i in idx:
+			tris.append(pts[i])
+		var at := Vector3(sd * x, le.y, le.z + float(w[1]) * 0.38)
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(at, Vector3.UP, Vector3.RIGHT, wing_skin(secs, 1.0)), [[tris, VehicleModels._mark_col(team)]], "aircraft", 1)
 
 
 # --- paint: insignia, numbers, panel lines, soot ------------------------------------
@@ -798,7 +869,9 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	# the canopy: windscreen and bubble, its bows
 	var cst := [[-3.45, 1.45, 0.3, 0.08, 0.08], [-3.0, 1.45, 0.43, 0.36, 0.08], [-2.4, 1.46, 0.47, 0.54, 0.08], [-1.7, 1.47, 0.46, 0.57, 0.08],
 		[-1.0, 1.48, 0.4, 0.46, 0.08], [-0.5, 1.48, 0.27, 0.28, 0.08]]
-	cockpit(k, m, "buz", cst, body(k, m, "buz_can", cst, "glass", null, 18, 60.0), [-1.98])
+	# (the tub's floor low, so the pilot sits up in the bubble with his
+	# shoulders over the sill, as an L-159's does)
+	cockpit(k, m, "buz", cst, body(k, m, "buz_can", cst, "glass", null, 18, 60.0), [-1.98], Color(0.33, 0.37, 0.41), 0.19)
 	band(k, m, "buz_bow0", cst, -2.92, 0.07, 0.02, A, c.darkened(0.2), 18)
 	band(k, m, "buz_bow1", cst, -1.05, 0.08, 0.02, A, c.darkened(0.2), 18)
 	canopy_frame(k, m, "buz_cf", cst, -2.95, -0.75, A, c.darkened(0.2))
@@ -898,7 +971,9 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 	body(k, m, "gry_spine", [[-2.3, 1.42, 0.36, 0.36, 0.1], [-1.0, 1.44, 0.34, 0.34, 0.1], [1.5, 1.44, 0.28, 0.3, 0.1], [3.5, 1.44, 0.18, 0.22, 0.1], [5.2, 1.42, 0.08, 0.1, 0.1]], A, c, 16)
 	var cst := [[-4.55, 1.42, 0.28, 0.06, 0.06], [-4.0, 1.42, 0.4, 0.33, 0.06], [-3.4, 1.43, 0.44, 0.49, 0.06], [-2.7, 1.44, 0.42, 0.47, 0.06],
 		[-2.1, 1.45, 0.34, 0.33, 0.06], [-1.7, 1.45, 0.2, 0.17, 0.06]]
-	cockpit(k, m, "gry", cst, body(k, m, "gry_can", cst, "glass", null, 18, 60.0), [-2.95])
+	# (the tub's floor low, so the pilot's shoulders show in the bubble, as a
+	# Gripen's do)
+	cockpit(k, m, "gry", cst, body(k, m, "gry_can", cst, "glass", null, 18, 60.0), [-2.95], Color(0.33, 0.37, 0.41), 0.19)
 	band(k, m, "gry_bow0", cst, -3.95, 0.07, 0.018, A, c.darkened(0.2), 18)
 	band(k, m, "gry_bow1", cst, -2.15, 0.07, 0.018, A, c.darkened(0.2), 18)
 	canopy_frame(k, m, "gry_cf", cst, -3.95, -1.85, A, c.darkened(0.2))

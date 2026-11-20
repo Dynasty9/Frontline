@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-fabrics-seats-and-covers.md",
+  "summary": "Draped, laced and rolled truck tilts; bulging bags, rucksacks and strapped bedrolls; their own finishes for webbing, nylon, vinyl and rope; seats in cockpits and cabs; helicopter doors open on troop seats; recognition panels and covers; plastic trim, worn paint and soft glints on cars.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Cloth, kit, glass-side interiors and finishes across many families: one matched studio sheet shows a representative of each, framed close where the change is small.",
+  "source_ref": "44fe2b2776dc666de898ae76facea37f7e0c7ab7",
+  "before_ref": "44fe2b2776dc666de898ae76facea37f7e0c7ab7",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-fabrics-seats-and-covers/comparison.jpg",
+      "sha256": "dd729fb45a84e3a2df349fd5c14f9ad5b731afb6bc3a86f902b3490db71c55d8"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-fabrics-seats-and-covers/capture.json",
+      "sha256": "84a4f3bd55100aa99719a92a777454af17fc568d72b1606bcca990a20e0c9f00"
+    }
+  ],
+  "output": null
+}
