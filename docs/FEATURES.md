@@ -1946,6 +1946,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   recognition panels, canopies, armoured windscreens and vision blocks read as glass, rotor discs show again, and
   tonneaus, tops, windscreens, truck beds, tilts, coils, brackets, grilles and kit that had come out worse are fixed.
   See "Twenty-second pass" in [the component guide](vehicle-components.md).
+- **Cabs, rollers and sagging tilts** (twenty-third pass): the Humvee has a cab inside its armoured glass, the
+  Merkava's track rides on its return rollers, truck tilts sag between their bows, and the 4x4's tailgate spare skips
+  the face nobody sees. See "Twenty-third pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds

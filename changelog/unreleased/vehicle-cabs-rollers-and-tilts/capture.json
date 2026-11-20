@@ -1,0 +1,57 @@
+{
+  "before_ref": "1242ba4b9535916e118bb1f653155d30294cab6b",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    2700
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 80. The before column rendered from a checkout of before_ref (rounds 13-16 merged with main), the after column from the same checkout with this change's files copied in.",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> [--surface-rear] --surface-seed=<seed> [--surface-focus=<focus> --surface-size=<size>] --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "humvee",
+      "focus": "0,1.75,-0.55",
+      "size": 2.6,
+      "label": "Humvee: seats, dash and radios behind the glass"
+    },
+    {
+      "model": "humvee",
+      "rear": true,
+      "focus": "0,1.7,0.1",
+      "size": 3.4,
+      "label": "Humvee: a cab through the side windows"
+    },
+    {
+      "model": "hemtt",
+      "rear": true,
+      "focus": "0,2.5,1.2",
+      "size": 6.5,
+      "label": "HEMTT: the tilt sags between its bows"
+    },
+    {
+      "model": "m35",
+      "label": "M35: canvas hanging between the hoops"
+    },
+    {
+      "model": "zamak",
+      "rear": true,
+      "focus": "0,2.4,1.8",
+      "size": 5.0,
+      "label": "Zamak: the eave scallops between bows"
+    },
+    {
+      "model": "tempest",
+      "rear": true,
+      "focus": "0,2.8,1.2",
+      "size": 7.0,
+      "label": "Tempest: a tilt that hangs, not a lid"
+    }
+  ]
+}
