@@ -131,6 +131,7 @@ uniform float sea_x = 1000000000.0;
 uniform float snow_line = 100.0;
 uniform float terrain_air = 0.0;
 uniform vec3 air_color : source_color = vec3(0.5, 0.6, 0.7);
+global uniform float snow_cover;  // (Atmosphere._snow_tick)
 varying float shade;
 varying float haze;
 varying vec3 frames;
@@ -182,6 +183,12 @@ void fragment() {
 	}
 	float alpha = mix(low.a, high.a, frames.z);
 	vec4 leaf = vec4(mix(low.rgb * low.a, high.rgb * high.a, frames.z) / max(alpha, 0.001), alpha);
+	// in snow the far woods are dark firs frosted white on their upper boughs
+	if (snow_cover > 0.0) {
+		float lit = dot(leaf.rgb, vec3(0.2126, 0.7152, 0.0722));
+		float snowed = snow_cover * smoothstep(0.02, 0.09, lit + (0.6 - UV.y) * 0.05) * mix(0.35, 0.75, smoothstep(0.7, 0.2, UV.y));
+		leaf.rgb = mix(leaf.rgb, vec3(0.75, 0.78, 0.84) / (shade * 0.65), snowed * 0.7);
+	}
 	ALBEDO = leaf.rgb * shade * 0.65 * (1.0 - haze);
 	EMISSION = air_color * haze * 0.65;
 	if (OUTPUT_IS_SRGB) {
