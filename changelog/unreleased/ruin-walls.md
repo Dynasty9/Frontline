@@ -6,7 +6,7 @@ kind = "improved"
 [[videos]]
 file = "interior-plaster.webm"
 poster = "interior-plaster.jpg"
-caption = "Interior plaster before and after: command-height framing, then a matched room-side orbit of the native house model."
+caption = "Interior plaster before and after: the default command-camera scale (55 m, 48° field of view), then a matched room-side orbit of the native house model."
 
 [[screenshots]]
 file = "comparison.jpg"
