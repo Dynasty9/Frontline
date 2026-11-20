@@ -293,6 +293,63 @@ func _subject(kind: String) -> Node3D:
 				street.call("belongings", k.at_point(Vector3(-4.6, 0, -1.4)), rng)
 				street.call("belongings", k.at_point(Vector3(-1.2, 0, -1.6)), rng)
 			return kit_root
+		"shop_rooms":
+			# two shops with their roofs off, as when men are inside (as they
+			# were before, where shops had no fitting out of their own: a
+			# room like a house's)
+			var fitted := BuildingInteriors.new().has_method("shop")
+			var shops := Node3D.new()
+			for i in 2:
+				var ids := {}
+				var plain := {}
+				for key in [10, 11, 12, 20, 21, 22]:
+					ids[key] = 700 + i * 40 + key
+					plain[key] = 0
+				var hs := _house([9.0, 7.6][i], [10.0, 9.4][i], [3, 1][i], true, false, false, 0, ids, plain, 3 if fitted else 0, 30 + i)
+				hs.position.x = (i - 0.5) * 11.0
+				shops.add_child(hs)
+			return shops
+		"barn_rooms":
+			# two barns with their roofs off, as when men are inside, their
+			# back and left walls (the ones seen from inside) without windows:
+			# what a farm keeps in its barn, the tools hung on its walls
+			# (where it does: before, a bare floor strewn with straw)
+			var barns := Node3D.new()
+			for i in 2:
+				var ids := {}
+				var plain := {}
+				for key in [10, 11, 12, 13, 14, 20, 21, 22]:
+					ids[key] = 760 + i * 40 + key
+					plain[key] = 0
+				var bn := _house(13.0, 10.0, [5, 11][i] if BuildingMaterials.HOUSE.size() > 5 else 0, false, false, false, 0, ids, plain, 2, 40 + i * 6)
+				bn.position.x = (i - 0.5) * 14.5
+				barns.add_child(bn)
+			return barns
+		"farm_kit":
+			# what a farm keeps round its yard (BuildingFarm, loaded by path so
+			# the stage still runs where there's none): round bales of straw
+			# and wrapped for silage, the tractor, a hen house and its run; a
+			# water trough, a plough, a harrow, a churn stand, a wheelbarrow
+			var yard := Node3D.new()
+			if not ResourceLoader.exists("res://scripts/game/building_farm.gd"):
+				return yard
+			var farm: GDScript = load("res://scripts/game/building_farm.gd")
+			var r := RandomNumberGenerator.new()
+			r.seed = 5
+			var fk := BuildingKit.nodes(yard, r)
+			farm.bales(fk.at_point(Vector3(-8.3, 0, 3.2)), 3, false, r)
+			farm.bales(fk.at_point(Vector3(-4.6, 0, 3.4)), 2, true, r)
+			var tractor := Structure.preview_model("car", -1, 5, Vector3.ZERO, false, 7)
+			tractor.position = Vector3(0.6, 0, 3.0)
+			tractor.rotation.y = PI * 0.5
+			yard.add_child(tractor)
+			farm.hen_house(fk.at_point(Vector3(6.2, 0, 3.0)), r)
+			farm.trough(fk.at_point(Vector3(-7.6, 0, -1.8)), r)
+			farm.plough(fk.at_point(Vector3(-4.2, 0, -1.8)), r)
+			farm.harrow(fk.at_point(Vector3(-0.8, 0, -1.8)), r)
+			farm.churn_stand(fk.at_point(Vector3(2.8, 0, -1.8)), r)
+			farm.barrow(fk.at_point(Vector3(5.6, 0, -1.8), Vector3(0, 0.6, 0)), 0)
+			return yard
 		"street_pieces":
 			# the square's fountain, a bus shelter, a planter, litter bins and the
 			# town's name board, where BuildingStreet has them
@@ -320,6 +377,15 @@ func _subject(kind: String) -> Node3D:
 					br.seed = 3 + i
 					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
 			return row
+		"water_tower":
+			# the town's water tower (BuildingLandmarks, where it exists)
+			var wt := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_landmarks.gd"):
+				var wr := RandomNumberGenerator.new()
+				wr.seed = 9
+				var lm: GDScript = load("res://scripts/game/building_landmarks.gd")
+				lm.call("water_tower", BuildingKit.nodes(wt, wr), wr)
+			return wt
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:
@@ -401,19 +467,23 @@ func _rotated(n: Node3D) -> Node3D:
 
 ## The same layout as MapGen._house: the front (street) wall at -z with the
 ## door in it, windows in most other sections.
-## A house wall's preview, its lamps out (`dark`: a ruin's) where Structure
-## can build one so; before it could, as it was then.
-func _wall(v: int, sz: Vector3, shut: bool, id: int, dark: bool) -> Node3D:
+## A house wall's preview, its lamps out (`dark`: a ruin's) and fitted out
+## as a shop's (`shop`) where Structure can build one so; before it could, as
+## it was then.
+func _wall(v: int, sz: Vector3, shut: bool, id: int, dark: bool, shop := false) -> Node3D:
 	var script: Script = load("res://scripts/game/structure.gd")
 	for m: Dictionary in script.get_script_method_list():
+		if m.name == "preview_model" and (m.args as Array).size() >= 8:
+			return script.callv("preview_model", ["house_wall", -1, v, sz, shut, id, dark, shop])
 		if m.name == "preview_model" and (m.args as Array).size() >= 7:
 			return script.callv("preview_model", ["house_wall", -1, v, sz, shut, id, dark])
 	return Structure.preview_model("house_wall", -1, v, sz, shut, id)
 
 
-func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}, variants := {}) -> Node3D:
+func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined := false, roof_id := 0, wall_ids := {}, variants := {}, floor_variant := -1, floor_id := 7) -> Node3D:
 	var root := Node3D.new()
-	var floor := Structure.preview_model("floor", -1, 1 if ruined else (2 if BuildingMaterials.house(color) == "timber" else 0), Vector3(w, 0.06, d), false, 7)
+	var fv := floor_variant if floor_variant >= 0 else (1 if ruined else (2 if BuildingMaterials.house(color) == "timber" else 0))
+	var floor := Structure.preview_model("floor", -1, fv, Vector3(w, 0.06, d), false, floor_id)
 	root.add_child(floor)
 	var sides := [[Vector3(0, 0, -d * 0.5), w, 0.0], [Vector3(0, 0, d * 0.5), w, 0.0],
 		[Vector3(-w * 0.5, 0, 0), d - 0.4, PI * 0.5], [Vector3(w * 0.5, 0, 0), d - 0.4, PI * 0.5]]
@@ -438,7 +508,7 @@ func _house(w: float, d: float, color: int, flat: bool, roofed := true, ruined :
 				heap.rotation.y = yaw
 				root.add_child(heap)
 				continue
-			var wall := _wall(variant, Vector3(seg_len, float(color), 0.4), variant == 2, wall_ids.get(si * 10 + k, 100 + si * 10 + k), ruined)
+			var wall := _wall(variant, Vector3(seg_len, float(color), 0.4), variant == 2, wall_ids.get(si * 10 + k, 100 + si * 10 + k), ruined, fv == 3)
 			wall.position = lp
 			wall.rotation.y = yaw
 			root.add_child(wall)
