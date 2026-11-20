@@ -6,6 +6,10 @@ kind = "improved"
 [[screenshots]]
 file = "comparison.jpg"
 caption = "The same town, square and street from the same cameras, before and after"
+[[videos]]
+file = "parking-motion.webm"
+poster = "parking-motion.jpg"
+caption = "Seed 3, main versus this branch: marked empty and occupied bays beside the shops, with the opposite lane visible. Matched native camera motion at Low settings, Forward+ software rendering; simulation held. This is separate from the earlier PR-revision comparison."
 +++
 
 - **Parking lanes**: the two main streets through the middle of town are wider than the side streets, with a parking lane down each side. A solid line marks it off from the two traffic lanes, and the dashed centre line runs between them. The pavements, lamps and houses along them stand further back to make room. Side streets have no room to park.
