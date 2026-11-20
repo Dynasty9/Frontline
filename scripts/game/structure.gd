@@ -1600,6 +1600,10 @@ func _church_roof(rng: RandomNumberGenerator, ci: int) -> void:
 	BuildingRoofs.gable(rk, L, W, h, 50.0, 0.35, "roof_tile", CHURCH_SLATE,
 		{"gable_material": "church", "gable_col": wall, "trim": Color(0.2, 0.2, 0.21), "gable_inset": -0.07, "gutters": not chancel,
 		"downpipes": [[L * 0.5 - 0.6, 1.0], [-(L * 0.5 - 0.6), -1.0]], "wall_face": W * 0.5 + 0.2, "wall_face_x": L * 0.5 + 0.2})
+	# (its snow, SnowRoof: the lips along its eaves, as a house's; a church
+	# isn't heated through the week, so no icicles hang from it)
+	_roof_form = {"L": L, "W": W, "h": h, "pitch": 50.0, "fx": L * 0.5 + 0.2, "fz": W * 0.5 + 0.2, "hipped": false, "barn": false,
+		"cold": true, "ang": PI * 0.5}
 	# a stone cross on the east gable of each
 	var apex := Vector3(0, h + (W * 0.5) * tan(deg_to_rad(50.0)) + 0.05, L * 0.5 + 0.1)
 	k.box(Vector3(0.12, 0.9, 0.12), apex + Vector3(0, 0.45, 0), "stone", CHURCH_DRESS)
@@ -2284,7 +2288,7 @@ func _snow_roof() -> void:
 	rng.seed = ((look if look > 0 else eid) * 7919 + variant) ^ 0x5a0f11
 	var barn: bool = _roof_form.get("barn", false)
 	var heat := 0.0
-	if not barn and rng.randf() < 0.55:
+	if not barn and not _roof_form.get("cold", false) and rng.randf() < 0.55:
 		heat = rng.randf_range(0.5, 1.0)
 	var carry := 1.3 if barn else rng.randf_range(0.95, 1.25)
 	var stack := Vector2(10000, 10000)
