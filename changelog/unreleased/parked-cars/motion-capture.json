@@ -1,15 +1,11 @@
 {
-  "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
-  "source_ref": "175e258150a28cecc0a21bdec147fe0a81e6dc4a",
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+  "source_ref": "fc3c27314e171bc255f2edd36e34d260ae9fb08c",
   "harness_sha256": "3fdaf78ca26d96ad93f9ab7842e919a0ff734e91b259673d0a6cf7d3402255cd",
-  "engine": "Godot 4.7.2 Linux, Forward+, Mesa llvmpipe LLVM 19.1.7 software",
-  "capture_shutdown": "All three town runs exited 0 after frames and metadata were saved, with renderer/resource leak diagnostics during shutdown in main and head Forward+ and head Compatibility. Not clean lifecycle tests. No gameplay source changes.",
-  "comparison": "Actual main versus PR head, not the earlier PR parking revision. Other intervening main changes may be visible.",
+  "engine": "Godot 4.7.2 Windows, Forward+, Vulkan 1.4 on an NVIDIA GeForce RTX 3090",
+  "capture_shutdown": "Both town runs exited 0 after frames and metadata were saved, with renderer resource-leak diagnostics at shutdown. Not clean lifecycle tests.",
+  "comparison": "Actual main (f48b0f4) versus this branch with the parking lanes (fc3c273). Re-recorded with the same harness, cameras and settings as the earlier clip (main 6399514 versus the kerbside bays at 175e258), which the parking lanes replaced.",
   "capture": {
-    "arguments": [
-      "--script",
-      "tools/showcase/environment-motion.gd"
-    ],
     "exposure": 1.0,
     "fps": 12,
     "mood": "day",
@@ -18,27 +14,22 @@
     "resolution": "(1280, 720)",
     "seed": 3,
     "simulation": "Held at two seconds; native wind and water remain animated. Not a combat or performance benchmark.",
-    "source_ref": "175e258150a28cecc0a21bdec147fe0a81e6dc4a",
+    "source_ref": "fc3c27314e171bc255f2edd36e34d260ae9fb08c",
     "stage": "parking",
     "sun": "[X: (0.819152, 0.0, 0.573576), Y: (0.451984, 0.615662, -0.645501), Z: (-0.353129, 0.788011, 0.50432), O: (0.0, 0.0, 0.0)]",
     "tonemap": 4,
     "user_arguments": [
       "--aivai",
       "--seed=3",
+      "--offscreen",
       "--nohud",
+      "--set=perf:0",
       "--preset=low",
-      "--set=perf:0,vsync:false",
       "--mood=day",
-      "--focus=-6.8,20.3",
-      "--zoom=19",
-      "--pitch=-36",
-      "--cam-yaw=-1",
       "--motion-stage=parking",
+      "--motion-output=build/media-review/new",
       "--motion-frames=48",
-      "--motion-fps=12",
-      "--motion-warmup=12",
-      "--motion-defer-draw",
-      "--motion-output=/workspace/captures/pr262/head-forward"
+      "--motion-fps=12"
     ],
     "views": [
       {
@@ -74,7 +65,7 @@
           "[X: (0.515405, 0.0, 0.856947), Y: (0.503701, 0.809017, -0.302948), Z: (-0.693284, 0.587785, 0.416972), O: (-19.9724, 11.16792, 28.22246)]",
           "[X: (0.508989, 0.0, 0.860773), Y: (0.50595, 0.809017, -0.299176), Z: (-0.69638, 0.587785, 0.411781), O: (-20.03122, 11.16792, 28.12383)]",
           "[X: (0.503111, 0.0, 0.864222), Y: (0.507977, 0.809017, -0.295722), Z: (-0.69917, 0.587785, 0.407026), O: (-20.08423, 11.16792, 28.03349)]",
-          "[X: (0.497885, 0.0, 0.867243), Y: (0.509753, 0.809017, -0.29265), Z: (-0.701614, 0.587785, 0.402798), O: (-20.13067, 11.16792, 27.95316)]",
+          "[X: (0.497886, 0.0, 0.867243), Y: (0.509753, 0.809017, -0.29265), Z: (-0.701614, 0.587785, 0.402798), O: (-20.13067, 11.16792, 27.95316)]",
           "[X: (0.493412, 0.0, 0.869796), Y: (0.511253, 0.809017, -0.29002), Z: (-0.703679, 0.587785, 0.399179), O: (-20.16991, 11.16792, 27.8844)]",
           "[X: (0.489778, 0.0, 0.871847), Y: (0.512459, 0.809017, -0.287884), Z: (-0.705339, 0.587785, 0.396239), O: (-20.20144, 11.16792, 27.82854)]",
           "[X: (0.487055, 0.0, 0.873371), Y: (0.513355, 0.809017, -0.286284), Z: (-0.706572, 0.587785, 0.394036), O: (-20.22487, 11.16792, 27.78668)]",
@@ -137,7 +128,7 @@
           "[X: (0.515405, 0.0, 0.856947), Y: (0.656459, 0.642788, -0.394823), Z: (-0.550835, 0.766044, 0.331296), O: (-27.73172, 29.10969, 32.88925)]",
           "[X: (0.508989, 0.0, 0.860773), Y: (0.65939, 0.642788, -0.389908), Z: (-0.553294, 0.766044, 0.327172), O: (-27.82518, 29.10969, 32.73253)]",
           "[X: (0.503111, 0.0, 0.864222), Y: (0.662032, 0.642788, -0.385406), Z: (-0.555511, 0.766044, 0.323394), O: (-27.90942, 29.10969, 32.58896)]",
-          "[X: (0.497885, 0.0, 0.867243), Y: (0.664347, 0.642788, -0.381402), Z: (-0.557453, 0.766044, 0.320035), O: (-27.98321, 29.10969, 32.46132)]",
+          "[X: (0.497886, 0.0, 0.867243), Y: (0.664347, 0.642788, -0.381402), Z: (-0.557453, 0.766044, 0.320035), O: (-27.98321, 29.10969, 32.46132)]",
           "[X: (0.493412, 0.0, 0.869796), Y: (0.666302, 0.642788, -0.377976), Z: (-0.559094, 0.766044, 0.317159), O: (-28.04557, 29.10969, 32.35205)]",
           "[X: (0.489778, 0.0, 0.871847), Y: (0.667874, 0.642788, -0.375192), Z: (-0.560413, 0.766044, 0.314823), O: (-28.09567, 29.10969, 32.26329)]",
           "[X: (0.487055, 0.0, 0.873371), Y: (0.669041, 0.642788, -0.373106), Z: (-0.561392, 0.766044, 0.313073), O: (-28.1329, 29.10969, 32.19677)]",
@@ -170,10 +161,6 @@
     ]
   },
   "baseline_capture": {
-    "arguments": [
-      "--script",
-      "tools/showcase/environment-motion.gd"
-    ],
     "exposure": 1.0,
     "fps": 12,
     "mood": "day",
@@ -182,27 +169,22 @@
     "resolution": "(1280, 720)",
     "seed": 3,
     "simulation": "Held at two seconds; native wind and water remain animated. Not a combat or performance benchmark.",
-    "source_ref": "6399514f144e529794856e8618d488ec5df28a4e",
+    "source_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
     "stage": "parking",
     "sun": "[X: (0.819152, 0.0, 0.573576), Y: (0.451984, 0.615662, -0.645501), Z: (-0.353129, 0.788011, 0.50432), O: (0.0, 0.0, 0.0)]",
     "tonemap": 4,
     "user_arguments": [
       "--aivai",
       "--seed=3",
+      "--offscreen",
       "--nohud",
+      "--set=perf:0",
       "--preset=low",
-      "--set=perf:0,vsync:false",
       "--mood=day",
-      "--focus=-6.8,20.3",
-      "--zoom=19",
-      "--pitch=-36",
-      "--cam-yaw=-1",
       "--motion-stage=parking",
+      "--motion-output=build/media-review/cur",
       "--motion-frames=48",
-      "--motion-fps=12",
-      "--motion-warmup=12",
-      "--motion-defer-draw",
-      "--motion-output=/workspace/captures/pr262/main-forward"
+      "--motion-fps=12"
     ],
     "views": [
       {
@@ -238,7 +220,7 @@
           "[X: (0.515405, 0.0, 0.856947), Y: (0.503701, 0.809017, -0.302948), Z: (-0.693284, 0.587785, 0.416972), O: (-19.9724, 11.16792, 28.22246)]",
           "[X: (0.508989, 0.0, 0.860773), Y: (0.50595, 0.809017, -0.299176), Z: (-0.69638, 0.587785, 0.411781), O: (-20.03122, 11.16792, 28.12383)]",
           "[X: (0.503111, 0.0, 0.864222), Y: (0.507977, 0.809017, -0.295722), Z: (-0.69917, 0.587785, 0.407026), O: (-20.08423, 11.16792, 28.03349)]",
-          "[X: (0.497885, 0.0, 0.867243), Y: (0.509753, 0.809017, -0.29265), Z: (-0.701614, 0.587785, 0.402798), O: (-20.13067, 11.16792, 27.95316)]",
+          "[X: (0.497886, 0.0, 0.867243), Y: (0.509753, 0.809017, -0.29265), Z: (-0.701614, 0.587785, 0.402798), O: (-20.13067, 11.16792, 27.95316)]",
           "[X: (0.493412, 0.0, 0.869796), Y: (0.511253, 0.809017, -0.29002), Z: (-0.703679, 0.587785, 0.399179), O: (-20.16991, 11.16792, 27.8844)]",
           "[X: (0.489778, 0.0, 0.871847), Y: (0.512459, 0.809017, -0.287884), Z: (-0.705339, 0.587785, 0.396239), O: (-20.20144, 11.16792, 27.82854)]",
           "[X: (0.487055, 0.0, 0.873371), Y: (0.513355, 0.809017, -0.286284), Z: (-0.706572, 0.587785, 0.394036), O: (-20.22487, 11.16792, 27.78668)]",
@@ -301,7 +283,7 @@
           "[X: (0.515405, 0.0, 0.856947), Y: (0.656459, 0.642788, -0.394823), Z: (-0.550835, 0.766044, 0.331296), O: (-27.73172, 29.10969, 32.88925)]",
           "[X: (0.508989, 0.0, 0.860773), Y: (0.65939, 0.642788, -0.389908), Z: (-0.553294, 0.766044, 0.327172), O: (-27.82518, 29.10969, 32.73253)]",
           "[X: (0.503111, 0.0, 0.864222), Y: (0.662032, 0.642788, -0.385406), Z: (-0.555511, 0.766044, 0.323394), O: (-27.90942, 29.10969, 32.58896)]",
-          "[X: (0.497885, 0.0, 0.867243), Y: (0.664347, 0.642788, -0.381402), Z: (-0.557453, 0.766044, 0.320035), O: (-27.98321, 29.10969, 32.46132)]",
+          "[X: (0.497886, 0.0, 0.867243), Y: (0.664347, 0.642788, -0.381402), Z: (-0.557453, 0.766044, 0.320035), O: (-27.98321, 29.10969, 32.46132)]",
           "[X: (0.493412, 0.0, 0.869796), Y: (0.666302, 0.642788, -0.377976), Z: (-0.559094, 0.766044, 0.317159), O: (-28.04557, 29.10969, 32.35205)]",
           "[X: (0.489778, 0.0, 0.871847), Y: (0.667874, 0.642788, -0.375192), Z: (-0.560413, 0.766044, 0.314823), O: (-28.09567, 29.10969, 32.26329)]",
           "[X: (0.487055, 0.0, 0.873371), Y: (0.669041, 0.642788, -0.373106), Z: (-0.561392, 0.766044, 0.313073), O: (-28.1329, 29.10969, 32.19677)]",
@@ -333,11 +315,11 @@
       }
     ]
   },
-  "presentation": "Four-second command view. Original full frames scaled without cropping. Close sweep retained locally because its occupied bay is clipped. Native camera motion with simulation held; not a vehicle-driving or performance test.",
+  "presentation": "Four-second command view (view 1), main and branch side by side, each 1280x720 frame scaled to 800x450 without cropping under a 40 px label band: 1600x490 at 12 fps, VP9, silent. The close sweep (view 0) is kept in the capture data. Native camera motion with simulation held; not a vehicle-driving or performance test.",
   "notes": [
+    "All 96 recorded camera transforms (both views), the seed, exposure, sun transform and the two-second held simulation time match exactly between main and the branch.",
     "Startup camera was positioned at the requested bays to avoid warming a wide initial view.",
-    "Earlier main-versus-PR stills and earlier PR-revision evidence are preserved separately.",
-    "Low settings used. Existing seed-3 parking-placement and building-component tests pass.",
-    "Head Compatibility rendered and inspected at 960x540 with two saved frames per view; native OpenGL Mesa llvmpipe. Bay run, occupied bay and opposite lane remain readable."
+    "Low settings used. The seed-3 parking placement, determinism and building-component tests pass.",
+    "The earlier clip's capture (main 6399514 versus 175e258, Linux, Mesa llvmpipe) is in the history of this file."
   ]
 }

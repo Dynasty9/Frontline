@@ -17,21 +17,21 @@
     },
     {
       "file": "changelog/unreleased/parked-cars/parking-motion.webm",
-      "sha256": "af2b63cc007b3c6ac8386cbfa86c530295c70f843a5634d8a7a7759d213bf233"
+      "sha256": "aa74ab746627d4352de4dd7de91b19df257af561f3ab15b63fa213548772cb8c"
     },
     {
       "file": "changelog/unreleased/parked-cars/parking-motion.jpg",
-      "sha256": "0b796e44383eb5b5c0ee990503c709b1d14ac07fa4e9761b81911b26573c42bb"
+      "sha256": "37edcdef0bdb96a7f85e362c7eafeb081c35f6a346ab1abdbf9e2d731c3d850c"
     },
     {
       "file": "changelog/unreleased/parked-cars/motion-capture.json",
-      "sha256": "8771b095772a749801d1c8b334fed8248091865a1443e1a74d7dfb3536f78321"
+      "sha256": "f5c8ea44f98a30949c26b24a0fc02a52664f04608d363d5be985ed2c6a852db5"
     }
   ],
   "output": null,
   "motion_review": {
-    "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
-    "source_ref": "175e258150a28cecc0a21bdec147fe0a81e6dc4a",
+    "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+    "source_ref": "fc3c27314e171bc255f2edd36e34d260ae9fb08c",
     "harness_sha256": "3fdaf78ca26d96ad93f9ab7842e919a0ff734e91b259673d0a6cf7d3402255cd",
     "stage": "tools/showcase/environment-motion.gd --motion-stage=parking",
     "capture": "changelog/unreleased/parked-cars/motion-capture.json"
