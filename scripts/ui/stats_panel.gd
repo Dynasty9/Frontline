@@ -265,6 +265,8 @@ func set_report(r: Dictionary) -> void:
 		else:
 			var whose: String = "Both sides" if bool(r.get("full", false)) else (String(Defs.TEAM_NAMES[int(r.get("view", 0))]) + " figures")
 			_sub.text = "T+%s  ·  %s" % [_clock(float(r.get("t", 0.0))), whose]
+		if r.get("outcome", "") != "":
+			_sub.text += "\n" + String(r.outcome)
 	if _hint:
 		_hint.visible = peek
 		_close.visible = not peek

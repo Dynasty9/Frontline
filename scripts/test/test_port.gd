@@ -197,7 +197,28 @@ func _answer(cmd: String, req: Dictionary) -> Variant:
 			return {"t": w.time}
 		"hash":
 			return {"t": w.time, "hash": _hash(w), "entities": w.entities.size()}
+		"rig":
+			return _rig(w, req)
 	return {"ok": false, "error": "unknown command: %s" % cmd}
+
+
+## Sets the battle up for a test of how it's won (Victory): "towns": a side
+## takes every town and village; "resolve": [a, b] the sides' resolve;
+## "wreck": a FOB's id, wrecked as if shelled flat.
+func _rig(w: World, req: Dictionary) -> Dictionary:
+	if req.has("towns"):
+		for tn in w.rules.towns():
+			if tn.team != int(req.towns):
+				w.rules.capture_town(tn, int(req.towns))
+	if req.has("resolve"):
+		for t in 2:
+			w.rules.victory.points[t] = float(req.resolve[t])
+	if req.has("wreck"):
+		var f := w.entity(int(req.wreck)) as Structure
+		if f == null:
+			return {"ok": false, "error": "no structure %s" % str(req.wreck)}
+		f.take_damage(f.hp + 1.0)
+	return {"t": w.time, "winner": w.winner}
 
 
 ## The AI commanders and how good each is (Defs.AI_LEVELS).
@@ -298,8 +319,12 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 		ids[int(id)] = true
 	var out := []
 	match what:
+		"report":
+			var report := w.battle.report(-1)
+			return {"report": _plain(report), "saved": _plain(BattleStats.trim_report(report))}
 		"world":
 			return {"t": w.time, "winner": w.winner, "seed": int(w.settings.get("seed", 0)), "scenario": String(w.settings.get("scenario", "")),
+				"resolve": w.rules.victory.points.duplicate(), "ground": w.rules.victory.held.duplicate(), "bleed": w.rules.victory.bleed.duplicate(),
 				"mission": String(w.settings.get("mission", "")), "soldiers": w.soldiers.size(), "vehicles": w.vehicles.size(),
 				"structures": w.structures.size(), "squads": w.squads.size(), "supply": [w.rules.supply_total(0), w.rules.supply_total(1)],
 				"mission_info": _plain(w.mission_info), "ai": _ai(w)}
