@@ -948,12 +948,12 @@ static func _marid(k: VehicleModels, team: int, seed := 0) -> void:
 	k._bag(m, Vector3(0.7, 0.26, 0.5), Vector3(-0.3, 2.37, 2.95), "canvas", Color(0.33, 0.33, 0.24), Vector3(0, 0.1, 0))
 	k._box(m, Vector3(0.45, 0.22, 0.4), Vector3(0.35, 2.35, 3.0), "paint", OLIVE)
 	k._team_mark(m, team, Vector3(0, 2.235, 0.85), Vector3(0.7, 0.02, 0.5))
-	var side := -1.0 if posmod(seed, 2) == 0 else 1.0
+	var kit_side := -1.0 if posmod(seed, 2) == 0 else 1.0
 	# the section's kit on the roof aft of the weapon stations' sweep, left or
 	# right as the crew stowed it: a strapped kit bag in the crew's dull canvas,
 	# or two ammunition cans (a patch too narrow for the cans turned every
 	# bundle into a duffel, a pale smooth pill on the roof once sun-faded)
-	VmCore.roof_kit(k, m, Vector3(-side * 0.76, 2.2, 0.8), 0.0, Vector2(0.5, 0.78), 2, Color(0.27, 0.28, 0.2))
+	VmCore.roof_kit(k, m, Vector3(-kit_side * 0.76, 2.2, 0.8), 0.0, Vector2(0.5, 0.78), 2, Color(0.27, 0.28, 0.2))
 	# the tactical number low on each upper side, between the exhaust and the
 	# first firing port
 	VehicleMarkings.side_number(k, m, VehicleMarkings.tactical_number(seed, TAC), 0.18, Vector3(1.45, 1.42, 3.3), Vector3(1.45, 1.42, -2.0), Vector3(1.15, 2.2, -2.0), Vector3(1.15, 2.2, 3.3), Vector2(0.585, 0.23))
