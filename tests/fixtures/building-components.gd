@@ -513,12 +513,13 @@ func _ready() -> void:
 		bk.sink.root.free()
 	# What stands at the kerb keeps to its spot: a lamp's head out over the
 	# road no further than its arm, a sign, a hydrant, a mailbox, a cabinet
-	# (the bounds of a turned lantern or sign are a turned square's).
+	# (the bounds of a turned lantern or sign are a turned square's;
+	# the sign now turns in its face plane, making that box wider, not deeper).
 	var kerbs := [[func(k: BuildingKit): BuildingKerbside.column(k), Vector3(2.0, 6.45, 0.45)],
 		[func(k: BuildingKit): BuildingKerbside.pole_lamp(k), Vector3(1.45, 6.05, 0.65)],
 		[func(k: BuildingKit): BuildingKerbside.lantern_post(k), Vector3(0.75, 4.95, 0.75)],
 		[func(k: BuildingKit): BuildingKerbside.hydrant(k), Vector3(0.55, 0.8, 0.36)],
-		[func(k: BuildingKit): BuildingKerbside.stop_sign(k, k.rng), Vector3(0.8, 2.6, 0.35)],
+		[func(k: BuildingKit): BuildingKerbside.stop_sign(k, k.rng), Vector3(1.03, 2.67, 0.12)],
 		[func(k: BuildingKit): BuildingKerbside.mailbox(k, Color.BLUE, true), Vector3(0.3, 1.42, 0.5)],
 		[func(k: BuildingKit): BuildingKerbside.cabinet(k), Vector3(1.25, 1.5, 0.75)]]
 	for kb: Array in kerbs:

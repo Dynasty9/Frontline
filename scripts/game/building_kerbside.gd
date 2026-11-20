@@ -25,6 +25,8 @@ static func column(k: BuildingKit) -> void:
 		var p := Vector3(1.2 * t, 6.15 + 0.2 * sin(t * PI * 0.5), 0)
 		k.rod(prev, p, 0.04, "metal_dark", COLUMN, 8)
 		prev = p
+	# The socket drops into the cast head; the lens stays at its lighting anchor.
+	k.rod(prev, Vector3(1.2, 6.21, 0), 0.04, "metal_dark", COLUMN, 8)
 	# the lantern: a cast head, its lens under it
 	k.part(Res.sphere(0.5, 10), "metal_dark", Transform3D(Basis.from_scale(Vector3(0.7, 0.18, 0.32)), Vector3(1.44, 6.17, 0)), COLUMN.lightened(0.05))
 	k.box(Vector3(0.56, 0.05, 0.27), Vector3(1.44, 6.09, 0), "metal_dark", COLUMN.darkened(0.15), Vector3.ZERO, false)
@@ -86,10 +88,12 @@ static func hydrant(k: BuildingKit, col := Color(0.7, 0.12, 0.08)) -> void:
 ## galvanised back, its two brackets on the post.
 static func stop_sign(k: BuildingKit, rng: RandomNumberGenerator) -> void:
 	k.cyl(0.035, 0.035, 2.4, Vector3(0, 1.2, 0), "steel", Color(0.55, 0.56, 0.55), Vector3.ZERO, 8)
-	# (the sign stands off the post's face on its brackets)
-	k.cyl(0.39, 0.39, 0.02, Vector3(0, 2.15, -0.05), "steel", Color(0.6, 0.61, 0.6), Vector3(PI * 0.5, PI / 8.0, 0), 8)
-	k.cyl(0.38, 0.38, 0.005, Vector3(0, 2.15, -0.062), "car_paint", Color(0.92, 0.92, 0.9), Vector3(PI * 0.5, PI / 8.0, 0), 8, false)
-	k.cyl(0.345, 0.345, 0.006, Vector3(0, 2.15, -0.066), "car_paint", Color(0.72, 0.07, 0.06), Vector3(PI * 0.5, PI / 8.0, 0), 8, false)
+	# Turn the octagon within its own plane before tipping it upright, so
+	# the face stays parallel to the lettering.
+	var face := Basis(Vector3.RIGHT, PI * 0.5) * Basis(Vector3.UP, PI / 8.0)
+	k.part(Res.cyl(0.39, 0.39, 0.02, 8), "steel", Transform3D(face, Vector3(0, 2.15, -0.05)), Color(0.6, 0.61, 0.6))
+	k.part(Res.cyl(0.38, 0.38, 0.005, 8), "car_paint", Transform3D(face, Vector3(0, 2.15, -0.062)), Color(0.92, 0.92, 0.9), false)
+	k.part(Res.cyl(0.345, 0.345, 0.006, 8), "car_paint", Transform3D(face, Vector3(0, 2.15, -0.066)), Color(0.72, 0.07, 0.06), false)
 	stop_word(k.at_point(Vector3(0, 2.15, -0.071)), Color(0.95, 0.95, 0.92))
 	for y: float in [1.98, 2.32]:
 		k.box(Vector3(0.1, 0.03, 0.05), Vector3(0, y, -0.025), "steel", Color(0.5, 0.5, 0.5), Vector3.ZERO, false)
