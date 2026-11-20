@@ -22,6 +22,10 @@ const PROFILES := {
 		"trim_color": Color(0.53, 0.52, 0.49)},
 	"stone": {"surface": "stone", "color": Color(0.56, 0.53, 0.48), "finish": "stone",
 		"trim": "stone", "sill": "stone", "head": "stone", "base": "stone", "base_tone": -0.18, "cap": "stone"},
+	# a garden's or a field's wall of field stones, pointed in mortar and
+	# finished on top with stones set on edge (BuildingWalls.cock_and_hen)
+	"fieldstone": {"surface": "fieldstone", "color": Color(0.56, 0.53, 0.48), "finish": "rubble",
+		"trim": "fieldstone", "sill": "fieldstone", "head": "fieldstone", "base": "fieldstone", "base_tone": -0.15, "cap": "fieldstone_cap"},
 	"concrete": {"surface": "concrete", "color": Color(0.5, 0.49, 0.46), "finish": "cast",
 		"trim": "concrete", "sill": "concrete", "head": "concrete", "base": "concrete", "base_tone": -0.12, "cap": "concrete"},
 	"precast": {"surface": "precast", "color": Color(0.56, 0.55, 0.52), "finish": "panels", "joints": 2.0,

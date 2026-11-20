@@ -113,6 +113,14 @@ func _ring(mesh: Mesh, code: String, cap: int, see_through: bool, sort_bias: flo
 	mm.use_custom_data = true
 	mm.mesh = share_mesh if share_mesh else mesh
 	mm.instance_count = cap
+	# Every instance starts spent. The Compatibility renderer hands a new
+	# MultiMesh whatever its memory last held, and the ones not fired yet
+	# drew from it: a white shape at the map's middle, which came and went as
+	# other meshes were made. (Forward+ clears it; this makes them agree.)
+	var spent := PackedFloat32Array()
+	spent.resize(cap * (12 + 4 + 4))  # transform, colour, custom data
+	spent.fill(0.0)
+	mm.buffer = spent
 	# (the instances carry flight data, not transforms: the box is the map)
 	var big := AABB(Vector3(-MapDims.HALF - 300.0, -100.0, -MapDims.HALF - 300.0), Vector3((MapDims.HALF + 300.0) * 2.0, 400.0, (MapDims.HALF + 300.0) * 2.0))
 	mm.custom_aabb = big

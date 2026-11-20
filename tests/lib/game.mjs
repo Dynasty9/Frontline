@@ -37,6 +37,25 @@ const READY = /TESTPORT listening 127\.0\.0\.1:(\d+)/;
 const running = new Set();
 after(() => Promise.all([...running].map((game) => game.close())));
 
+// The tests' expectations are what the game does with its native extension
+// (tools/build_native.py), as CI builds it. Without it the game falls back on
+// GDScript perception and AStar3D routes: the same rules, but a close fight
+// can go another way (a breacher caught by a grenade thrown back out of the
+// door, where in CI he got in), so a scenario's counters can fall short. The
+// first game a file starts says so, rather than leave a failure unexplained.
+let nativeChecked = false;
+async function checkNative(game) {
+  if (nativeChecked) return;
+  nativeChecked = true;
+  const { native } = await game.hello();
+  if (native === false)
+    console.warn(
+      "The native extension isn't loaded, so these games run its GDScript fallbacks (as on macOS and in a browser), " +
+        "and a close fight can go another way than in CI. On Windows or Linux, build it with " +
+        "`python tools/build_native.py` and re-import (`godot --headless --path . --import`).",
+    );
+}
+
 /** A position for an order: [x, z] on the ground. */
 export const v3 = (x, z) => ({ v3: [x, z] });
 
@@ -55,6 +74,7 @@ export class Game {
     }
     running.add(game);
     game.#exit.then(() => running.delete(game));
+    await checkNative(game);
     return game;
   }
 

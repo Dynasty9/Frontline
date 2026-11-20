@@ -277,6 +277,18 @@ static func canopy(k: BuildingKit, width: float, depth: float, covering: String,
 		k.beam(Vector3(x, -0.6, 0.02), Vector3(x, -0.2, depth * 0.8), 0.06, 0.06, "wood_dark", trim_col)
 
 
+## How high the sheet of a run of north lights (as `sawtooth` lays them,
+## centred on x = 0) stands over the roof under it at `x`: up each tooth's
+## slope, nothing in the valleys between.
+static func sawtooth_rise(L: float, teeth: int, rise: float, x: float) -> float:
+	var p := L / teeth
+	var sl := p * 0.78
+	var u := fposmod(x + L * 0.5, p)
+	if x < -L * 0.5 or x > L * 0.5 or u > sl:
+		return 0.0
+	return rise * u / sl
+
+
 ## A run of north lights over a roof whose top is at the kit's origin, `L`
 ## along x and `W` across: each tooth a sheeted slope up to a glazed upright
 ## face, triangular ends, a valley gutter between teeth.
