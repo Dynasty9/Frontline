@@ -82,6 +82,23 @@ scenarioTests([
     },
   },
   {
+    scenario: "alley",
+    seed: 3,
+    secs: 20,
+    does: "a gun team holds two houses across a narrow alley with a car in it; men wait in the alley, at its mouth and in the street",
+    check: async (f) => {
+      const men = (await f.soldiers({ team: 0 })).filter((s) => s.life === "ALIVE");
+      assert.ok(men.length === 14, `all four squads stand, nobody shooting (${men.length} alive)`);
+      const inside = men.filter((s) => Math.abs(s.pos[0]) < 4.5 && s.pos[1] < -26.5 && s.pos[1] > -42);
+      assert.ok(inside.length >= 2, `the gun team holds the houses (${inside.length} inside)`);
+      assert.ok(men.some((s) => s.pos[1] > -26), "the squad is out in the street");
+      assert.ok(men.some((s) => Math.abs(s.pos[1] + 34.25) < 1.2 && Math.abs(s.pos[0]) < 4), "a man stands in the alley");
+      assert.ok(men.some((s) => s.pos[0] < -8), "and a squad out in the sun at its mouth");
+      const cars = await f.structures({ kind: "car" });
+      assert.ok(cars.length >= 1, "the car is parked in the alley");
+    },
+  },
+  {
     scenario: "lean",
     seed: 2,
     secs: 30,
