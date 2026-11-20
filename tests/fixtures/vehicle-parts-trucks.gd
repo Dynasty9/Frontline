@@ -92,7 +92,7 @@ func _ready() -> void:
 		# a chamfered kung with double doors; clearance lenses go on a wreck.
 		k = kit(burnt)
 		VehicleCargo.shelter(k, k.root, -2.32, 4.98, 2.44, 1.39, 3.01, "camo_tank", null, Rect2(Vector2(0.45, 2.15), Vector2(0.9, 1.4)), 1, 0, 0.0, 0.0, -0.6, 2)
-		assert(count(k, "signal_lens") == (0 if burnt else 24), "shelter markers keep their lenses only while intact")
+		assert(count(k, "signal_lens") == (0 if burnt else 4), "shelter markers keep their lenses (one fluted mesh each) only while intact: %d" % count(k, "signal_lens"))
 		check(k, AABB(Vector3(-1.26, 1.27, -2.345), Vector3(2.52, 2.0, 7.425)), "square shelter")
 		k = kit(burnt)
 		VehicleCargo.shelter(k, k.root, -0.2, 2.85, 2.48, 1.44, 2.98, "paint", olive, Rect2(), 2, -1, 0.06, 0.06)

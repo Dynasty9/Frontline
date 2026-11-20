@@ -943,14 +943,19 @@ func trench_depth() -> float:
 func _trench_changed(old_depth: float) -> void:
 	if skind != "trench" or is_equal_approx(old_depth, trench_depth()):
 		return
-	world.nav.remove_structure(self)
+	# only the host paths soldiers (a client has no nav); every peer reshapes
+	# the hole, its cover and fighting positions, so the view matches the dig
+	if world.nav:
+		world.nav.remove_structure(self)
 	_define_parts()
-	world.nav.add_structure(self)
+	if world.nav:
+		world.nav.add_structure(self)
 	if body:
 		remove_child(body)
 		body.queue_free()
 		body = null
-	if trench_depth() > 0.0:
+	# a client keeps bodies only for what it draws, as set_view_active does
+	if trench_depth() > 0.0 and (srv or (world.has_view and view_active)):
 		_make_body()
 	world.terrain.structure_changed(self, true)
 	_compute_cover_pts()
@@ -3781,7 +3786,9 @@ func _skinned(mesh: Mesh, sm: StandardMaterial3D, p: Vector3, rot: Vector3, scl:
 func _build_model() -> void:
 	model = Node3D.new()
 	add_child(model)
-	_bake = Mats.Bake.new() if skind in BAKED else null
+	# (and the concrete bunker: its stains, which merge_static would leave as
+	# a draw call each, go into its merged meshes with the rest)
+	_bake = Mats.Bake.new() if skind in BAKED or (skind == "bunker" and team != 1) else null
 	_body = []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = (look if look > 0 else eid) * 7919 + variant
@@ -3790,6 +3797,8 @@ func _build_model() -> void:
 	for p in parts:
 		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town", "church", "crates"] or skind in WorksModels.OWN_KINDS:
 			break
+		if skind == "bunker" and team != 1:
+			break  # (the pillbox draws its walls from its parts itself, as one pour)
 		if skind == "fob" and p.s.y > 2.0:
 			continue  # (the command post: HESCO, drawn below)
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
@@ -4166,20 +4175,25 @@ func _build_model() -> void:
 					var y := 2.6 + WorksModels.roof_soil_height(Vector2(x, -2.2), soil_variant) + 0.08
 					bags.append({"p": Vector3(x, y, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": rng.randf_range(-0.09, 0.09)})
 			else:
-				# reinforced concrete: a thick roof slab with an overhang under a
-				# layer of bags, earth banked up to the slits, steel angle round
-				# the embrasure, a steel door, a vent and a whip aerial
-				_box(Vector3(0, 2.62, 0), Vector3(6.3, 0.16, 6.3), C_CONCRETE.darkened(0.28))
-				for row in 2:
-					bags.append({"p": Vector3(0, 2.82, -2.6 + row * 0.5), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				bags.append({"p": Vector3(0, 2.82, 2.6), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
-				for y in [1.1, 1.66]:
-					_mk(Res.box(Vector3(2.7, 0.07, 0.1)), "metal_dark", Vector3(0, y, -2.82), Vector3.ZERO, Color(0.2, 0.2, 0.19))
+				# reinforced concrete, cast in place (BuildingPillbox): the walls
+				# drawn from their parts as one pour with chamfered corners; the
+				# roof slab over them, its observation cupola, hatch and vent; a
+				# splayed embrasure at every slit; earth banked up to the slits,
+				# the steel doors open at the back, a whip aerial; the grime of a
+				# season and the bullet strikes round the slits
 				var bk := _kit(rng)
-				BuildingOpenings.leaf(bk.at_point(Vector3(-0.5, 0, 2.6)), Vector2(1.0, 1.92), "steel", Color(0.3, 0.32, 0.25), 1.0)
-				BuildingFittings.flue(bk, Vector3(1.8, 2.8, 1.6), 0.08, 0.6, Color(0.3, 0.3, 0.29), "steel")
-				BuildingFittings.whip(bk, Vector3(-2.3, 2.8, 2.3), 2.4)
+				var wc := BuildingPillbox.CONCRETE
+				BuildingPillbox.walls(bk, parts, wc)
+				BuildingPillbox.roof(bk, BuildingPillbox.WEATHERED, rng)
+				BuildingPillbox.embrasure(bk.on_face(Vector3(0, 0, -BuildingPillbox.HALF), Vector3.FORWARD), 2.6, wc)
+				for sx: float in [-1.0, 1.0]:
+					BuildingPillbox.embrasure(bk.on_face(Vector3(sx * BuildingPillbox.HALF, 0, 0), Vector3(sx, 0, 0)), 1.8, wc)
+				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
+				var rear := bk.on_face(Vector3(0, 0, BuildingPillbox.HALF), Vector3.BACK)
+				BuildingPillbox.door(rear, 2.0, 1.9)
+				BuildingPillbox.step_irons(rear, 2.2)
+				BuildingFittings.whip(bk, Vector3(-1.2, BuildingPillbox.SLAB_TOP, 1.2), 2.4)
+				BuildingPillbox.weather(bk, parts, wc, rng)
 			_box(Vector3(0, 0.02, 0), Vector3(4.4, 0.04, 4.4), Color(0.3, 0.29, 0.27), 0.0, false)
 		"watchtower":
 			for p in parts:

@@ -222,7 +222,7 @@ func _ready() -> void:
 	if _curtains:
 		_intro()
 	Net.game_start.connect(_on_game_start)
-	Net.net_error.connect(func(m): return_to_menu(m))
+	Net.net_error.connect(_on_net_error)
 	if args.has("name"):
 		Net.my_name = args.name
 	if args.has("mood"):
@@ -826,6 +826,31 @@ func _warm_up(cur: Curtain) -> void:
 	if is_instance_valid(cur):
 		cur.set_stage("Ready", 1.0)
 		cur.finish(2.2)
+
+
+func _on_net_error(msg: String) -> void:
+	# a test client whose host ends the battle first (its own --quit-after,
+	# counted from the start, runs out before the client's, counted from when
+	# the world reached it) reports what it had and quits, rather than waiting
+	# at the menu for a world that won't come back
+	if _quit_at > 0.0 and world and not world.srv and world.has_meta("world_at"):
+		_quit_at = -1.0
+		_client_summary(" host_left=1")
+		TestRun.quit(get_tree())
+		return
+	return_to_menu(msg)
+
+
+## The CLIENT line a test client prints when it quits (docs/DEVELOPMENT.md, "Host / client").
+func _client_summary(extra: String) -> void:
+	var counts := {}
+	var enemy := 0
+	for e in world.entities.values():
+		counts[e.ekind()] = int(counts.get(e.ekind(), 0)) + 1
+		if e.team >= 0 and e.team != world.local_team:
+			enemy += 1
+	counts["ENEMY_KNOWN"] = enemy
+	print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d%s" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine(), extra])
 
 
 func return_to_menu(msg: String) -> void:
@@ -1539,14 +1564,7 @@ func _process(_dt: float) -> void:
 			print("FINAL ", world.debug_stats())
 			print("REPORT ", world.battle.summary())
 		else:
-			var counts := {}
-			var enemy := 0
-			for e in world.entities.values():
-				counts[e.ekind()] = int(counts.get(e.ekind(), 0)) + 1
-				if e.team >= 0 and e.team != world.local_team:
-					enemy += 1
-			counts["ENEMY_KNOWN"] = enemy
-			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine()])
+			_client_summary("")
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
 		TestRun.quit(get_tree())
