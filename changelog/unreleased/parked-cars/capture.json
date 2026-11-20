@@ -1,6 +1,6 @@
 {
-  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
-  "source_ref": "53e4140a17223530974734453f56df6094045dcf",
+  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
+  "source_ref": "55cd82b4ae38754cc0e2666f8a0e47222c7f2a89",
   "engine": "Godot 4.7.2 stable ed1daf0bf",
   "renderer": "forward_plus",
   "resolution": [
@@ -32,9 +32,9 @@
     },
     {
       "subjects": [
-        "burnt-out car"
+        "a run of bays"
       ],
-      "command": "godot --path CHECKOUT --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --perf=0 --set=perf:0 --preset=high --mood=day --screenshot=OUT.png --shot-at=4 --focus=33.3,-33 --zoom=17 --pitch=-38 --cam-yaw=0.7",
+      "command": "godot --path CHECKOUT --resolution 1600x900 -- --aivai --seed=3 --offscreen --nohud --perf=0 --set=perf:0 --preset=high --mood=day --screenshot=OUT.png --shot-at=4 --focus=-6.8,20.3 --zoom=19 --pitch=-36 --cam-yaw=-1.0",
       "crop": [
         0,
         0,
@@ -43,5 +43,10 @@
       ]
     }
   ],
-  "notes": "Before and after are the same seed-3 battle map, same cameras, no retouching. Each half is scaled to 792 px wide on the sheet."
+  "review": {
+    "file": "review.jpg",
+    "before": "this branch as it was before the bays (aabab6eb, cars along every kerb), on the same main: the source with the bays commit reverted",
+    "after": "source_ref"
+  },
+  "notes": "Before and after are the same seed-3 battle map, same cameras, no retouching. Each half is scaled to 792 px wide on the sheet. comparison.jpg is main against this change; review.jpg, for the pull request, is the earlier version of this change (cars along every kerb) against this one."
 }

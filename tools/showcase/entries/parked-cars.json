@@ -1,19 +1,19 @@
 {
   "entry": "changelog/unreleased/parked-cars.md",
-  "summary": "The town's streets are lined with the cars people left when the fighting came, some slewed out into the lane and some burnt out, and every one is cover.",
+  "summary": "The main streets by the shops have parking bays marked out at the kerb, some with the cars people left there when the fighting came, and every car is cover.",
   "medium": "still",
   "stage": "tests/fixtures/environment-views.gd (town); main.gd off-screen screenshot",
-  "rationale": "Appearance change: matched seed-3 cameras show the town from the battle camera, the square at a readable size, and a closer view of a burnt-out car slewed out from the kerb.",
-  "source_ref": "53e4140a17223530974734453f56df6094045dcf",
-  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "rationale": "Appearance change: matched seed-3 cameras show the town from the battle camera, the square and the main streets off it, and a closer view of a run of bays by the shops.",
+  "source_ref": "55cd82b4ae38754cc0e2666f8a0e47222c7f2a89",
+  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
   "sources": [
     {
       "file": "changelog/unreleased/parked-cars/comparison.jpg",
-      "sha256": "67e4d5115ddbf869f6f70f5c7ca97baf39c1daba4a32d7515ca3b41014de81fc"
+      "sha256": "c7e228c744e9a361e6d0d756be867e130e55eb9297c81bdbbd537cd8a3af7e6b"
     },
     {
       "file": "changelog/unreleased/parked-cars/capture.json",
-      "sha256": "2f54f2ee9362a4fc3c76e9f52d1427d4fa6580c164bfafc5048216d7325174c1"
+      "sha256": "475e68583dd12317c828552e103a45a5cbf49e1a000c1f0f19af14a0a3850ef8"
     }
   ],
   "output": null
