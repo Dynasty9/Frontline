@@ -180,7 +180,7 @@ static func _sprocket(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: fl
 ## 2's, Warrior's and Wiesel's tracks are double-pin with a centre guide
 ## running between the twin road wheels.
 static func _track_belt(k: VehicleModels, p: Node3D, x: float, w: float, circles: Array, th := 0.08, segs := 16) -> void:
-	VehicleTracks.shoes(k, p, x, w, VehicleTracks.wheel_envelope(circles, th, segs), th, 0.20, true, true)
+	VehicleTracks.shoes(k, p, x, w, VehicleTracks.on_rollers(k, VehicleTracks.wheel_envelope(circles, th, segs), circles, th * 0.5), th, 0.20, true, true)
 
 
 # --- Strider: KMW Fennek LGS scout car ---------------------------------------------
@@ -373,10 +373,11 @@ static func _coax_port(k: VehicleModels, p: Node3D, at: Vector3, radius: float) 
 
 
 ## A slat cage panel: top and bottom rails, end posts and the vertical slats,
-## centred at c; along X (a rear cage) or along Z (a side cage).
-static func _slats(k: VehicleModels, p: Node3D, c: Vector3, l: float, h: float, along_x: bool, gap := 0.17) -> void:
+## centred at c; along X (a rear cage) or along Z (a side cage). The slats
+## take `mat` / `col` (the hull's paint: a cage comes painted with the tank).
+static func _slats(k: VehicleModels, p: Node3D, c: Vector3, l: float, h: float, along_x: bool, gap := 0.17, mat := "gunmetal_w", col = null) -> void:
 	var axis := Vector3.RIGHT if along_x else Vector3.BACK
-	VehicleMounts.slats(k, p, c - axis * l * 0.5 - Vector3.UP * h * 0.5, c + axis * l * 0.5 - Vector3.UP * h * 0.5, h, gap, true)
+	VehicleMounts.slats(k, p, c - axis * l * 0.5 - Vector3.UP * h * 0.5, c + axis * l * 0.5 - Vector3.UP * h * 0.5, h, gap, true, mat, col, mat, col)
 
 
 
@@ -427,8 +428,6 @@ static func _mora(k: VehicleModels, team: int, seed := 0) -> void:
 		for i in 5:
 			VehicleEquipment.skirt(k, m, Vector3(s * 1.49, 0.8, -1.9 + i * 1.1), Vector3(0.05, 0.44, 1.08), s, cam, col)
 			k._box(m, Vector3(0.02, 0.03, 1.0), Vector3(s * 1.52, 0.98, -1.9 + i * 1.1), "gunmetal_w", null, Vector3.ZERO, false)
-		# cut branches tucked along the skirts' top edge, against the hull side
-		VehicleBody.cut_branches(k, m, Vector3(s * 1.5, 1.033, -2.2), Vector3(s * 1.5, 1.033, 1.1), Vector3(s, 0, 0), 31)
 		VehicleEquipment.skirt_bow(k, m, Vector3(s * 1.49, 0.86, -2.78), Vector3(0.05, 0.36, 0.6), s, cam, col, Vector3(-0.45, 0, 0))
 		# the hull's side seam at the deck line, a stowage box aft
 		k._box(m, Vector3(0.04, 0.05, 6.1), Vector3(s * 1.45, 1.5, 0.05), cam, col)
@@ -550,8 +549,6 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 			if heavy:
 				k._box(m, Vector3(0.02, 0.03, 0.9), Vector3(s * 1.905, 1.06, sz), "gunmetal_w", null, Vector3.ZERO, false)
 		VehicleEquipment.skirt_bow(k, m, Vector3(s * 1.83, 0.96, -3.48), Vector3(0.14, 0.4, 0.56), s, cam, col, Vector3(-0.5, 0, 0))
-		# cut branches tucked along the skirts' top, against the hull side
-		VehicleBody.cut_branches(k, m, Vector3(s * 1.82, 1.153, -2.8), Vector3(s * 1.82, 1.153, 1.3), Vector3(s, 0, 0), 31)
 		# the hull's sides: a stowage box and the tool rack above the skirts
 		VehicleEquipment.storage(k, m, Vector3(s * 1.8, 1.4, 2.6), Vector3(0.12, 0.3, 1.2), cam, col, Vector3.ZERO)
 		k._cyl(m, 0.03, 0.03, 2.4, Vector3(s * 1.79, 1.5, 0.1), X90, "gunmetal_w", null, 6, false)
@@ -564,9 +561,11 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 		VehicleFittings.tow_shackle(k, m, Vector3(s * 0.8, 1.0, 3.88), 1.0, Vector3(0.14, 0.18, 0.2), 0.055)
 	k._box(m, Vector3(0.5, 0.05, 1.5), Vector3(0, 1.69, 2.65), cam, col)
 	# the exhaust louvres across the top of the rear plate, the slat cage
-	# standing off the back on its struts
+	# standing off the back on its struts: painted bars a hand's width apart
+	# (closer than an RPG's warhead is wide, so its nose is caught between
+	# them), not a fence of black railings
 	VehicleFittings.grille(k, m, Vector3(0, 1.5, 3.91), Vector2(2.8, 0.26), Vector3.ZERO, cam, col, 3)
-	_slats(k, m, Vector3(0, 1.22, 4.18), 3.3, 0.8, true, 0.26)
+	_slats(k, m, Vector3(0, 1.22, 4.18), 3.3, 0.8, true, 0.13, cam, col)
 	for sx: float in [-1.2, 0.0, 1.2]:
 		k._box(m, Vector3(0.05, 0.05, 0.32), Vector3(sx, 1.0, 4.02), "gunmetal_w", null, Vector3.ZERO, false)
 	k._team_mark(m, team, Vector3(1.81, 1.4, 1.2), Vector3(0.03, 0.22, 0.7))
@@ -586,11 +585,17 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 	# at its corners and carrying a lifting lug on its top edge for the crane
 	# that changes it: two on each cheek either side of the mantlet, three
 	# along each side
+	# (about one in eight a replacement bolted on after a hit, still in its
+	# plain factory paint, drawn from the kit seed so neighbours differ)
 	for s: float in [-1.0, 1.0]:
 		for cx: float in [0.72, 1.44]:
-			VehicleMounts.applique(k, t, Vector3(s * cx, 0.43, -2.1), Vector3(0.7, 0.82, 0.26), Vector3(0, PI, 0), cam, col, Vector2i(2, 2), 1)
+			var at := Vector3(s * cx, 0.43, -2.1)
+			var pm := _module_paint(k, t, at, cam, col)
+			VehicleMounts.applique(k, t, at, Vector3(0.7, 0.82, 0.26), Vector3(0, PI, 0), pm[0], pm[1], Vector2i(2, 2), 1)
 		for cz: float in [-1.485, -0.5, 0.485]:
-			VehicleMounts.applique(k, t, Vector3(s * 1.72, 0.43, cz), Vector3(0.965, 0.76, 0.14), Vector3(0, s * PI / 2, 0), cam, col, Vector2i(2, 2), 1)
+			var at := Vector3(s * 1.72, 0.43, cz)
+			var pm := _module_paint(k, t, at, cam, col)
+			VehicleMounts.applique(k, t, at, Vector3(0.965, 0.76, 0.14), Vector3(0, s * PI / 2, 0), pm[0], pm[1], Vector2i(2, 2), 1)
 		k._team_mark(t, team, Vector3(s * 1.8, 0.34, 0.25), Vector3(0.03, 0.22, 0.7))
 		# smoke dischargers: a group of four on each side, aft, on the roof's
 		# edge and inboard of the side modules' faces
@@ -612,9 +617,11 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 	# behind it, the commander's and loader's hatches, the wind sensor
 	VehicleMounts.sight(k, t, Vector3(0.92, 1.04, -1.42), Vector3(0.6, 0.4, 0.78), [Rect2(Vector2(0, 0.02), Vector2(0.42, 0.18))], cam, col)
 	k._box(t, Vector3(0.64, 0.04, 0.82), Vector3(0.92, 1.25, -1.42), cam, col)
+	# (the PERI's head is an armoured drum painted with the turret, its cap
+	# a shade darker; bare, it read from above as a black can on the roof)
 	k._box(t, Vector3(0.34, 0.1, 0.34), Vector3(0.48, 0.91, -0.55), cam, col)
-	k._cyl(t, 0.17, 0.17, 0.3, Vector3(0.48, 1.11, -0.55), Vector3.ZERO, "gunmetal_w", null, 14)
-	k._cyl(t, 0.19, 0.19, 0.04, Vector3(0.48, 1.28, -0.55), Vector3.ZERO, "gunmetal_w", null, 14)
+	k._cyl(t, 0.17, 0.17, 0.3, Vector3(0.48, 1.11, -0.55), Vector3.ZERO, cam, col, 14)
+	k._cyl(t, 0.19, 0.19, 0.04, Vector3(0.48, 1.28, -0.55), Vector3.ZERO, "paint", Color(0.24, 0.27, 0.19), 14)
 	k._box(t, Vector3(0.2, 0.12, 0.02), Vector3(0.48, 1.14, -0.72), "glass", null, Vector3.ZERO, false)
 	VehicleMounts.cupola(k, t, Vector3(0.62, 0.92, 0.25), 0.36, 0.38, 0.12, 5, -0.9, 0.45, cam, col, Vector3(0.12, 0.08, 0.05))
 	VehicleFittings.panel_hatch(k, t, Vector3(-0.62, 0.89, -0.35), Vector3(0.62, 0.06, 0.62), cam, col)
@@ -633,15 +640,31 @@ static func _kuma(k: VehicleModels, team: int, seed := 0) -> void:
 	VehicleMounts.basket(k, t, Vector3(0, 0.24, 2.3), Vector3(2.6, 0.44, 0.5))
 	VehicleCloth.roll(k, t, Vector3(-0.4, 0.44, 2.3), 0.17, 1.6, Z90, Color(0.33, 0.35, 0.24))
 	k._bag(t, Vector3(0.6, 0.32, 0.38), Vector3(0.85, 0.44, 2.3), "canvas", Color(0.38, 0.37, 0.27))
-	_slats(k, t, Vector3(0, 0.46, 2.8), 3.3, 0.78, true, 0.26)
+	_slats(k, t, Vector3(0, 0.46, 2.8), 3.3, 0.78, true, 0.13, cam, col)
 	for s: float in [-1.0, 1.0]:
-		_slats(k, t, Vector3(s * 1.86, 0.46, 1.9), 1.8, 0.78, false, 0.26)
+		_slats(k, t, Vector3(s * 1.86, 0.46, 1.9), 1.8, 0.78, false, 0.13, cam, col)
 		k._box(t, Vector3(0.22, 0.05, 0.05), Vector3(s * 1.74, 0.64, 1.1), "gunmetal_w", null, Vector3.ZERO, false)
 		k._box(t, Vector3(0.05, 0.05, 0.3), Vector3(s * 1.4, 0.64, 2.65), "gunmetal_w", null, Vector3.ZERO, false)
 	# a remote .50 over the loader's hatch
 	_rcws(k, t, Vector3(-0.72, 0.86, 0.45), false, cam, col, 0.85)
 	k.turret = t
 	k.mg_tip = coax
+
+
+## A bolt-on armour module's paint, [material, colour]: the vehicle's own,
+## or for about one module in eight a replacement from depot stock in its
+## plain factory paint, not yet camouflaged (from the kit seed at the
+## module's place; scenery and wrecks keep the builders' one look).
+static func _module_paint(k: VehicleModels, p: Node3D, at: Vector3, cam: String, col) -> Array:
+	var rng := VehicleCargo.kit(k, p, at, 13)
+	if rng == null or rng.randf() >= 0.125:
+		return [cam, col]
+	return ["paint", VehicleCargo.kit_colour(rng, MODULE_SPARE[rng.randi_range(0, MODULE_SPARE.size() - 1)], VehicleCargo.KIT_PAINT, 1.0)]
+
+
+## Replacement modules' factory paints: a German olive, a darker green and a
+## sand.
+const MODULE_SPARE: Array[Color] = [Color(0.28, 0.31, 0.21), Color(0.22, 0.25, 0.18), Color(0.5, 0.45, 0.33)]
 
 
 # --- Nyx: Rheinmetall Wiesel AWC tankette -----------------------------------------
@@ -980,13 +1003,6 @@ static func _zamak_cab(k: VehicleModels, team: int, cam: String, col) -> void:
 	for x: float in [-0.3, 0.0, 0.3]:
 		VehicleFittings.marker(k, m, Vector3(x, 2.74, -1.94), Vector3(0.06, 0.05, 0.09), 2.0, Color(0.62, 0.45, 0.12))
 	_antenna(k, m, Vector3(-1.0, 2.72, -0.86), 1.6)
-	# a camouflage net bundled on the cab roof between the hatch and the
-	# antenna, by a crew that camouflages its truck (VehicleCloth.camouflage)
-	var net_at := Vector3(-0.42, 2.72, -1.3)
-	var rng := VehicleCargo.kit(k, m, net_at, 17)
-	var camo := VehicleCloth.camouflage(k)
-	if rng != null and camo > 0.0 and rng.randf() < camo + 0.2:
-		VehicleCloth.net(k, m, net_at, Vector3(0.78, rng.randf_range(0.1, 0.17), 0.72), Vector3(0, rng.randf_range(-0.2, 0.2), 0), rng)
 	# behind the cab: the spare wheel upright in its frame, the air intake,
 	# the fuel tank on the left and the battery box on the right
 	VehicleWheels.spare(k, m, Vector3(0, 1.74, -0.5), 0.6, 0.4, X90, cam, col)
@@ -1054,8 +1070,14 @@ static func _zamak_cargo(k: VehicleModels, tarp: Color, seed: int) -> void:
 	# the back: crates, sacks and jerrycans
 	VehicleCargo.crate_stack(k, m, Vector3(-0.62, 1.44, 3.1), Vector3(0.82, 0.56, 0.58), Vector3i.ONE, "wood", null, 0.0, [], 0.12, Color(0.28, 0.26, 0.2), rng.randf_range(-0.12, 0.12))
 	VehicleCargo.crate_stack(k, m, Vector3(-0.6, 2.0, 3.05), Vector3(0.6, 0.4, 0.5), Vector3i.ONE, "wood_dark", null, 0.0, [], 0.12, Color(0.28, 0.26, 0.2), rng.randf_range(-0.3, 0.3))
+	# (grain sacks: woven bags filled soft, slumped one on another, their
+	# sewn ends pinched; square boxes in their place read as crates)
 	for i in 3:
-		k._box(m, Vector3(0.55, 0.22, 0.36), Vector3(0.5, 1.55 + i * 0.2, 2.95 + (i % 2) * 0.12), "canvas_white", Color(0.56, 0.5, 0.38), Vector3(0, rng.randf_range(-0.4, 0.4), 0))
+		var sack := Vector3(0.5, 1.555 + i * 0.19, 2.95 + (i % 2) * 0.12)
+		var turn := rng.randf_range(-0.4, 0.4)
+		k._add(m, VehicleCloth._shell(Vector3(0.55, 0.24, 0.36)), "canvas_white", Color(0.56, 0.5, 0.38).darkened(0.04 * i), sack, Vector3(0, turn, 0.04 * (i - 1)))
+		var tie := Basis.from_euler(Vector3(0, turn, 0)) * Vector3(0.3, 0, 0)
+		k._add(m, VehicleCloth._shell(Vector3(0.07, 0.1, 0.16)), "canvas_white", Color(0.5, 0.45, 0.33), sack + tie, Vector3(0, turn, 0))
 	for i in 3:
 		_jerrycan(k, m, Vector3(0.38 + i * 0.22, 1.44, 3.55), Color(0.3, 0.33, 0.23), PI / 2)
 

@@ -716,7 +716,11 @@ static func _f16(k: VehicleModels, team: int) -> void:
 	var cst := [[z0 + 3.05, y0 + 0.44, 0.26, 0.02, 0.05], [z0 + 3.35, y0 + 0.44, 0.39, 0.32, 0.05, 2.1], [z0 + 3.85, y0 + 0.44, 0.45, 0.6, 0.05, 2.2],
 		[z0 + 4.5, y0 + 0.44, 0.47, 0.74, 0.05, 2.3], [z0 + 5.15, y0 + 0.44, 0.47, 0.75, 0.05, 2.3], [z0 + 5.8, y0 + 0.44, 0.44, 0.64, 0.05, 2.3],
 		[z0 + 6.3, y0 + 0.44, 0.38, 0.47, 0.05, 2.3], [z0 + 6.75, y0 + 0.44, 0.27, 0.27, 0.05, 2.2], [z0 + 7.1, y0 + 0.44, 0.12, 0.08, 0.05, 2.0]]
-	_glaze(k, VmPlane.body(k, m, "ft_f16_can", cst, "glass", null, 24, 60.0), Color(0.3, 0.26, 0.16), 0.6)
+	# (the gold of its radar-reflective coating; the pilot sits high under it)
+	var bubble: Variant = VmPlane.body(k, m, "ft_f16_can", cst, "glass", null, 24, 60.0)
+	if k.wreck or k.burnt:
+		_glaze(k, bubble, Color(0.3, 0.26, 0.16), 0.6)
+	VmPlane.cockpit(k, m, "ft_f16", cst, bubble, [z0 + 5.05], Color(0.36, 0.29, 0.15))
 	VmPlane.band(k, m, "ft_f16_bow", cst, z0 + 5.95, 0.07, 0.015, A, top.darkened(0.15), 24)
 	VmPlane.stripe(k, m, "ft_f16_rail", cst, z0 + 3.1, z0 + 7.05, -0.06, 0.1, A, top.darkened(0.2), 0.01, 4)
 	VmPlane.stripe(k, m, "ft_f16_railL", cst, z0 + 3.1, z0 + 7.05, PI - 0.1, PI + 0.06, A, top.darkened(0.2), 0.01, 4)
@@ -845,7 +849,7 @@ static func _f16(k: VehicleModels, team: int) -> void:
 		_insignia(k, m, "f16_ins" + L, Vector3(sd * 0.585, y0 - 0.84, z0 + 7.3), Vector3(sd, 0, 0), Vector3(0, 0, -sd), 0.2, team, dark, bot)
 		if team == 0:
 			_text(k, m, "f16_tc" + L, "WW", Vector3(0, y0 + 1.25, z0 + 12.1), Vector3(sd, 0, 0), Vector3(0, 0, -sd), 0.42, dark, fp)
-			_text(k, m, "f16_sn" + L, "0068", Vector3(0, y0 + 1.04, z0 + 12.1), Vector3(sd, 0, 0), Vector3(0, 0, -sd), 0.12, dark, fp)
+			_text(k, m, "f16_sn" + L, "00" + VmPlane.number(k, "68", 2, 10, 8), Vector3(0, y0 + 1.04, z0 + 12.1), Vector3(sd, 0, 0), Vector3(0, 0, -sd), 0.12, dark, fp)
 	# (upright toward the nose, seen from above or below: the US star on top of
 	# the left wing and under the right, CSAT's above and below both)
 	var iw := VmPlane.surf_at(ws, 3.2)
@@ -1143,7 +1147,7 @@ static func _blackwasp(k: VehicleModels, team: int) -> void:
 			var fn := Vector3(sd * cv.y, -cv.x, 0)
 			var to := Vector3(sd * (fr.x + cv.x * 0.62), fr.y + cv.y * 0.62, 3.15)
 			_text(k, m, "bw_tc" + L, "NH", to, fn, Vector3(0, 0, -sd), 0.4, dark, fp)
-			_text(k, m, "bw_mx" + L, "100", Vector3(sd * 0.6, y0 + 0.18, -5.0), Vector3(sd * 0.73, 0.68, 0), Vector3(0, 0, -sd), 0.2, dark, hp)
+			_text(k, m, "bw_mx" + L, "1" + VmPlane.number(k, "00", 2, 1, 9), Vector3(sd * 0.6, y0 + 0.18, -5.0), Vector3(sd * 0.73, 0.68, 0), Vector3(0, 0, -sd), 0.2, dark, hp)
 	var iw := VmPlane.surf_at(ws, 3.6)
 	var ile: Vector3 = iw[0]
 	for sd in ([-1.0, 1.0] if team == 1 else [-1.0]):
