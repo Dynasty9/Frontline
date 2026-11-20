@@ -36,6 +36,7 @@ const FOG := 8
 ## which is lit like a surface.)
 const FOG_K := 60.0
 const SMOKE_K := 0.35
+const DAY_K := 0.1  # (the smoke's share by day, against SMOKE_K at night)
 ## Tracers kept in flight for the glow (the oldest is dropped).
 const TRACERS := 48
 ## How far (m) a light may be from the camera and still count, and how many
@@ -282,12 +283,20 @@ func _upload(n: int, nf: int) -> void:
 		_img.set_data(MAX, 3, false, Image.FORMAT_RGBAF, _buf.to_byte_array())
 		_tex.update(_img)
 	var vol: bool = Settings.get_v("vol_fog") and not Vfx.gl
-	RenderingServer.global_shader_parameter_set(&"air_light_info", Vector4(n, nf if vol else 0, FOG_K * (_debug_k if _debug_k > 0.0 else 1.0), SMOKE_K))
+	RenderingServer.global_shader_parameter_set(&"air_light_info", Vector4(n, nf if vol else 0, FOG_K * (_debug_k if _debug_k > 0.0 else 1.0), SMOKE_K * _dark_k()))
 	if _debug_k > 0.0 and Time.get_ticks_msec() > _debug_t:
 		_debug_t = Time.get_ticks_msec() + 1000.0
 		print("AIRL n=%d fog=%d vol=%s flashes=%d tracers=%d steady=%d cpu=%.3f ms" % [n, nf, vol, _flashes.size(), _tracers.size(), _steady.size(), _debug_us / 1000.0 / maxf(_debug_ticks, 1)])
 		_debug_us = 0
 		_debug_ticks = 0
+
+
+## How much of a light the smoke shows against the daylight: a flash is a
+## blink by day, the sun and the sky lighting the smoke many times over, and
+## takes over the smoke only after dark (Vfx.fire_light: 0.8 by day, 2.6 at night).
+func _dark_k() -> float:
+	var fl: float = world.fx.vfx.fire_light if world.fx and world.fx.vfx else 2.6
+	return lerpf(DAY_K, 1.0, clampf((fl - 0.8) / 1.8, 0.0, 1.0))
 
 
 ## What each shader that takes the lights includes (air_lights.gdshaderinc):

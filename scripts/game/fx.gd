@@ -332,7 +332,7 @@ func _light(p: Vector3, energy: float, rng_m: float) -> void:
 	# (the smoke and the air round it light up with it, in the browser too)
 	var air: AirLights = world.atmo.air.lights if world.atmo and world.atmo.air else null
 	if air:
-		air.flash(p + Vector3(0, 1.5, 0), Color(1.0, 0.7, 0.35), energy, rng_m, 7.0)
+		air.flash(p + Vector3(0, 1.5, 0), Color(1.0, 0.8, 0.55), energy, rng_m, 9.0)
 	if _lights.is_empty():
 		return
 	var l: OmniLight3D = _lights[_light_i]

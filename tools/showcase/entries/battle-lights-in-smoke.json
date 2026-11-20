@@ -6,22 +6,27 @@
   "summary": "At night, shell bursts light their smoke from inside, fires and muzzle flashes light the smoke drifting past them, and tracers leave a faint glowing streak in the haze and dust.",
   "medium": "motion",
   "stage": "Game scenarios off-screen at night: --scenario=attack with --fx-demo and --shot-demo (controlled bursts and machine-gun tracers across the field), --scenario=roster (a battle), frozen and flipped with FL_DEBUG_AIR_FLIP + FL_DEBUG_AIR_FLIP_LIGHTS for the stills; the clip is two matched live runs, the second with FL_DEBUG_AIR_LIGHTS_OFF for the before.",
-  "rationale": "The change is light that comes and goes with each burst, so a short matched before/after clip shows it best; one combined still sheet holds the same frozen moments with the lights off and on, including the browser renderer, for a quick comparison.",
-  "source_ref": "9ffb6149 on dines/battle-lights-in-smoke (Godot 4.7.2, Windows, RTX 3090). Frames from the movie writer (MJPEG), composed with PIL; WebM: VP9 via Playwright's ffmpeg.",
+  "rationale": "The change is light that comes and goes with each burst, so a short matched before/after clip shows it best; one combined still sheet holds the same frozen moments with the lights off and on, including the browser renderer, for a quick comparison. A strip of one burst over time shows how long the light lasts, after review asked for the decay to be checked frame by frame.",
+  "source_ref": "the review commit after 6ceca57a on dines/battle-lights-in-smoke (Godot 4.7.2, Windows, RTX 3090). Frames from the movie writer (MJPEG), composed with PIL; WebM: VP9 via Playwright's ffmpeg.",
   "sources": [
     {
       "file": "changelog/unreleased/battle-lights-in-smoke/lights-off-on.jpg",
-      "sha256": "06ff4e1adeb15e4974738451d66cc8561ab3048d6fca747362e0f1a711559e56",
-      "caption": "Before | after rows of 1600x900 frames halved: (1) --preset=high --scenario=attack --seed=3 --set=mood:night --focus=0,0 --zoom=24 --pitch=-10 --cam-yaw=1.57 --fx-demo=1.2 --fx-every=1.0, FL_DEBUG_AIR_FLIP=8.07; (2) --preset=high --scenario=roster --seed=3 --set=mood:night --focus=-84,24 --zoom=34, FL_DEBUG_AIR_FLIP=8.8; (3) row 1's stage under --rendering-method gl_compatibility with force_vertex_shading, --preset=medium. Flip frames 28 (on) and 58 (off) of the 30-frame blocks."
+      "sha256": "d484f98b66b41ef0d2bb46b0a495cbb497a28e3078fda041efbedeff809d0794",
+      "caption": "Before | after rows of 1600x900 frames halved, each a frozen flip (FL_DEBUG_AIR_FLIP + FL_DEBUG_AIR_FLIP_LIGHTS, frames 28 on / 58 off): (1) --preset=high --scenario=attack --seed=3 --set=mood:night --focus=0,0 --zoom=24 --pitch=-10 --cam-yaw=1.57 --fx-demo=1.2 --fx-every=1.0 at 8.07 s; (2) --preset=high --scenario=roster --seed=3 --set=mood:night --focus=-84,24 --zoom=34 at 8.8 s; (3) row 1's stage with --fx-every=3, mood overcast, at 8.1 s; (4) that stage at night under --rendering-method gl_compatibility with force_vertex_shading, --preset=medium."
+    },
+    {
+      "file": "changelog/unreleased/battle-lights-in-smoke/burst-over-time.jpg",
+      "sha256": "4f3b44bc07ff75351023c0b830e4f20983a4dfb868b05a4c2ba6e8d797666a96",
+      "caption": "Crops (x300-1300, y150-650) of frozen flips of the burst at 8.0 s in row 3's stage at night, frozen at 8.07, 8.1, 8.3, 9.0 and 10.9 s; before on top."
     },
     {
       "file": "changelog/unreleased/battle-lights-in-smoke/night-battle-lights.webm",
-      "sha256": "479cf4090910f74db100365de767b9b6f46a649d5beddea1936d434073f46aab",
+      "sha256": "4bd1b344e04a89ded05a0edd6be33ad6a7b960f2d71d718531281a1ea706609c",
       "caption": "Seconds 6-14 of two 1280x720 movies (--fixed-fps 30), each halved and stacked: --preset=high --scenario=attack --seed=3 --set=mood:night --focus=0,0 --zoom=24 --pitch=-10 --cam-yaw=1.57 --fx-demo=1.2 --fx-every=1.0 --shot-demo=hmg --shot-demo-every=0.25 --shot-demo-range=90; the top run with FL_DEBUG_AIR_LIGHTS_OFF. View-only particles differ between the runs."
     },
     {
       "file": "changelog/unreleased/battle-lights-in-smoke/night-battle-lights-poster.jpg",
-      "sha256": "d430e5726f107c89644b3a4a9106b9d6da56ab797133684cfe668c725309739f",
+      "sha256": "29fd5ef33d71cdda813de7503faf06f6d1ca7a00d6f9bb0aa6da594a5a6ad269",
       "caption": "Frame 362 of the clip's runs (12.07 s, just after a burst)."
     }
   ],

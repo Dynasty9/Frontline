@@ -37,8 +37,11 @@ varying vec3 sky_negative;
 varying float elevation;
 varying float world_scale;
 varying vec4 animation; // frame, late fade, earth shade, earth density
-varying vec3 v_air; // the battle's lights on the cloud here (AirLights)
+varying vec3 v_air; // the battle's other lights on the cloud here (AirLights)
 varying vec3 v_al; // and where they come from, in the cloud's own frame
+varying flat vec4 v_top; // the strongest one near the cloud: where, and how far it reaches
+varying flat vec3 v_top_col; // and its colour times its strength
+varying vec3 v_world; // this point of the cloud's plane, in the world
 #include "res://scripts/game/air_lights.gdshaderinc"
 
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
@@ -106,13 +109,20 @@ void vertex() {
 	vec3 horizon = (vec3(1.0) - sky_weights) * 0.09;
 	sky_positive = (vec3(0.25) + sky_sign * 0.75) * sky_weights + horizon;
 	sky_negative = (vec3(1.0) - sky_sign * 0.75) * sky_weights + horizon;
-	// A burst inside the cloud, or another close by, lights it from that side.
+	// A burst inside the cloud, or another close by, lights it from that side:
+	// the strongest one per pixel (see fragment), the rest here.
 	v_air = vec3(0.0);
 	v_al = vec3(0.0, 0.0, 1.0);
+	v_top = vec4(0.0, 0.0, 0.0, 1.0);
+	v_top_col = vec3(0.0);
+	v_world = (billboard * vec4(VERTEX, 1.0)).xyz;
 	int nl = int(air_light_info.x);
 	if (nl > 0) {
 		vec3 ad;
-		v_air = air_light((billboard * vec4(VERTEX, 1.0)).xyz, nl, ad) * air_light_info.w;
+		air_light_top(center, nl, v_top, v_top_col);
+		vec3 tw = v_top.xyz - v_world;
+		v_air = max(air_light(v_world, nl, ad) - v_top_col * air_light_falloff(dot(tw, tw), v_top.w * v_top.w), vec3(0.0)) * air_light_info.w;
+		v_top_col *= air_light_info.w;
 		vec3 av = mat3(VIEW_MATRIX) * ad;
 		float al = length(av);
 		av = al > 1e-5 ? av / al : vec3(0.0, 0.0, 1.0);
@@ -176,9 +186,26 @@ void fragment() {
 	vec3 color = tint * (sun_col * sun_energy * sunlight + amb_col * amb_energy * (0.16 + sky * 0.55));
 	// The dense earth core stays darker than dust at the sunlit perimeter.
 	color *= animation.z * (1.0 - 0.26 * ground_dust * alpha * (1.0 - clamp(sunlight, 0.0, 1.0)));
+	if (v_top_col.r + v_top_col.g + v_top_col.b > 1e-3) {
+		// the strongest light near the cloud (a burst inside it, often): hot
+		// close to it, dim at the edges, through the baked lobes from its side,
+		// and shaded by the thick of the cloud between here and it
+		vec3 to = v_top.xyz - v_world;
+		float d2 = dot(to, to);
+		float f = air_light_falloff(d2, v_top.w * v_top.w);
+		if (f > 0.0) {
+			vec3 lv = normalize(mat3(VIEW_MATRIX) * to);
+			float a = heading * elevation;
+			lv.xy = lv.xy * mat2(vec2(cos(a), sin(a)), vec2(-sin(a), cos(a)));
+			lv.x *= mirror;
+			float lobe = dot(mix(n.rgb, p.rgb, step(vec3(0.0), lv)), lv * lv) / max(alpha, 0.003);
+			float shade = exp(-alpha * 2.5 * sqrt(d2) / max(v_top.w * 0.35, 1.0));
+			color += tint * v_top_col * f * (0.2 + lobe) * shade * animation.z;
+		}
+	}
 	if (v_air.r + v_air.g + v_air.b > 1e-3) {
 		float air_lit = dot(mix(n.rgb, p.rgb, step(vec3(0.0), v_al)), v_al * v_al) / max(alpha, 0.003);
-		color += tint * v_air * (1.0 + 2.0 * air_lit) * animation.z;
+		color += tint * v_air * (0.2 + air_lit) * animation.z;
 	}
 	if (fuel > 0.0) {
 		float heat = clamp(n.a / max(alpha, 0.003), 0.0, 1.0) * fuel;
