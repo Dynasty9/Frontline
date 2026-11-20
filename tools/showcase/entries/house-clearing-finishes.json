@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/house-clearing-finishes.md",
+  "summary": "Clear calls after every room entry, clearing retried when it was cut short, and routes from a wall's cell set off on the man's own side.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "Soldier behaviour and routing fixes: the pull request carries the church scenario over seeds 1-24 before and after, tests/wall-cell-routes.test.mjs shows the routing fix, and tests/church.test.mjs the clearing; a clip of men calling a room clear would not show what changed.",
+  "source_ref": "6399514f",
+  "sources": [],
+  "output": null
+}
