@@ -181,6 +181,29 @@ func _ready() -> void:
 		check(not occupied(wk.sink.root, p), "the window is clear at %s" % p)
 	check(occupied(wk.sink.root, Vector3(0, 1.5, -0.1)), "the window has its mullion")
 	wk.sink.root.free()
+	# A shop's display window: clear between its bars, its stall riser solid
+	# under it; the stock behind the glass below a man's eye and inside the
+	# wall's depth or behind it, none of it out on the pavement.
+	var sfk := kit()
+	BuildingOpenings.shopfront(sfk, Vector3(0, (Structure.SHOP_SILL + Structure.SHOP_HEAD) * 0.5, 0), Vector2(2.2, Structure.SHOP_HEAD - Structure.SHOP_SILL), {"glazing": 0.0, "cracked": 0.0})
+	for p in [Vector3(-0.5, 1.4, -0.05), Vector3(0.5, 1.4, -0.05), Vector3(0, 1.5, 0.1)]:
+		check(not occupied(sfk.sink.root, p), "the display window is clear at %s" % p)
+	check(occupied(sfk.sink.root, Vector3(0, 0.35, 0.04)), "the display window has its stall riser")
+	sfk.sink.root.free()
+	for sd in 12:
+		var dsk := kit()
+		dsk.rng.seed = sd
+		BuildingShops.display(dsk, 2.1, Structure.SHOP_SILL, BuildingShops.paint(sd), dsk.rng)
+		var gb := _bounds(dsk.sink.root, Transform3D.IDENTITY)
+		check(gb.position.y >= Structure.SHOP_SILL - 0.01 and gb.end.y < 1.45 and gb.end.z <= -0.1 and absf(gb.get_center().x) < 0.2, "a window display keeps behind the glass (%s)" % gb)
+		dsk.sink.root.free()
+	# The years' grime lies on the face, under the eaves' band and above the
+	# plinth, on every part of the wall's body and none of its openings.
+	for v in [0, 1, 2, 3]:
+		var gw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, 1.0, 0.4), v == 2, 77)
+		var gwb := _bounds(gw, Transform3D.IDENTITY)
+		check(gwb.end.y <= 3.05 and gwb.size.x <= 3.6, "a house wall (%d) keeps to its bay and under its eaves (%s)" % [v, gwb])
+		gw.free()
 
 	# Shared shapes: windows of one size share one frame mesh.
 	check(BuildingOpenings.frame_shape(1.3, 1.0, 1, 0.7) == BuildingOpenings.frame_shape(1.3, 1.0, 1, 0.7), "window frames are cached")
@@ -194,7 +217,7 @@ func _ready() -> void:
 
 	# Batched scenery keeps to world-space surfaces (StructureView merges
 	# nothing in local space), so the new dressing doesn't break the batches.
-	for spec: Array in [["house_wall", 0, Vector3(2.8, 2.0, 0.4)], ["house_wall", 1, Vector3(2.8, 4.0, 0.4)], ["house_wall", 2, Vector3(2.8, 2.0, 0.4)],
+	for spec: Array in [["house_wall", 0, Vector3(2.8, 2.0, 0.4)], ["house_wall", 1, Vector3(2.8, 4.0, 0.4)], ["house_wall", 2, Vector3(2.8, 2.0, 0.4)], ["house_wall", 3, Vector3(2.8, 1.0, 0.4)],
 			["low_wall", 0, Vector3(4.0, 1.0, 0.5)], ["low_wall", 2, Vector3(4.0, 1.0, 0.5)], ["floor", 0, Vector3(8, 0.06, 7)]]:
 		var m := Structure.preview_model(spec[0], -1, spec[1], spec[2])
 		var stack: Array = [m]
@@ -335,6 +358,22 @@ func _ready() -> void:
 		var hqb := _bounds(hq, Transform3D.IDENTITY)
 		check(hq.get_child_count() > 0 and hqb.size.x <= 18.5 and hqb.size.z <= 13.5 and hqb.position.y >= -0.15 and hqb.end.y < 12.0, "a side's HQ keeps to its compound (%d: %s)" % [side, hqb])
 		hq.free()
+	# The street pieces keep to their footprints: the fountain within its
+	# basin, the bus shelter over its pavement (its stop's flag the top of it),
+	# a planter (its trough a square turned on its corner: its bounds are the
+	# turned square's), a bin, the name board.
+	var spieces := [[func(k: BuildingKit): BuildingStreet.fountain(k), Vector3(5.25, 3.2, 5.25)],
+		[func(k: BuildingKit): BuildingStreet.bus_shelter(k, k.rng), Vector3(4.6, 2.85, 1.8)],
+		[func(k: BuildingKit): BuildingStreet.planter(k, k.rng), Vector3(2.05, 1.25, 2.05)],
+		[func(k: BuildingKit): BuildingStreet.litter_bin(k), Vector3(0.55, 0.95, 0.55)],
+		[func(k: BuildingKit): BuildingStreet.town_sign(k, k.rng), Vector3(2.1, 2.35, 0.2)]]
+	for sp: Array in spieces:
+		var spk := kit()
+		(sp[0] as Callable).call(spk)
+		var spb := _bounds(spk.sink.root, Transform3D.IDENTITY)
+		var lim: Vector3 = sp[1]
+		check(spb.size.x <= lim.x and spb.size.z <= lim.z and spb.end.y <= lim.y and spb.position.y >= -0.01, "a street piece keeps to its footprint (%s, %s)" % [spb, lim])
+		spk.sink.root.free()
 	# A farm's bales keep to their footprint (two side by side, a third on
 	# them), straw or wrapped.
 	for i in 6:
@@ -344,6 +383,11 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# A tunnel's mouth keeps to its 3 m plot, its shaft going down below it.
+	var tn := Structure.preview_model("tunnel", 1)
+	var tnb := _bounds(tn, Transform3D.IDENTITY)
+	check(tn.get_child_count() > 0 and tnb.size.x <= 3.9 and tnb.size.z <= 4.6 and tnb.end.y < 2.2 and tnb.position.y < -1.0, "a tunnel's mouth keeps to its plot (%s)" % tnb)
+	tn.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:
@@ -458,6 +502,18 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# Cover crates: the stores stand on the ground inside the boxes their parts
+	# give for cover, and one stack is loaded differently from the next.
+	var loads := {}
+	for id in 12:
+		for v in 2:
+			var cr := Structure.preview_model("crates", -1, v, Vector3.ZERO, false, id)
+			var cb := _bounds(cr, Transform3D.IDENTITY)
+			var reach := Vector3(0.65, 1.3, 0.65) if v == 0 else Vector3(1.3, 2.45, 0.72)
+			check(cb.position.y >= -0.01 and cb.end.y <= reach.y and absf(cb.position.x) <= reach.x and cb.end.x <= reach.x and absf(cb.position.z) <= reach.z and cb.end.z <= reach.z, "crate stack %d (variant %d) keeps to its cover (%s)" % [id, v, cb])
+			loads["%d|%s" % [v, cb.size.snapped(Vector3.ONE * 0.05)]] = true
+			cr.free()
+	check(loads.size() >= 4, "crate stacks are loaded differently (%d ways)" % loads.size())
 
 	# Roofs: a hip rises as high as a gable of the same pitch over the same
 	# walls; its underside comes down to the eaves on all four walls where a

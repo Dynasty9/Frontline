@@ -468,8 +468,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.sphere(0.13, 8), "paint", Vector3(0, 0.62, 0), Color(0.7, 0.12, 0.08), Vector3.ZERO, false)
 			_m(Res.cyl(0.05, 0.05, 0.36, 6), "paint", Vector3(0, 0.42, 0), Color(0.75, 0.7, 0.6), Vector3(0, 0, PI * 0.5), false)
 		"bin":
-			_m(Res.cyl(0.24, 0.21, 0.85, 10), "metal_dark", Vector3(0, 0.43, 0), Color(0.12, 0.2, 0.13), Vector3.ZERO, false)
-			_m(Res.cyl(0.26, 0.26, 0.05, 10), "metal_dark", Vector3(0, 0.88, 0), Color(0.1, 0.15, 0.1), Vector3.ZERO, false)
+			# (BuildingStreet)
+			BuildingStreet.litter_bin(BuildingKit.baked(_bake, rng, _at))
 		"bench":
 			_bench(Vector3.ZERO)
 		"sign_stop":
@@ -477,43 +477,26 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.cyl(0.39, 0.39, 0.02, 8), "paint", Vector3(0, 2.15, -0.03), Color(0.9, 0.9, 0.88), Vector3(PI * 0.5, 0, 0))
 			_m(Res.cyl(0.35, 0.35, 0.02, 8), "paint", Vector3(0, 2.15, -0.05), Color(0.72, 0.08, 0.06), Vector3(PI * 0.5, 0, 0))
 		"sign_town":
-			for x in [-0.8, 0.8]:
-				_m(Res.cyl(0.04, 0.04, 2.2, 6), "metal_dark", Vector3(x, 1.1, 0), Color(0.5, 0.5, 0.5))
-			_m(Res.box(Vector3(2.0, 0.7, 0.05)), "paint", Vector3(0, 1.9, 0), Color(0.88, 0.8, 0.22))
-			_m(Res.box(Vector3(1.86, 0.56, 0.01)), "paint", Vector3(0, 1.9, -0.03), Color(0.95, 0.88, 0.3), Vector3.ZERO, false)
-			for y in [2.0, 1.8]:
-				_m(Res.box(Vector3(1.3 if y > 1.9 else 0.9, 0.09, 0.01)), "paint", Vector3(0, y, -0.04), Color(0.08, 0.08, 0.08), Vector3.ZERO, false)
+			# (BuildingStreet)
+			BuildingStreet.town_sign(BuildingKit.baked(_bake, rng, _at), rng)
 		"bus_stop":
-			for x in [-1.5, 1.5]:
-				for z in [-0.6, 0.6]:
-					_m(Res.box(Vector3(0.07, 2.3, 0.07)), "metal_dark", Vector3(x, 1.15, z), Color(0.28, 0.33, 0.36))
-			_m(Res.box(Vector3(3.0, 1.9, 0.04)), "glass", Vector3(0, 1.25, 0.6))
-			_m(Res.box(Vector3(0.04, 1.9, 1.15)), "glass", Vector3(1.5, 1.25, 0.0))
-			_m(Res.box(Vector3(3.3, 0.08, 1.55)), "metal_dark", Vector3(0, 2.34, 0.0), Color(0.28, 0.33, 0.36))
-			_m(Res.box(Vector3(2.4, 0.05, 0.38)), "wood", Vector3(0, 0.46, 0.35))
-			_m(Res.cyl(0.035, 0.035, 2.6, 6), "metal_dark", Vector3(-2.1, 1.3, -0.4), Color(0.5, 0.5, 0.5))
-			_m(Res.cyl(0.26, 0.26, 0.03, 12), "paint", Vector3(-2.1, 2.5, -0.4), Color(0.15, 0.35, 0.62), Vector3(PI * 0.5, 0, 0))
+			# (BuildingStreet)
+			BuildingStreet.bus_shelter(BuildingKit.baked(_bake, rng, _at), rng)
 		"planter":
-			_m(Res.box(Vector3(1.2, 0.5, 1.2)), "concrete", Vector3(0, 0.25, 0), Color(0.6, 0.58, 0.54))
-			_leaf(0.55, Vector3(0, 0.85, 0), Color(0.3, 0.42, 0.2))
-			for i in 3:
-				var a := TAU * i / 3.0 + 0.4
-				_leaf(0.2, Vector3(cos(a) * 0.32, 0.72, sin(a) * 0.32), [Color(0.75, 0.2, 0.28), Color(0.85, 0.7, 0.2), Color(0.6, 0.35, 0.7)][i], false)
+			# (BuildingStreet)
+			BuildingStreet.planter(BuildingKit.baked(_bake, rng, _at), rng)
 		"bollard":
 			_m(Res.cyl(0.08, 0.1, 0.85, 8), "metal_dark", Vector3(0, 0.42, 0), Color(0.2, 0.2, 0.2), Vector3.ZERO, false)
 		"fountain":
-			_m(Res.cyl(2.35, 2.35, 0.1, 20), "stone", Vector3(0, 0.05, 0))
-			for i in 16:
-				var a := TAU * i / 16.0
-				_m(Res.box(Vector3(0.98, 0.55, 0.32)), "stone", Vector3(cos(a) * 2.4, 0.28, sin(a) * 2.4), null, Vector3(0, -a + PI * 0.5, 0))
-			_m(Res.cyl(0.25, 0.35, 1.4, 10), "stone", Vector3(0, 0.7, 0))
-			_m(Res.cyl(0.85, 0.35, 0.25, 14), "stone", Vector3(0, 1.45, 0))
+			# the square's fountain (BuildingStreet), its water drawn on its own
+			BuildingStreet.fountain(BuildingKit.baked(_bake, rng, _at))
 			var water := StandardMaterial3D.new()
-			water.albedo_color = Color(0.12, 0.22, 0.24)
+			water.albedo_color = Color(0.1, 0.18, 0.19)
 			water.roughness = 0.05
 			water.metallic_specular = 0.9
-			Res.mi(h, Res.cyl(2.25, 2.25, 0.04, 20), water, Vector3(0, 0.44, 0), Vector3.ZERO, false)
-			Res.mi(h, Res.cyl(0.74, 0.74, 0.03, 14), water, Vector3(0, 1.56, 0), Vector3.ZERO, false)
+			Res.mi(h, Res.cyl(2.25, 2.25, 0.04, 24), water, Vector3(0, 0.44, 0), Vector3.ZERO, false)
+			Res.mi(h, Res.cyl(0.92, 0.92, 0.03, 20), water, Vector3(0, 1.88, 0), Vector3.ZERO, false)
+			Res.mi(h, Res.cyl(0.46, 0.46, 0.03, 16), water, Vector3(0, 2.68, 0), Vector3.ZERO, false)
 		"statue":
 			_m(Res.box(Vector3(1.8, 1.0, 1.8)), "stone", Vector3(0, 0.5, 0))
 			if ex == 1:
@@ -554,7 +537,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"awning":
 			# a shop's front (BuildingShops): its fascia and name, the awning
 			var a3: Vector3 = ex
-			BuildingShops.front(BuildingKit.baked(_bake, rng, _at), a3.x, int(a3.z), rng)
+			# (a3.y the house's colour index and one, so the fascia matches the
+			# shopfront under it: 0 for none)
+			BuildingShops.front(BuildingKit.baked(_bake, rng, _at), a3.x, int(a3.z), rng, int(a3.y) - 1)
 		"wares":
 			# what the shop puts out on the pavement
 			BuildingShops.wares(BuildingKit.baked(_bake, rng, _at), int(ex), rng)
