@@ -1,0 +1,72 @@
+diff --git a/scripts/test/gi_compare.gd b/scripts/test/gi_compare.gd
+index 29f4e71..1fbd7a2 100644
+--- a/scripts/test/gi_compare.gd
++++ b/scripts/test/gi_compare.gd
+@@ -32,6 +32,9 @@ extends Node
+ ## first mode, the camera pans at (vx, vz) m/s while the battle runs on, and
+ ## every frame is saved (DIR/pan_000.png...): run it with --fixed-fps 30 for
+ ## frames 1/30 s apart, to see the light hold (or smear) while the view moves.
++## Multiple poses each get that many frames, named <pose>_pan_NNN.png;
++## camera.json records their exact transforms. Input, director motion and
++## lens shake are held out so a slow renderer cannot change the camera path.
+ ## FL_DEBUG_GI_BLAST=frame bursts a shell where it looks on that frame.
+ 
+ const MODES := {
+@@ -100,6 +103,7 @@ var _pan: PackedStringArray = OS.get_environment("FL_DEBUG_GI_PAN").split(",", f
+ ## light build up and settle on a still view
+ var _series := int(OS.get_environment("FL_DEBUG_GI_SERIES"))
+ var _found := {}
++var _pan_views: Array = []
+ 
+ 
+ func _ready() -> void:
+@@ -120,6 +124,15 @@ func _process(_dt: float) -> void:
+ 			return
+ 		DirAccess.make_dir_recursive_absolute(_dir)
+ 		if _pan.size() == 3:
++			# The off-screen pointer can sit on a window edge. This stage
++			# owns the camera: its wall-clock input and director must not
++			# move it between fixed-step captures.
++			var cam: Node = world.get("cam")
++			cam.set("edge_pan", false)
++			cam.set_process(false)
++			var director: Node = world.get("director")
++			if director != null:
++				director.set("active", false)
+ 			_i = 0
+ 			_set_pose(_poses[0])
+ 			_apply(_modes[0])
+@@ -341,13 +354,32 @@ func _ab_tick() -> void:
+ func _pan_tick() -> void:
+ 	var cam: Node = world.get("cam")
+ 	var fp: Vector3 = cam.get("focus_pos")
++	cam.set("_shake", 0.0)  # identical lens offsets on both revisions
+ 	cam.call("focus", fp + Vector3(float(_pan[0]), 0.0, float(_pan[1])) / 30.0)
+ 	# FL_DEBUG_GI_BLAST=frame: a shell bursts where the camera looks on that
+ 	# frame, to see how soon its flash is thrown about (and how soon it goes)
+ 	if OS.has_environment("FL_DEBUG_GI_BLAST") and _frames == int(OS.get_environment("FL_DEBUG_GI_BLAST")):
+ 		world.call("fx_event", [1, cam.get("focus_pos"), 1.0, "he"])  # (Fx.EXPLODE)
++	var camera: Camera3D = cam.get("cam")
++	var xf := camera.global_transform
++	var pose_name := _poses[_pose].get_slice(":", 0)
++	_pan_views.append({"pose": pose_name, "transform": [xf.origin.x, xf.origin.y, xf.origin.z,
++		xf.basis.x.x, xf.basis.x.y, xf.basis.x.z,
++		xf.basis.y.x, xf.basis.y.y, xf.basis.y.z,
++		xf.basis.z.x, xf.basis.z.y, xf.basis.z.z]})
++	# Capture the frame just posed, rather than the preceding render.
++	await RenderingServer.frame_post_draw
+ 	# (the first frames settle the history from scratch: they're kept too)
+-	get_viewport().get_texture().get_image().save_png(_dir.path_join("pan_%03d.png" % _frames))
++	var prefix := pose_name + "_" if _poses.size() > 1 else ""
++	get_viewport().get_texture().get_image().save_png(_dir.path_join(prefix + "pan_%03d.png" % _frames))
+ 	_frames += 1
+ 	if _frames >= int(_pan[2]):
++		_pose += 1
++		if _pose < _poses.size():
++			_frames = 0
++			_set_pose(_poses[_pose])
++			return
++		var record := FileAccess.open(_dir.path_join("camera.json"), FileAccess.WRITE)
++		if record != null:
++			record.store_string(JSON.stringify({"fps": 30, "frames": _pan_views}, "  "))
+ 		get_tree().quit()
