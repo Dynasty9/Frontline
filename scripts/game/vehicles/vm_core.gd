@@ -1782,21 +1782,104 @@ static func _humvee(k: VehicleModels, team: int, seed := 0) -> void:
 	var lo := [-1.06, -0.8, 1.06, -0.8, 1.06, 0.92, -1.06, 0.92]
 	var hi := [-1.0, -0.68, 1.0, -0.68, 1.0, 0.88, -1.0, 0.88]
 	var roof := 1.92
-	# (its armoured roof is a welded plate, barely crowned)
-	VmCiv._yloft(k, m, "core_hmv_cab", [lo, hi], [1.32, roof], 0.03, cam, null, Vector3.ZERO, 0.1)
 	var r0 := VehicleModels.ring_y(VehicleModels._v2(lo), 1.32)
 	var r1 := VehicleModels.ring_y(VehicleModels._v2(hi), roof)
 	var inside := Vector3(0, 1.6, 0.1)
-	if not k.burnt:
-		# the split windscreen, thick armoured glass in heavy frames
-		for e in [[0.05, 0.47], [0.53, 0.95]]:
-			VehicleMaterials.glaze(k, VmCiv._pane(k, m, "core_hmv_ws%d" % int(float(e[0]) * 100), VmCiv._face(r0, r1, 0), inside, float(e[0]), float(e[1]), 0.12, 0.88, 0.0, 0.02, "glass", ARMOR_GLASS), "armor_glass", ARMOR_GLASS)
-		# the door windows, small and square; the cab's back window
-		for f in [1, 3]:
-			for e in [[0.12, 0.36], [0.6, 0.84]]:
-				var u0 := float(e[0]) if f == 1 else 1.0 - float(e[1])
-				VehicleMaterials.glaze(k, VmCiv._pane(k, m, "core_hmv_sw%d_%d" % [f, int(u0 * 100)], VmCiv._face(r0, r1, f), inside, u0, u0 + 0.24, 0.2, 0.78, 0.0, 0.02, "glass", ARMOR_GLASS), "armor_glass", ARMOR_GLASS)
-		VehicleMaterials.glaze(k, VmCiv._pane(k, m, "core_hmv_bw", VmCiv._face(r0, r1, 2), inside, 0.32, 0.68, 0.35, 0.8, 0.0, 0.02, "glass", ARMOR_GLASS), "armor_glass", ARMOR_GLASS)
+	if k.wreck:
+		# (a wreck's cab is built as it always was: a solid loft, the thick
+		# panes laid on its faces)
+		# (its armoured roof is a welded plate, barely crowned)
+		VmCiv._yloft(k, m, "core_hmv_cab", [lo, hi], [1.32, roof], 0.03, cam, null, Vector3.ZERO, 0.1)
+		if not k.burnt:
+			# the split windscreen, thick armoured glass in heavy frames
+			for e in [[0.05, 0.47], [0.53, 0.95]]:
+				VehicleMaterials.glaze(k, VmCiv._pane(k, m, "core_hmv_ws%d" % int(float(e[0]) * 100), VmCiv._face(r0, r1, 0), inside, float(e[0]), float(e[1]), 0.12, 0.88, 0.0, 0.02, "glass", ARMOR_GLASS), "armor_glass", ARMOR_GLASS)
+			# the door windows, small and square; the cab's back window
+			for f in [1, 3]:
+				for e in [[0.12, 0.36], [0.6, 0.84]]:
+					var u0 := float(e[0]) if f == 1 else 1.0 - float(e[1])
+					VehicleMaterials.glaze(k, VmCiv._pane(k, m, "core_hmv_sw%d_%d" % [f, int(u0 * 100)], VmCiv._face(r0, r1, f), inside, u0, u0 + 0.24, 0.2, 0.78, 0.0, 0.02, "glass", ARMOR_GLASS), "armor_glass", ARMOR_GLASS)
+			VehicleMaterials.glaze(k, VmCiv._pane(k, m, "core_hmv_bw", VmCiv._face(r0, r1, 2), inside, 0.32, 0.68, 0.35, 0.8, 0.0, 0.02, "glass", ARMOR_GLASS), "armor_glass", ARMOR_GLASS)
+	else:
+		# A real M1151's cab shows through its small thick windows as the
+		# crew's room it is (a solid cab behind dark panes read as a painted
+		# box): its walls are armour plate round openings as deep as the
+		# plate, the clear ballistic glass in them in its rubber seal and
+		# retaining bead, gathered into one sheet as VmCiv._clear_cab gathers
+		# a cab's; the welded roof plate laid on them, barely crowned and
+		# rolled over its edge as the solid cab's roof was. On each face of
+		# the loft (front, right, back, left): the split windscreen, the door
+		# windows small and square, the back window.
+		var windows := [[Rect2(0.05, 0.12, 0.42, 0.76), Rect2(0.53, 0.12, 0.42, 0.76)], [Rect2(0.12, 0.2, 0.24, 0.58), Rect2(0.6, 0.2, 0.24, 0.58)],
+			[Rect2(0.32, 0.35, 0.36, 0.45)], [Rect2(0.64, 0.2, 0.24, 0.58), Rect2(0.16, 0.2, 0.24, 0.58)]]
+		var wall := 1.88
+		var part := (wall - 1.32) / (roof - 1.32)
+		var top := PackedVector3Array()
+		var plate: Array = []
+		for i in r0.size():
+			top.append(r0[i].lerp(r1[i], part))
+			plate.append_array([top[i].x, top[i].z])
+		VmCiv._yloft(k, m, "core_hmv_roof", [plate, hi], [wall, roof], 0.03, cam, null, Vector3.ZERO, 0.1)
+		var sheet := SurfaceTool.new()
+		var none: Array[Rect2] = []
+		for i in 4:
+			var surface := VehicleSurface.quad(VmCiv._face(r0, top, i), inside)
+			var holes: Array[Rect2] = []
+			for h: Rect2 in windows[i]:
+				holes.append(Rect2(h.position.x, h.position.y / part, h.size.x, h.size.y / part))
+			# (the plate in three bands, under, between and over the windows,
+			# which stand at one height on each face: a third of the blocks of
+			# one grid cut through at every window's edges)
+			var v0 := holes[0].position.y
+			var v1 := holes[0].end.y
+			k._add(m, surface.shell(Rect2(0, 0, 1, v0), none, 0.065), cam, null, Vector3.ZERO)
+			k._add(m, surface.shell(Rect2(0, v0, 1, v1 - v0), holes, 0.065), cam, null, Vector3.ZERO)
+			k._add(m, surface.shell(Rect2(0, v1, 1, 1.0 - v1), none, 0.065), cam, null, Vector3.ZERO)
+			for hole in holes:
+				var outline := PackedVector2Array([hole.position, Vector2(hole.end.x, hole.position.y), hole.end, Vector2(hole.position.x, hole.end.y)])
+				var shortest := INF
+				for j in outline.size():
+					shortest = minf(shortest, surface.point(outline[j]).distance_to(surface.point(outline[(j + 1) % outline.size()])))
+				var seal := minf(0.014, shortest * 0.045)
+				VehicleBody.boundary(k, m, surface, outline, 0.012, seal, false, 0)
+				VehicleBody._seal(k, m, surface, outline, 0.012 - seal, seal * 0.42, 0, "metal_dark", null, VehicleBody.SEAL_ALL)
+				sheet.append_from(VehicleGlazing._crowned(surface.patch(outline, 0.012 * 0.6, 0.0, 0)), 0, Transform3D.IDENTITY)
+		VehicleCab.mesh_glass(k, m, sheet.commit())
+		# Inside, fitted between the belt and the roof as every cab's
+		# furniture is (VehicleCab.interior): the two front seats either
+		# side of the wide transmission tunnel, the radio rack on it, the
+		# dash across under the windscreen with the wheel and instruments on
+		# the left, the two rear seats behind and the gunner's platform on
+		# the tunnel between them. Seen only through the glass, in the cab's
+		# own shade: none of it casts a shadow, and it is all in the seats'
+		# wipe-clean finish, tinted, which nothing casting is made of (a
+		# part sharing a casting part's material is baked into its shadow).
+		var ci := k._pivot(m, Vector3(0, 1.335, 0))
+		var trim := Color(0.24, 0.26, 0.17)
+		var black := Color(0.07, 0.07, 0.07)
+		k._box(ci, Vector3(1.98, 0.01, 1.6), Vector3(0, 0.005, 0.06), "coated", black, Vector3.ZERO, false)
+		# (the tunnel: the hump between the seats as high as their cushions,
+		# under its dark cover)
+		k._add(ci, VehicleCab._rolled(Vector3(0.56, 0.12, 1.36), 0.04), "coated", Color(0.1, 0.1, 0.09), Vector3(0, 0.06, 0.07), Vector3.ZERO, Vector3.ONE, false)
+		for s: float in [-1.0, 1.0]:
+			for z: float in [-0.3, 0.47]:
+				VehicleCab._cab_seat(k, ci, Vector3(s * 0.55, 0.053, z), Vector3(0.48, 0.32, 0.4), trim, "coated")
+			# the two radios side by side in their mount on the tunnel, olive
+			# drab, their dark front panels turned back to the crew
+			k._box(ci, Vector3(0.2, 0.16, 0.34), Vector3(s * 0.11, 0.2, -0.3), "coated", OD.darkened(0.2), Vector3.ZERO, false)
+			k._add(ci, VehicleEquipment._plate(Vector3(0.18, 0.13, 0.006)), "coated", Color(0.05, 0.05, 0.05), Vector3(s * 0.11, 0.2, -0.128), Vector3.ZERO, Vector3.ONE, false)
+		k._box(ci, Vector3(0.46, 0.03, 0.38), Vector3(0, 0.135, -0.3), "coated", Color(0.13, 0.13, 0.12), Vector3.ZERO, false)
+		# the dash, its padded top rolled toward the crew; the binnacle and
+		# the lens over its gauges facing the driver, the wheel on its column
+		k._add(ci, VehicleCab._rolled(Vector3(1.96, 0.16, 0.16), 0.04), "coated", Color(0.10, 0.12, 0.10), Vector3(0, 0.08, -0.62), Vector3.ZERO, Vector3.ONE, false)
+		k._add(ci, VehicleEquipment._plate(Vector3(0.4, 0.12, 0.08)), "coated", Color(0.05, 0.05, 0.05), Vector3(-0.55, 0.17, -0.58), Vector3.ZERO, Vector3.ONE, false)
+		k._add(ci, VehicleEquipment._plate(Vector3(0.32, 0.08, 0.006)), "glass", Color(0.30, 0.32, 0.24), Vector3(-0.55, 0.175, -0.538), Vector3.ZERO, Vector3.ONE, false)
+		VehicleBody.rod(k, ci, Vector3(-0.55, 0.12, -0.6), Vector3(-0.55, 0.27, -0.45), 0.03, "coated", black, 5, false, -1.0, false, true)
+		VehicleCab._cab_wheel(k, ci, Vector3(-0.55, 0.27, -0.45), Vector3(0.9, 0, 0))
+		# (the gunner's platform, the round step he stands on, bolted to the
+		# tunnel under the hatch)
+		VehicleBody.cylinder(k, ci, 0.2, 0.2, 0.03, Vector3(0, 0.135, 0.6), Vector3.ZERO, "coated", Color(0.16, 0.16, 0.15), 10, false)
+		k._fold(ci)
 	# the doors: heavy armoured slabs proud of the body, their seams, hinges
 	# and the big latch handles
 	for s: float in [-1.0, 1.0]:
@@ -1884,6 +1967,11 @@ static func _humvee(k: VehicleModels, team: int, seed := 0) -> void:
 	k.mg_tip = k._tip(t, cradle + tip_local)
 	# the gunner in the hatch, on his platform behind the gun
 	k.gunner_floor = {"on": t, "y": rx.y + cradle.y + 0.03 - 1.3, "area": Rect2(Vector2(0, 0.5), Vector2.ZERO)}
+	if not k.wreck:
+		# his sling, a webbing strap hung from under the ring's back and
+		# turning with it: the seat he drops into out of the hatch, slack
+		# behind his legs while he stands (seen through the rear windows)
+		VehicleBody.bead(k, t, [Vector3(-0.34, -0.04, 0.44), Vector3(-0.2, -0.3, 0.62), Vector3(0.2, -0.3, 0.62), Vector3(0.34, -0.04, 0.44)], 0.018, "canvas", Color(0.12, 0.12, 0.1), 5, false)
 
 
 
