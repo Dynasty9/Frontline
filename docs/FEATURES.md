@@ -694,8 +694,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   Houses stand on lots facing the street with their door to it, some on two floors and some with a wing out of
   the back (an L or a T); behind them, gardens closed off by hedges or
   walls, fences down the sides, vegetable patches, washing lines and trees; some have a drive with the car on it.
-  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs), seen when
-  the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
+  Inside, the rooms are furnished (a wardrobe, a bookcase, a kitchen, a settee, a table and chairs) and the shops
+  fitted out (shelving down the middle and along the walls stocked with goods, a cooler of drinks, a greengrocer's
+  crates, a counter and till), seen when the roof lifts as men go in. Shops with awnings line the main street near the middle, most with flats over them. The floor above a ground
   floor is looks only: it lifts off with the roof when men go in, and comes down when a wall under it is blown in.
 - A town square on one corner of the crossroads (fountain or statue, benches, planters, a flagpole, market
   stalls, bollards; the fountain a stone basin with two bowls, the planters concrete troughs of bedding flowers
@@ -763,7 +764,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   the far bank: three bridges and two fords across the river in all.
 - Country roads come in from both HQs and both edges of the map and join the main streets. Villages sit on the
   cross road either side of town and on the road between each HQ and the town; farmsteads (a farmhouse, most on two floors with a wing, and a barn round a yard, round bales of straw (the spiral of the roll on their ends) and silage wrapped in black or green film, a fenced road frontage, an orchard; the barn weatherboarded
-  under a corrugated sheet roof with loft doors in its gables, straw on its floor) and
+  under a corrugated sheet roof with loft doors in its gables; inside, hay stacked in a corner, stalls with mangers
+  and hay racks, a cart, a workbench and churns, tools hung on its walls; round the yard a parked tractor, a water
+  trough, a plough and a harrow, a churn stand at the gate, a hen house and its run) and
   hedged fields lie along the roads; abandoned cars on the verges, burnt-out armour off the road.
   Photographed gravel roads blend compacted wheel tracks into loose aggregate and irregular dirt edges,
   with small, ground-aligned stone deposits and reflector posts

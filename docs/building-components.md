@@ -176,7 +176,15 @@ chair; pictures and a shelf hang only over the low ones. Everything keeps `REACH
 in from its ends, so two walls meeting in a corner never put things in each other's way. A floor big enough has a
 table in the middle with its chairs (one knocked over now and then). It is looks only, in the walls' own
 world-space materials so a town's walls still draw together; a chair and a table are one cached shape each, and
-books stand in runs. Render three rooms with `--building-kinds=house_rooms`.
+books stand in runs. Render three rooms with `--building-kinds=house_rooms`. A shop's floor (variant 3:
+`TownGen._plan` marks a shop) is fitted out instead of furnished (`BuildingInteriors.shop`): rows of shelving
+running back from the door, stocked in runs of one kind or picked half empty, and the counter across the back
+with its till and scales and stock at its end, all clear of the front and of what stands against the walls.
+Its walls know it's a shop (the `shop` prop `MapGen._house` gives them) and are fitted out to match
+(`BuildingInteriors.shop_wall`, from the same stream and within the same `REACH` as a house's furniture): shelving
+the length of a plain wall packed with goods (now and then picked half empty), a cooler of drinks at one end of
+some, or a greengrocer's rack of crates under a chalked price board; its windows have a blind or nothing.
+Render two with `--building-kinds=shop_rooms`.
 
 ## House plans and storeys
 
@@ -216,8 +224,28 @@ weathered grey, dark green), drawing the same random numbers as before. Its roof
 galvanised or red) pitched four degrees steeper, always a plain gable, with no chimney or aerial and a loft door
 under a hoist beam high in each gable end. Its doors are ledged boards, its windows have no curtains or lamps,
 its walls no paint or pictures inside, and its floor (variant 2) is bare concrete strewn with straw
-(`BuildingWeathering.straw`), lying flat. Render one with `--building-kinds=barn`; the town views include a
+(`BuildingWeathering.straw`). Render one with `--building-kinds=barn`; the town views include a
 farmstead.
+
+Inside, the floor is fitted out as a working barn (`BuildingFarm.barn`, from the floor's own stream): small bales
+stacked in a back corner, each layer laid across the one under it and set back from it, a few pulled down and one
+broken open, a fork left in the stack; stalls along the rest of the back wall (boarded partitions, a rail and a
+gate shut or swung in, the manger with its hay rack, a bucket, fresh straw); a two-wheeled cart in the middle with
+bales, sacks or old straw in it; a workbench, a barrow and churns along one end, feed sacks on a pallet and a bin
+along the other. The floor knows which wall the door is in (`Structure.entry`, set by `MapGen._house`, which now
+draws the door's side before it spawns the floor: the same random numbers in the same order) and turns the
+layout so nothing stands within 2.3 m of it. Nothing on the floor within reach of a wall rises above 1.45 m
+(`BuildingFarm.LOW`), and the barn's windowless walls hang their tools above 1.5 m (`BuildingFarm.wall_tools`: a
+scythe, a hay rake, a fork, rope, a horse collar, a bow saw, a storm lantern), so the two never meet. Render them
+with `--building-kinds=barn_rooms` (roofs off).
+
+Round the yard (`TownGen.farmyards`, after everything else on the map is laid, from a stream seeded from where the
+farm is, so nothing else moves) a farm has its tractor (a parked civilian vehicle: Structure `car`, variant 5, cover
+like any car), a water trough at the barn's end, a plough and a harrow put away by it, a churn stand at the gate,
+a hen house with its run and hens by the farmhouse, a wheelbarrow at the barn door; each at the first of a few
+spots that has level ground and room clear of the buildings, the hedges and woods laid since, and the fence. All
+of them, like the round bales (below), are Decor pieces a vehicle or a blast knocks over (`Decor.BREAKABLE`).
+Render the kit with `--building-kinds=farm_kit`.
 
 ## Shop fronts
 
