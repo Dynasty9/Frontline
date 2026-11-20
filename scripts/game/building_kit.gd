@@ -33,7 +33,7 @@ var sink: Sink
 var frame := Transform3D.IDENTITY
 var rng: RandomNumberGenerator
 ## A side's disruptive paint over what this kit builds (Camo.painted), or -1:
-## a base's buildings are painted over, a town's are not.
+## a field work (the bunker) is painted over, the base's buildings and the town's are not.
 var paint := -1
 
 static var _shapes := {}

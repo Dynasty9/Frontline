@@ -3975,7 +3975,6 @@ func _build_model() -> void:
 			var L := size.x if long_x else size.z
 			var W := size.z if long_x else size.x
 			var bk := _kit(rng)
-			bk.paint = team  # (painted over in the side's camouflage)
 			var rk := bk.at_point(Vector3.ZERO, Vector3(0, 0.0 if long_x else PI * 0.5, 0))
 			var wc := C_OLIVE
 			var sheet := Color(0.42, 0.44, 0.4)
@@ -4026,7 +4025,6 @@ func _build_model() -> void:
 			# along the roof, a roller shutter onto a loading apron, pipes on
 			# brackets down one side, extract cowls and the works chimney
 			var fk := _kit(rng)
-			fk.paint = team
 			_mk(Res.box(Vector3(size.x + 0.4, 0.3, size.z + 0.4)), "concrete", Vector3(0, 5.15, 0), Vector3.ZERO, Color(0.48, 0.48, 0.46))
 			BuildingRoofs.sawtooth(fk.at_point(Vector3(0, 5.3, 0)), size.x * 0.9, size.z * 0.8, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45), Color(0.3, 0.32, 0.3), true)
 			var shed := Color(0.45, 0.46, 0.44)
@@ -4059,7 +4057,6 @@ func _build_model() -> void:
 			# door, a dish, a guyed mast with the flag, plant on the roof and
 			# a generator by the wall
 			var rk := _kit(rng)
-			rk.paint = team
 			var wc := Color(0.5, 0.52, 0.5)
 			_mk(Res.box(Vector3(size.x + 0.3, 0.2, size.z + 0.3)), "concrete", Vector3(0, 3.3, 0), Vector3.ZERO, Color(0.42, 0.42, 0.4))
 			for face in 4:
@@ -4453,15 +4450,11 @@ static func _skinnable(sm: StandardMaterial3D) -> bool:
 	return sm != null and not sm.emission_enabled and sm.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED and sm.albedo_color.a > 0.99
 
 
-## The base's own buildings are painted over in their side's camouflage
-## (Camo), right across the walls, the trim and the roof; so is the
-## Coalition's concrete bunker, as pillboxes were.
-const PAINTED := ["barracks", "factory", "research"]
-
-
 func _surf_kind(c: Color, mesh: Mesh) -> String:
 	var kind := _plain_surf_kind(c, mesh)
-	if skind in PAINTED or (skind == "bunker" and team == 0):
+	# (the Coalition's concrete bunker is painted over in its camouflage, as
+	# pillboxes were; the base's barracks, works and labs keep their own paint)
+	if skind == "bunker" and team == 0:
 		return Camo.painted("precast" if kind == "concrete" else kind, team)
 	return kind
 

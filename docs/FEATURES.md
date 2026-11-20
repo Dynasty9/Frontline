@@ -1773,8 +1773,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   its digital form); a Rebel's jacket and trousers are surplus from anywhere, often two different patterns, or
   plain. On the imported character the shader reprints the cloth in its texture space, keeping its folds, and its
   black webbing takes the man's rig colour. Detail too fine to see fades to the colour the print averages to.
-  The base's buildings (barracks, factory, research post, and the Coalition's concrete bunker) are painted over in
-  big disruptive blotches of three colours by side, green, brown and black or sand, earth and olive, running on
+  The Coalition's concrete bunker is painted over in
+  big disruptive blotches of three colours, green, brown and black, running on
   across walls, corners and roof, sun-bleached on top and flaked through low down. Camouflage nets are garnish
   cut into leaves, each turned its own way, tied to a diamond cord mesh and printed in blotches, woodland for the
   Coalition and desert for the Rebels; the FOB's net is pitched over the block on its poles and hangs to head

@@ -1,15 +1,11 @@
 +++
-title = "Real camouflage on soldiers, bases and nets"
-summary = "Uniforms are printed in proper camouflage patterns, base buildings are painted in disruptive blotches, and camouflage nets look like cut garnish on a cord mesh."
+title = "Real camouflage on soldiers and nets"
+summary = "Uniforms are printed in proper camouflage patterns, and camouflage nets look like cut garnish on a cord mesh."
 kind = "improved"
 
 [[screenshots]]
 file = "soldiers.jpg"
 caption = "Rebel fighters before and after: surplus woodland, tiger stripe, fleck, rain, digital and desert, often mismatched"
-
-[[screenshots]]
-file = "base.jpg"
-caption = "A Coalition base before and after: barracks, factory and research post painted green, brown and black"
 
 [[screenshots]]
 file = "nets.jpg"
@@ -26,9 +22,8 @@ caption = "Before (left) and after (right): native posed soldier fixture, matche
   every army: jacket and trousers are often two different patterns, or plain.
 - **Detailed riflemen and fighters** have their uniforms reprinted in their side's patterns, with their webbing in
   the colour of their chest rigs instead of black.
-- **Base buildings** (barracks, factory, research post and the Coalition's concrete bunker) are painted over in big
-  blotches that run across walls and roofs: green, brown and black for the Coalition, sand, earth and olive for
-  the Rebels, bleached on the roof and worn through low down.
+- **The Coalition's concrete bunker** is painted over in big green, brown and black blotches that run across its
+  walls and roof, bleached on top and worn through low down. The base's buildings keep their own paint.
 - **Camouflage nets** are cut into leaves on a diamond cord mesh, printed woodland for the Coalition and desert for
   the Rebels. The FOB's net now drapes over the block instead of floating flat above it.
 - From the usual camera height, fine detail fades to the colour the pattern averages to, so nothing shimmers.

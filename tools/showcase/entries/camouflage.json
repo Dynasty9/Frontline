@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/camouflage.md",
-  "title": "Real camouflage on soldiers, bases and nets",
+  "title": "Real camouflage on soldiers and nets",
   "version": "unreleased",
   "kind": "improved",
-  "summary": "Uniforms are printed in proper camouflage patterns, base buildings are painted in disruptive blotches, and camouflage nets look like cut garnish on a cord mesh.",
+  "summary": "Uniforms are printed in proper camouflage patterns, and camouflage nets look like cut garnish on a cord mesh.",
   "medium": "motion",
   "stage": "game capture flags",
   "rationale": "An appearance change: matched before/after stills of the same men, buildings and nets show it best. A matched native render sweep now accompanies the preserved earlier stills.",
@@ -13,11 +13,6 @@
       "file": "changelog/unreleased/camouflage/soldiers.jpg",
       "sha256": "c6a1ae944f5f24a189a349fef59e1946f48d4d454fa663cbb9c068e46068c558",
       "caption": "Six Rebel fighters, same seeds, before and after."
-    },
-    {
-      "file": "changelog/unreleased/camouflage/base.jpg",
-      "sha256": "de39f8f6930f10da78a621be406b112a5b919b4865a1f8cd1822520c08f088fd",
-      "caption": "The showroom's Coalition base, same camera, before and after."
     },
     {
       "file": "changelog/unreleased/camouflage/nets.jpg",
