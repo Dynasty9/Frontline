@@ -263,9 +263,10 @@ variants).
 | Dome light | `VehicleFittings.dome_light` | 19 / 25 | Metal base reaching the old sphere's foot, rubber seat, glossy lens |
 | Navigation sidelight | `VehicleFittings.nav_light` | 30 / 36 | Red to port and green to starboard by rule, marker housing, visor |
 | Coaxial gun port | `VehicleWeapons.coax` | 13 / 17 | Port sleeve, slotted flash hider, dark bore |
-| Automatic cannon | `VehicleWeapons.autocannon` | 16 / 24 | Recoil-sleeve collar, clamp bands, ported muzzle brake, bore |
-| Heavy machine gun | `VehicleWeapons.hmg` | 22 / 40 | Shared receiver, feed cover, rear sight, perforated jacket, carrying handle, spade grips, open ammo can and the belt running from it into the feedway (`_belt`) |
-| Medium machine gun | `VehicleWeapons.mmg` | 8 / 16 | Shared receiver, butt and pistol grip, gas tube, carrying handle, open ammo can and belt |
+| Automatic cannon | `VehicleWeapons.autocannon` | 16 / 24 | Recoil-sleeve collar, clamp bands, ported muzzle brake (a brake under 1 cm long: a plain crown instead, for guns like the M242 that carry none), bore |
+| Conical flash hider | `VehicleWeapons.cone_hider` | 3 / 3 | A cone flaring forward over a barrel's end, its lip and dark bore (ZU-23's 2A14, KPVT) |
+| Heavy machine gun | `VehicleWeapons.hmg` | 22 / 40 | Shared receiver (13.5 cm across, as the M2's side plates), feed cover, rear sight, perforated jacket, carrying handle, the retracting handle's slot, spade grips as loops off the back plate with the butterfly trigger, open ammo can and the belt running from it into the feedway (`_belt`) |
+| Medium machine gun | `VehicleWeapons.mmg` | 8 / 16 | Shared receiver at an M240's proportions with stamped ribs and its charging handle, butt, pistol grip and trigger guard, gas tube and block, the bipod folded under it, carrying handle, open ammo can and belt |
 | Grenade machine gun | `VehicleWeapons.gmg` | 14 / 23 | Shared receiver, spade grips, perforated jacket, drum or box feed with chute |
 | Rotary barrel cluster | `VehicleWeapons.rotary` | 11 / 19 | Spindle, barrel carrier, clamps and bores along any axis |
 | Missile launch tube | `VehicleWeapons.launch_tube` | 4 / 11 | End collars, frangible front cover, rear blast seal, clamp bands, umbilical box |
@@ -722,13 +723,8 @@ camera first. Nodes, meshes, wheels and rotors are unchanged on every model; ver
 roster at seed 3, at most 8.7% (the Ghost Hawk). A few models gain one surface (the non-skid coat, a gun's
 canvas boot, a camouflage net's cloth where the seed camouflages a vehicle that had no canvas).
 
-- **Camouflage** (`VehicleCloth.camouflage`, `net`, `branch`): how heavily a crew has camouflaged its vehicle,
-  0 to 1 from `k.kit_seed` (none, some or heavy), for armour-family vehicles only, never a wreck, and 0 for
-  scenery. `VehicleCloth.bag` may stuff a net into a basket place and `VehicleEquipment.storage` throw one on
-  a level bin lid or lay a branch along it; `roll` may tuck a branch along its top. Nets are a lumpy heap
-  under scrim leaves in woodland or desert colours chosen by the hull's paint (`_net_colours`); branches are
-  a stem with cached leaf sprays (`_spray`) in one cutting's shade. Both rest only on level places
-  (`_upright`).
+- **Camouflage** (`VehicleCloth.camouflage`, `net`, `branch`; removed in the eleventh pass): cut branches and
+  bundled nets dressed about two thirds of armour-family vehicles by kit seed, on loads, bin lids and rolls.
 - **Armour edges**: `VehicleBody.armour(rings, key, top, bottom, corner, turn)` breaks every lengthwise corner
   that turns more than `turn` degrees (`_broken_corners`, capped at a third of the shorter edge) and hands the
   end chamfers to `VehicleModels.solid`; `VmCsat._chamfer_loft` and `VmIndep._armour` use it, and
@@ -781,9 +777,7 @@ Angara).
   drones and the Xi'an.
 - **Armour**: `VehicleMounts.mantlet`'s `boot` on CSAT and independent guns, and `VehicleMounts._gun_boot` on a
   pivot on the gun's slide for VmCore's Abrams and T-55, so the cover elevates with the gun.
-  `VehicleBody.cut_branches(k, parent, a, b, out, salt)` lays two or three branches per side along a fender or
-  skirt top for a heavily camouflaged crew; `VmNato._branches` does the same along NATO hull sides and
-  `VmCsat._roof_net` / the Zamak and HEMTT cabs carry a kit-seeded net. Spare links on the Varsuk, T-14 hull and
+  Spare links on the Varsuk, T-14 hull and
   Stalker hull; tactical numbers 0.34-0.45 m. `VmCore._idler` is a `VehicleWheels.road` wheel without rubber.
   `VmNato._mk_turret` builds the Merkava turret in three levels to an arrowhead nose.
 - **Small metal**: `VehicleMounts.applique` paints its bolt heads, `receiver` tints feed covers to the gun's
@@ -797,9 +791,12 @@ Angara).
   `rectangular_headlamp`, `signal_lens` indicators and tail lenses and a slatted grille; door seams stop at
   the sill and `VmCiv._bonnet_line` draws the bonnet; a hash of paint and shape picks chrome or black bumpers
   and wheel trims. `VehicleCab.upper` rolls and crowns the cab roof and adds drip rails.
-- **Kit and running gear**: `VehicleCloth.LEAVES` are living greens with a drying olive-gold; `branch` lays
-  sprays wider than tall, and `bag`, `roll` and `VehicleEquipment.storage` lay longer branches more often.
-  Scrim leaves are bigger. `VehicleWheels._road_tyre` chamfers a road wheel's outer rubber edge;
+- **No crew camouflage**: the tenth pass's cut branches and bundled nets are gone (`VehicleCloth.camouflage`,
+  `net`, `branch` and their callers in `bag`, `roll` and `VehicleEquipment.storage`): foliage a crew cuts and
+  a net it throws over the load aren't part of a vehicle, and from the battle camera they read as clutter. The
+  nets some vehicles stow rolled and strapped (on the Stalker hulls, the Mora and the Gorgon) are issue kit
+  and stay.
+- **Kit and running gear**: `VehicleWheels._road_tyre` chamfers a road wheel's outer rubber edge;
   `_sidewall` raises a maker's name and size code on pneumatic tyres of 0.3 m and up.
 - **Boats and ships**: `VmShips._drip` lays five graded coats (two faint fringes, `STREAK_STAIN`, `FRINGE`) and
   `_funnel_soot` four. `VmBoat._moulded` lofts the water scooter's hood, pedestal and saddles (old cache keys
@@ -925,7 +922,7 @@ gain a surface or two where a part moved onto its own cloth (webbing ties, rope,
   cars).
 - **Covers** (`VehicleEquipment`): `recognition_panel(k, parent, center, rot, folded, chance)` lays a VS-17 panel
   (1.83 x 0.61 m of fluorescent orange or cerise nylon, or folded in half, creased, tied at the corners with rope)
-  on 40% of crews from the kit seed: M-ATV, Marshall, HEMTT (instead of its cab net), Humvee, Bradley, Leopard 2
+  on 40% of crews from the kit seed: M-ATV, Marshall, HEMTT (on its cab roof), Humvee, Bradley, Leopard 2
   and Zamak. `wheel_cover` (a vinyl cover over an outside spare), `bed_cover` (a tonneau on bows with a snap-rail
   edge), `sunshade` (a pleated shade inside the windscreen), and tarp-roped pickup loads, chosen by paint on
   parked cars so each look builds the same.
@@ -950,10 +947,11 @@ roster at seed 3, at most 5.0% (the motorboat's bimini and line).
   `sandbags(k, parent, a, b, rng, lot, courses, drape)`, `_sack`): a crew's sacks come from one lot, hessian
   (`canvas`) or woven plastic (`nylon`), about one in six from the other; each sack is one of eight cached
   pillow meshes (tied ear or folded mouth, slumped either way, or draped over a rail), and a wall lays each
-  course half a sack along, nested into the one below. Kit-seeded, never on wrecks or scenery: rail bags and
-  rear-door plate on the DShK technical (`VmCore._hilux_dshk`, which also ropes its spare and jerrycan), a wall
-  behind the ZU-23 (`_zu23`), rail bags or bolted bed plate on the armed off-roaders (`VmCiv._bed_guard`), wing
-  bags on the Zamak (`VmIndep._zamak_cab`), grain sacks in its load (`_zamak_cargo`).
+  course half a sack along, nested into the one below. Only the gun trawler's parapet uses them: the rail bags,
+  the wall behind the ZU-23 and the Zamak's wing bags this pass first laid came off on review (sandbags aren't
+  every vehicle's kit). Kit-seeded, never on wrecks or scenery: rear-door plate on the DShK technical
+  (`VmCore._hilux_dshk`, which also ropes its spare and jerrycan), bolted bed plate on a quarter of the armed
+  off-roaders (`VmCiv._bed_guard`), grain sacks in the Zamak's load (`_zamak_cargo`).
 - **Marine cloth** (`VehicleMarine.ensign`, `cloth`, `line_coil`; `VmBoat._bimini`; `VmShips._hatch_tarp`): a
   slack nylon ensign in the team colour, sagging at the fly with two folds and a white tabling, on the ships and
   boats (`VmBoat._motorboat(..., team)`); Hypalon tubes and vinyl seats in `"coated"`; a bimini on three bows
@@ -982,7 +980,7 @@ paint batch, and rise by two on the vans and the tractor for their clear glass (
   the same outline on the wing skin (`VehicleAircraft.paint`, `wing_skin`), mirrored wing to wing.
 - **Finishes**: rubber's grime is 0.06 and its dust a darker road film (`VehicleMaterials.preset`), so tyres stay
   dusty rubber in a dusty battle; recognition panels are a duller orange or rose with dust in them, on 20% of
-  crews; `NET_DESERT` is a mid sand with a mid-brown scrim; `VehicleMounts.BLOCK` and `OPTIC` are darker.
+  crews; `VehicleMounts.BLOCK` and `OPTIC` are darker.
 - **Tilts and loads**: `VehicleCloth._tilt` lays a dim liner set in under every width, so the boards that closed
   tilt openings are gone (HEMTT, Zamak, M35) and you see the benches; `back_flap` (with `_flap_half`, `_flap_mesh`)
   hangs the Tempest's rear flap from its last bow in two folds, rolled at the foot; laced-shut flaps fold.
@@ -1005,8 +1003,7 @@ paint batch, and rise by two on the vans and the tractor for their clear glass (
   paint-picked roof, the SUV a rising shoulder and tighter arches, the MB 4WD a padded bar.
 - **Military fittings**: `VehicleFittings.panel_hatch`'s stiffeners are two parallel ribs, not a cross;
   `VehicleFittings.vent` (and `_slats(..., slope)`) louvres cover 0.64 of their pitch, so engine decks read as
-  louvres; `VehicleMounts.gun_boot` pleats are ridges in matte duck (`BOOT_DUCK`); `VehicleCloth.LEAVES` and `_spray`
-  are duller, smaller, drooping leaves; the Ifrit has framed armoured glass (`VmCsat.ARMOR_GLASS`), hinges, bins
+  louvres; `VehicleMounts.gun_boot` pleats are ridges in matte duck (`BOOT_DUCK`); the Ifrit has framed armoured glass (`VmCsat.ARMOR_GLASS`), hinges, bins
   and grab rails (`_ifrit_side`); the Strider's door windows are framed and the MRAPs' glass green-black.
 
 ### Seventeenth pass: cost, glass and a second critic

@@ -1,0 +1,45 @@
+{
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "source_ref": "302209c2a7084fc3fe8298892cb3e655dfdcd863",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+  "comparisons": [
+    {
+      "subjects": [
+        "town"
+      ],
+      "view": "busstop",
+      "env": "FL_ONLY_VIEW=busstop,12,0.6,8,-30,3.6",
+      "crop": [
+        0,
+        0,
+        1600,
+        900
+      ]
+    },
+    {
+      "subjects": [
+        "town"
+      ],
+      "view": "townsign",
+      "env": "FL_ONLY_VIEW=townsign,51,-10,7,-20,2.2",
+      "crop": [
+        300,
+        200,
+        1500,
+        900
+      ]
+    },
+    {
+      "subjects": [
+        "street_pieces"
+      ],
+      "file": "pieces.jpg",
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=street_pieces",
+      "after_only": true
+    }
+  ],
+  "notes": "Seed 3's square has the war memorial (it was the statue), so the fountain appears only in the studio. Both checkouts' views fixture is given the FL_ONLY_VIEW hook for these cameras (on this branch's checkout only in the scratch copy: #270 and #220 add it).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82; the studio pieces cropped and scaled to 1600 px, JPEG quality 84"
+}

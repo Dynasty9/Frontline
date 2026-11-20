@@ -702,21 +702,17 @@ static func _off_repair(k: VehicleModels, team: int) -> void:
 
 
 ## What the fighters have put up round an armed Offroad's bed, z0..z1 along
-## it (clear of the kit in the back corners), from its kit seed: sandbags
-## along both rails, two courses on most, or steel plates bolted up inside
-## the bed's walls to chest height, cut from whatever they found, their bolt
-## heads inside the bed; or nothing. Never on a wreck or scenery.
+## it (clear of the kit in the back corners), from its kit seed: on a quarter,
+## steel plates bolted up inside the bed's walls to chest height, cut from
+## whatever they found, their bolt heads inside the bed; on the rest nothing.
+## Never on a wreck or scenery.
 static func _bed_guard(k: VehicleModels, z0: float, z1: float) -> void:
 	var m := k.root
 	var rng := VehicleCargo.kit(k, m, Vector3(0, 1.28, (z0 + z1) * 0.5), 43)
 	if rng == null or k.wreck:
 		return
 	var pick := rng.randf()
-	if pick < 0.55:
-		var lot := VehicleCloth.sack_lot(k)
-		for s: float in [-1.0, 1.0]:
-			VehicleCloth.sandbags(k, m, Vector3(s * 0.84, 1.2825, z0), Vector3(s * 0.84, 1.2825, z1), rng, lot, 2 if rng.randf() < 0.5 else 1, true)
-	elif pick < 0.8:
+	if pick >= 0.55 and pick < 0.8:
 		var steel: Color = [Color(0.3, 0.29, 0.26), Color(0.4, 0.4, 0.38), Color(0.36, 0.27, 0.19)][rng.randi_range(0, 2)]
 		var length := minf(z1 - z0, 1.4)
 		for s: float in [-1.0, 1.0]:

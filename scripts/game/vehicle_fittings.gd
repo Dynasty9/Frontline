@@ -640,7 +640,8 @@ static func jerrycan(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 
 ## Sealed ammunition can; feed boxes and wooden ammunition crates are separate.
 ## On a vehicle with a load of its own (VehicleCargo.kit) each can is from its
-## own lot: a shade apart, now and then a sand or dark green one. `open`: the
+## own lot: a shade apart, now and then a sand or dark green one. Wider than
+## 20 cm it is a ready box, lifted by grab handles at its sides. `open`: the
 ## can on a gun, feeding it - its lid off, as gunners leave it so the belt runs
 ## freely, and the mouth dark round the belt's top fold (the gun's builder lays
 ## the belt in it: VehicleWeapons._belt).
@@ -661,8 +662,14 @@ static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 	else:
 		k._box(mount, Vector3(0.162, 0.008, 0.302), Vector3(0, 0.078, 0), "rubber", null, Vector3.ZERO, false)
 		k._box(mount, Vector3(0.17, 0.025, 0.31), Vector3(0, 0.095, 0), "paint", col)
-		# The carrying handle's feet are pinned into the lid.
-		VehicleFrames.path(k, mount, [Vector3(0, 0.108, -0.065), Vector3(0, 0.133, -0.065), Vector3(0, 0.133, 0.065), Vector3(0, 0.108, 0.065)], 0.008, "gunmetal_w", null, 6, true, 0)
+		if size.x <= 0.2:
+			# The carrying handle's feet are pinned into the lid.
+			VehicleFrames.path(k, mount, [Vector3(0, 0.108, -0.065), Vector3(0, 0.133, -0.065), Vector3(0, 0.133, 0.065), Vector3(0, 0.108, 0.065)], 0.008, "gunmetal_w", null, 6, true, 0)
+	if size.x > 0.2:
+		# a container too big for one hand (a station's or a mount's ready
+		# box): a grab handle on either side, none on the lid
+		for side: float in [-1.0, 1.0]:
+			VehicleDoors.pull(k, mount, Vector3(side * 0.081, 0.03, 0), Vector3(side, 0, 0), Vector3.FORWARD, 0.07, 0.005, "gunmetal_w")
 	# (the latch plates are pressed sheet a centimetre thick: a chamfer of
 	# millimetres on them is lost past arm's length, so they are plain plates)
 	for z in [-0.157, 0.157]:

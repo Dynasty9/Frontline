@@ -154,6 +154,19 @@ a decor list of its own after the rest, so the town is as it was; vehicles and b
 other street furniture (`Decor.BREAKABLE`). Render the pieces with `--building-kinds=street_kit`; the town views
 include the crossroads and the square.
 
+The older pieces are `BuildingStreet`'s too:
+- **The square's fountain** (`fountain`): a basin of dressed stone in segments with a moulded lip, a pedestal to a
+  lower bowl, a stem to an upper bowl, the finial, weed at the foot. Decor draws the water in it, and in each bowl,
+  on its own.
+- **The bus shelter** (`bus_shelter`): a steel frame, glazed back and ends (the odd pane shot out), a curved roof
+  with its fascia, a bench of slats, a timetable case, the stop's flag.
+- **Litter bins** (`litter_bin`): a slatted drum on a post.
+- **Planters** (`planter`): a tapered concrete trough with bedding flowers round a clipped box ball.
+- **A town's name board** (`town_sign`): a yellow board with its name, a district board under it, enamelled faces
+  on bare galvanised backs.
+
+Render them with `--building-kinds=street_pieces`.
+
 ## Furniture
 
 A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it
@@ -163,7 +176,15 @@ chair; pictures and a shelf hang only over the low ones. Everything keeps `REACH
 in from its ends, so two walls meeting in a corner never put things in each other's way. A floor big enough has a
 table in the middle with its chairs (one knocked over now and then). It is looks only, in the walls' own
 world-space materials so a town's walls still draw together; a chair and a table are one cached shape each, and
-books stand in runs. Render three rooms with `--building-kinds=house_rooms`.
+books stand in runs. Render three rooms with `--building-kinds=house_rooms`. A shop's floor (variant 3:
+`TownGen._plan` marks a shop) is fitted out instead of furnished (`BuildingInteriors.shop`): rows of shelving
+running back from the door, stocked in runs of one kind or picked half empty, and the counter across the back
+with its till and scales and stock at its end, all clear of the front and of what stands against the walls.
+Its walls know it's a shop (the `shop` prop `MapGen._house` gives them) and are fitted out to match
+(`BuildingInteriors.shop_wall`, from the same stream and within the same `REACH` as a house's furniture): shelving
+the length of a plain wall packed with goods (now and then picked half empty), a cooler of drinks at one end of
+some, or a greengrocer's rack of crates under a chalked price board; its windows have a blind or nothing.
+Render two with `--building-kinds=shop_rooms`.
 
 ## House plans and storeys
 
@@ -203,8 +224,28 @@ weathered grey, dark green), drawing the same random numbers as before. Its roof
 galvanised or red) pitched four degrees steeper, always a plain gable, with no chimney or aerial and a loft door
 under a hoist beam high in each gable end. Its doors are ledged boards, its windows have no curtains or lamps,
 its walls no paint or pictures inside, and its floor (variant 2) is bare concrete strewn with straw
-(`BuildingWeathering.straw`), lying flat. Render one with `--building-kinds=barn`; the town views include a
+(`BuildingWeathering.straw`). Render one with `--building-kinds=barn`; the town views include a
 farmstead.
+
+Inside, the floor is fitted out as a working barn (`BuildingFarm.barn`, from the floor's own stream): small bales
+stacked in a back corner, each layer laid across the one under it and set back from it, a few pulled down and one
+broken open, a fork left in the stack; stalls along the rest of the back wall (boarded partitions, a rail and a
+gate shut or swung in, the manger with its hay rack, a bucket, fresh straw); a two-wheeled cart in the middle with
+bales, sacks or old straw in it; a workbench, a barrow and churns along one end, feed sacks on a pallet and a bin
+along the other. The floor knows which wall the door is in (`Structure.entry`, set by `MapGen._house`, which now
+draws the door's side before it spawns the floor: the same random numbers in the same order) and turns the
+layout so nothing stands within 2.3 m of it. Nothing on the floor within reach of a wall rises above 1.45 m
+(`BuildingFarm.LOW`), and the barn's windowless walls hang their tools above 1.5 m (`BuildingFarm.wall_tools`: a
+scythe, a hay rake, a fork, rope, a horse collar, a bow saw, a storm lantern), so the two never meet. Render them
+with `--building-kinds=barn_rooms` (roofs off).
+
+Round the yard (`TownGen.farmyards`, after everything else on the map is laid, from a stream seeded from where the
+farm is, so nothing else moves) a farm has its tractor (a parked civilian vehicle: Structure `car`, variant 5, cover
+like any car), a water trough at the barn's end, a plough and a harrow put away by it, a churn stand at the gate,
+a hen house with its run and hens by the farmhouse, a wheelbarrow at the barn door; each at the first of a few
+spots that has level ground and room clear of the buildings, the hedges and woods laid since, and the fence. All
+of them, like the round bales (below), are Decor pieces a vehicle or a blast knocks over (`Decor.BREAKABLE`).
+Render the kit with `--building-kinds=farm_kit`.
 
 ## Shop fronts
 
@@ -285,6 +326,20 @@ negative inset so the frame stands proud of the face and glaze it fully (`glazin
 would show the block behind. Door leaves that swing are built in their own hinge kit (`BuildingKit.nodes(pivot)`);
 `BuildingOpenings.leaf` runs the leaf out along `toward` from the hinge line.
 
+## The field hospital
+
+A side's medic tent is `BuildingTents.field_hospital`, standing where its part is:
+- **The tent:** a frame tent 1.8 m to the eaves under a pitched roof, its arches showing through as seams every
+  bay. It has clear windows down both long sides with their blinds rolled up, and the door at its -x end open with
+  the flap rolled over it and boards for a step.
+- **Markings:** a red cross on white on both slopes of the roof and over the door, and a flag with the cross on
+  its pole.
+- **Rigging and stores:** guy ropes out to pegs; by the door, stretchers on trestles (`stretcher`) and crates of
+  medical stores (`medical_crate`); oxygen cylinders at the far end.
+
+A regular army's tent is new olive drab; a militia's is old khaki canvas, faded and patched. Render both with
+`--building-kinds=medic_tent:0,medic_tent:1` (`--building-rear` for the door end).
+
 ## Bales
 
 A farm's bales (Decor `hay`) are `BuildingFarm.bales`: one to three round bales in a row, a third on the two where
@@ -295,6 +350,33 @@ there are three.
   a soft sheen), their ends puckered with folds round a darker middle.
 
 Render them with `--building-kinds=bales`.
+
+## The water tower
+
+A town's water tower is `BuildingLandmarks.water_tower`, standing where Decor's `water_tower` stands:
+- **The legs:** four round columns splayed out to concrete piers, two tiers of struts with crossed tension rods and
+  turnbuckles between them, the riser pipe up the middle.
+- **The tank:** on its ring girder, with a catwalk and railing round its foot, its plates in riveted bands with rust
+  weeping from the top seam, under a cone roof with a hatch, a vent and a finial.
+- **The ladders:** one up a leg in its safety cage to the catwalk, another up the tank to the roof.
+
+Render it with `--building-kinds=water_tower`.
+
+## Crate stacks
+
+The cover crate stacks (structure `crates`) are `BuildingCargo.stack`, drawn inside the boxes their parts give for
+cover: variant 0 is one pallet load, variant 1 two loads side by side with a crate hoisted onto the left one.
+- **A load** is a low crate with two ammunition boxes on it, three layers of ammunition boxes (the top one laid
+  across to tie the stack), or a tall crate, each on its pallet; on the long stack a box is sometimes left on top
+  of the right-hand load.
+- **`shipping_crate`**: boards inside a frame of battens, a brace corner to corner across each long face, cleats
+  over the lid, two steel bands, and the lot number and this-way-up arrows stencilled on the ends (black on bare
+  pine; pale on the third painted olive drab).
+- **`ammo_box`**: sharp-edged painted boards, the lid a shade lighter, hasps and hinges, rope handles through end
+  cleats, the lot number and the yellow band of high explosive on the front.
+
+Each crate's battens, bands, ironwork, rope and stencil are one cached mesh per size, so a stack is a few dozen
+parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
 
 ## Who uses what
 
@@ -312,6 +394,7 @@ Render them with `--building-kinds=bales`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingCargo.stack`, `shipping_crate`, `ammo_box`, `pallet_load`, `ammo_row` | Cover crate stacks, the town's supply dumps, the FOB's stores |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the

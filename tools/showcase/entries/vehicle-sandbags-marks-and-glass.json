@@ -1,6 +1,6 @@
 {
   "entry": "changelog/unreleased/vehicle-sandbags-marks-and-glass.md",
-  "summary": "Sandbags and improvised plate on rebel vehicles, painted team marks, dusty rubber tyres, dark armoured glass, open tilts and canvas flaps, soft rotor shimmer, see-through van, tractor and Blackfoot cabs, ensigns and biminis on boats, and louvres, exhausts and hatches that read right.",
+  "summary": "Improvised plate on some rebel vehicles, painted team marks, dusty rubber tyres, dark armoured glass, open tilts and canvas flaps, soft rotor shimmer, see-through van, tractor and Blackfoot cabs, ensigns and biminis on boats, and louvres, exhausts and hatches that read right.",
   "medium": "still",
   "stage": "tools/showcase/vehicle-surfaces.tscn",
   "rationale": "Fabric, finish, glass and fitting changes across every family: one matched studio sheet shows a representative of each, framed close where the change is small.",
@@ -9,11 +9,11 @@
   "sources": [
     {
       "file": "changelog/unreleased/vehicle-sandbags-marks-and-glass/comparison.jpg",
-      "sha256": "99cb2f2ffb8c012f4bd97186a5a7eaaf2508629625c4031d40b862a9ad9162c5"
+      "sha256": "9b4e001505e148fa0fdbe5a17607f10f900ec443058ae18eec5e01e1515c3ce2"
     },
     {
       "file": "changelog/unreleased/vehicle-sandbags-marks-and-glass/capture.json",
-      "sha256": "c3335b049594012646401b5cd83ca34454cdc2eaa56e65e291989ad731908ec2"
+      "sha256": "db7a3f260a9127617d2f1b2f3591e237796ae1762ab13e92675084c1a4b6b382"
     }
   ],
   "output": null
