@@ -113,9 +113,9 @@ static func aerial(k: BuildingKit, base: Vector3, h := 1.6, yaw := 0.0) -> void:
 
 ## The inside of a wall `length` wide and `height` tall: its paint, round the
 ## openings in `gaps`, and a skirting board along its foot.
-static func lining(k: BuildingKit, length: float, height: float, gaps: Array, paint: Color) -> void:
+static func lining(k: BuildingKit, length: float, height: float, gaps: Array, paint: Color, surface := "plaster") -> void:
 	for r: Rect2 in panels(Rect2(-length * 0.5, 0.0, length, height), gaps):
-		k.plate(Vector3(r.size.x, r.size.y, 0.006), Vector3(r.get_center().x, r.get_center().y, 0.003), "plaster", paint)
+		k.plate(Vector3(r.size.x, r.size.y, 0.006), Vector3(r.get_center().x, r.get_center().y, 0.003), surface, paint)
 	for run: Vector2 in BuildingWalls.runs(-length * 0.5, length * 0.5, 0.0, 0.1, gaps):
 		if run.y - run.x > 0.05:
 			k.plate(Vector3(run.y - run.x, 0.1, 0.018), Vector3((run.x + run.y) * 0.5, 0.05, 0.012), "paint", Color(0.86, 0.84, 0.78))

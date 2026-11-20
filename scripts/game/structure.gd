@@ -1120,7 +1120,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	# (a barn is bare boards inside: no paint, pictures or radiators)
 	var barn := material == "timber"
 	if not barn:
-		BuildingFurnishings.lining(room, L, RUIN_CUT if _ruined else 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
+		BuildingFurnishings.lining(room, L, RUIN_CUT if _ruined else 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()], "ruin_plaster" if _ruined else "plaster")
 		match variant:
 			0:
 				# what stands against a wall with no window or door in it (a
@@ -3637,7 +3637,7 @@ func _ruin_crown(k: BuildingKit, L: float, material: String, wall: Color, runs: 
 		faces.append([th * 0.5, 0.2 - th * 0.5, surface, null])
 	if paint is Color:
 		# (inside, out to the face of the room's lining under it)
-		faces.append([-th * 0.5, -(0.206 - th * 0.5), "plaster", paint])
+		faces.append([-th * 0.5, -(0.206 - th * 0.5), "ruin_plaster", paint])
 	var lined: Array = []  # the plaster inside, [x0, x1, top]
 	for f: Array in faces:
 		var z0: float = f[0]

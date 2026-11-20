@@ -1335,8 +1335,8 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PAINT, "col_a": Color(0.072, 0.075, 0.07), "col_b": Color(0.16, 0.165, 0.155), "rough": 0.5, "metal": 0.5, "bump": 0.3, "grime": 0.12}
 		"gunmetal_w":
 			return {"pattern": PAINT, "col_a": Color(0.14, 0.14, 0.135), "col_b": Color(0.34, 0.33, 0.31), "rough": 0.52, "metal": 0.55, "bump": 0.35, "grime": 0.2}
-		"plaster":
-			return {"photo_color": preload("res://assets/town/plastered_wall_color.jpg"), "photo_surface": preload("res://assets/town/plastered_wall_surface.png"), "pattern": PLASTER, "col_a": Color(0.74, 0.69, 0.6), "col_b": Color(0.6, 0.57, 0.5), "col_c": Color(0.5, 0.33, 0.26), "col_d": Color(0.45, 0.42, 0.37), "rough": 0.92, "bump": 1.2, "grime": 0.7}
+		"plaster", "ruin_plaster":
+			return {"plaster_loss": 0.1 if kind == "ruin_plaster" else 0.0, "photo_color": preload("res://assets/town/plastered_wall_color.jpg"), "photo_surface": preload("res://assets/town/plastered_wall_surface.png"), "pattern": PLASTER, "col_a": Color(0.74, 0.69, 0.6), "col_b": Color(0.6, 0.57, 0.5), "col_c": Color(0.5, 0.33, 0.26), "col_d": Color(0.45, 0.42, 0.37), "rough": 0.92, "bump": 1.2, "grime": 0.7}
 		"brick":
 			return {"pattern": WEATHERED_PHOTO, "photo_mean": PHOTO_MEAN.get_meta("brick_wall_001"), "col_a": Color(0.56, 0.3, 0.21), "col_b": Color(0.62, 0.58, 0.52), "col_c": Color(0.42, 0.24, 0.17), "rough": 0.9, "bump": 0.0, "grime": 0.6, "scale": 1.0, "weathering": 0.5, "photo_color": preload("res://assets/town/brick_wall_001_color.jpg"), "photo_surface": preload("res://assets/town/brick_wall_001_surface.png")}
 		"concrete":
@@ -1530,6 +1530,7 @@ shader_type spatial;
 render_mode specular_schlick_ggx;
 
 uniform int pattern = 0;
+uniform float plaster_loss = 0.0; // Ruined room linings only; broad loss of the finish.
 uniform sampler2D photo_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D photo_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform vec3 photo_mean : source_color = vec3(0.5);
@@ -1718,7 +1719,7 @@ void fragment() {
 			col = brick; h = bh;
 		} else {
 			float n = tfbm(uv * 0.9 + off);
-			float chip = smoothstep(0.69 - sw, 0.72 + sw, n + (1.0 - smoothstep(0.0, 1.2, wpos.y - ground_y)) * 0.06);
+			float chip = smoothstep(0.69 - sw, 0.72 + sw, n + plaster_loss + (1.0 - smoothstep(0.0, 1.2, wpos.y - ground_y)) * 0.06);
 			vec3 pl = texture(photo_color, uv * 0.5).rgb * col_a * 1.8;
 			float streak = tfbm(vec2(uv.x * 3.0, uv.y * 0.35) + off);
 			pl = mix(pl, col_d, smoothstep(0.5, 0.8, streak) * 0.45);

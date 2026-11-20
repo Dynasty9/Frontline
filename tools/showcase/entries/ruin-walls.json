@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/ruin-walls.md",
   "summary": "A ruined house's walls broken off along their tops in their own brick or stone, the render spalled back off the brick.",
-  "medium": "still",
-  "stage": "tools/showcase/building-surfaces.tscn (house_ruin_plaster, house_ruin_brick, house_ruin, wide and close); tests/fixtures/environment-views.gd (town: ruin, ruin-command)",
-  "rationale": "Appearance change: matched before/after studio ruins in render, brick and stone and a ruin in the town on the same seed, then the break close up in each material and from the command camera, where it has to read as the wall's own top.",
+  "medium": "motion",
+  "stage": "tools/showcase/building-surfaces.tscn (house_ruin_plaster, house_ruin_brick, house_ruin, wide and close); tests/fixtures/environment-views.gd (town: ruin, ruin-command); tools/showcase/ruin-room-motion.tscn",
+  "rationale": "Appearance change: matched before/after studio ruins in render, brick and stone and a ruin in the town on the same seed, then the break close up in each material and from the command camera, where it has to read as the wall's own top. The additional matched native-model orbit isolates interior plaster coverage; existing town and masonry stills are preserved.",
   "source_ref": "60855f918e3557d69322cddcbaca7cc280e8f858",
   "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
   "sources": [
@@ -18,7 +18,20 @@
     {
       "file": "changelog/unreleased/ruin-walls/capture.json",
       "sha256": "fd10efde65c9ec9d83c9493de2e860274e6844968835b0e17fa6f3b5aa8b1e0d"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/interior-plaster.webm",
+      "sha256": "722e6dd28736daa2367f6f64db1356c33e9b1c9b4d184dd2b6a92e349afd33be"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/interior-plaster.jpg",
+      "sha256": "4a3c9b2b896257fad5d0cffc85ba7ea81363624b35c673f2625ac16bff46ea31"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/interior-motion-capture.json",
+      "sha256": "28354d7918c87eea8f43c91f7821446140731c611337457bfdb8faaa49af549c"
     }
   ],
-  "output": null
+  "output": null,
+  "motion_before_ref": "d4c7864110563b525cafa4785c80c413e4b8cd32"
 }

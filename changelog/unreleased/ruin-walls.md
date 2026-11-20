@@ -3,6 +3,11 @@ title = "Ruined houses' walls break off along their tops"
 summary = "The walls of a house that burned and fell in are broken off along their tops, course by course in their own brick or stone, the render spalled back off the brick under it, instead of standing to a clean level edge."
 kind = "improved"
 
+[[videos]]
+file = "interior-plaster.webm"
+poster = "interior-plaster.jpg"
+caption = "Interior plaster before and after: command-height framing, then a matched room-side orbit of the native house model."
+
 [[screenshots]]
 file = "comparison.jpg"
 caption = "A rendered ruin, a brick one, and a ruin in the town, before and after"
@@ -21,4 +26,5 @@ caption = "The break up close, in render, brick and stone, and from the command 
   on the break.
 - **The scorch is where the roof burned:** charred joist ends in their pockets at the top of the walls that still
   reach the eaves, soot on the plaster under them.
+- **Inside, patches of plaster have flaked away** across the ruined wall, exposing brick below the windows as well as along the break. Intact rooms keep their existing finish.
 - The walls give the same cover as before.
