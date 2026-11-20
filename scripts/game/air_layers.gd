@@ -36,6 +36,9 @@ const MOOD := {
 	"night": [3.5, 0.0004, 0.35, 0.6, 0.0045],
 	"rain": [4.0, 0.0006, 0.4, 0.3, 0.0],
 	"hazy": [3.5, 0.0012, 1.4, 0.6, 0.002],
+	# (the falling snow thickens the air, and the sun behind the cloud barely
+	# lights it: a flat grey-white murk, the same all round)
+	"snow": [4.0, 0.0008, 0.35, 0.3, 0.0],
 }
 ## Densities (a metre) where the grid's channel is full: mist at the ground
 ## (a thin, dense band), and the far field's smoke, dust and rain (close up

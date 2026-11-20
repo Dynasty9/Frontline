@@ -100,6 +100,74 @@ static func stack(k: BuildingKit, base: Vector3, r_bottom: float, r_top: float, 
 	k.cyl(r_top - 0.04, r_top - 0.04, 0.02, base + Vector3(0, h + 0.161, 0), "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, 12, false)
 
 
+const SOOT := Color(0.05, 0.048, 0.045)
+const RUST := Color(0.4, 0.24, 0.13)
+
+
+## A boiler's steel stack out through a roof at `base`, rising `h` above it:
+## a kerb round the hole and a storm collar over the kerb to keep the rain
+## out, the stack in flanged lengths, a band above the top joint with guys
+## from it to blocks at `anchors` (on the roof: a stack this tall can't be
+## trusted to its base alone in a wind), a rain cap on stays over the mouth.
+## Weathered as one is after years of firing: its top blackened, soot run
+## down from it and rust weeping from the joints (`wear` places the streaks).
+static func steel_stack(k: BuildingKit, base: Vector3, r: float, h: float, anchors: Array, wear: RandomNumberGenerator, col := Color(0.38, 0.35, 0.31)) -> void:
+	var kerb := 0.18
+	k.box(Vector3(r * 2.0 + 0.3, kerb, r * 2.0 + 0.3), base + Vector3(0, kerb * 0.5, 0), "concrete", Color(0.5, 0.5, 0.47))
+	k.plate(Vector3(r * 2.0 + 0.36, 0.02, r * 2.0 + 0.36), base + Vector3(0, kerb + 0.01, 0), "steel", col.lightened(0.12), Vector3.ZERO, true)
+	k.cyl(r + 0.02, r + 0.13, 0.14, base + Vector3(0, kerb + 0.09, 0), "steel", col.lightened(0.08), Vector3.ZERO, 14)
+	# the steel, darkening up into the soot that blackens the top
+	var y0 := base.y + kerb
+	var top := base.y + h
+	var black := top - 0.7
+	var at := Vector3(base.x, 0, base.z)
+	var y := y0
+	for band: Vector2 in [Vector2(top - 1.45, 0.0), Vector2(top - 1.2, 0.25), Vector2(top - 0.95, 0.5), Vector2(black, 0.75)]:
+		if band.x - y > 0.01:
+			k.cyl(r, r, band.x - y, at + Vector3(0, (y + band.x) * 0.5, 0), "steel", col.lerp(SOOT, band.y), Vector3.ZERO, 14)
+			y = band.x
+	k.cyl(r, r, top - black, at + Vector3(0, (black + top) * 0.5, 0), "plain_dark", SOOT, Vector3.ZERO, 14)
+	k.cyl(r + 0.022, r + 0.022, 0.06, at + Vector3(0, top - 0.03, 0), "plain_dark", SOOT, Vector3.ZERO, 14)
+	# the flanged joints, a length every metre and a half or less, rust
+	# weeping from each
+	var lengths := maxi(2, int((top - y0) / 1.4))
+	var joints: Array[float] = []
+	for i in range(1, lengths):
+		var jy := y0 + (top - y0) * i / lengths
+		joints.append(jy)
+		k.cyl(r + 0.04, r + 0.04, 0.05, at + Vector3(0, jy, 0), "steel", col.darkened(0.15), Vector3.ZERO, 14, false)
+		for s in 4:
+			_streak(k, at, r, jy - 0.03, wear.randf() * TAU, wear.randf_range(0.3, 1.0), wear.randf_range(0.05, 0.11), RUST, col)
+	for s in 6:
+		_streak(k, at, r, black + 0.05, wear.randf() * TAU, wear.randf_range(0.4, 1.5), wear.randf_range(0.05, 0.12), SOOT, col)
+	# the guys, from a band just over the top joint
+	var gy: float = joints[joints.size() - 1] + 0.14
+	k.cyl(r + 0.03, r + 0.03, 0.1, at + Vector3(0, gy, 0), "metal_dark", IRON, Vector3.ZERO, 14)
+	for foot: Vector3 in anchors:
+		var out := Vector3(foot.x - at.x, 0, foot.z - at.z).normalized()
+		var lug := at + Vector3(0, gy, 0) + out * (r + 0.03)
+		k.plate(Vector3(0.1, 0.1, 0.012), lug + out * 0.04, "metal_dark", IRON, Vector3(0, atan2(out.x, out.z), 0))
+		BuildingWire.guy(k, lug + out * 0.08, foot, false, "block")
+	# the rain cap over the mouth, on four stays, its underside sooted
+	for i in 4:
+		var a := TAU * (i + 0.5) / 4.0
+		var d := Vector3(cos(a), 0, sin(a))
+		k.rod(at + d * r + Vector3(0, top - 0.04, 0), at + d * r * 1.25 + Vector3(0, top + 0.24, 0), 0.014, "plain_dark", SOOT, 4, false)
+	k.cyl(r * 1.52, r * 1.52, 0.012, at + Vector3(0, top + 0.245, 0), "plain_dark", SOOT, Vector3.ZERO, 14, false)
+	k.cyl(0.03, r * 1.6, r * 0.55, at + Vector3(0, top + 0.25 + r * 0.275, 0), "plain", col.lerp(SOOT, 0.45), Vector3.ZERO, 14)
+
+
+## A streak run down a round stack from `y` (soot from the top, rust from a
+## joint), `run` long, `w` wide, facing out at `angle` round it, fading
+## from `from` into the steel `col` as it runs.
+static func _streak(k: BuildingKit, at: Vector3, r: float, y: float, angle: float, run: float, w: float, from: Color, col: Color) -> void:
+	var out := Vector3(cos(angle), 0, sin(angle))
+	var face := Vector3(0, atan2(out.x, out.z), 0)
+	for seg in 3:
+		var sl := run / 3.0
+		k.block(Vector3(w * (1.0 - seg * 0.25), sl, 0.006), at + out * (r + 0.004) + Vector3(0, y - sl * (seg + 0.5), 0), "plain", from.lerp(col, 0.25 + seg * 0.25), face, false)
+
+
 ## A flue or vent pipe from `base`, `h` tall, under a cowl that keeps the
 ## rain out: a collar where it leaves the roof, a cap on three stays.
 static func flue(k: BuildingKit, base: Vector3, r: float, h: float, col := Color(0.25, 0.26, 0.25), kind := "metal_dark") -> void:
@@ -280,8 +348,10 @@ static func dish(k: BuildingKit, base: Vector3, r := 0.38, aim := Vector3(-0.9, 
 
 ## A pipe run from `a` to `b` held off a wall, `wall` the offset from its
 ## axis to the wall's face: flanged joints every three metres or so, a
-## bracket back to the wall between each pair.
-static func pipe(k: BuildingKit, a: Vector3, b: Vector3, r: float, col: Color, wall: Vector3, kind := "steel") -> void:
+## bracket back to the wall between each pair. `into_wall`: it comes out of
+## the wall at one end and goes back in at the other (a service run between
+## two parts of a building), an elbow and a flange on the wall at each.
+static func pipe(k: BuildingKit, a: Vector3, b: Vector3, r: float, col: Color, wall: Vector3, kind := "steel", into_wall := false) -> void:
 	k.rod(a, b, r, kind, col, 10)
 	var n := maxi(1, int(a.distance_to(b) / 3.0))
 	var rot := BuildingKit.aim(b - a).get_euler()
@@ -292,6 +362,11 @@ static func pipe(k: BuildingKit, a: Vector3, b: Vector3, r: float, col: Color, w
 		var q := a.lerp(b, (i + 0.5) / n)
 		k.beam(q + w * r, q + wall, 0.05, 0.05, "metal_dark", IRON, false)
 		k.plate(Vector3(0.012, 0.14, 0.14) if absf(w.x) > 0.5 else Vector3(0.14, 0.14, 0.012), q + wall - w * 0.006, "metal_dark", IRON)
+	if into_wall:
+		for e: Vector3 in [a, b]:
+			k.rod(e, e + wall, r, kind, col, 10)
+			k.part(Res.sphere(r, 10), kind, Transform3D(Basis.IDENTITY, e), col)
+			k.cyl(r + 0.06, r + 0.06, 0.03, e + wall - w * 0.015, kind, col.darkened(0.12), BuildingKit.aim(w).get_euler(), 10, false)
 
 
 # --- masts, aerials, flags, lamps -------------------------------------------------------
