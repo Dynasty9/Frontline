@@ -3804,7 +3804,7 @@ func _mk(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, 
 ## their models that end up merged straight into the merged meshes (see
 ## Mats.Bake), with the surfaces _skin would have given them. The rest are made
 ## as nodes as ever: the door leaves (they swing), anything glassy or glowing.
-const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof", "medic_tent", "church"]
+const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof", "depot", "medic_tent", "church"]
 var _bake: Mats.Bake = null
 
 
@@ -3881,6 +3881,8 @@ func _build_model() -> void:
 			col = Res.vary(col, 0.05, rng)
 		if skind == "rubble":
 			continue  # (drawn as a heap, below)
+		if skind == "depot":
+			continue  # (its containers and command post stand where its parts are, below)
 		if skind == "medic_tent":
 			continue  # (its tent stands where its part is, below)
 		if skind == "house_wall":
@@ -4000,15 +4002,12 @@ func _build_model() -> void:
 			for x in [-2.2, 2.2]:
 				for z in [-2.2, 2.2]:
 					_mk(Res.cyl(0.06, 0.06, 3.6, 6), "wood_dark", Vector3(x * 1.6, 1.8, z * 1.6))
+			# (pitched over the corner poles and the block, a little higher in the
+			# middle, its skirts hanging down to head height all round)
 			var net := MeshInstance3D.new()
-			var nm := PlaneMesh.new()
-			nm.size = Vector2(8.6, 8.6)
-			nm.subdivide_width = 8
-			nm.subdivide_depth = 8
-			net.mesh = nm
-			net.material_override = Mats.netting()
-			Mats.set_inst(net, &"tint", Color(0.3, 0.34, 0.2) if team != 1 else Color(0.44, 0.39, 0.27))
-			net.position = Vector3(0, 3.45, 0)
+			net.mesh = WorksModels.net_mesh(eid % 2, 4.6, 3.52, 3.85, 3.45, 1.7)
+			net.material_override = Mats.netting_tent(9.2)
+			Camo.dress_net(net, 1 if team == 1 else 0)
 			model.add_child(net)
 			var fk := _kit(rng)
 			# the net's corner poles guyed out to pegs
@@ -4167,10 +4166,12 @@ func _build_model() -> void:
 			BuildingFittings.flue(rk, Vector3(size.x * 0.5 + 1.4, 1.0, 1.7), 0.05, 0.45)
 			_flag = _box(Vector3(-1.75, 6.9, -2.2), Vector3(0.8, 0.5, 0.04), tc)
 		"depot":
-			for i in 6:
-				Res.mi(model, Res.cyl(0.08, 0.08, 1.6, 6), Res.mat(C_WOOD), Vector3(-9 + i * 3.6, 0.8, -6))
-			Res.mi(model, Res.cyl(0.06, 0.06, 9.0, 6), Res.mat(Color(0.7, 0.7, 0.7)), Vector3(0, 4.5, 0))
-			_flag = _box(Vector3(0.9, 8.4, 0), Vector3(1.8, 1.0, 0.05), tc)
+			# a side's headquarters: two containers either side of a yard under a
+			# net, the command post at the back of it, a barrier at the gate
+			# (BuildingDepot; they stand where its parts are)
+			var hoist := BuildingDepot.compound(_kit(rng), size if size.z > 5.0 else Vector3(17, 3, 11), team, tc, rng)
+			BuildingDepot.net(model, team)
+			_flag = _box(hoist + Vector3(0.72, -0.42, 0), Vector3(1.4, 0.84, 0.04), tc)
 			_add_label(display_name(), 10.0)
 		"sandbags":
 			WorksModels.apron(model, size.x * 0.5 + 0.25, 0.75)
@@ -4250,6 +4251,8 @@ func _build_model() -> void:
 				# the steel doors open at the back, a whip aerial; the grime of a
 				# season and the bullet strikes round the slits
 				var bk := _kit(rng)
+				if team == 0:
+					bk.paint = team  # (the Coalition's painted over in its camouflage)
 				var wc := BuildingPillbox.CONCRETE
 				BuildingPillbox.walls(bk, parts, wc)
 				BuildingPillbox.roof(bk, BuildingPillbox.WEATHERED, rng)
@@ -4537,6 +4540,15 @@ static func _skinnable(sm: StandardMaterial3D) -> bool:
 
 
 func _surf_kind(c: Color, mesh: Mesh) -> String:
+	var kind := _plain_surf_kind(c, mesh)
+	# (the Coalition's concrete bunker is painted over in its camouflage, as
+	# pillboxes were; the base's barracks, works and labs keep their own paint)
+	if skind == "bunker" and team == 0:
+		return Camo.painted("precast" if kind == "concrete" else kind, team)
+	return kind
+
+
+func _plain_surf_kind(c: Color, mesh: Mesh) -> String:
 	var v := maxf(c.r, maxf(c.g, c.b))
 	var dark := v < 0.16
 	match skind:
