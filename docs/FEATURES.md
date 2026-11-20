@@ -1374,7 +1374,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   wreck or tree; a vehicle standing with its engine running works the snow under it to a damp, dark slush. The
   ground and roads take the 24 thaws nearest the camera as a list (no extra texture), everything standing round
   a fire (paving, yards, the neighbours' roofs) the nearest eight as global shader values (`snow_thaw_0..7`), and
-  the grass has them painted into its scar map. The wind heaps it against whatever stands in its way (`SnowDrift`): every wall, house,
+  the grass has them painted into its scar map, which the bushes and the woodland floor read too. The wind heaps it against whatever stands in its way (`SnowDrift`): every wall, house,
   hedge, fence, wreck and car drifts a bank against its lee face that rises to a rounded crest a little way out and
   tails off a few metres downwind, tapering toward its ends, (farther behind a tall wall, farther still behind a hedge or fence the wind half
   passes through), deeper along some stretches than others, with a smaller bank on the windward face, and none

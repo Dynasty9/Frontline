@@ -48,6 +48,7 @@ func _ready() -> void:
 	bush_mat = ShaderMaterial.new()
 	bush_mat.shader = CloudShadow.make(MapDims.shader(BUSH_SHADER), CloudShadow.BACKLIGHT | CloudShadow.NO_SPECULAR | CloudShadow.FOLD | CloudShadow.PROBES_VERTEX)
 	bush_mat.set_shader_parameter("leaf_texture", preload("res://assets/foliage/broadleaf.png"))
+	bush_mat.set_shader_parameter("scar", scar_tex)
 	# (a shader, not a StandardMaterial3D, so that the stones go into cloud shade too)
 	stone_mat = ShaderMaterial.new()
 	stone_mat.shader = CloudShadow.make(STONE_SHADER)
@@ -687,7 +688,12 @@ varying float rnd;
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 #include "res://scripts/game/trench_vegetation.gdshaderinc"
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
+uniform sampler2D scar : hint_default_black, filter_linear, repeat_disable;
 global uniform float snow_cover;
+// (snow) where it lies on this bush: not where a fire or an engine has thawed
+// it (SnowMelt) or a blast has burnt the ground (the scar map, as the grass)
+varying float lies;
+varying float thawed;
 // TERRAIN_TEXTURE_HELPER
 // CLOUD_SHADOW
 #ifdef CLOUD_PATTERN
@@ -695,6 +701,9 @@ varying float cloud_v;
 #endif
 void vertex() {
 	VERTEX.y += 0.65;
+	vec2 marks = textureLod(scar, (MODEL_MATRIX[3].xz + __MAP_HALF__) / __MAP_SIZE__, 0.0).rg;
+	thawed = marks.g;
+	lies = snow_cover * (1.0 - thawed) * (1.0 - marks.r);
 #ifdef CLOUD_PATTERN
 	cloud_v = cloud_sun(MODEL_MATRIX[3].xyz);
 #endif
@@ -723,14 +732,16 @@ void fragment() {
 	float up = smoothstep(0.0, 1.1, plant_height);
 	vec3 col = photograph.rgb * mix(vec3(0.7, 0.85, 0.7), vec3(1.0, 0.9, 0.65), rnd) * mix(0.65, 1.0, up);
 	// snow caps the top of a bush in lumps on the leaves that face the sky,
-	// one bush more than the next
+	// one bush more than the next; beside a fire it melts off, leaving the
+	// twigs dark and wet
 	if (snow_cover > 0.0) {
 		// (most of them have dropped their leaves or browned: in winter a
 		// thicket is a brown-grey tangle, a few evergreen among them)
 		col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.0, 0.82, 0.6), snow_cover * step(0.3, fract(rnd * 3.7)) * 0.75);
 		float facing = abs((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y);
 		float lit = dot(photograph.rgb, vec3(0.2126, 0.7152, 0.0722)) * 6.0;
-		float snowed = smoothstep(0.0, 0.18, up * 0.9 + facing * 0.5 + (lit - 0.5) * 0.6 + (fract(rnd * 7.13) - 0.5) * 0.5 - 0.9 - (1.0 - snow_cover) * 1.4);
+		float snowed = smoothstep(0.0, 0.18, up * 0.9 + facing * 0.5 + (lit - 0.5) * 0.6 + (fract(rnd * 7.13) - 0.5) * 0.5 - 0.9 - (1.0 - lies) * 1.4);
+		col *= 1.0 - thawed * snow_cover * 0.3;  // (wet with the melt)
 		col = mix(col, vec3(0.74, 0.77, 0.82), snowed * 0.9);
 	}
 	if (OUTPUT_IS_SRGB) {

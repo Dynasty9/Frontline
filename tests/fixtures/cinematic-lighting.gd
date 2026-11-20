@@ -288,6 +288,7 @@ func _check_snow_melt() -> void:
 		assert(String(code).contains("uniform vec4 melt_spots[") and String(code).contains("snow_melted("))
 	assert(not SnowMelt.GLSL.contains("sampler"))
 	assert(Grass.GRASS_SHADER.contains("thawed"), "the grass stands up where it's thawed")
+	assert(Grass.BUSH_SHADER.contains("uniform sampler2D scar") and Grass.BUSH_SHADER.contains("(1.0 - lies)"), "and the snow melts off the bushes")
 	var melt := SnowMelt.new()
 	var fire: Array = []
 	for i in int(SnowMelt.FIRE_MELT * 2.0 / SnowMelt.STEP):
