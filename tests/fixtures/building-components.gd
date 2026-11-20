@@ -372,6 +372,13 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A field hospital (the medic tent) stands its tent where its part is, the
+	# stretchers and stores by its door and the flag beside it, under 4.3 m.
+	for side in 2:
+		var mt := Structure.preview_model("medic_tent", side)
+		var mtb := _bounds(mt, Transform3D.IDENTITY)
+		check(mt.get_child_count() > 0 and mtb.size.x <= 12.5 and mtb.size.z <= 7.8 and mtb.position.y >= -0.15 and mtb.end.y <= 4.4, "a field hospital keeps to its pitch (%d: %s)" % [side, mtb])
+		mt.free()
 	# The street pieces keep to their footprints: the fountain within its
 	# basin, the bus shelter over its pavement (its stop's flag the top of it),
 	# a planter (its trough a square turned on its corner: its bounds are the
