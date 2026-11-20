@@ -1,15 +1,15 @@
 {
   "entry": "changelog/unreleased/pillbox.md",
-  "summary": "The Coalition's bunker has a thick roof slab with turf on it and a parapet of bags, a hood, sloped sill and splayed cheeks at every firing slit, an escape hatch, periscope and vent, and rain stains down its walls.",
+  "summary": "The Coalition's bunker looks like poured concrete now: chamfered corners, a thick roof slab with moss on it and a steel observation cupola, splayed embrasures at every slit, and its steel doors standing open at the back.",
   "medium": "still",
-  "stage": "tools/showcase/building-surfaces.tscn (bunker:0, --building-rear, --building-match)",
-  "rationale": "Appearance change of the concrete bunker: matched studio stills from the front and the door side show the slits' hoods, the roof and the streaks.",
-  "source_ref": "bf65fbec89ed66c34781b6aac1fc901649de80e6",
-  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "stage": "tools/showcase/building-surfaces.tscn (bunker, --building-single, front and --building-rear, the after framed by the before's capture.json with --building-match); the game's showroom scenario at the command camera (--scenario=showroom --seed=3 --focus=-22,16 --zoom=18 --cam-yaw=2.8 --nohud --perf=0 --shot-at=4)",
+  "rationale": "Appearance change of the concrete bunker: matched studio stills from the front and the door side show the walls, roof and embrasures up close, and a matched command-camera shot shows how it reads in play. Before is main's bunker, what players have now.",
+  "source_ref": "1a940c7ced5cf3b0ab1b2767ef4a911ec9041977",
+  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
   "sources": [
     {
-      "file": "changelog/unreleased/pillbox/comparison.jpg",
-      "sha256": "176c60eb4a8bbb6dde1bca779800beb315130148d3a730157faee07c65eea628"
+      "file": "changelog/unreleased/pillbox/before-after.jpg",
+      "sha256": "7c1ade494723fedcb57ed65c107027113107729b06e1bc1af995ecbb8d451061"
     }
   ],
   "output": null
