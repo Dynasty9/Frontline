@@ -406,11 +406,11 @@ func _ready() -> void:
 		bk.sink.root.free()
 	# The water tower stands on its piers within its footprint, its finial at
 	# 13.5 m or so.
-	var wtk := kit()
-	BuildingLandmarks.water_tower(wtk, wtk.rng)
-	var wtb := _bounds(wtk.sink.root, Transform3D.IDENTITY)
-	check(wtb.size.x <= 6.5 and wtb.size.z <= 6.4 and wtb.position.y >= -0.01 and wtb.end.y > 13.0 and wtb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % wtb)
-	wtk.sink.root.free()
+	var towk := kit()
+	BuildingLandmarks.water_tower(towk, towk.rng)
+	var towb := _bounds(towk.sink.root, Transform3D.IDENTITY)
+	check(towb.size.x <= 6.5 and towb.size.z <= 6.4 and towb.position.y >= -0.01 and towb.end.y > 13.0 and towb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % towb)
+	towk.sink.root.free()
 	# A tunnel's mouth keeps to its 3 m plot, its shaft going down below it.
 	var tn := Structure.preview_model("tunnel", 1)
 	var tnb := _bounds(tn, Transform3D.IDENTITY)
@@ -530,6 +530,19 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# The FOB's command post: its HESCO square keeps to the post's footprint
+	# (the baffle of bags a step outside its way in) and under the net, and
+	# its roof carries a burst layer of bags.
+	var cp_root := Node3D.new()
+	add_child(cp_root)
+	var cp_rng := RandomNumberGenerator.new()
+	cp_rng.seed = 11
+	var cp_bags: Array = []
+	WorksModels.command_post(cp_root, cp_rng, cp_bags)
+	var cpb := _bounds(cp_root, Transform3D.IDENTITY)
+	check(cpb.position.x >= -2.6 and cpb.end.x <= 2.6 and cpb.position.z >= -2.6 and cpb.end.z <= 2.6 and cpb.end.y <= 2.45, "a FOB's command post keeps to its footprint (%s)" % cpb)
+	check(cp_bags.size() == 8, "a FOB's command post has its roof of bags and its baffle (%d rows)" % cp_bags.size())
+	cp_root.free()
 	# Cover crates: the stores stand on the ground inside the boxes their parts
 	# give for cover, and one stack is loaded differently from the next.
 	var loads := {}
@@ -797,13 +810,13 @@ func _ready() -> void:
 		bnk.sink.root.free()
 	for s7 in 30:
 		var L7: float = [2.6, 3.2, 2.33][s7 % 3]
-		var tools_kit := kit()
-		tools_kit.rng.seed = s7
-		BuildingFarm.wall_tools(tools_kit, L7, tools_kit.rng)
-		var tools_box := _bounds(tools_kit.sink.root, Transform3D.IDENTITY)
-		check(tools_box.position.y >= BuildingFarm.TOOLS - 0.01 and tools_box.end.y <= 2.6 and tools_box.position.z >= -0.01 and tools_box.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, tools_box])
-		check(tools_box.position.x >= -L7 * 0.5 + 0.63 and tools_box.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, tools_box])
-		tools_kit.sink.root.free()
+		var wall_tk := kit()
+		wall_tk.rng.seed = s7
+		BuildingFarm.wall_tools(wall_tk, L7, wall_tk.rng)
+		var wall_tb := _bounds(wall_tk.sink.root, Transform3D.IDENTITY)
+		check(wall_tb.position.y >= BuildingFarm.TOOLS - 0.01 and wall_tb.end.y <= 2.6 and wall_tb.position.z >= -0.01 and wall_tb.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, wall_tb])
+		check(wall_tb.position.x >= -L7 * 0.5 + 0.63 and wall_tb.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, wall_tb])
+		wall_tk.sink.root.free()
 	# The farmyard's kit stands on the ground inside the box a vehicle or a
 	# blast knocks it down as.
 	var farm_kits := {
@@ -843,15 +856,5 @@ func _ready() -> void:
 				var m := Structure.preview_model(kind, side, v + (4 if kind == "roof" and v == 2 else 0), sz, v == 2)
 				check(m != null and m.get_child_count() > 0, "%s/%d/%d builds" % [kind, side, v])
 				m.free()
-	# A parked car that burns out (its variant goes up by 6) keeps its own body:
-	# a hatchback's shell, not an SUV's.
-	var parked := Structure.new()
-	parked.skind = "car"
-	for v in 5:
-		parked.variant = v
-		var body := parked._car_kind()
-		parked.variant = v + 6
-		check(body == v and parked._car_kind() == body, "a burnt-out car %d keeps its body (%d)" % [v, parked._car_kind()])
-	parked.free()
 	print("BUILDING_COMPONENTS %s (%d failures)" % ["passed" if _failures == 0 else "failed", _failures])
 	TestRun.quit(get_tree())

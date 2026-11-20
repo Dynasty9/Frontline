@@ -99,6 +99,7 @@ func _ready() -> void:
 		l.light_specular = 0.25
 		l.omni_attenuation = 1.6
 		l.shadow_enabled = false
+		l.light_volumetric_fog_energy = 40.0  # (a flash blooms in mist, haze and smoke)
 		l.visible = false
 		l.add_to_group(&"fx_light")
 		add_child(l)
