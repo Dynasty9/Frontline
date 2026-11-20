@@ -1,15 +1,27 @@
 {
   "entry": "changelog/unreleased/watchtower-roof.md",
   "summary": "A watchtower's sheet roof has gone dull with the weather and has sandbags laid on its edges to hold it down in a wind.",
-  "medium": "still",
+  "medium": "motion",
   "stage": "tools/showcase/building-surfaces.tscn (watchtower:0, --building-match)",
-  "rationale": "Small appearance change of the watchtower roof: one matched studio still before and after.",
+  "rationale": "Small appearance change of the watchtower roof: one matched studio still before and after. A matched close camera orbit makes the subtle sheet tint and existing weathering readable in motion; this is a decorative studio review, not gameplay or functional evidence.",
   "source_ref": "54276f86c8bd30e71772d24e56c86c5a363009a6",
   "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
   "sources": [
     {
       "file": "changelog/unreleased/watchtower-roof/comparison.jpg",
       "sha256": "9cd2e8a5805983af304e82209b995bfa91f1d3ba8d8d145be027862e6dbda940"
+    },
+    {
+      "file": "changelog/unreleased/watchtower-roof/sheet-orbit.webm",
+      "sha256": "c08eab52978c4ae040fc4b034e82cd6506aaf279ebb05039bf6a39addaa91d65"
+    },
+    {
+      "file": "changelog/unreleased/watchtower-roof/sheet-orbit.jpg",
+      "sha256": "c9e4e5ddd1536b8363ee2da27cd4f8ecf44378e6a7c1e18a25653fd13a5295f1"
+    },
+    {
+      "file": "changelog/unreleased/watchtower-roof/sheet-orbit-capture.json",
+      "sha256": "df6efa89c0423bccc59386c10b985e78d8592e0734b2a610ac453748d7e65a6c"
     }
   ],
   "output": null

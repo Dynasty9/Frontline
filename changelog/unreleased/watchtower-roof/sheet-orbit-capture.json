@@ -1,0 +1,83 @@
+{
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "after_art_ref": "55b0c33834018fea04c3ed3014e61201c6ea9ca7",
+  "target_ref": "main",
+  "target_ref_sha_at_review": "6399514f144e529794856e8618d488ec5df28a4e",
+  "baseline": "Verified PR fork point; not a claim that the before take is current main. No merge or retarget.",
+  "fixture": "tools/showcase/building-surfaces.tscn",
+  "fixture_script_sha256": "560446d8b36ae675d181b75ae2131eed31f45eb31168f87ade4a6eb85ea4833f",
+  "fixture_note": "The identical camera-only orbit extension is applied to both isolated source revisions. Production models and materials are unmodified.",
+  "subject": "watchtower:0; preview id=0, variant=0, side=0 (deterministic model seed 0)",
+  "camera": {
+    "center": [
+      0,
+      7.1,
+      0
+    ],
+    "orthographic_size": 4.3,
+    "distance": 16,
+    "direction": [
+      1,
+      1.15,
+      -1.35
+    ],
+    "yaw_span_radians": [
+      -0.18,
+      0.18
+    ]
+  },
+  "light": {
+    "sun_rotation_degrees": [
+      -42,
+      -38,
+      0
+    ],
+    "sun_energy": 1.25,
+    "ambient_energy": 0.6,
+    "tonemap": "Filmic",
+    "sky": "existing fixed studio daylight",
+    "exposure": "unchanged default; no auto exposure or grading"
+  },
+  "capture": {
+    "engine": "Godot 4.7.2.stable.ed1daf0bf",
+    "renderer": "Forward+ / Vulkan 1.4.305 / Mesa llvmpipe LLVM 19.1.7",
+    "viewport": [
+      1600,
+      900
+    ],
+    "output": [
+      1280,
+      720
+    ],
+    "warmup_frames": 24,
+    "frames_per_take": 60,
+    "fps": 15,
+    "duration_seconds": 8,
+    "audio": false,
+    "edit": "Before four-second orbit, then the same orbit on the PR head. No speed changes within the configured camera path."
+  },
+  "command": "DISPLAY=<private-Xvfb> XAUTHORITY=<private-auth> XDG_DATA_HOME=<workspace-data> XDG_CONFIG_HOME=<workspace-config> XDG_CACHE_HOME=<workspace-cache> VK_DRIVER_FILES=<llvmpipe-icd> LD_LIBRARY_PATH=<renderer-libs> LP_NUM_THREADS=2 godot --path <exact-worktree> --rendering-method forward_plus --audio-driver Dummy --resolution 1280x720 tools/showcase/building-surfaces.tscn -- --building-kinds=watchtower:0 --building-orbit --building-match=<JSON camera above> --building-out=<raw-output> --building-orbit-label=<BEFORE/AFTER sha>",
+  "compatibility": "Matched start/mid/end probes on both revisions pass: corrugation and weathering remain legible. Compatibility is brighter than Forward+ in this studio; no cross-renderer pixel-match claim.",
+  "scope": "Fictional decorative sheet surface review only. The tint delta is subtle; the existing weathering is visible in both takes. No surface patch was justified. All production material, geometry, placement, layout, protective behavior, sightlines, use and gameplay code remain unchanged by this follow-up. No actors or tactical activity.",
+  "limits": "Software capture only; no hardware or performance claims. The 4.5 MB encode retains native 1280px detail for the closely spaced ribs during motion.",
+  "compatibility_probe_camera": {
+    "center": [
+      0,
+      6.76,
+      0
+    ],
+    "orthographic_size": 5.2,
+    "distance": 16,
+    "direction": [
+      1,
+      1.15,
+      -1.35
+    ],
+    "yaw_radians": [
+      -0.18,
+      0,
+      0.18
+    ],
+    "matching_forward_samples": true
+  }
+}
