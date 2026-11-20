@@ -1,0 +1,74 @@
+{
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "source_ref": "22f4ca00f9790f9b5c150cf8b27f01a962933a26",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn; tests/fixtures/environment-views.gd",
+  "command": "godot --path CHECKOUT --resolution 3200x1800 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "barn_rooms"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=barn_rooms"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "crops": [
+        [
+          200,
+          280,
+          2960,
+          1580
+        ],
+        [
+          1500,
+          300,
+          2940,
+          1060
+        ]
+      ]
+    },
+    {
+      "subjects": [
+        "farm"
+      ],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "crop": [
+        0,
+        0,
+        1600,
+        900
+      ],
+      "crops": [
+        [
+          0,
+          0,
+          1340,
+          754
+        ]
+      ]
+    },
+    {
+      "subjects": [
+        "farm_kit"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=farm_kit"
+      ],
+      "after_only": true,
+      "crop": [
+        180,
+        300,
+        2920,
+        1560
+      ],
+      "output": "farm-kit.jpg"
+    }
+  ],
+  "notes": "The studio rows render the source_ref studio stage on both sides (its barn_rooms subject gives a barn's floor, variant 2, and windowless back and end walls; before, rendered when this was first drawn, that floor is bare concrete strewn with straw and the walls hang nothing). The farmstead row is the seed-3 town views' farm view, before at before_ref (main with the round bales of #272) and after at source_ref, cropped to the farmstead: the map is laid as it was, the farmyards' kit last of all from its own stream. Its farmhouse's door hood and roof tank differ because the shop interiors change no longer spawns a cover crate in shops and barns, which renumbers the entities after them. farm-kit.jpg shows the yard's pieces on their own beside main's round bales (after only: there were none).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82; farm-kit.jpg a 1600 px crop"
+}

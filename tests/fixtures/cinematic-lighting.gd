@@ -151,6 +151,8 @@ func _check_snow_lie() -> void:
 	assert(Woodland.SHADER.contains("kind == 7"), "a well round each trunk")
 	# the streets are ploughed to the kerbs
 	assert(Atmosphere.ROAD_SHADER.contains("bank_relief("))
+	# and the dirt roads (the ground's own) are slush lanes, banked at the sides
+	assert(Atmosphere.GROUND_SHADER.contains("road_slush") and Atmosphere.GROUND_SHADER.contains("surface_relief(n, road_bank"), "a dirt road is a slush lane between the plough's banks")
 
 
 ## The snow on a roof (SnowRoof, Structure._snow_roof): a lip along a pitched

@@ -1,21 +1,31 @@
 extends Node
 
 func _ready() -> void:
+	if "--track-normals-only" in OS.get_cmdline_user_args():
+		TestRun.watch()
+		await check_track_normals()
+		print("TRACK_NORMALS passed")
+		Sfx._ensure()
+		while Music._task >= 0:
+			await get_tree().process_frame
+		TestRun.quit(get_tree())
+		return
 	check_release_forest_atlas()
 	var arrays := Atmosphere.terrain_materials()
 	assert(arrays.size() == 2)
 	assert(arrays[0] == Atmosphere.terrain_materials()[0], "Map reloads must reuse the material allocation")
 	for channel in 2:
 		var array := arrays[channel]
-		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() + Atmosphere.DETAIL_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
+		assert(array.get_layers() == 6 + Atmosphere.MEADOW_MATERIALS.size() + Atmosphere.DETAIL_MATERIALS.size() + Atmosphere.TRACK_MATERIALS.size() and array.get_width() == 1024 and array.get_height() == 1024)
 		assert(array.has_mipmaps() and array.get_format() == Image.FORMAT_RGBA8, "All packed channels and distant filtering must survive import")
-		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS + Atmosphere.DETAIL_MATERIALS
+		var names: Array = Atmosphere.TERRAIN_MATERIALS + [""] + Atmosphere.MEADOW_MATERIALS + Atmosphere.DETAIL_MATERIALS + Atmosphere.TRACK_MATERIALS
 		for layer in names.size():
 			var name: String = names[layer]
 			if name == "":
 				continue  # (the shore gravel, checked below)
 			var suffix := "color_height" if channel == 0 else "surface"
-			var path := "res://assets/terrain/%s_%s.png" % [name, suffix]
+			var folder := "town" if name in Atmosphere.TRACK_MATERIALS else "terrain"
+			var path := "res://assets/%s/%s_%s.png" % [folder, name, suffix]
 			var original := Image.new()
 			assert(original.load_png_from_buffer(FileAccess.get_file_as_bytes(path)) == OK)
 			var texture: Texture2D = load(path)
@@ -43,6 +53,7 @@ func _ready() -> void:
 		await check_surf_continuity()
 		await check_vertex_ground_normals()
 		await check_rain_splashes()
+		await check_track_normals()
 		await check_road_surfaces()
 		await check_ground_grime()
 		await check_shrub_leaves()
@@ -200,7 +211,7 @@ void fragment() { float tar; ALBEDO = street_surface(scan, noise, vec2(0.0), tar
 	var road := view.get_texture().get_image().get_pixel(32, 32)
 	assert(absf(road.r - 0.3065) < 0.008, "Street blending must use linear scan values in both renderers: %s" % road)
 	var track_shader := Shader.new()
-	track_shader.code = Mats.code(MapDims.shader(Atmosphere.ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER))).replace("render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;", "render_mode unshaded;")
+	track_shader.code = Mats.code(MapDims.shader(Atmosphere.ROAD_SHADER.replace("// STREET_SURFACE", Mats.ASPHALT_SHADER).replace("// RAIN_DROPS", Mats.RAIN_DROPS))).replace("render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;", "render_mode unshaded;")
 	var track_material := ShaderMaterial.new()
 	track_material.shader = track_shader
 	var flat_noise := Image.create(4, 4, false, Image.FORMAT_RF)
@@ -213,9 +224,15 @@ void fragment() { float tar; ALBEDO = street_surface(scan, noise, vec2(0.0), tar
 	mesh.material_override = track_material
 	for frame in 3:
 		await RenderingServer.frame_post_draw
-	var track := view.get_texture().get_image().get_pixel(32, 32).srgb_to_linear()
-	var track_expected := Color(0.115, 0.09, 0.0615) * lerpf(0.65, 1.2, smoothstep(0.25, 0.70, 0.5))
-	assert(Vector3(track.r, track.g, track.b).distance_to(Vector3(track_expected.r, track_expected.g, track_expected.b)) < 0.008, "Country tracks must blend dirt and wear in linear light in both renderers: %s" % track)
+	var track := view.get_texture().get_image().get_pixel(32, 32)
+	mesh.visible = false
+	for frame in 3:
+		await RenderingServer.frame_post_draw
+	var bare := view.get_texture().get_image().get_pixel(32, 32)
+	mesh.visible = true
+	# Outside town the ground itself draws the roads, gravel and earth alike
+	# (GROUND_SHADER, from Grass.road_field); the ribbon draws only the town's asphalt.
+	assert(track.is_equal_approx(bare), "Outside town the road ribbon leaves the ground to draw the road: %s vs %s" % [track, bare])
 	for kind in ["roof_tile", "roof_concrete", "wood_dark", "bark"]:
 		var photographed := Mats.get_mat(kind).duplicate() as ShaderMaterial
 		assert(photographed.get_shader_parameter("pattern") == Mats.WEATHERED_PHOTO)
@@ -339,7 +356,7 @@ func check_ground_grime() -> void:
 			assert(shared.get_shader_parameter("crater_tex") == heights, "Ground weathering must follow new maps in shared, batched and Compatibility materials")
 		var debug := material.duplicate() as ShaderMaterial
 		var shader := Shader.new()
-		shader.code = material.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;").replace("ALBEDO = col;", "ALBEDO = vec3(low); if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }")
+		shader.code = material.shader.code.replace("render_mode specular_schlick_ggx;", "render_mode unshaded;").replace("void fragment() {", "void fragment() { float grime_low = 0.0;").replace("dirt = low * grime * (0.6 + 0.4 * gn);", "dirt = low * grime * (0.6 + 0.4 * gn); grime_low = low;").replace("ALBEDO = col;", "ALBEDO = vec3(grime_low); if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }")
 		debug.shader = shader
 		mesh.material_override = debug
 		for above in [0.1, 0.45, 1.2]:
@@ -790,3 +807,46 @@ func check_bunker_trench_cut() -> void:
 			assert(shot.get_pixel(16,32).a > 0.95, "Roof soil remains a solid roof above an excavation")
 	view.free()
 	print("TERRAIN_MATERIALS bunker bank trench cut passed")
+
+
+## Compare the rendered normal with the tangent of a depressed wheel track.
+func check_track_normals() -> void:
+	assert(DisplayServer.get_name() != "headless", "Track normals need a real renderer")
+	var view := SubViewport.new()
+	view.size = Vector2i(32, 32)
+	view.own_world_3d = true
+	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(view)
+	var camera := Camera3D.new()
+	view.add_child(camera)
+	camera.position = Vector3(0, 2, 0)
+	camera.look_at(Vector3.ZERO, Vector3.FORWARD)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = PlaneMesh.new()
+	view.add_child(mesh)
+	var source := Atmosphere.GROUND_SHADER
+	var begin := source.find("vec3 track_normal(")
+	var end := source.find("\n}", begin) + 2
+	assert(begin >= 0 and end > begin)
+	var shader := Shader.new()
+	shader.code = "shader_type spatial; render_mode unshaded; uniform float sample_slope;\n" + source.substr(begin, end - begin) + """
+void fragment() {
+	vec3 n = track_normal(vec3(0.0, 1.0, 0.0), vec2(1.0, 0.0), sample_slope, 1.0);
+	ALBEDO = n * 0.5 + 0.5;
+	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(ALBEDO, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	mesh.material_override = material
+	for x in [-0.16, 0.16]:
+		var dx := 0.0001
+		# Five-centimetre depression, sampled on both sides of its centre.
+		var derivative := (-0.05 * exp(-pow((x + dx) / 0.24, 2)) + 0.05 * exp(-pow((x - dx) / 0.24, 2))) / (2.0 * dx)
+		material.set_shader_parameter("sample_slope", derivative)
+		for frame in 3:
+			await RenderingServer.frame_post_draw
+		var c := view.get_texture().get_image().get_pixel(16, 16).srgb_to_linear()
+		var normal := Vector3(c.r, c.g, c.b) * 2.0 - Vector3.ONE
+		assert(absf(normal.dot(Vector3(1, derivative, 0))) < 0.025, "Track normal must be perpendicular to its rising/falling surface: %s" % normal)
+	view.queue_free()
