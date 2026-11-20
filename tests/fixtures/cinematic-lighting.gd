@@ -68,6 +68,9 @@ func _check_snow() -> void:
 	assert(SettingsPanel.MOODS.has("snow") and SettingsPanel.MOODS.size() == SettingsPanel.MOOD_NAMES.size())
 	assert(PhotoMode.MOODS.has("snow"))
 	assert(Curtain.MOOD_TEXT.has("snow"))
+	# the layered air has its own snow (not a clear day's), and no vehicle dust
+	assert(AirLayers.MOOD.has("snow") and WeatherGrid.MOOD_AIR.has("snow"), "the air knows the snow")
+	assert(float(WeatherGrid.MOOD_AIR.snow[3]) == 0.0, "no dust off the snow")
 	var d: Dictionary = Atmosphere.MOODS.snow
 	for k in Atmosphere.MOODS.overcast:
 		assert(d.has(k), "the snow mood leaves out %s" % k)
