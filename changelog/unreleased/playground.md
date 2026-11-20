@@ -10,6 +10,11 @@ caption = "The town's playground, before and after"
 [[screenshots]]
 file = "equipment.jpg"
 caption = "The equipment up close"
+
+[[videos]]
+file = "playground-orbit.webm"
+poster = "playground-orbit.jpg"
+caption = "Matched normal and close cameras compare main with the new equipment in a small native scenery fixture, using the actual decorative models and materials under fixed daylight. Camera motion only; not full-town placement or gameplay coverage."
 +++
 
 - **Swings** hang on galvanised chains from their A-frames, one seat often a toddler's cradle.

@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/playground.md",
   "summary": "Playground equipment built of tube, chain and rubber.",
-  "medium": "still",
+  "medium": "motion",
   "stage": "tests/fixtures/environment-views.gd (FL_ONLY_VIEW); tools/showcase/building-surfaces.tscn (playground)",
-  "rationale": "Appearance change: the playground in the map from the same camera, and each piece up close in the studio.",
+  "rationale": "Matched normal and close fixture orbits show the decorative equipment and its materials in motion. Existing town and studio stills are preserved.",
   "source_ref": "312eb492805552319ab4ff8d6a5b3280bbad78a8",
   "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
   "sources": [
@@ -18,7 +18,26 @@
     {
       "file": "changelog/unreleased/playground/capture.json",
       "sha256": "c36e914f70f2769c3848ef999e1de2f25b5a6d05a9dbbdb2144abefd08a6aa6d"
+    },
+    {
+      "file": "changelog/unreleased/playground/playground-orbit.webm",
+      "sha256": "83399aa8a5f926a2fbb328707e2e1db4e775db1241c48f528b70285601031e49"
+    },
+    {
+      "file": "changelog/unreleased/playground/playground-orbit.jpg",
+      "sha256": "05069fc02e1ef237d65176b9f2323f4ccf9565d99631babf8b025c1e2f044083"
+    },
+    {
+      "file": "changelog/unreleased/playground/playground-orbit-capture.json",
+      "sha256": "2f52fab9e99a14dd1269c0c18fedfa4c0365a029ad8372c26c0ebc12522adb06"
     }
   ],
-  "output": null
+  "output": null,
+  "fixture_motion": {
+    "source_ref": "9858eed6638daf11d4c29f424e37761a3d9e69f2",
+    "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
+    "stage": "Embedded reproducible stage_source in playground-orbit-capture.json",
+    "capture": "changelog/unreleased/playground/playground-orbit-capture.json",
+    "note": "Original top-level refs describe preserved stills. New motion is a small native decorative scenery fixture, not full-town coverage or gameplay."
+  }
 }
