@@ -128,8 +128,19 @@ static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle
 	_z(k, m, root_end + 0.01, root_end - chamber, thick, thick, mat, col, 10, true, Vector2.ZERO, false)
 	_z(k, m, root_end - chamber, root_end - chamber - 0.03, thick, barrel.x, mat, col, 10, false, Vector2.ZERO, false, false)
 	# (the tube's ends are in the chamber step and the brake, or the crown)
-	var tube_end := brake_start - 0.01 if brake.y >= 0.01 else -length + 0.012
-	_z(k, m, root_end - chamber - 0.03, tube_end, barrel.x, barrel.y, mat, col, 10, true, Vector2.ZERO, false, false)
+	var tube_rear := root_end - chamber - 0.03
+	var tube_front := brake_start - 0.01 if brake.y >= 0.01 else -length + 0.012
+	if mat == STEEL or k.wreck:
+		_z(k, m, tube_rear, tube_front, barrel.x, barrel.y, mat, col, 10, true, Vector2.ZERO, false, false)
+	else:
+		# A painted tube doesn't keep its paint at the muzzle end: the gas
+		# out of the brake and the barrel's heat burn it off the last fifth,
+		# down to the blackened steel, so the gun reads two-tone from above
+		# (its muzzle end as dark as the brake) instead of one painted rod.
+		var burn := lerpf(tube_rear, tube_front, 0.8)
+		var burn_r := lerpf(barrel.x, barrel.y, 0.8)
+		_z(k, m, tube_rear, burn, barrel.x, burn_r, mat, col, 10, true, Vector2.ZERO, false, false)
+		_z(k, m, burn, tube_front, burn_r, barrel.y, STEEL, null, 10, true, Vector2.ZERO, false, false)
 	var clamps := bands if bands > 0 else 1
 	for i in clamps:
 		var f := (i + 1.0) / (clamps + 1.0) if bands > 0 else 0.38

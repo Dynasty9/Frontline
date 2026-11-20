@@ -120,7 +120,13 @@ func _ready() -> void:
 	VehicleFittings.barrel(weapon, weapon.elev, Vector3.ZERO, Vector3(2, 0, 0), 0.1, "paint")
 	var gun_parts: Array = weapon._parts[weapon.elev]
 	assert(not (VehicleFittings._barrels[Vector2(0.1, 2.0)][0] as CylinderMesh).cap_top)
-	assert((gun_parts[1][0] as CylinderMesh).flip_faces)
+	# (a painted tube is two parts, the paint and the burnt steel at its
+	# muzzle, so the bore is found among the parts rather than by place)
+	var bore := false
+	for part: Array in gun_parts:
+		if part[0] is CylinderMesh and (part[0] as CylinderMesh).flip_faces:
+			bore = true
+	assert(bore, "the barrel keeps its inward-facing bore")
 	assert(_bounds(gun_parts).size.x > 1.99 and _bounds(gun_parts).size.y < 0.3)
 	assert(weapon.gun_tip.get_parent() == weapon.elev and weapon.gun_tip.position == Vector3(2, 0, 0))
 	VehicleFittings.antenna(weapon, weapon.root, Vector3.ZERO, 2.0)

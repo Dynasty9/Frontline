@@ -348,7 +348,7 @@ static func _a10_cockpit(k: VehicleModels, m: Node3D, st: Array, c: Color, cd: C
 		[-3.35, 1.86, 0.45, 0.5, 0.12, 2.2, 2.0],
 		[-2.9, 1.86, 0.32, 0.22, 0.12, 2.0, 2.0],
 	]
-	VmPlane.body(k, m, "at_a10_can", cst, "glass", null, 24, 60.0)
+	VmPlane.cockpit(k, m, "at_a10", cst, VmPlane.body(k, m, "at_a10_can", cst, "glass", null, 24, 60.0), [-4.35])
 	# the windscreen bow, the canopy's own front and rear frames
 	VmPlane.band(k, m, "at_a10_bow", cst, -5.32, 0.09, 0.022, A, cd.darkened(0.25), 24)
 	VmPlane.band(k, m, "at_a10_cfr", cst, -5.17, 0.05, 0.016, A, cd.darkened(0.15), 24)
@@ -822,7 +822,11 @@ static func _wip_cockpit(k: VehicleModels, m: Node3D, c: Color) -> void:
 	for s in cs:
 		rings.append(_hring(float(s[0]), 0.0, float(s[1]), _canopy_half(float(s[2]), float(s[3]))))
 	# (a faint gold in the glass: the radar-reflective coating of a stealthy canopy)
-	k._add(m, VmPlane.skin(rings, "at_wip_can", 18.0), "glass", Color(0.15, 0.13, 0.08), Vector3.ZERO)
+	var hood: Variant = k._add(m, VmPlane.skin(rings, "at_wip_can", 18.0), "glass", Color(0.15, 0.13, 0.08), Vector3.ZERO)
+	var cst := []
+	for s in cs:
+		cst.append([float(s[0]), float(s[1]), float(s[2]), float(s[3]), 0.02])
+	VmPlane.cockpit(k, m, "at_wip", cst, hood, [-4.1], Color(0.34, 0.3, 0.2))
 	# frames: the armoured pane's bow, a hoop over the middle
 	for z in [-5.25, -3.9]:
 		var fr := []

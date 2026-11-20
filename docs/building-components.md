@@ -390,6 +390,31 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## Pillbox
+
+The Coalition's concrete bunker is `BuildingPillbox`: a pillbox cast in place. Its surface is `shuttered`, concrete
+with the print of the plank formwork on its walls (a fine line every 15 cm, each board a shade of its own, rows of
+form-tie holes; the `boards` value of the concrete pattern, faded out with distance).
+- **`walls`** draws the structure's wall parts themselves, since they are what stops the bullets: as plain boxes that
+  meet flush (one pour, no seam between them), the four at the outer corners cut back 0.3 m (`CHAMFER`). The fixture
+  checks they fill every part but for that chamfer. Inside, the faces, floor and ceiling are dark, so a slit or the
+  doorway looks into the gloom of the room.
+- **`roof`**: the slab, half a metre thick at its edge and 0.66 m at the crown, 0.2 m over the walls, its corners cut back with theirs, its top edge
+  chamfered and its top falling from the crown (`CROWN`, `SLAB_TOP`) to every edge. Moss grows in patches on the
+  crown (one stain over all of it, so no patch's rim lies over another's). On the crown stand a cast steel
+  observation cupola in a concrete collar, vision slits round its front and a periscope through it; the escape hatch
+  on its kerb; and a mushroom vent cowl.
+- **`embrasure`**, on each slit's outer face: a frame `EMBRASURE` deep whose mouth splays out from the slit (the
+  hood's underside rises, the sill falls, the cheeks open out), and steel angle on the slit's lips.
+- **`door`**: the steel doors at the back stand open, folded flat against the wall either side, so the way in is
+  clear for the men who garrison it; **`step_irons`** go up the back wall to the roof.
+- **`weather`**: the grime of a season under the slab and runs down from its edge, the splash and weeds at the foot of
+  the back wall (earth is banked against the rest), and bullet strikes round the slits.
+
+`solid` lofts the convex outlines the walls' corners, the slab and the cheeks are cut from, cached per shape. The
+bunker bakes (`Structure.BAKED`'s path) so its stains merge with the rest of it rather than drawing one by one.
+Render it with `--building-kinds=bunker` (add `--building-rear` for the door side).
+
 ## The water tower
 
 A town's water tower is `BuildingLandmarks.water_tower`, standing where Decor's `water_tower` stands:
@@ -433,6 +458,7 @@ parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingPillbox.walls`, `roof`, `embrasure`, `door`, `weather` | The Coalition's concrete bunker |
 | `BuildingCargo.stack`, `shipping_crate`, `ammo_box`, `pallet_load`, `ammo_row` | Cover crate stacks, the town's supply dumps, the FOB's stores |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
 
