@@ -170,19 +170,24 @@
     "sha256": "9c0e6ca41fb0846a5e7144c8af11ce607333ba1e0bbc6b13e9383ece4be8bc18"
   },
   {
-    "file": "gravel_road_diff_2k.jpg",
-    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_road/gravel_road_diff_2k.jpg",
-    "sha256": "6313bb65816f2890a247cb9a5bae003ddef98cf55099d5abaf543a88e0ab3180"
+    "file": "rocky_trail_02_diff_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail_02/rocky_trail_02_diff_2k.jpg",
+    "sha256": "d755ac6c70729afce6bb78b9a265d16bdf599ece64f4f079d681433e77bb24a9"
   },
   {
-    "file": "gravel_road_nor_gl_2k.jpg",
-    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_road/gravel_road_nor_gl_2k.jpg",
-    "sha256": "4fc9dfc7ebfe58e531225dc55b9c89d89c1abb51670e62da086f2a8fa4fb71db"
+    "file": "rocky_trail_02_nor_gl_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail_02/rocky_trail_02_nor_gl_2k.jpg",
+    "sha256": "d85fc706716b921e1511b5dc0730ed820c904fe68603605a161095501622c0dd"
   },
   {
-    "file": "gravel_road_rough_2k.jpg",
-    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_road/gravel_road_rough_2k.jpg",
-    "sha256": "e03290bca670efb4bc0276a3e1198a2ea4fee27dac87d553b18f336068a461db"
+    "file": "rocky_trail_02_rough_2k.jpg",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_trail_02/rocky_trail_02_rough_2k.jpg",
+    "sha256": "0aa89f1c148dead8b98b0d63b30aabfa12f6ae49fcf4ece6aa11818dec95ae22"
+  },
+  {
+    "file": "rocky_trail_02_disp_2k.png",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rocky_trail_02/rocky_trail_02_disp_2k.png",
+    "sha256": "3c596c0402148084006c67cd5fa4401e3d692b038f80478bacfed5044403776e"
   },
   {
     "file": "gravel_floor_02_diff_2k.jpg",
@@ -198,5 +203,10 @@
     "file": "gravel_floor_02_rough_2k.jpg",
     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_floor_02/gravel_floor_02_rough_2k.jpg",
     "sha256": "76f84ef27c72cffb1b1906c6a5b06cb06db664d2d6cb6c0ba2ee996c04e2607d"
+  },
+  {
+    "file": "gravel_floor_02_disp_2k.png",
+    "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/gravel_floor_02/gravel_floor_02_disp_2k.png",
+    "sha256": "432de6f47719a7ea251222c7be9ffc815fa43e4ba0a0beef10b1d330bd9cdc54"
   }
 ]
