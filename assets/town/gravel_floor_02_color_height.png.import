@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d2p804sx35srr"
-path="res://.godot/imported/gravel_road_surface.png-eb6ee2781c1c441d2b50d46d03ed0411.ctex"
+uid="uid://dgib7k66bn0m5"
+path="res://.godot/imported/gravel_floor_02_color_height.png-652991ca55d1e7e1b2cc806eb887379d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/town/gravel_road_surface.png"
-dest_files=["res://.godot/imported/gravel_road_surface.png-eb6ee2781c1c441d2b50d46d03ed0411.ctex"]
+source_file="res://assets/town/gravel_floor_02_color_height.png"
+dest_files=["res://.godot/imported/gravel_floor_02_color_height.png-652991ca55d1e7e1b2cc806eb887379d.ctex"]
 
 [params]
 
@@ -37,4 +37,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0
