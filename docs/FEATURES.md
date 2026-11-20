@@ -1231,7 +1231,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, HESCO walls and T-walls (Coalition), barricades (Rebels), barbed wire, minefields, tank traps,
   camouflage nets, ammo caches, watchtowers (see 85 m, 115 m with a lookout up; shoot over walls), and Rebel
-  tunnel entrances (move squads through the network or bring them back out with "Exit here").
+  tunnel entrances (move squads through the network or bring them back out with "Exit here"): a shaft dug down,
+  shored with timber round its mouth with a ladder into it, sandbagged, a sheet of corrugated iron propped over its
+  back against eyes overhead, its spoil heaped behind.
 
 **Base defenses**
 - **Build grid**: buildings and works sit on a 1 m grid at 45 degree headings; a building's walls land on grid
