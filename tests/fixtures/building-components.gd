@@ -372,6 +372,22 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# The street pieces keep to their footprints: the fountain within its
+	# basin, the bus shelter over its pavement (its stop's flag the top of it),
+	# a planter (its trough a square turned on its corner: its bounds are the
+	# turned square's), a bin, the name board.
+	var spieces := [[func(k: BuildingKit): BuildingStreet.fountain(k), Vector3(5.25, 3.2, 5.25)],
+		[func(k: BuildingKit): BuildingStreet.bus_shelter(k, k.rng), Vector3(4.6, 2.85, 1.8)],
+		[func(k: BuildingKit): BuildingStreet.planter(k, k.rng), Vector3(2.05, 1.25, 2.05)],
+		[func(k: BuildingKit): BuildingStreet.litter_bin(k), Vector3(0.55, 0.95, 0.55)],
+		[func(k: BuildingKit): BuildingStreet.town_sign(k, k.rng), Vector3(2.1, 2.35, 0.2)]]
+	for sp: Array in spieces:
+		var spk := kit()
+		(sp[0] as Callable).call(spk)
+		var spb := _bounds(spk.sink.root, Transform3D.IDENTITY)
+		var lim: Vector3 = sp[1]
+		check(spb.size.x <= lim.x and spb.size.z <= lim.z and spb.end.y <= lim.y and spb.position.y >= -0.01, "a street piece keeps to its footprint (%s, %s)" % [spb, lim])
+		spk.sink.root.free()
 	# A farm's bales keep to their footprint (two side by side, a third on
 	# them), straw or wrapped.
 	for i in 6:
@@ -381,6 +397,11 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# A tunnel's mouth keeps to its 3 m plot, its shaft going down below it.
+	var tn := Structure.preview_model("tunnel", 1)
+	var tnb := _bounds(tn, Transform3D.IDENTITY)
+	check(tn.get_child_count() > 0 and tnb.size.x <= 3.9 and tnb.size.z <= 4.6 and tnb.end.y < 2.2 and tnb.position.y < -1.0, "a tunnel's mouth keeps to its plot (%s)" % tnb)
+	tn.free()
 	# Weathering: ivy and weeds keep within a hand's breadth of the wall, and a
 	# ruin's debris lies inside its floor, no higher than an ankle.
 	for s in 10:
@@ -495,6 +516,18 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# Cover crates: the stores stand on the ground inside the boxes their parts
+	# give for cover, and one stack is loaded differently from the next.
+	var loads := {}
+	for id in 12:
+		for v in 2:
+			var cr := Structure.preview_model("crates", -1, v, Vector3.ZERO, false, id)
+			var cb := _bounds(cr, Transform3D.IDENTITY)
+			var reach := Vector3(0.65, 1.3, 0.65) if v == 0 else Vector3(1.3, 2.45, 0.72)
+			check(cb.position.y >= -0.01 and cb.end.y <= reach.y and absf(cb.position.x) <= reach.x and cb.end.x <= reach.x and absf(cb.position.z) <= reach.z and cb.end.z <= reach.z, "crate stack %d (variant %d) keeps to its cover (%s)" % [id, v, cb])
+			loads["%d|%s" % [v, cb.size.snapped(Vector3.ONE * 0.05)]] = true
+			cr.free()
+	check(loads.size() >= 4, "crate stacks are loaded differently (%d ways)" % loads.size())
 
 	# Roofs: a hip rises as high as a gable of the same pitch over the same
 	# walls; its underside comes down to the eaves on all four walls where a

@@ -337,6 +337,23 @@ func _subject(kind: String) -> Node3D:
 			farm.churn_stand(fk.at_point(Vector3(2.8, 0, -1.8)), r)
 			farm.barrow(fk.at_point(Vector3(5.6, 0, -1.8), Vector3(0, 0.6, 0)), 0)
 			return yard
+		"street_pieces":
+			# the square's fountain, a bus shelter, a planter, litter bins and the
+			# town's name board, where BuildingStreet has them
+			var pieces := Node3D.new()
+			var prng := RandomNumberGenerator.new()
+			prng.seed = 4
+			var pk := BuildingKit.nodes(pieces, prng)
+			pk.box(Vector3(17.0, 0.12, 8.0), Vector3(0, -0.06, 0), "pavement", Color(0.62, 0.6, 0.56))
+			var bs: GDScript = load("res://scripts/game/building_street.gd")
+			if bs.get_script_method_list().any(func(m: Dictionary) -> bool: return m["name"] == "fountain"):
+				bs.call("fountain", pk.at_point(Vector3(-5.0, 0, 0.5)))
+				bs.call("bus_shelter", pk.at_point(Vector3(2.0, 0, 1.8)), prng)
+				bs.call("planter", pk.at_point(Vector3(1.0, 0, -2.0)), prng)
+				bs.call("planter", pk.at_point(Vector3(3.2, 0, -2.2)), prng)
+				bs.call("litter_bin", pk.at_point(Vector3(5.0, 0, -1.2)))
+				bs.call("town_sign", pk.at_point(Vector3(6.8, 0, 1.0)), prng)
+			return pieces
 		"bales":
 			# round bales as a farm stacks them: straw, and silage in film
 			var row := Node3D.new()
