@@ -1,43 +1,36 @@
 {
   "entry": "changelog/unreleased/playground.md",
-  "summary": "Playground equipment built of tube, chain and rubber.",
-  "medium": "motion",
-  "stage": "tests/fixtures/environment-views.gd (FL_ONLY_VIEW); tools/showcase/building-surfaces.tscn (playground)",
-  "rationale": "Matched normal and close fixture orbits show the decorative equipment and its materials in motion. Existing town and studio stills are preserved.",
-  "source_ref": "312eb492805552319ab4ff8d6a5b3280bbad78a8",
-  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "summary": "A town playground built like the real thing.",
+  "medium": "still",
+  "stage": "build/play_views.gd on the generated town (seed 3), quoted in capture.json; tools/showcase/building-surfaces.tscn (playground); the scenery fixture quoted in playground-orbit-capture.json",
+  "rationale": "The change is in how the equipment looks, so matched stills lead: the town's own playground on the same map and seed, close up and as a 1:1 crop of the default battle camera (the owner's concern), then the equipment in the studio. A short matched orbit of the scenery fixture shows the models turning in the real world's light.",
+  "source_ref": "430e48ed2546192403d5004ee87370009338c82f",
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
   "sources": [
     {
       "file": "changelog/unreleased/playground/comparison.jpg",
-      "sha256": "bd32444c289ae2aab9e5493ce9f780c6652c0893c345409c1e9888cbe20ba463"
+      "sha256": "984db8dd3cd0d0445e142db120b6ebe729d4318e4192c0bc72dcd40805cc7c47"
     },
     {
       "file": "changelog/unreleased/playground/equipment.jpg",
-      "sha256": "224963ab66365afdcdf8a678083aacffc776b6bc88815ebb1fec48fb961d5ecb"
+      "sha256": "668da28edb727a855da0b3308454bf5b32a692ee1cb030f3585a71fedec1aafd"
     },
     {
       "file": "changelog/unreleased/playground/capture.json",
-      "sha256": "c36e914f70f2769c3848ef999e1de2f25b5a6d05a9dbbdb2144abefd08a6aa6d"
+      "sha256": "08e407fd1c2f7087b665bbeba5594f9238a29072be7457f04930afa2884eb100"
     },
     {
       "file": "changelog/unreleased/playground/playground-orbit.webm",
-      "sha256": "83399aa8a5f926a2fbb328707e2e1db4e775db1241c48f528b70285601031e49"
+      "sha256": "9f2f9d19989b7d194447090b7306d644aac9163efb2411e737aeb3786c9d888d"
     },
     {
       "file": "changelog/unreleased/playground/playground-orbit.jpg",
-      "sha256": "05069fc02e1ef237d65176b9f2323f4ccf9565d99631babf8b025c1e2f044083"
+      "sha256": "3376f334efdf524d6cb8cfaa0ceaea6876625ad06364e6d0b58aa929741a4cae"
     },
     {
       "file": "changelog/unreleased/playground/playground-orbit-capture.json",
-      "sha256": "2f52fab9e99a14dd1269c0c18fedfa4c0365a029ad8372c26c0ebc12522adb06"
+      "sha256": "3f4d018c69aa256196317cdb23496df7935754edd1a736585386299657ff62d6"
     }
   ],
-  "output": null,
-  "fixture_motion": {
-    "source_ref": "9858eed6638daf11d4c29f424e37761a3d9e69f2",
-    "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
-    "stage": "Embedded reproducible stage_source in playground-orbit-capture.json",
-    "capture": "changelog/unreleased/playground/playground-orbit-capture.json",
-    "note": "Original top-level refs describe preserved stills. New motion is a small native decorative scenery fixture, not full-town coverage or gameplay."
-  }
+  "output": null
 }

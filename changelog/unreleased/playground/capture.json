@@ -1,22 +1,21 @@
 {
-  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
-  "source_ref": "312eb492805552319ab4ff8d6a5b3280bbad78a8",
-  "engine": "Godot 4.7.2 stable ed1daf0bf",
-  "stage": "tests/fixtures/environment-views.gd; tools/showcase/building-surfaces.tscn",
-  "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+  "source_ref": "430e48ed2546192403d5004ee87370009338c82f",
+  "engine": "Godot 4.7.2 stable ed1daf0bf, Forward+, Windows (NVIDIA RTX 3090)",
+  "stage": "views_source below, saved as build/play_views.gd in each checkout; tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 --script res://build/play_views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --play-out=OUTPUT",
+  "views_script": "Loads main.tscn with the arguments above, waits for world.time >= 2 s, turns the battle director off, then for each view sets world.cam focus_pos (-21.07, 0, 7.45) (the seed's playground lot, its middle), dist, target_dist, pitch_deg and yaw, waits 90 frames and while structure_view.warming(), and saves the root viewport after frame_post_draw. Views: close (15 m, pitch -42, yaw 0.7) and battle (55 m, pitch -44.1, yaw 0.7: RtsCamera.pitch_for(55) at the default zoom).",
   "comparisons": [
     {
       "subjects": [
         "town"
       ],
-      "view": "play",
-      "env": "FL_ONLY_VIEW=play,-21.1,7.8,15,-42,0.7",
-      "crop": [
-        100,
-        50,
-        1500,
-        900
-      ]
+      "views": [
+        "close",
+        "battle"
+      ],
+      "file": "comparison.jpg",
+      "layout": "Two rows, before | after, 792 px halves: the close view scaled from 1600x900, and an unscaled 792x446 crop of the battle view centred on (800, 470), what a 1600x900 screen shows at the default zoom"
     },
     {
       "subjects": [
@@ -27,6 +26,7 @@
       "after_only": true
     }
   ],
-  "notes": "The camera is over the town playground on seed 3 (its seesaw at -21.1, 7.8); both checkouts' views fixture get the FL_ONLY_VIEW hook in the scratch copy.",
-  "composition": "PIL: one matched row, 792 px halves, JPEG quality 82; the studio playground cropped and scaled to 1600 px, JPEG quality 84"
+  "notes": "Before is main as merged into this branch (f48b0f43), after is the branch with both design passes (430e48ed). Same map, same seed; the playground lot on seed 3 is 14.5 m by 14.5 m, where the layout is as it was, so only the equipment and the spring riders differ.",
+  "composition": "PIL: comparison rows labelled in Arial Narrow, JPEG quality 82; the studio playground cropped to (70, 160, 1530, 840) and scaled to 1600 px wide, JPEG quality 84",
+  "views_source": "extends SceneTree\n# Scratch capture: the town playground on one map, from several RTS camera\n# distances (the default battle camera's 55 m among them).\n# --play-out=DIR  --play-focus=x,z  --play-views=name:dist:pitch:yaw;...\n\nfunc _initialize() -> void:\n\tcall_deferred(\"run\")\n\nfunc run() -> void:\n\tvar out := \"user://play\"\n\tvar focus := Vector3(-21.07, 0, 7.45)\n\tvar views := [[\"close\", 15.0, -42.0, 0.7], [\"mid\", 30.0, -40.5, 0.7], [\"battle\", 55.0, -44.1, 0.7]]\n\tfor arg in OS.get_cmdline_user_args():\n\t\tif arg.begins_with(\"--play-out=\"):\n\t\t\tout = arg.get_slice(\"=\", 1)\n\t\tif arg.begins_with(\"--play-focus=\"):\n\t\t\tvar f := arg.get_slice(\"=\", 1).split(\",\")\n\t\t\tfocus = Vector3(float(f[0]), 0, float(f[1]))\n\t\tif arg.begins_with(\"--play-views=\"):\n\t\t\tviews = []\n\t\t\tfor v in arg.get_slice(\"=\", 1).split(\";\"):\n\t\t\t\tvar p := v.split(\":\")\n\t\t\t\tviews.append([p[0], float(p[1]), float(p[2]), float(p[3])])\n\tDirAccess.make_dir_recursive_absolute(out)\n\tvar game = load(\"res://main.tscn\").instantiate()\n\troot.add_child(game)\n\tcurrent_scene = game\n\twhile game.world == null or game.world.time < 2.0:\n\t\tawait process_frame\n\tvar world = game.world\n\tif world.director:\n\t\tworld.director.active = false\n\tfor view in views:\n\t\tworld.cam.cam.rotation = Vector3.ZERO\n\t\tworld.cam.dist = view[1]\n\t\tworld.cam.target_dist = view[1]\n\t\tworld.cam.pitch_deg = view[2]\n\t\tworld.cam.yaw = view[3]\n\t\tworld.cam.focus_pos = focus\n\t\tworld.cam._apply()\n\t\tfor frame in 90:\n\t\t\tawait process_frame\n\t\twhile world.structure_view != null and world.structure_view.warming():\n\t\t\tawait process_frame\n\t\tawait RenderingServer.frame_post_draw\n\t\troot.get_texture().get_image().save_png(out.path_join(String(view[0]) + \".png\"))\n\t\tprint(\"PLAYVIEW \", view[0])\n\tquit()\n"
 }

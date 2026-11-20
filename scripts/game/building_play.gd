@@ -244,9 +244,8 @@ static func _chain(g: Geo, a: Vector3, b: Vector3) -> void:
 # --- swings ---------------------------------------------------------------------------
 
 ## A swing frame 3.6 m along x: an A-frame of 89 mm tube at each end under a
-## 114 mm top beam 2.4 m up, two seats on galvanised chains (one a toddler's
-## cradle seat, `cradle`), the surfacing worn through to its black base
-## under each where feet drag.
+## 114 mm top beam 2.4 m up, bearing hangers, and two seats on galvanised
+## chains (one a toddler's cradle seat, `cradle`).
 static func swings(k: BuildingKit, col: Color, cradle: bool) -> void:
 	var top := 2.4
 	k.part(_part("play_swing_frame", func(g: Geo) -> void:

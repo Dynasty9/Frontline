@@ -1,7 +1,7 @@
 {
-  "source_ref": "9858eed6638daf11d4c29f424e37761a3d9e69f2",
-  "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
-  "stage_source": "extends SceneTree\n## Matched, inert in-world pad views. No generated units or flight simulation.\n## Run at --fixed-fps 15; encode the saved frames at 15 fps.\n## --view=normal,mat-detail,concrete-detail,windsocks selects views.\n## --smoke saves one frame per view; --output=DIR chooses the capture directory.\nfunc _initialize() -> void: call_deferred(\"capture\")\nfunc capture() -> void:\n\tvar output := OS.get_user_data_dir().path_join(\"playground-fixture\")\n\tvar frames := 30\n\tvar selected := \"\"\n\tfor arg in OS.get_cmdline_user_args():\n\t\tif arg.begins_with(\"--output=\"): output=arg.get_slice(\"=\",1)\n\t\tif arg == \"--smoke\": frames=1\n\t\tif arg.begins_with(\"--view=\"): selected=arg.get_slice(\"=\",1)\n\tDirAccess.make_dir_recursive_absolute(output)\n\tvar settings = root.get_node(\"Settings\")\n\tsettings.apply_preset(\"high\",false)\n\tsettings.v[\"mood\"]=\"day\"\n\tsettings.v[\"perf\"]=0\n\troot.size=Vector2i(960,540)\n\tDisplayServer.window_set_size(Vector2i(960,540))\n\tRenderingServer.render_loop_enabled=false\n\tEngine.time_scale=0.0\n\tvar world = load(\"res://scripts/game/world.gd\").new()\n\tworld.settings={\"seed\":4,\"mood\":\"day\",\"scenario\":\"inert-playground-review\",\"map_size\":1024}\n\troot.add_child(world)\n\tcurrent_scene=world\n\tworld.set_physics_process(false)\n\tworld.set_process(false)\n\tworld.nav=load(\"res://scripts/game/nav.gd\").new()\n\tworld.nav.terrain=world.terrain\n\tworld.time=8.0\n\tworld.cam=load(\"res://scripts/game/rts_camera.gd\").new()\n\tworld.cam.world=world\n\tworld.add_child(world.cam)\n\tworld.cam.set_process(false)\n\tworld.cam.edge_pan=false\n\tworld.set_decor([\n\t\t[\"soft\",Vector3.ZERO,0.0,Vector3(16,0,12)],\n\t\t[\"swing\",Vector3(-4,0,3),0.0,null],\n\t\t[\"slide\",Vector3(3.2,0,2.6),PI,null],\n\t\t[\"climber\",Vector3(3.6,0,-2.4),0.0,null],\n\t\t[\"sandbox\",Vector3(-3.8,0,-2.4),0.0,null],\n\t\t[\"seesaw\",Vector3(0,0,0.2),PI*0.5,null],\n\t\t[\"roundabout\",Vector3(0.2,0,-3.8),0.0,null]\n\t],Rect2(-8,-6,16,12))\n\tworld.terrain.tick(1<<30)\n\tassert(world.soldiers.is_empty() and world.vehicles.is_empty() and world.projectiles.is_empty())\n\tvar views := [[\"normal\",Vector3.ZERO,32.0,-48.0,0.45],[\"close\",Vector3(0,0,0.6),20.0,-42.0,0.45]]\n\tif selected != \"\": views=views.filter(func(v): return v[0] in selected.split(\",\"))\n\tvar records := []\n\tvar first_view := true\n\tfor view in views:\n\t\tvar camera=world.cam\n\t\tcamera.focus_pos=view[1]\n\t\tcamera.dist=view[2]\n\t\tcamera.target_dist=view[2]\n\t\tcamera.pitch_deg=view[3]\n\t\tcamera.yaw=view[4]\n\t\tcamera._apply()\n\t\tfor i in (24 if first_view else 4): await process_frame\n\t\tRenderingServer.render_loop_enabled=true\n\t\tvar probes=world.atmo.light_probes\n\t\tif first_view and probes != null and probes.quality>0:\n\t\t\tprobes._base_drawn=false\n\t\t\tprobes._requeue_all_bricks()\n\t\t\tprint(\"PLAYGROUND_PROBE_WARMUP\")\n\t\t\tfor bake_frame in 512:\n\t\t\t\tawait process_frame\n\t\t\t\tawait RenderingServer.frame_post_draw\n\t\t\t\tif bake_frame % 32 == 0: print(\"PLAYGROUND_PROBE_FRAME \",bake_frame)\n\t\t\t\tif probes._tile_queue.is_empty() and probes._brick_queue.is_empty() and probes._light_queue.is_empty() and probes._local_queue.is_empty(): break\n\t\t\tassert(probes._brick_queue.is_empty())\n\t\tfirst_view=false\n\t\tfor i in 6: await process_frame\n\t\tawait RenderingServer.frame_post_draw\n\t\tprint(\"PLAYGROUND_VIEW_READY \",view[0])\n\t\tvar dest: String=output+\"/\"+view[0]\n\t\tDirAccess.make_dir_recursive_absolute(dest)\n\t\tfor frame in frames:\n\t\t\tcamera.yaw=float(view[4])+0.12*sin(TAU*frame/maxf(frames-1,1))\n\t\t\tcamera._apply()\n\t\t\tawait process_frame\n\t\t\tawait RenderingServer.frame_post_draw\n\t\t\troot.get_texture().get_image().save_png(dest+\"/%04d.png\"%frame)\n\t\t\trecords.append({\"view\":view[0],\"frame\":frame,\"focus\":str(camera.focus_pos),\"distance\":camera.dist,\"pitch\":camera.pitch_deg,\"yaw\":camera.yaw,\"world_time\":world.time})\n\tFileAccess.open(output+\"/capture.json\",FileAccess.WRITE).store_string(JSON.stringify({\"renderer\":RenderingServer.get_current_rendering_method(),\"seed\":4,\"mood\":\"day\",\"preset\":\"high\",\"records\":records,\"fps\":15,\"fixture\":\"Small native scenery fixture using actual World terrain, Atmosphere, Decor and RTS camera. Flat terrain and seven decorative entries. No town generation, units or gameplay. Frozen daylight; camera orbit only.\"},\"\\t\"))\n\tprint(\"PLAYGROUND_CAPTURE_COMPLETE\")\n\tquit()\n",
+  "source_ref": "430e48ed2546192403d5004ee87370009338c82f",
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+  "stage_source": "extends SceneTree\n## Matched, inert in-world pad views. No generated units or flight simulation.\n## Run at --fixed-fps 15; encode the saved frames at 15 fps.\n## --view=normal,mat-detail,concrete-detail,windsocks selects views.\n## --smoke saves one frame per view; --output=DIR chooses the capture directory;\n## --offscreen keeps the window off the desktop.\nfunc _initialize() -> void: call_deferred(\"capture\")\nfunc capture() -> void:\n\tvar output := OS.get_user_data_dir().path_join(\"playground-fixture\")\n\tvar frames := 30\n\tvar selected := \"\"\n\tfor arg in OS.get_cmdline_user_args():\n\t\tif arg.begins_with(\"--output=\"): output=arg.get_slice(\"=\",1)\n\t\tif arg == \"--smoke\": frames=1\n\t\tif arg.begins_with(\"--view=\"): selected=arg.get_slice(\"=\",1)\n\tif \"--offscreen\" in OS.get_cmdline_user_args():\n\t\t# (a borderless window placed off the desktop: a minimized one never draws)\n\t\tDisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS,true)\n\t\tDisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)\n\t\tDisplayServer.window_set_position(Vector2i(-12000,-12000))\n\tDirAccess.make_dir_recursive_absolute(output)\n\tvar settings = root.get_node(\"Settings\")\n\tsettings.apply_preset(\"high\",false)\n\tsettings.v[\"mood\"]=\"day\"\n\tsettings.v[\"perf\"]=0\n\troot.size=Vector2i(960,540)\n\tDisplayServer.window_set_size(Vector2i(960,540))\n\tRenderingServer.render_loop_enabled=false\n\tEngine.time_scale=0.0\n\tvar world = load(\"res://scripts/game/world.gd\").new()\n\tworld.settings={\"seed\":4,\"mood\":\"day\",\"scenario\":\"inert-playground-review\",\"map_size\":1024}\n\troot.add_child(world)\n\tcurrent_scene=world\n\tworld.set_physics_process(false)\n\tworld.set_process(false)\n\tworld.nav=load(\"res://scripts/game/nav.gd\").new()\n\tworld.nav.terrain=world.terrain\n\tworld.time=8.0\n\tworld.cam=load(\"res://scripts/game/rts_camera.gd\").new()\n\tworld.cam.world=world\n\tworld.add_child(world.cam)\n\tworld.cam.set_process(false)\n\tworld.cam.edge_pan=false\n\tworld.set_decor([\n\t\t[\"soft\",Vector3.ZERO,0.0,Vector3(16,0,12)],\n\t\t[\"swing\",Vector3(-4,0,3),0.0,null],\n\t\t[\"slide\",Vector3(3.2,0,2.6),PI,null],\n\t\t[\"climber\",Vector3(3.6,0,-2.4),0.0,null],\n\t\t[\"sandbox\",Vector3(-3.8,0,-2.4),0.0,null],\n\t\t[\"seesaw\",Vector3(0,0,0.2),PI*0.5,null],\n\t\t[\"roundabout\",Vector3(0.2,0,-3.8),0.0,null],\n\t\t[\"spring_rider\",Vector3(-1.3,0,3.6),PI*0.5,0],\n\t\t[\"spring_rider\",Vector3(-0.1,0,3.3),PI*0.5,1],\n\t\t[\"spring_rider\",Vector3(5.4,0,0.6),PI*0.5,2]\n\t],Rect2(-8,-6,16,12))\n\tworld.terrain.tick(1<<30)\n\tassert(world.soldiers.is_empty() and world.vehicles.is_empty() and world.projectiles.is_empty())\n\tvar views := [[\"normal\",Vector3.ZERO,32.0,-48.0,0.45],[\"close\",Vector3(0,0,0.6),20.0,-42.0,0.45]]\n\tif selected != \"\": views=views.filter(func(v): return v[0] in selected.split(\",\"))\n\tvar records := []\n\tvar first_view := true\n\tfor view in views:\n\t\tvar camera=world.cam\n\t\tcamera.focus_pos=view[1]\n\t\tcamera.dist=view[2]\n\t\tcamera.target_dist=view[2]\n\t\tcamera.pitch_deg=view[3]\n\t\tcamera.yaw=view[4]\n\t\tcamera._apply()\n\t\tfor i in (24 if first_view else 4): await process_frame\n\t\tRenderingServer.render_loop_enabled=true\n\t\tvar probes=world.atmo.light_probes\n\t\tif first_view and probes != null and probes.quality>0:\n\t\t\tprobes._base_drawn=false\n\t\t\tprobes._requeue_all_bricks()\n\t\t\tprint(\"PLAYGROUND_PROBE_WARMUP\")\n\t\t\tfor bake_frame in 512:\n\t\t\t\tawait process_frame\n\t\t\t\tawait RenderingServer.frame_post_draw\n\t\t\t\tif bake_frame % 32 == 0: print(\"PLAYGROUND_PROBE_FRAME \",bake_frame)\n\t\t\t\tif probes._tile_queue.is_empty() and probes._brick_queue.is_empty() and probes._light_queue.is_empty() and probes._local_queue.is_empty(): break\n\t\t\tassert(probes._brick_queue.is_empty())\n\t\tfirst_view=false\n\t\tfor i in 6: await process_frame\n\t\tawait RenderingServer.frame_post_draw\n\t\tprint(\"PLAYGROUND_VIEW_READY \",view[0])\n\t\tvar dest: String=output+\"/\"+view[0]\n\t\tDirAccess.make_dir_recursive_absolute(dest)\n\t\tfor frame in frames:\n\t\t\tcamera.yaw=float(view[4])+0.12*sin(TAU*frame/maxf(frames-1,1))\n\t\t\tcamera._apply()\n\t\t\tawait process_frame\n\t\t\tawait RenderingServer.frame_post_draw\n\t\t\troot.get_texture().get_image().save_png(dest+\"/%04d.png\"%frame)\n\t\t\trecords.append({\"view\":view[0],\"frame\":frame,\"focus\":str(camera.focus_pos),\"distance\":camera.dist,\"pitch\":camera.pitch_deg,\"yaw\":camera.yaw,\"world_time\":world.time})\n\tFileAccess.open(output+\"/capture.json\",FileAccess.WRITE).store_string(JSON.stringify({\"renderer\":RenderingServer.get_current_rendering_method(),\"seed\":4,\"mood\":\"day\",\"preset\":\"high\",\"records\":records,\"fps\":15,\"fixture\":\"Small native scenery fixture using actual World terrain, Atmosphere, Decor and RTS camera. Flat terrain and ten decorative entries (three spring riders, which a build without them leaves out). No town generation, units or gameplay. Frozen daylight; camera orbit only.\"},\"\\t\"))\n\tprint(\"PLAYGROUND_CAPTURE_COMPLETE\")\n\tquit()\n",
   "settings": {
     "mood": "day",
     "preset": "high",
@@ -19,569 +19,565 @@
       "close: focus(0,0,0.6), distance20, pitch-42, yaw0.45"
     ],
     "camera_motion": "yaw += 0.12*sin(TAU*frame/29)",
-    "decor": "Seven explicitly placed native Decor entries: soft surface, swing, slide, climber, sandbox, seesaw, roundabout. Same ordering and transforms both revisions."
+    "decor": "Ten explicitly placed native Decor entries: soft surface, swing, slide, climber, sandbox, seesaw, roundabout and three spring riders. Same ordering and transforms on both revisions; main has no spring_rider kind, so draws nothing there."
   },
-  "command": "GALLIVM_PERF=nopt LP_NUM_THREADS=4 /workspace/frontline-tools/godot-run --path WORKTREE --rendering-method forward_plus --resolution 960x540 --fixed-fps 15 --script stage.gd -- --output=OUTPUT",
+  "command": "godot --path CHECKOUT --rendering-method forward_plus --resolution 960x540 --position -10000,-10000 --fixed-fps 15 --script res://build/orbit_stage.gd -- --offscreen --output=OUTPUT",
   "runtime": {
     "godot": "4.7.2.stable.official.ed1daf0bf",
-    "display": "Xvfb :99 -screen 0 1280x720x24 -nolisten tcp",
-    "device": "Vulkan 1.4.305 - Forward+ - Unknown llvmpipe (LLVM 19.1.7, 256 bits)",
-    "wrapper": "#!/bin/sh\nexport DISPLAY=:99\nexport VK_DRIVER_FILES=/workspace/frontline-tools/runtime/usr/share/vulkan/icd.d/lvp_icd.json\nexport LD_LIBRARY_PATH=/workspace/frontline-tools/runtime/usr/lib/x86_64-linux-gnu\nexport XDG_DATA_HOME=/workspace/frontline-tools/data\nexport XDG_CACHE_HOME=/workspace/frontline-tools/cache\nexport XDG_CONFIG_HOME=/workspace/frontline-tools/config\nexec /workspace/frontline-tools/godot/Godot_v4.7.2-stable_linux.x86_64 --audio-driver Dummy \"$@\"\n",
-    "timing": "Software Vulkan, four CPU quota, 16GiB. Encoded 15fps is camera playback, not hardware or realtime performance."
+    "display": "Windows 11, borderless no-focus window placed off the desktop",
+    "device": "Vulkan - Forward+ - NVIDIA GeForce RTX 3090",
+    "timing": "Fixed 15 fps steps; encoded 15 fps is camera playback, not a performance measure."
   },
+  "encoding": "PIL: each 960x540 frame scaled to 800x450, before and after side by side under 35 px label bars (Segoe UI); JPEG frames piped to Playwright's ffmpeg n7.0.1: -f image2pipe -framerate 15 -c:v mjpeg -i pipe:0 -vf format=yuv420p -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -g 60 -an. 1600x520, 60 frames, 4 s, silent. Poster: frame 45 (close camera).",
   "limits": [
     "Small native scenery fixture, not full-town placement or gameplay coverage.",
-    "Earlier unfinished generated-town diagnostic remains local and is not used in this presentation.",
     "No grading, geometry substitutions or synthetic frames; side-by-side downscale and labels only."
   ],
   "camera_records": [
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 0,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.45
+      "yaw": 0.45,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 1,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.475796452825323
+      "yaw": 0.475796452825323,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 2,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.500386692187232
+      "yaw": 0.500386692187232,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 3,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.522620905823252
+      "yaw": 0.522620905823252,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 4,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.541459446615316
+      "yaw": 0.541459446615316,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 5,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.556021445333523
+      "yaw": 0.556021445333523,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 6,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.565625999102307
+      "yaw": 0.565625999102307,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 7,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.569824009662135
+      "yaw": 0.569824009662135,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 8,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.568419182704983
+      "yaw": 0.568419182704983,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 9,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.561477206378015
+      "yaw": 0.561477206378015,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 10,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.549322679778827
+      "yaw": 0.549322679778827,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 11,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.532523935062411
+      "yaw": 0.532523935062411,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 12,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.511866462861243
+      "yaw": 0.511866462861243,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 13,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.488316183616318
+      "yaw": 0.488316183616318,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 14,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.462974282210873
+      "yaw": 0.462974282210873,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 15,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.437025717789127
+      "yaw": 0.437025717789127,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 16,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.411683816383682
+      "yaw": 0.411683816383682,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 17,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.388133537138757
+      "yaw": 0.388133537138757,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 18,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.367476064937589
+      "yaw": 0.367476064937589,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 19,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.350677320221173
+      "yaw": 0.350677320221173,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 20,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.338522793621985
+      "yaw": 0.338522793621985,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 21,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.331580817295017
+      "yaw": 0.331580817295017,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 22,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.330175990337865
+      "yaw": 0.330175990337865,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 23,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.334374000897693
+      "yaw": 0.334374000897693,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 24,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.343978554666477
+      "yaw": 0.343978554666477,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 25,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.358540553384684
+      "yaw": 0.358540553384684,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 26,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.377379094176748
+      "yaw": 0.377379094176748,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 27,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.399613307812768
+      "yaw": 0.399613307812768,
+      "world_time": 8.0
     },
     {
-      "distance": 32.0,
-      "focus": "(0.0, 0.0, 0.0)",
+      "view": "normal",
       "frame": 28,
-      "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.424203547174677
-    },
-    {
-      "distance": 32.0,
       "focus": "(0.0, 0.0, 0.0)",
-      "frame": 29,
+      "distance": 32.0,
       "pitch": -48.0,
-      "view": "normal",
-      "world_time": 8.0,
-      "yaw": 0.45
+      "yaw": 0.424203547174677,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "normal",
+      "frame": 29,
+      "focus": "(0.0, 0.0, 0.0)",
+      "distance": 32.0,
+      "pitch": -48.0,
+      "yaw": 0.45,
+      "world_time": 8.0
+    },
+    {
+      "view": "close",
       "frame": 0,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.45
+      "yaw": 0.45,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 1,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.475796452825323
+      "yaw": 0.475796452825323,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 2,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.500386692187232
+      "yaw": 0.500386692187232,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 3,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.522620905823252
+      "yaw": 0.522620905823252,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 4,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.541459446615316
+      "yaw": 0.541459446615316,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 5,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.556021445333523
+      "yaw": 0.556021445333523,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 6,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.565625999102307
+      "yaw": 0.565625999102307,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 7,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.569824009662135
+      "yaw": 0.569824009662135,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 8,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.568419182704983
+      "yaw": 0.568419182704983,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 9,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.561477206378015
+      "yaw": 0.561477206378015,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 10,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.549322679778827
+      "yaw": 0.549322679778827,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 11,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.532523935062411
+      "yaw": 0.532523935062411,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 12,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.511866462861243
+      "yaw": 0.511866462861243,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 13,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.488316183616318
+      "yaw": 0.488316183616318,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 14,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.462974282210873
+      "yaw": 0.462974282210873,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 15,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.437025717789127
+      "yaw": 0.437025717789127,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 16,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.411683816383682
+      "yaw": 0.411683816383682,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 17,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.388133537138757
+      "yaw": 0.388133537138757,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 18,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.367476064937589
+      "yaw": 0.367476064937589,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 19,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.350677320221173
+      "yaw": 0.350677320221173,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 20,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.338522793621985
+      "yaw": 0.338522793621985,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 21,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.331580817295017
+      "yaw": 0.331580817295017,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 22,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.330175990337865
+      "yaw": 0.330175990337865,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 23,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.334374000897693
+      "yaw": 0.334374000897693,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 24,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.343978554666477
+      "yaw": 0.343978554666477,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 25,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.358540553384684
+      "yaw": 0.358540553384684,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 26,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.377379094176748
+      "yaw": 0.377379094176748,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 27,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.399613307812768
+      "yaw": 0.399613307812768,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
+      "view": "close",
       "frame": 28,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
       "pitch": -42.0,
-      "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.424203547174677
+      "yaw": 0.424203547174677,
+      "world_time": 8.0
     },
     {
-      "distance": 20.0,
-      "focus": "(0.0, 0.0, 0.6)",
-      "frame": 29,
-      "pitch": -42.0,
       "view": "close",
-      "world_time": 8.0,
-      "yaw": 0.45
+      "frame": 29,
+      "focus": "(0.0, 0.0, 0.6)",
+      "distance": 20.0,
+      "pitch": -42.0,
+      "yaw": 0.45,
+      "world_time": 8.0
     }
   ],
   "validation": {
-    "matched": "All60 camera/world-phase records exactly equal between main6399514 andPR9858eed6. Both candidate endpoints stable; no loading pop.",
-    "visual": "Actual normal and close source/decoded frames inspected. No clear contact or alignment defect found. Thin chains remain small at normal distance; fine details require fullscreen on a phone. No claim of eliminating all subpixel aliasing.",
-    "forward_plus": "Both exact revisions complete, no script/render errors.",
-    "compatibility": "Candidate normal/close still smoke complete. Actual OpenGL4.5 Mesa25.0.7 llvmpipe. Expected unsupportedVsync and Forward+-only SSR/SSIL/volumetric-fog warnings; no script/render errors. Not browser or full-town coverage.",
-    "media": "Full ffmpeg decode; VP9 1600x52015fps4seconds1540427bytes,silent. Native release-card play,pause,seek3.2s,reduced-motion,offscreenpause/resume and390pxlayout passed.",
-    "scope": "Presentation only. No game/source edits, no gameplay or hardwareperformance test."
+    "matched": "All 60 camera/world-phase records exactly equal between main f48b0f43 and the branch 430e48ed.",
+    "visual": "Beginning, middle and end frames of both views inspected on both revisions; both completed without script errors.",
+    "scope": "Presentation of the decorative models only."
   }
 }
