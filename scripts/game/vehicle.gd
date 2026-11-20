@@ -3490,7 +3490,10 @@ func _snow_view(dt: float, moved: float) -> void:
 	var sq := (floorf(own * 4.0) + 0.5) / 4.0 if Mats.per_material else 0.02 + own * 0.96
 	var deck := Vector2(10000.0, 10000.0)
 	if _vm and _vm.engine_deck.is_finite():
-		deck = Vector2(_vm.engine_deck.x, _vm.engine_deck.z)
+		# (the engine bay spans the hull: its warmth is centred on the hull's
+		# line, at the deck's end; engine_deck itself is where a fire breaks
+		# through, over one grille)
+		deck = Vector2(0.0, _vm.engine_deck.z)
 	var gun: Node3D = _vm.gun_mount if _vm else null
 	for mi in _snow_meshes:
 		if is_instance_valid(mi):

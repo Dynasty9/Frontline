@@ -323,14 +323,18 @@ func _check_snow_melt() -> void:
 	for i in int(SnowMelt.REFREEZE / SnowMelt.STEP):
 		melt.settle(true)
 	assert(melt.spots.is_empty(), "white again after REFREEZE of falling snow")
-	# an engine idling works it to slush, no further
+	# an engine idling works the snow its exhaust blows on to slush, no further,
+	# in a small patch: its warmth clears its own deck instead, from the engine
+	# end forward (no disc of thaw on the ground under the hull)
+	assert(SnowMelt.EXHAUST_REACH <= 1.0, "only a small patch behind the exhaust")
+	assert(Mats.SURFACE_SHADER.contains("(tp.z - snow_k.w) * -sign(snow_k.w)"), "the deck clears from the engine end forward")
 	var idle: Array = []
 	for i in int(SnowMelt.IDLE_MELT * 2.0 / SnowMelt.STEP):
-		idle = melt.warm(-2, Vector3(40, 0, 5), 3.0, 1.0, SnowMelt.STEP / SnowMelt.IDLE_MELT, SnowMelt.IDLE_MAX)
+		idle = melt.warm(-2, Vector3(40, 0, 5), SnowMelt.EXHAUST_REACH, 0.4, SnowMelt.STEP / SnowMelt.IDLE_MELT, SnowMelt.IDLE_MAX)
 		melt.settle(true)
 	assert(is_equal_approx(float(idle[3]), SnowMelt.IDLE_MAX), "an idling engine gets it only to slush")
 	# it drives off and stops again: the old thaw is left behind, a new one starts
-	var moved := melt.warm(-2, Vector3(60, 0, 5), 3.0, 1.0, SnowMelt.STEP / SnowMelt.IDLE_MELT, SnowMelt.IDLE_MAX)
+	var moved := melt.warm(-2, Vector3(60, 0, 5), SnowMelt.EXHAUST_REACH, 0.4, SnowMelt.STEP / SnowMelt.IDLE_MELT, SnowMelt.IDLE_MAX)
 	assert(moved != idle and melt.spots.size() == 2 and int(idle[5]) == 0, "a thaw left behind where it stood")
 	# the snowfall follows the effects setting, and the browser gets fewer flakes
 	var saved := int(Settings.v.effects)

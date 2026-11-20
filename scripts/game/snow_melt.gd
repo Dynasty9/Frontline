@@ -2,9 +2,10 @@ class_name SnowMelt
 extends RefCounted
 ## Snow melting off round the heat of the battle, in the snow weather: a fire
 ## thaws the ground round it to bare, wet earth with a rim of grey slush, and
-## a vehicle standing with its engine running works the snow under its hull to
-## a dark, damp patch. The heat is the heat haze's (Vfx's fires and the
-## vehicles' engines). Thawed ground stays thawed after the fire is out, and
+## a vehicle standing with its engine running works the snow behind its
+## exhaust to a small patch of slush (the engine's own warmth clears its deck:
+## Vehicle._snow_view). The heat is the heat haze's (Vfx's fires and the
+## vehicles' exhausts). Thawed ground stays thawed after the fire is out, and
 ## whitens again only slowly, while the snow keeps falling on it. Looks only:
 ## each view keeps its own, and nothing here reaches the simulation.
 ##
@@ -22,10 +23,12 @@ const STEP := 0.25  # s between updates
 const REFREEZE := 900.0
 ## Seconds for a well-alight fire to clear the ground under it to the earth.
 const FIRE_MELT := 14.0
-## Seconds for an idling engine to work the snow under it to slush, and as far
-## as it gets (the belly is warm, not hot: it never reaches the earth).
+## Seconds for an idling engine's exhaust to work the snow it blows on to
+## slush, and as far as it gets (warm air, not a flame: it never reaches the
+## earth), and how far the patch reaches (m).
 const IDLE_MELT := 150.0
 const IDLE_MAX := 0.55
+const EXHAUST_REACH := 0.9
 ## How long a vehicle stands still before the snow under it starts to go.
 const IDLE_AFTER := 10.0
 ## How fast a thaw spreads out to its full reach (m/s).
@@ -82,7 +85,10 @@ func tick(dt: float) -> void:
 
 
 ## A vehicle's engine, running while it stands: once it's been still a while,
-## the snow under its engine deck goes to slush.
+## the snow its exhaust blows on goes to slush, in a small patch just beyond
+## the outlet. The engine's warmth goes up through its deck (Vehicle._snow_view),
+## not down into the snow under the hull: a vehicle with no outlet of its own
+## on its model leaves the ground as it was.
 func _idling(v: Vehicle) -> void:
 	if v.gone or v.model == null or v.is_air() or v.is_boat():
 		_idle.erase(v.eid)
@@ -95,11 +101,15 @@ func _idling(v: Vehicle) -> void:
 	rec[1] = float(rec[1]) + STEP
 	if float(rec[1]) < IDLE_AFTER:
 		return
-	var hs := v._hull_size()
-	var at := p
-	if v._vm and v._vm.engine_deck.is_finite():
-		at = v.model.global_transform * (v._vm.engine_deck * Vector3(1, 0, 1))
-	warm(-1 - v.eid, at, maxf(hs.x, hs.z) * 0.55, maxf(hs.x, hs.z) * 0.3, STEP / IDLE_MELT, IDLE_MAX, null, 0.0)
+	if v._vm == null or not v._vm.engine_vent.is_finite():
+		return
+	# (the warm gas blows out of the outlet away from the hull: the patch lies
+	# a little beyond it, where it comes down on the snow)
+	var vent: Vector3 = v._vm.engine_vent
+	var out := Vector2(vent.x, vent.z)
+	out = out / maxf(out.length(), 0.001)
+	var at := v.model.global_transform * Vector3(vent.x + out.x * 0.6, 0.0, vent.z + out.y * 0.6)
+	warm(-1 - v.eid, at, EXHAUST_REACH, EXHAUST_REACH * 0.4, STEP / IDLE_MELT, IDLE_MAX, null, 0.0)
 
 
 ## Heat on the snow at `at` this step, from the source `key`: its thaw spreads

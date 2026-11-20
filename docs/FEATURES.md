@@ -1400,11 +1400,14 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   (`Vehicle._snow_view`, the `snow_k` instance value) keeps it only on its flat tops (deck, turret roof, fenders,
   stowage), in patches of its own, while the glacis and sides shed it and the warm engine deck stays bare and wet;
   standing still it gathers a full load, and driving or swinging its turret shakes most of it off, faster the
-  faster it goes, so a parked or wrecked hull carries far more than one in the fight. Its engine deck's bare patch
-  spreads the longer the engine runs, a gun that has fired is bare until its barrel cools, and a vehicle on fire
+  faster it goes, so a parked or wrecked hull carries far more than one in the fight. Its engine's warmth comes up
+  through the deck: the grilles over the engine clear first, to bare metal dark and glossy with the melt behind a
+  rim of grey slush, and the bare stretch creeps forward along the deck the longer the engine runs. A gun that has
+  fired is bare until its barrel cools, and a vehicle on fire
   melts all of it off. Heat melts it (`SnowMelt`, fed by the fires and engines the heat haze knows): a fire thaws
   the ground round it to bare, wet earth with a rim of grey slush, and melts the snow off whatever is burning, roof,
-  wreck or tree; a vehicle standing with its engine running works the snow under it to a damp, dark slush. The
+  wreck or tree; a vehicle standing with its engine running works the snow its exhaust blows on to a small patch
+  of slush just beyond the outlet (none under the hull: its warmth goes up through the deck). The
   ground and roads take the 24 thaws nearest the camera as a list (no extra texture), everything standing round
   a fire (paving, yards, the neighbours' roofs) the nearest eight as global shader values (`snow_thaw_0..7`), and
   the grass has them painted into its scar map, which the bushes and the woodland floor read too. The wind heaps it against whatever stands in its way (`SnowDrift`): every wall, house,

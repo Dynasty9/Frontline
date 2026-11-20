@@ -2577,7 +2577,19 @@ void fragment() {
 		}
 		float warm = 0.0;
 		if (vehicle_surface) {
-			warm = 1.0 - smoothstep(mix(0.8, 1.7, engine_run), mix(1.5, 3.0, engine_run), distance(tp.xz, snow_k.zw));
+			// The engine's warmth comes up through its deck (snow_k.zw: the
+			// deck's middle on the hull's line, at the engine's end): the
+			// grilles and plates over it clear first, back to the rear plate,
+			// and the bare metal creeps forward along the deck the longer the
+			// engine runs, a ragged edge of slush ahead of it. (No deck,
+			// zw far off: none.)
+			float along = (tp.z - snow_k.w) * -sign(snow_k.w);  // forward of the deck's middle
+			float rag = (tnoise(tp.xz * 2.7 + so) - 0.5) * 0.4;
+			float reach = mix(0.5, 2.8, engine_run);
+			float wide = mix(0.9, 1.5, engine_run);
+			warm = (1.0 - smoothstep(reach - 0.6, reach, along + rag))
+				* (1.0 - smoothstep(wide - 0.35, wide, abs(tp.x - snow_k.z) + rag * 0.5))
+				* (1.0 - smoothstep(1.6, 2.2, -along));
 			settled *= 1.0 - warm;
 		}
 		// trodden: the pavements, paths and the square to a grey, packed crust
@@ -2608,6 +2620,12 @@ void fragment() {
 		float slushed = 0.0;
 		float thinned = 0.0;
 		float wet_tile = 0.0;
+		if (warm > 0.0) {
+			// (the deck's bare metal dark and glossy with the melt, a rim of
+			// grey slush where it meets the snow)
+			thaw_wet = warm * face * min(1.0, snow_cover * 4.0);
+			slushed = smoothstep(0.15, 0.45, warm) * (1.0 - smoothstep(0.55, 0.85, warm));
+		}
 		if (heat > 0.0) {
 			// The warmth comes through where the house is warmest: round the
 			// chimney, and in a patch or two over the rooms (smooth noise, so
