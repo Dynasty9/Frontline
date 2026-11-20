@@ -1,0 +1,30 @@
+{
+  "before_ref": "d167f6631d32fc38422c64dfb70fa3b09196cfea",
+  "after_ref": "41bf725558f43c1cc9e686109142984a448fec4e",
+  "caption": "Dawn approach, before and after the coastal mist correction: matching camera, seed, exposure and full High settings. Three seconds of actual Forward+ output with a static naval fixture and advancing camera and weather, at normal simulation speed; software Vulkan capture, not a performance measurement.",
+  "stage": "tools/showcase/cloud-dawn-approach.gd",
+  "stage_sha256": "caca2062800cf92eff35c072477e641692ac773b641ec7f691612668be6bd054",
+  "renderer_setup": "Workspace-only rendering setup, 2026-11-18\nGodot: /workspace/frontline-tools/godot/Godot_v4.7.2-stable_linux.x86_64\nDebian packages extracted with dpkg-deb -x into /workspace/frontline-tools/runtime:\nmesa-vulkan-drivers 25.0.7-2+deb13u1\nxvfb and xserver-common 2:21.1.16-1.3+deb13u3\nlibxfont2 1:2.0.6-1+deb13u1\nNo system packages installed; no local Windows access.\n\nDisplay command:\n/workspace/frontline-tools/runtime/usr/bin/Xvfb :99 -screen 0 1280x720x24 -nolisten tcp\n\nEnvironment:\nDISPLAY=:99\nVK_DRIVER_FILES=/workspace/frontline-tools/runtime/usr/share/vulkan/icd.d/lvp_icd.json\nLD_LIBRARY_PATH=/workspace/frontline-tools/runtime/usr/lib/x86_64-linux-gnu\nXDG_DATA_HOME=/workspace/frontline-tools/data\nXDG_CACHE_HOME=/workspace/frontline-tools/cache\nXDG_CONFIG_HOME=/workspace/frontline-tools/config\nGALLIVM_PERF=nopt\n\nGodot arguments: --audio-driver Dummy --rendering-method forward_plus --resolution 960x540 --fixed-fps 30\nUse a windowed offscreen game, not --headless (headless has no RenderingDevice).\nGodot reports:\nVulkan 1.4.305 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 19.1.7, 256 bits)\nCompatibility reports:\nOpenGL API 4.5 (Core Profile) Mesa 25.0.7-2+deb13u1 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 19.1.7, 256 bits)\n\nTiming limitations: no /dev/dri or /dev/nvidia device, including outside the sandbox.\nCold startup/scene compilation takes several minutes; first valid frame can take over ten minutes.\nTank frames took approximately seven seconds each with two concurrent renders; full-town weather is slower.\nActual cgroup memory.max is 17179869184 (16 GiB). Two simultaneous renders plus an import caused two OOM kills.\nRun exactly one renderer at a time and complete imports before capture; monitor memory.current and memory.events.\nFixed 30 fps is simulation/capture time, not wall-clock rendering throughput.\nGALLIVM_PERF=nopt disables LLVM optimizations to shorten compilation; unsuitable for hardware performance conclusions.\nKeep capture separate from any performance test. Hardware renderer cost remains unmeasured.\n\nBounded follow-up: one renderer at a time throughout. Full High 960x540 coastal\nframes take roughly 5\u201310 wall seconds apiece on this software setup; a 3-second\nfixed-30 clip therefore takes many minutes plus atlas preparation. #263's matched\npair additionally uses LP_NUM_THREADS=4 on both sides to fit the4CPU quota.\nNo timing here estimates a discrete or integrated GPU's frame time.\n",
+  "command": "GALLIVM_PERF=nopt FL_FOLLOW_CAPTURE=<output> /workspace/frontline-tools/godot-run --path <checkout> --rendering-method forward_plus --resolution 960x540 --fixed-fps 30 --script tools/showcase/cloud-dawn-approach.gd -- --scenario=naval --static --seed=3 --preset=high --mood=dawn --nohud --offscreen --set=perf:0",
+  "fps": 30,
+  "frames": 90,
+  "duration_seconds": 3,
+  "encoded_resolution": [
+    1600,
+    486
+  ],
+  "audio": "silent",
+  "camera_match": "Per-frame camera matrix, world time, scenery count and warming state compared within1e-5.",
+  "preparation": "Pause simulation during scenery setup, replay probe atlas GPU jobs with drawing enabled, await queues empty and20 rendered warmup frames. Resume simulation for capture. No grading/interpolation/speed change.",
+  "limits": "Software driver only; shader-clock rain sparkle and foliage need not align pixel for pixel. No hardware-performance claim.",
+  "files": {
+    "webm": {
+      "sha256": "3335af75eae545bfcc247ec2dbed773349a652cb63f3ba0eb99247e942041dab",
+      "bytes": 1784852
+    },
+    "jpg": {
+      "sha256": "46986205a29462357ec6b2bbf7c39758a68f23a31e392552af6b70b93f4b9844",
+      "bytes": 107079
+    }
+  }
+}
