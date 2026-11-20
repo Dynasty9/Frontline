@@ -1340,6 +1340,12 @@ func set_decor(d: Array, r: Rect2) -> void:
 	_decor_node = Decor.new()
 	add_child(_decor_node)
 	_decor_node.build(self, decor)
+	if _road_meshes[2]:
+		# (the town's main streets are drawn as wide as the decor says they
+		# are: Atmosphere.make_road_mesh)
+		_road_meshes[2].queue_free()
+		_road_meshes[2] = null
+		_rebuild_roads()
 	if atmo:
 		atmo.set_town(town_rect)
 		if atmo.grass:

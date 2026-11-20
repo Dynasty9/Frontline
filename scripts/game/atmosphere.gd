@@ -2208,8 +2208,13 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var road_hw := 2.9 if team == 2 else 2.4
-	var hw := road_hw + 1.5
-	var uv_edge := 1.5 / (road_hw * 2.0)
+	# (the town's main streets are wider, by a parking lane down each side:
+	# how much, the decor says, TownGen._lane_lines)
+	var wides: Array = []
+	if team == 2 and world != null:
+		for e: Array in world.decor:
+			if String(e[0]) == "street_wide":
+				wides.append(e)
 	var y := Vector3(0, 0.02 if team == 2 else 0.026 + team * 0.004, 0)
 	for poly in polys:
 		var src: PackedVector3Array = poly
@@ -2231,6 +2236,7 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 		var lefts := PackedVector3Array()
 		var rights := PackedVector3Array()
 		var vs := PackedFloat32Array()
+		var halves := PackedFloat32Array()  # (kerb to middle, at each point)
 		var along := 0.0
 		for i in pts.size():
 			var d_in := (pts[i] - pts[maxi(i - 1, 0)]).normalized() if i > 0 else (pts[1] - pts[0]).normalized()
@@ -2242,22 +2248,28 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 			var miter := 1.0 / maxf(0.5, side.dot(d_out.cross(Vector3.UP).normalized()))
 			if i > 0:
 				along += Defs.flat(pts[i] - pts[i - 1]).length()
-			lefts.append(pts[i] - side * hw * miter + y)
-			rights.append(pts[i] + side * hw * miter + y)
+			var half := _street_half(pts[i], tang, road_hw, wides)
+			lefts.append(pts[i] - side * (half + 1.5) * miter + y)
+			rights.append(pts[i] + side * (half + 1.5) * miter + y)
 			vs.append(along)
+			halves.append(half)
 		for i in pts.size() - 1:
+			# (UV.x runs 0 to 1 kerb to kerb, the shoulders beyond; UV2.y is how
+			# wide that is)
+			var e0 := 1.5 / (halves[i] * 2.0)
+			var e1 := 1.5 / (halves[i + 1] * 2.0)
 			# Crosswise panels follow the camber and the ground beneath both shoulders.
 			for strip in 8:
 				var u0 := float(strip) / 8.0
 				var u1 := float(strip + 1) / 8.0
 				var q := [lefts[i].lerp(rights[i], u0), lefts[i].lerp(rights[i], u1), lefts[i + 1].lerp(rights[i + 1], u1), lefts[i + 1].lerp(rights[i + 1], u0)]
-				var x0 := lerpf(-uv_edge, 1.0 + uv_edge, u0)
-				var x1 := lerpf(-uv_edge, 1.0 + uv_edge, u1)
-				var uv := [Vector2(x0, vs[i]), Vector2(x1, vs[i]), Vector2(x1, vs[i + 1]), Vector2(x0, vs[i + 1])]
+				var uv := [Vector2(lerpf(-e0, 1.0 + e0, u0), vs[i]), Vector2(lerpf(-e0, 1.0 + e0, u1), vs[i]),
+					Vector2(lerpf(-e1, 1.0 + e1, u1), vs[i + 1]), Vector2(lerpf(-e1, 1.0 + e1, u0), vs[i + 1])]
+				var wide := [halves[i] * 2.0, halves[i] * 2.0, halves[i + 1] * 2.0, halves[i + 1] * 2.0]
 				for idx in [0, 2, 1, 0, 3, 2]:
 					st.set_normal(Vector3.UP)
 					st.set_uv(uv[idx])
-					st.set_uv2(Vector2(_road_deck_distance(q[idx]), 0))
+					st.set_uv2(Vector2(_road_deck_distance(q[idx]), wide[idx]))
 					st.add_vertex(q[idx])
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
@@ -2266,6 +2278,23 @@ func make_road_mesh(polys: Array, team: int) -> MeshInstance3D:
 	Mats.set_inst(mi, &"country", 1.0 if team == 2 else 0.0)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
+
+
+## How wide a road is at `p` (kerb to middle) running along `tang`: a town's
+## main street (one of `wides`, its "street_wide" decor) a parking lane wider
+## each side, narrowing back to the country road's `base` over the few metres
+## past the edge of town. (Only a road running along the street: a side street
+## starts on a main street's middle.)
+static func _street_half(p: Vector3, tang: Vector3, base: float, wides: Array) -> float:
+	var half := base
+	for e: Array in wides:
+		var b := Basis(Vector3.UP, float(e[2]))
+		var r := Defs.flat(p - (e[1] as Vector3))
+		if absf(r.dot(b.z)) > 1.0 or absf(tang.dot(b.x)) < 0.9:
+			continue
+		var size: Vector3 = e[3]
+		half = maxf(half, lerpf(size.z * 0.5, base, smoothstep(0.0, 6.0, absf(r.dot(b.x)) - size.x * 0.5)))
+	return half
 
 
 ## A signed deck boundary keeps the gravel ribbon out of the bridge's own paving.
@@ -3305,20 +3334,28 @@ void fragment() {
 		float tar = 0.0;
 		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz, tar);
 		if (OUTPUT_IS_SRGB) { asph = mix(asph / 12.92, pow((asph + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), asph)); }
-		// Across a town street, kerb to kerb (5.8 m), traffic keeps to two lanes:
-		// tyres polish the wheel paths, engines drip oil down the middle of
-		// each lane, and grit and damp gather in the gutters along the kerbs.
-		float xm = x * 5.8;
+		// Across a town street, kerb to kerb (5.8 m, UV2.y), traffic keeps to two
+		// lanes: tyres polish the wheel paths, engines drip oil down the middle
+		// of each lane, and grit and damp gather in the gutters along the kerbs.
+		// A main street is wider by a parking lane down each side (TownGen.
+		// PARK_LANE), where the oil drips from cars standing.
+		float wide = UV2.y > 1.0 ? UV2.y : 5.8;
+		float xm = x * wide;
+		float park = max(0.0, (wide - 5.8) * 0.5);
+		float xt = (xm - park) / 5.8;
+		float traffic = step(0.0, xt) * step(xt, 1.0);
 		float along = UV.y;
 		float aa = max(fwidth(xm), 0.002);
 		float ga = max(fwidth(along), 0.002);
-		float lane = fract(x * 2.0) - 0.5;
-		float drip = texture(street_noise, vec2(along * 0.09, x * 2.0) + 0.43).r;
-		float oil = (1.0 - smoothstep(0.03, 0.11, abs(lane))) * smoothstep(0.3, 0.7, drip);
-		float wheel = 1.0 - smoothstep(0.03, 0.12, abs(abs(lane) - 0.27));
-		float kerb = min(xm, 5.8 - xm);
+		float lane = fract(clamp(xt, 0.0, 1.0) * 2.0) - 0.5;
+		float drip = texture(street_noise, vec2(along * 0.09, xt * 2.0) + 0.43).r;
+		float oil = (1.0 - smoothstep(0.03, 0.11, abs(lane))) * smoothstep(0.3, 0.7, drip) * traffic;
+		float wheel = (1.0 - smoothstep(0.03, 0.12, abs(abs(lane) - 0.27))) * traffic;
+		float kerb = min(xm, wide - xm);
 		float gutter = 1.0 - smoothstep(0.12, 0.5, kerb);
-		asph *= 1.0 - oil * 0.24;
+		float parked = (1.0 - traffic) * step(1.0, park) * (1.0 - smoothstep(0.15, 0.85, abs(kerb - park * 0.5)))
+			* smoothstep(0.5, 0.75, texture(street_noise, wpos.xz * 0.35 + 0.21).r);
+		asph *= 1.0 - oil * 0.24 - parked * 0.16;
 		asph = mix(asph, asph * 1.14 + 0.004, wheel * 0.45);
 		asph = mix(asph, vec3(0.115, 0.105, 0.09) * (0.75 + 0.5 * n), gutter * 0.5);
 		// Tyres carry loose fines a few metres onto the paving at the town entrance.
@@ -3340,7 +3377,7 @@ void fragment() {
 		// a drain grate in the gutter every 32 m, the sides taking turns
 		float stretch = floor(along / 32.0);
 		float from_grate = abs(along - stretch * 32.0 - 16.0);
-		float side = mod(stretch, 2.0) < 0.5 ? xm : 5.8 - xm;
+		float side = mod(stretch, 2.0) < 0.5 ? xm : wide - xm;
 		float grate = (1.0 - smoothstep(0.3 - ga, 0.3 + ga, from_grate)) * smoothstep(0.06 - aa, 0.06 + aa, side) * (1.0 - smoothstep(0.52 - aa, 0.52 + aa, side));
 		float grate_inner = (1.0 - smoothstep(0.25 - ga, 0.25 + ga, from_grate)) * smoothstep(0.1 - aa, 0.1 + aa, side) * (1.0 - smoothstep(0.48 - aa, 0.48 + aa, side));
 		float slot = smoothstep(0.32, 0.45, abs(fract(side / 0.055) - 0.5)) * clamp(0.055 / (aa * 4.0), 0.0, 1.0) * grate_inner;
@@ -3348,7 +3385,7 @@ void fragment() {
 		vec3 grate_col = mix(mix(iron * 1.3 + vec3(0.012, 0.006, 0.0), iron, grate_inner), vec3(0.006), slot);
 		// a manhole cover down the middle of a lane every 46 m
 		float run = floor((along + 9.0) / 46.0);
-		vec2 to_cover = vec2(xm - (mod(run, 2.0) < 0.5 ? 1.45 : 4.35), along - run * 46.0 - 14.0);
+		vec2 to_cover = vec2(xm - park - (mod(run, 2.0) < 0.5 ? 1.45 : 4.35), along - run * 46.0 - 14.0);
 		float r = length(to_cover);
 		float ra = max(fwidth(r), 0.002);
 		float cover = 1.0 - smoothstep(0.34 - ra, 0.34 + ra, r);
@@ -3362,7 +3399,7 @@ void fragment() {
 		asph = mix(asph, cover_col, cover);
 		float metal_part = max(grate, cover);
 		// the centre line, a broken dash, worn thin where wheels cross it
-		float dash_x = 1.0 - smoothstep(0.065 - aa, 0.065 + aa, abs(xm - 2.9));
+		float dash_x = 1.0 - smoothstep(0.065 - aa, 0.065 + aa, abs(xm - wide * 0.5));
 		float dash_y = fract(along / 7.0);
 		float dash = dash_x * smoothstep(0.0, ga / 7.0 + 0.002, dash_y) * (1.0 - smoothstep(0.5 - ga / 7.0 - 0.002, 0.5, dash_y));
 		float paint_wear = smoothstep(0.55, 0.85, texture(street_noise, wpos.xz * 0.9 + 0.6).r * 0.7 + n3 * 0.45);
