@@ -167,6 +167,30 @@ The older pieces are `BuildingStreet`'s too:
 
 Render them with `--building-kinds=street_pieces`.
 
+## The square
+
+The town square's monuments are `BuildingSquare`'s:
+- **The war memorial** (`memorial`, Decor `statue`): three steps, a moulded plinth, the die of dressed granite with
+  a bronze plaque of names on each face, a cornice (`monument`). On top stands a bronze soldier (`soldier`) larger
+  than life (a man of 1.8 m cast 2.1 m tall) resting on his arms reversed: his rifle upside down before him, its
+  muzzle on his base between his boots, his hands folded on its butt, his head bowed under his helmet, in greatcoat,
+  belt, pouches and pack. He is sculpted from lofted cross-sections (`BodyMesh`) as the game's soldiers are, with
+  their proportions, and cast as one cached shape on his base: one part in the bake. Or (the park's) it's an obelisk
+  with its capstone and a bronze laurel wreath fixed flat to its sloping face.
+- **Wreaths** (`wreath`): poppies on laurel with a ribbon bow, a cached shape a colour. `wreath_spots` lays two or
+  three on the top step in front, each leaning back just far enough that its back rests on the edge of the plinth's
+  cap. The fixture checks none is in the stone, the statue or another wreath, that each stands on the step and
+  rests on the plinth (3 cm lower, or further back, it would be in the stone), and the soldier's size and part
+  count.
+- **The market's stalls** (`stall`, Decor `stall`): a timber frame under a pitched canopy of striped canvas,
+  scalloped along its eaves, over a trestle of crates heaped with produce, a set of scales and a crate or two
+  under it. The canopies are `AWNINGS`.
+
+Bronze is a surface of its own (`bronze`): verdigris, worn through in patches to the darker metal, with runs of dirt
+down it. Render them with
+`--building-kinds=memorial,memorial_obelisk` (the memorial with three stalls beside it) in the studio stage; the
+town views include the square.
+
 ## Furniture
 
 A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it

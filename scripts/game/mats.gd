@@ -1456,6 +1456,12 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.55, 0.55, 0.55), "rough": 0.85, "bump": 0.2, "grime": 0.3}
 		"plain_dark":
 			return {"pattern": PLAIN, "col_a": Color(0.18, 0.18, 0.18), "rough": 0.8, "bump": 0.2, "grime": 0.2}
+		"bronze":
+			# cast bronze gone green with weather (a statue, a plaque): the
+			# verdigris clouded with the darker bronze where the rain doesn't
+			# wash it, and runs of it down the faces (concrete's stains and
+			# streaks without its joints or pits, rather than paint's chips)
+			return {"pattern": CONCRETE, "col_a": Color(0.27, 0.37, 0.31), "col_b": Color(0.12, 0.14, 0.1), "rough": 0.55, "metal": 0.35, "bump": 0.15, "grime": 0.4, "seams": 0.0, "pitting": 0.0, "scale": 3.2}
 		"rubber_crumb":
 			# Playground safety surface; decor picks the colour of the pour.
 			return {"pattern": RUBBER_CRUMB, "col_a": Color(0.45, 0.2, 0.15), "col_b": Color(0.7, 0.55, 0.45), "rough": 0.92, "bump": 0.6, "grime": 0.0, "scale": 1.0}
