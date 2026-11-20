@@ -223,16 +223,21 @@ static func window(k: VehicleModels, size: Vector2, pos: Vector3, rot: Vector3) 
 ## missing, wherever the sky was bright.
 static func _materials() -> void:
 	if glass_near == null:
+		# Laminated and toughened vehicle glass is faintly grey-green (the
+		# iron in the float glass, and the tint most windscreens carry), so a
+		# clear pane reads as glazed by a pale green-grey film over what's
+		# behind it and the sky's sheen on its face, where a near-black one
+		# over a dark cab read as an empty frame or a black plate.
 		glass_near = StandardMaterial3D.new()
 		glass_near.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		glass_near.albedo_color = Color(0.03, 0.045, 0.05, 0.62)
-		glass_near.roughness = 0.03
-		glass_near.metallic_specular = 0.5
+		glass_near.albedo_color = Color(0.1, 0.13, 0.115, 0.5)
+		glass_near.roughness = 0.05
+		glass_near.metallic_specular = 0.62
 		glass_near.cull_mode = BaseMaterial3D.CULL_DISABLED
 		# (the opaque pane past 100 m is what the tinted pane over a dark cab
 		# averages to, so the hand-over doesn't brighten the windows)
 		glass_far = StandardMaterial3D.new()
-		glass_far.albedo_color = Color(0.055, 0.07, 0.075)
+		glass_far.albedo_color = Color(0.065, 0.082, 0.074)
 		glass_far.roughness = 0.06
 		glass_far.cull_mode = BaseMaterial3D.CULL_DISABLED
 
@@ -269,6 +274,18 @@ static func seat(k: VehicleModels, parent: Node3D, center: Vector3, size := Vect
 			# The posts follow the back's lean up out of its top edge.
 			VehicleBody.rod(k, mount, back + Vector3(side * size.x * 0.2, size.y * 0.46, size.y * 0.055), back + Vector3(side * size.x * 0.2, size.y * 0.63, size.y * 0.076), 0.012, "steel", null, 6, false, -1.0, false, false)
 		k._box(mount, Vector3(size.x * 0.58, size.y * 0.25, pad), back + Vector3(0, size.y * 0.66, size.y * 0.08), material, col, Vector3(0.12, 0, 0))
+	if size.y >= 0.4 and not k.wreck:
+		# A crew seat is a bucket: the back's outer edges stand forward as
+		# bolsters, turned in to hold the sitter's shoulders over rough
+		# ground, so from above it reads as a seat and not a board (a
+		# wreck's stays as it was).
+		for side: float in [-1.0, 1.0]:
+			k._add(mount, BevelMesh.make(Vector3(size.x * 0.13, size.y * 0.76, pad * 0.75), pad * 0.2), material, col, back + Vector3(side * size.x * 0.4, -size.y * 0.05, -pad * 0.5), Vector3(0.12, side * 0.4, 0))
+		if not headrest:
+			# a high back without a separate headrest: its padded head
+			# section rising narrower out of its top, as on a light vehicle's
+			# bucket seat (it leans with the back)
+			k._add(mount, BevelMesh.make(Vector3(size.x * 0.56, size.y * 0.3, pad * 0.8), pad * 0.22), material, col.darkened(0.03), back + Vector3(0, size.y * 0.6, size.y * 0.074), Vector3(0.12, 0, 0))
 	for side: float in [-1.0, 1.0]:
 		k._add(mount, BevelMesh.make(Vector3(size.x * 0.11, pad * 0.62, size.z * 0.75), pad * 0.15), material, col, Vector3(side * size.x * 0.43, pad * 0.35, 0))
 	k._add(mount, BevelMesh.make(Vector3(size.x * 0.78, size.y * 0.82, pad * 0.22), pad * 0.07), "plain_dark", Color(0.12, 0.13, 0.12), back + Vector3(0, 0, pad * 0.5), Vector3(0.12, 0, 0))
