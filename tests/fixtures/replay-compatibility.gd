@@ -5,10 +5,10 @@ const ReplayPlayer = preload("res://scripts/game/replay_player.gd")
 func _ready() -> void:
 	TestRun.watch()
 	var player := ReplayPlayer.new()
-	assert(Net.NET_VERSION == 14, "Live multiplayer must retain its current protocol")
-	for protocol in [13, 13.0, 14, 14.0]:
+	assert(Net.NET_VERSION == 15, "Live multiplayer must retain its current protocol")
+	for protocol in [13, 13.0, 14, 14.0, 15, 15.0]:
 		assert(player._supports_replay_protocol(protocol))
-	for protocol in [12, 15, 13.5, "13", null, true]:
+	for protocol in [12, 16, 13.5, "13", null, true]:
 		assert(not player._supports_replay_protocol(protocol))
 
 	var old := _content(13)
@@ -48,9 +48,13 @@ func _ready() -> void:
 	vehicle.read_state(buffer)
 	assert(vehicle.aim_offset.is_equal_approx(Vector3(12.3, -4.5, 6.7)))
 	vehicle.free()
+	# 15 records exactly what 14 did (it only added a live message)
+	var v15 := _content(15)
+	decoded = player.decode(_body(v15))
+	assert(not decoded.is_empty() and decoded.checkpoint.snapshots == v15.checkpoint.snapshots, "Protocol 15 archives decode as 14's")
 
 	# Accept exactly the known archive schemas, not arbitrary short or mixed packets.
-	for protocol in [12, 15, 13.5, "13"]:
+	for protocol in [12, 16, 13.5, "13"]:
 		var invalid := old.duplicate(true)
 		invalid.protocol = protocol
 		assert(player.decode(_body(invalid)).is_empty())
@@ -75,7 +79,7 @@ func _ready() -> void:
 	TestRun.quit(get_tree())
 
 func _content(protocol: int) -> Dictionary:
-	var vehicle := _vehicle_bytes(protocol == 14)
+	var vehicle := _vehicle_bytes(protocol >= 14)
 	var checkpoint := {
 		"time": 0.0, "team": [{}, {}], "mission": {}, "report": {}, "winner": -1,
 		"entities": [[1, "vehicle", {"pos": Vector3(1, 2, 3)}], [2, "soldier", {"pos": Vector3.ZERO}]],
