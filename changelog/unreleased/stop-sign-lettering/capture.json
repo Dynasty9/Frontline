@@ -1,0 +1,28 @@
+{
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+  "source_ref": "60b7f2c251f688b2d3042a4b58de2128e9167785",
+  "engine": "Godot 4.7.2 stable ed1daf0bf, Windows, NVIDIA",
+  "stage": "tools/showcase/building-surfaces.tscn (stop_sign_face, kerbside_stop); tests/fixtures/environment-views.gd (FL_ONLY_VIEW)",
+  "comparisons": [
+    {
+      "file": "comparison.jpg",
+      "subjects": ["stop_sign_face", "kerbside_stop"],
+      "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=stop_sign_face,kerbside_stop",
+      "note": "Both revisions rendered with the source_ref stage (the before checkout given only the new stage file), so cameras and light match. stop_sign_face: orthographic size 1.0 from (0.9, 0.3, -3.5) off the sign's middle, sun at (-35, 160, 0) on the face. kerbside_stop: the earlier detail camera, the face in its own shade.",
+      "crop": "each render cropped 1344x700 round (812, 455), scaled to 798x416"
+    },
+    {
+      "file": "battle-camera.jpg",
+      "subjects": ["stop sign at (36.2, 1.0), yaw pi", "stop sign at (27.8, -11.0), yaw 0"],
+      "command": "godot --path CHECKOUT --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-set=town",
+      "env": "FL_ONLY_VIEW=stopB-20,36.2,1.0,20,-39,0.25 and FL_ONLY_VIEW=stopA-55,27.8,-11.0,55,-44,2.9 (name,x,z,distance,pitch,yaw: 55 m and -44 degrees are the RTS camera's default zoom and its pitch there)",
+      "crop": "20 m: 228x119 round (800, 392), 3.5x nearest; 55 m: 134x70 round (800, 425), 6x nearest"
+    }
+  ],
+  "review_only": [
+    "Compatibility renderer (--rendering-method gl_compatibility): the studio close-up and the town at 20 m and 55 m, before and after; lettering clean in front of the face, no depth fighting",
+    "stop_sign_back: the bare galvanised back, unchanged"
+  ],
+  "smudge": "The dark patch under the word was the car_paint surface's PAINT pattern wearing through to bare metal (col_b at metal 0.85) where its world-space noise lands; the stop sign at the stage's origin had it under the word. The face is now the flat 'sheeting' surface.",
+  "composition": "PIL: two rows of matched before/after tiles with caption bars, 1600x900, JPEG quality 84"
+}
