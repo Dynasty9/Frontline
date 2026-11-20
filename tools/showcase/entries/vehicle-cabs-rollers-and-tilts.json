@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-cabs-rollers-and-tilts.md",
+  "summary": "A cab with seats, dash and radios behind the Humvee's armoured glass, return rollers under the Merkava's track, truck tilts that sag between their bows, and a cheaper 4x4 spare.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "A cab interior and the shape of the canvas: matched studio views show both. The rollers sit behind the skirts and the spare is pixel-identical, so the text says those.",
+  "source_ref": "1242ba4b9535916e118bb1f653155d30294cab6b",
+  "before_ref": "1242ba4b9535916e118bb1f653155d30294cab6b",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-cabs-rollers-and-tilts/comparison.jpg",
+      "sha256": "cca52710660010fbdc08ddb2ea5d2d98148fe1ef5b36ec1ab996428924194c6d"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-cabs-rollers-and-tilts/capture.json",
+      "sha256": "57327f5f4e9e594bec476f89fb2fa393585cba6ead318ce88f192638d549aeb7"
+    }
+  ],
+  "output": null
+}

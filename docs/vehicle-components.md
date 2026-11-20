@@ -1203,6 +1203,30 @@ meshes are unchanged; vertices rise 0.09%, no model by more than 2.5% (the Scorc
   (`VmIndep._zamak_grille`); the Scorcher's roof kit sits in rails; the Panther's bags are kit bags with straps; the
   Tempest's rear load clears its crane; the Tigris's and Futura's chevrons sit on clear roof.
 
+### Twenty-third pass: the leftovers
+
+The items the earlier passes left for later that were still open. Roster vertices rise 0.11%; the Humvee gains two
+nodes and meshes for its clear glass, nothing else changes structure.
+
+- **Tilts**: `VehicleCloth._tilt_meshes` hangs the cover in a dip that rises all the way to each bow and leaves it
+  at an angle (`sin(PI * u)` raised to 0.8 along the bay), so each bow stands as a ridge and the eave line scallops
+  between them; it had dropped within a few centimetres of a bow and run flat, a taut lid set lower. At most
+  `minf(0.062, 0.045 * length)`, deepest mid-roof, 55% at the eaves, the side curtains drawn in up to 55% of it
+  toward the eaves and nothing at the hem. The grid and cache key are unchanged; wrecks keep their panels.
+- **Return rollers**: `VmNato._mk_running` gives the Merkava IV hull (the Slammers, Scorcher, Sandstorm and the Namer
+  family) its four return rollers a side, each half a link under the line from the sprocket's top to the idler's;
+  `_track_loop(..., rollers)` lays the top run on them through `VehicleTracks.on_rollers`, so it hangs between them.
+  Skirts and sponsons hide them whole, so `VehicleWheels.roller(..., hidden)` builds them plain: eight-sided tyres
+  and disc, no hub or bolts. Wrecks keep the straight run.
+- **The Humvee's cab**: `VmCore._humvee` builds a running Humvee's cab as hollow armour plate with its windows cut
+  through, sealed and glazed with clear glass gathered as `VmCiv._clear_cab` gathers it, round an interior fitted
+  from `VehicleCab`'s parts: the front seats either side of the wide tunnel with the radio rack on it, the dash with
+  the wheel on the left, the rear seats, the gunner's step and his sling under the turret ring. Nothing inside casts a
+  shadow, and all of it is in the seats' `coated` finish, tinted, since a non-casting part that shares a casting
+  part's material is baked into the shadow proxy. Wrecks and burnt hulks keep the solid cab.
+- **Spares**: `VmCiv._spare(..., against)` passes the tailgate to `VehicleWheels.spare`, so the MB 4WD's spare builds
+  the face against it plain (about 4,100 vertices a 4x4); a wreck's, its tyre burnt off, keeps both faces.
+
 ### Gun mounts: laying, recoil and the guns themselves
 
 The gun builders (`coax`, `autocannon`, `hmg`, `mmg`, `gmg`, `rotary`) end with `k._gun(m, muzzle)` instead of

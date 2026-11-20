@@ -1169,8 +1169,11 @@ static func _rhino(k: VehicleModels, team: int, up: bool, seed := 0) -> void:
 ## A track belt seen side-on, as a loop of link plates round the drive
 ## sprocket (front: z, y, r), the road wheels' bottoms (z0..z1 at ground) and
 ## the idler (rear: z, y, r), back along the top run. x is the belt's centre,
-## w its width.
-static func _track_loop(k: VehicleModels, m: Node3D, x: float, w: float, front: Vector3, rear: Vector3, z0: float, z1: float, th := 0.08) -> void:
+## w its width. `rollers` (each (z, y, r)) are the return rollers the top run
+## rests on, half a link under it: it hangs between them (and between the
+## sprocket or idler and the next) instead of running straight from one end
+## to the other.
+static func _track_loop(k: VehicleModels, m: Node3D, x: float, w: float, front: Vector3, rear: Vector3, z0: float, z1: float, th := 0.08, rollers: Array = []) -> void:
 	var pts: Array[Vector2] = []
 	for i in 5:
 		var a := deg_to_rad(90.0 + i * 30.0)
@@ -1180,7 +1183,10 @@ static func _track_loop(k: VehicleModels, m: Node3D, x: float, w: float, front: 
 	for i in 5:
 		var a := deg_to_rad(-60.0 + i * 37.5)
 		pts.append(Vector2(rear.x + cos(a) * rear.z, rear.y + sin(a) * rear.z))
-	VehicleTracks.shoes(k, m, x, w, PackedVector2Array(pts), th, 0.20, true, true)
+	var outline := PackedVector2Array(pts)
+	if not rollers.is_empty():
+		outline = VehicleTracks.on_rollers(k, outline, rollers, th * 0.5)
+	VehicleTracks.shoes(k, m, x, w, outline, th, 0.20, true, true)
 
 
 ## A tracked vehicle's road wheel: rubber tyre, the dished disc standing
@@ -1191,15 +1197,33 @@ static func _road_wheel(k: VehicleModels, p: Node3D, pos: Vector3, r: float, w: 
 
 
 ## The Merkava IV's running gear either side: the track belt, six road wheels,
-## the drive sprocket forward (front engine), the idler aft.
+## the drive sprocket forward (front engine), the idler aft, and the Mark IV's
+## four return rollers a side spaced evenly between them on the hull side,
+## carrying the top run: it rests on each and hangs a couple of centimetres
+## between, behind the skirts and showing past their ends. A wreck keeps the
+## track it had, straight from sprocket to idler.
 static func _mk_running(k: VehicleModels, m: Node3D) -> void:
 	var tx := 1.42
+	var th := 0.08
+	var front := Vector3(-3.28, 0.86, 0.36)
+	var rear := Vector3(3.3, 0.66, 0.34)
+	# (each roller's top half a link under the line from the sprocket's top
+	# to the idler's, so the run's inner face rides on it)
+	var rollers: Array = []
+	if not k.wreck:
+		for z: float in [-1.96, -0.65, 0.67, 1.98]:
+			var line := lerpf(front.y + front.z, rear.y + rear.z, (z - front.x) / (rear.x - front.x))
+			rollers.append(Vector3(z, line - th * 0.5 - 0.09, 0.09))
 	for s in [-1.0, 1.0]:
-		_track_loop(k, m, s * tx, 0.64, Vector3(-3.28, 0.86, 0.36), Vector3(3.3, 0.66, 0.34), -2.55, 2.55)
+		_track_loop(k, m, s * tx, 0.64, front, rear, -2.55, 2.55, th, rollers)
 		for i in 6:
 			_road_wheel(k, m, Vector3(s * tx, 0.45, -2.45 + i * 0.98), 0.38, 0.56)
 		VehicleWheels.sprocket(k, m, Vector3(s * tx, 0.86, -3.28), 0.36, 0.5, "gunmetal_w", null, 14)
 		_road_wheel(k, m, Vector3(s * tx, 0.66, 3.3), 0.3, 0.5)
+		# (static: rollers aren't registered as wheels, so k.wheels is as it was;
+		# the skirts and sponsons hide them whole, so they're built plain)
+		for c: Vector3 in rollers:
+			VehicleWheels.roller(k, m, Vector3(s * tx, c.y, c.x), c.z, 0.32, "gunmetal_w", null, true)
 
 
 ## The Merkava IV hull: the long shallow glacis over the front engine with its
