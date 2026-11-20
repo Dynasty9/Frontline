@@ -263,9 +263,10 @@ variants).
 | Dome light | `VehicleFittings.dome_light` | 19 / 25 | Metal base reaching the old sphere's foot, rubber seat, glossy lens |
 | Navigation sidelight | `VehicleFittings.nav_light` | 30 / 36 | Red to port and green to starboard by rule, marker housing, visor |
 | Coaxial gun port | `VehicleWeapons.coax` | 13 / 17 | Port sleeve, slotted flash hider, dark bore |
-| Automatic cannon | `VehicleWeapons.autocannon` | 16 / 24 | Recoil-sleeve collar, clamp bands, ported muzzle brake, bore |
-| Heavy machine gun | `VehicleWeapons.hmg` | 22 / 40 | Shared receiver, feed cover, rear sight, perforated jacket, carrying handle, spade grips, open ammo can and the belt running from it into the feedway (`_belt`) |
-| Medium machine gun | `VehicleWeapons.mmg` | 8 / 16 | Shared receiver, butt and pistol grip, gas tube, carrying handle, open ammo can and belt |
+| Automatic cannon | `VehicleWeapons.autocannon` | 16 / 24 | Recoil-sleeve collar, clamp bands, ported muzzle brake (a brake under 1 cm long: a plain crown instead, for guns like the M242 that carry none), bore |
+| Conical flash hider | `VehicleWeapons.cone_hider` | 3 / 3 | A cone flaring forward over a barrel's end, its lip and dark bore (ZU-23's 2A14, KPVT) |
+| Heavy machine gun | `VehicleWeapons.hmg` | 22 / 40 | Shared receiver (13.5 cm across, as the M2's side plates), feed cover, rear sight, perforated jacket, carrying handle, the retracting handle's slot, spade grips as loops off the back plate with the butterfly trigger, open ammo can and the belt running from it into the feedway (`_belt`) |
+| Medium machine gun | `VehicleWeapons.mmg` | 8 / 16 | Shared receiver at an M240's proportions with stamped ribs and its charging handle, butt, pistol grip and trigger guard, gas tube and block, the bipod folded under it, carrying handle, open ammo can and belt |
 | Grenade machine gun | `VehicleWeapons.gmg` | 14 / 23 | Shared receiver, spade grips, perforated jacket, drum or box feed with chute |
 | Rotary barrel cluster | `VehicleWeapons.rotary` | 11 / 19 | Spindle, barrel carrier, clamps and bores along any axis |
 | Missile launch tube | `VehicleWeapons.launch_tube` | 4 / 11 | End collars, frangible front cover, rear blast seal, clamp bands, umbilical box |
