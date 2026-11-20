@@ -7,24 +7,27 @@ extends RefCounted
 ## mesh the size of the rotor (UV 0..1 across it) that turns with the hub:
 ## VehicleModels._blur_mat for rotors, VehiclePropellers.disc_material for
 ## propellers and fans. What a commander looks for from 30-60 m above, as
-## the RTS games draw it: a translucent disc clearly darker than the ground
-## under it, but never so dense the airframe under it is lost, its tip-path
-## edge soft (the tips cover least of their circle, so a photograph's disc
-## fades out there rather than ending on a line: a crisp pale ring read as a
-## selection circle). A few ghost blades - each a crisp leading edge trailing
-## its smear, as a moving blade leaves on film - drift slowly round: they are
+## the RTS games draw it: a faint translucent haze a shade darker than the
+## ground under it, never so dense the airframe under it is lost, with a soft
+## band of the paint where the tips sweep, its edge fading out (the tips cover least
+## of their circle, so a photograph's disc fades there rather than ending on
+## a line: a crisp ring read as a selection circle), thinner still close to
+## the camera. A few dark ghost blades - each a soft leading edge trailing
+## a short smear, as a moving blade leaves on film - drift slowly round: they are
 ## laid out in the disc's plane against the world, not the turning mesh, so
 ## the hub's 30 rad/s (a tail rotor's 80, a propeller's 40) never strobes
 ## them backwards. Lit, so it darkens with the scene at dusk and at night.
 ## `blade_count` and the blades' colour (`blade_tint`) are per rotor; `hub`
 ## is where the blades begin, as a fraction of the radius (a propeller's
-## spinner, a fan's boss).
+## spinner, a fan's boss); `solidity` scales how much of the disc the blades
+## fill (a propeller's broad blades fill more than a rotor's).
 const BLUR_SHADER := """
 shader_type spatial;
 render_mode blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
 instance uniform float blade_count = 4.0;
 instance uniform vec4 blade_tint : source_color = vec4(0.15, 0.155, 0.16, 1.0);
 uniform float hub = 0.12;
+uniform float solidity = 1.0;
 varying vec2 disc_xy;
 void vertex() {
 	// the disc's plane against a fixed world direction: the hub's spin drops out
@@ -37,36 +40,68 @@ void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
 	// the blades from their roots beyond the grips (or the spinner) out to
-	// the tip path, its edge soft over the last few hundredths of the radius
-	float body = smoothstep(hub * 0.6, hub + 0.1, r) * (1.0 - smoothstep(0.93, 1.0, r));
-	// how much of each circle the blades darken: a game's share, not the
-	// 5-10% a real rotor's solidity gives, which over grass from 40 m reads
-	// as nothing; a little less over the cabin (the blade roots are narrow
-	// there), so the airframe under it still reads, and a little more out
-	// where the tip caps sweep, a soft band that gives the disc its edge
-	float cover = 0.26 * mix(0.8, 1.0, smoothstep(hub, 0.45, r)) + 0.07 * smoothstep(0.8, 0.94, r);
-	// the ghost blades, each a sharp leading edge and a short trailing smear,
-	// swept back a little toward the tips
+	// the tip path, its edge fading over the outer fifth of the radius (the
+	// tips sweep the most circle with the least blade, and the blades flex
+	// and flap, so the tip path is never one line: no outline)
+	float body = smoothstep(hub * 0.6, hub + 0.1, r) * (1.0 - smoothstep(0.86, 1.0, r));
+	// how much of each circle the blades cover: over the outer half, where
+	// the blades are widest against the circle they sweep and the camera
+	// sees the disc round the fuselage, about a quarter, more than a real
+	// rotor's 5-10% solidity (at that, or at a fifth in a pale haze, a
+	// helicopter over grass from 40 m showed its hub and nothing else: it
+	// read as a fuselage sliding over the ground, not as flying, and a
+	// drone's or a ducted fan's small discs vanished); over the cabin,
+	// where the blade roots are narrow, about a seventh, so the airframe
+	// under it still reads (a quarter there paved it over like frosted glass)
+	float cover = mix(0.14, 0.25, smoothstep(0.35, 0.7, r)) * solidity;
+	// the tip path: the tips move fastest and smear the most, a soft band
+	// just inside the edge a little denser than the disc, in the blades' own
+	// paint (a pale band there, however faint and soft, still read from the
+	// battle camera as a selection circle round the aircraft)
+	float tq = (r - 0.84) * 10.0;
+	float tip = exp(-tq * tq);
+	cover += 0.03 * tip;
+	// within a few metres the frame holds a few blades' faint arcs, not a
+	// sheet: a rotor passing the camera thins out rather than smoking it over,
+	// its ghost blades with it
+	float near = mix(0.45, 1.0, smoothstep(1.5, 9.0, length(VERTEX)));
+	// the ghost blades, each a soft leading edge and a short trailing smear,
+	// swept back a little toward the tips (a crisp edge and a long smear
+	// read from above as the dark scythes of a ceiling fan)
 	float a = atan(disc_xy.y, disc_xy.x);
 	float ph = fract((a * blade_count - r * 1.3 - TIME * 1.7) * 0.15915494);
-	float ghost = smoothstep(0.0, 0.03, ph) * exp(-ph * 9.0);
-	cover *= 1.0 + 0.8 * ghost * smoothstep(0.15, 0.45, r);
+	float ghost = smoothstep(0.0, 0.08, ph) * exp(-ph * 14.0) * smoothstep(0.15, 0.45, r) * near;
+	cover *= 1.0 + 1.6 * ghost;
+	cover *= near;
 	float alpha = min(cover * body, 0.9);
 	// a layer of blades seen at a slant: they overlap, the disc thickens
 	float mu = clamp(abs(dot(NORMAL, VIEW)), 0.35, 1.0);
 	float seen = 1.0 - pow(1.0 - alpha, 1.0 / mu);
+	// The disc is a shade darker than the ground under it, as a photograph's
+	// and the RTS games' discs are: the blades are dark paint and the disc
+	// shades what's under it, never lifts it (a haze even a touch lighter
+	// than the paint matched sunlit grass's value and vanished into it, and a
+	// pale one read as a dish, while a black one at the same share read too
+	// heavy over the cabin); about a third of the usual near-black blades'
+	// value, a touch darker in the tip band, each ghost blade's leading edge
+	// darker still. Lit, so it still goes dark with the scene at dusk and at
+	// night.
+	float dark = clamp(ghost * 1.6, 0.0, 1.0);
+	vec3 haze = blade_tint.rgb * mix(0.34, 0.26, tip * 0.5);
+	ALBEDO = mix(haze, blade_tint.rgb * 0.15, dark);
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	// (blended after tonemapping, in display space, a dark layer shows about
-	// twice as dense: what keeps the linear blend's look)
-	seen = 1.0 - pow(1.0 - seen, 0.4545);
+	// (blended after tonemapping, in display space, a layer darker than the
+	// ground shows denser than the linear blend draws it, the darker the
+	// more, about twice for the ghost blades' dark: thinned to match, so the
+	// browser build's disc reads as Forward+'s does)
+	seen = 1.0 - pow(1.0 - seen, mix(0.62, 0.4545, dark));
 #endif
 	ALPHA = clamp(seen, 0.0, 0.75);
-	// Nearly black but lit, in the blades' own hue: it darkens what is under
-	// it by its share in any light (a grey disc as bright as the grass would
-	// vanish over it) and still goes dark with the scene at night.
-	ALBEDO = blade_tint.rgb * 0.08;
-	ROUGHNESS = 0.8;
-	SPECULAR = 0.1;
+	// (matte: a swept disc is no smooth sheet to mirror the sky, and at the
+	// paint's sheen the noon sky it took lifted the disc back to the grass's
+	// own value, half its darkening gone)
+	ROUGHNESS = 0.85;
+	SPECULAR = 0.05;
 }
 """
 
@@ -130,19 +165,24 @@ static func main(k: VehicleModels, p: Node3D, pos: Vector3, nb: int, r: float, c
 			k._fold(mount)  # (a wreck's blades stay apart, to be broken: Structure._break_up)
 		# Forked grips, vertical hinge pins and pitch links remain with the hub
 		# when the explicit blades switch to the existing blur disc.
+		# (A rotor head is painted or dull titanium and its bearings are black
+		# elastomer: from above, bright steel forks and pin caps glinted as a
+		# white star on every helicopter in the sun.)
 		for side in [-1.0, 1.0]:
-			_rbox(k, rp, bs, Vector3(c * 0.12, 0.08, grip * 0.82), Vector3(side * c * 0.34, 0.10, hub + grip * 0.48), "steel", Color(0.29, 0.30, 0.28))
+			_rbox(k, rp, bs, Vector3(c * 0.12, 0.08, grip * 0.82), Vector3(side * c * 0.34, 0.10, hub + grip * 0.48), "gunmetal_w", Color(0.2, 0.2, 0.19))
 		var pin := bs * Vector3(0, 0.17, hub + grip * 0.65)
-		VehicleBody.cylinder(k, rp, c * 0.14, c * 0.14, 0.07, pin, Vector3.ZERO, "steel", Color(0.4, 0.41, 0.38), 12, false)
+		VehicleBody.cylinder(k, rp, c * 0.14, c * 0.14, 0.07, pin, Vector3.ZERO, "gunmetal_w", Color(0.24, 0.24, 0.23), 12, false)
 		# (the pitch link's foot is in the swashplate)
 		VehicleBody.rod(k, rp, bs * Vector3(c * 0.43, -0.23, hub * 0.65), bs * Vector3(c * 0.43, 0.03, hub + grip * 0.30), c * 0.035, "steel", Color(0.4, 0.41, 0.38), 8, true, -1.0, false)
 	# Stepped swashplate, mast collar and evenly spaced hub fasteners.
-	VehicleBody.cylinder(k, rp, hub * 1.28, hub * 1.28, 0.055, Vector3(0, -0.22, 0), Vector3.ZERO, "steel", Color(0.32, 0.33, 0.30), 24)
+	# (the swashplate is bare machined steel, but oiled and grimy, so it
+	# shines less than a new part)
+	VehicleBody.cylinder(k, rp, hub * 1.28, hub * 1.28, 0.055, Vector3(0, -0.22, 0), Vector3.ZERO, "steel", Color(0.23, 0.235, 0.22), 24)
 	VehicleBody.cylinder(k, rp, hub * 0.86, hub * 0.86, 0.07, Vector3(0, -0.15, 0), Vector3.ZERO, "gunmetal_w", null, 24)
 	# (each bolt's foot is in the hub's top)
 	for i in nb * 2:
 		var angle := TAU * i / float(nb * 2)
-		VehicleBody.cylinder(k, rp, hub * 0.075, hub * 0.075, 0.035, Vector3(sin(angle) * hub * 0.82, 0.115, cos(angle) * hub * 0.82), Vector3.ZERO, "steel", Color(0.39, 0.4, 0.37), 6, false, true, false)
+		VehicleBody.cylinder(k, rp, hub * 0.075, hub * 0.075, 0.035, Vector3(sin(angle) * hub * 0.82, 0.115, cos(angle) * hub * 0.82), Vector3.ZERO, "steel", Color(0.3, 0.3, 0.29), 6, false, true, false)
 	if not k.wreck:
 		var blur := MeshInstance3D.new()
 		var disc := PlaneMesh.new()

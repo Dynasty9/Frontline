@@ -30,6 +30,7 @@ const TURF := 20
 const WEATHERED_PHOTO := 21
 const ROAD_PAINT := 22
 const RUBBER_CRUMB := 23
+const FIELDSTONE := 24
 const PHOTO_MEAN := preload("res://assets/town/material_means.tres")
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
@@ -292,7 +293,8 @@ static var _cache := {}
 
 static func shader() -> Shader:
 	if _shader == null:
-		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// RAIN_DROPS", RAIN_DROPS + RAIN_COVER))), CloudShadow.CLEARCOAT | CloudShadow.PROBES)
+		var surface: String = SURFACE_SHADER.replace("// CAMO_PRINT", Camo.GLSL)
+		_shader = CloudShadow.make(code(TerrainTexture.shader(surface.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// RAIN_DROPS", RAIN_DROPS + RAIN_COVER))), CloudShadow.CLEARCOAT | CloudShadow.PROBES)
 	return _shader
 
 
@@ -400,6 +402,39 @@ static func set_shared(m: ShaderMaterial, param: StringName, value: Variant) -> 
 		var d: ShaderMaterial = (w as WeakRef).get_ref()
 		if d and d.get_meta(&"inst_base") == m:
 			d.set_shader_parameter(param, value)
+
+
+## The thaws nearest the camera (SnowMelt) for everything drawn with the
+## surface shader that holds snow: the paving and yards round a burning house,
+## its neighbours' roofs, a wall top by a burning wreck. Eight of them, as
+## global shader values (snow_thaw_0..7), so every material and every copy of
+## one takes them at once; each x, z, reach, core (whole metres) + melt * 0.99.
+const THAWS := 8
+
+
+static func set_melt(spots: PackedVector4Array) -> void:
+	for i in THAWS:
+		RenderingServer.global_shader_parameter_set(StringName("snow_thaw_%d" % i), spots[i] if i < spots.size() else Vector4.ZERO)
+
+
+## The parts of `root` drawn with the surface shader, so the ones that take its
+## snow_k (Vehicle._snow_view, Structure.melt_snow).
+static func snow_parts(root: Node) -> Array[MeshInstance3D]:
+	var out: Array[MeshInstance3D] = []
+	var surface := shader()
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		stack.append_array(n.get_children())
+		var mi := n as MeshInstance3D
+		if mi == null or mi.mesh == null or mi.has_meta(&"shadow_proxy"):
+			continue
+		for si in maxi(1, mi.get_surface_override_material_count()):
+			var m := base_of(mi.material_override if mi.material_override else mi.get_active_material(si)) as ShaderMaterial
+			if m and m.shader == surface:
+				out.append(mi)
+				break
+	return out
 
 
 ## Close enough to share a material: a 1/128 step of colour, a centimetre.
@@ -891,6 +926,10 @@ static func _distant_arrays(groups: Dictionary) -> Array:
 		var base: Color = material.get_shader_parameter("col_a")
 		if int(material.get_shader_parameter("pattern")) == CAMO:
 			base = base.lerp(material.get_shader_parameter("col_b"), 0.35)
+			# the old two-colour camo never sets a style: unset reads back null
+			var style: Variant = material.get_shader_parameter("camo_style")
+			if style != null and int(style) > 0:
+				base = material.get_shader_parameter("camo_mean")
 		if not per_material:
 			base = base.srgb_to_linear()
 		var scale := VC_K
@@ -1281,16 +1320,19 @@ static func netting() -> ShaderMaterial:
 	return _netting
 
 
-static var _netting_tent: ShaderMaterial
+static var _netting_tent := {}
 
 
 ## The same netting for a net whose mesh is already shaped (pitched over a
-## pole, draped to the ground): no sag of its own.
-static func netting_tent() -> ShaderMaterial:
-	if _netting_tent == null:
-		_netting_tent = netting().duplicate() as ShaderMaterial
-		_netting_tent.set_shader_parameter("sag", 0.0)
-	return _netting_tent
+## pole, draped to the ground): no sag of its own; its UV runs 0..1 over
+## `span` metres.
+static func netting_tent(span := 7.2) -> ShaderMaterial:
+	if not _netting_tent.has(span):
+		var m := netting().duplicate() as ShaderMaterial
+		m.set_shader_parameter("sag", 0.0)
+		m.set_shader_parameter("uv_m", span)
+		_netting_tent[span] = m
+	return _netting_tent[span]
 
 
 static var _wire_mesh := {}
@@ -1320,11 +1362,16 @@ static func _wire_mesh_shader() -> Shader:
 static func _preset(kind: String) -> Dictionary:
 	if kind.begins_with("vehicle/"):
 		return VehicleMaterials.preset(kind)
+	if kind.begins_with("camo/"):
+		return Camo.cloth_preset(kind.substr(5))
+	if kind.begins_with("paint") and kind.find(":") == 6:
+		return Camo.paint_preset(kind, _preset(kind.substr(7)))
 	match kind:
 		"steel":
 			return {"pattern": PAINT, "col_a": Color(0.25, 0.26, 0.27), "col_b": Color(0.4, 0.38, 0.35), "rough": 0.6, "metal": 0.6, "bump": 0.8, "grime": 0.4, "rust": 0.3}
 		"floor_tiles":
-			return {"pattern": TILES, "col_a": Color(0.45, 0.42, 0.38), "col_b": Color(0.3, 0.28, 0.25), "col_c": Color(0.52, 0.4, 0.32), "rough": 0.7, "bump": 0.8, "grime": 0.0}
+			# (floors indoors: no snow on them)
+			return {"pattern": TILES, "col_a": Color(0.45, 0.42, 0.38), "col_b": Color(0.3, 0.28, 0.25), "col_c": Color(0.52, 0.4, 0.32), "rough": 0.7, "bump": 0.8, "grime": 0.0, "snow_hold": 0.0}
 		"car_paint":
 			return {"pattern": PAINT, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.35, 0.33, 0.3), "rough": 0.38, "metal": 0.3, "bump": 0.4, "grime": 0.9, "rust": 0.45}
 		"wood_painted":
@@ -1372,6 +1419,15 @@ static func _preset(kind: String) -> Dictionary:
 		"alpine_stone":
 			# Broken natural stone has grain, without the mortar joints used by masonry.
 			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": preload("res://assets/terrain/rock_face_03_color_height.png")}
+		"fieldstone":
+			# a dry-laid or pointed field-stone wall (a garden's, a field's):
+			# random rubble, grey and brown stones, the mortar darker
+			return {"pattern": FIELDSTONE, "col_a": Color(0.58, 0.55, 0.49), "col_b": Color(0.4, 0.38, 0.34), "col_c": Color(0.5, 0.45, 0.37), "rough": 0.93, "bump": 2.4, "grime": 0.7}
+		"fieldstone_cap":
+			# the stones on edge along a field-stone wall's top (BuildingWalls.
+			# cock_and_hen): the same stone with no joints drawn on it, since
+			# each part is a stone of its own, its shade in its vertex colours
+			return {"pattern": FIELDSTONE, "col_a": Color(0.58, 0.55, 0.49), "col_b": Color(0.4, 0.38, 0.34), "col_c": Color(0.5, 0.45, 0.37), "rough": 0.93, "bump": 1.6, "grime": 0.7, "seams": 0.0}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
 		"church_stone":
@@ -1422,6 +1478,12 @@ static func _preset(kind: String) -> Dictionary:
 			return {"pattern": PLAIN, "col_a": Color(0.55, 0.55, 0.55), "rough": 0.85, "bump": 0.2, "grime": 0.3}
 		"plain_dark":
 			return {"pattern": PLAIN, "col_a": Color(0.18, 0.18, 0.18), "rough": 0.8, "bump": 0.2, "grime": 0.2}
+		"bronze":
+			# cast bronze gone green with weather (a statue, a plaque): the
+			# verdigris clouded with the darker bronze where the rain doesn't
+			# wash it, and runs of it down the faces (concrete's stains and
+			# streaks without its joints or pits, rather than paint's chips)
+			return {"pattern": CONCRETE, "col_a": Color(0.27, 0.37, 0.31), "col_b": Color(0.12, 0.14, 0.1), "rough": 0.55, "metal": 0.35, "bump": 0.15, "grime": 0.4, "seams": 0.0, "pitting": 0.0, "scale": 3.2}
 		"rubber_crumb":
 			# Playground safety surface; decor picks the colour of the pour.
 			return {"pattern": RUBBER_CRUMB, "col_a": Color(0.45, 0.2, 0.15), "col_b": Color(0.7, 0.55, 0.45), "rough": 0.92, "bump": 0.6, "grime": 0.0, "scale": 1.0}
@@ -1434,17 +1496,18 @@ static func _preset(kind: String) -> Dictionary:
 			# stretched plastic film (silage wrap): smooth, a soft sheen
 			return {"pattern": PLAIN, "col_a": Color(0.08, 0.08, 0.08), "rough": 0.38, "bump": 0.1, "grime": 0.35}
 		"glass":
-			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0}
+			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "snow_hold": 0.0}
 		"armor_glass":
 			# ballistic glass: laminated blocks a hand thick, green-dark through
 			# their depth, scuffed and filmed with dust out in the field
-			return {"pattern": PLAIN, "col_a": Color(0.05, 0.075, 0.065), "rough": 0.16, "metal": 0.0, "bump": 0.0, "grime": 0.0}
+			# (and, like any glass, too slick and upright to hold the snow)
+			return {"pattern": PLAIN, "col_a": Color(0.05, 0.075, 0.065), "rough": 0.16, "metal": 0.0, "bump": 0.0, "grime": 0.0, "snow_hold": 0.0}
 		"window_lit":
 			# the same glass with a lamp on in the room behind it (see `lit`)
 			# (a room lamp seen through glass and curtains: warm, and at its
 			# brightest only just over the glow threshold, so a window gleams
 			# rather than flares)
-			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(1.1, 0.66, 0.3), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0}
+			return {"pattern": PLAIN, "col_a": Color(0.08, 0.1, 0.12), "col_c": Color(1.1, 0.66, 0.3), "rough": 0.08, "metal": 0.4, "bump": 0.0, "grime": 0.0, "lit": 1.0, "snow_hold": 0.0}
 		"track":
 			return {"pattern": TRACK, "col_a": Color(0.13, 0.12, 0.11), "col_b": Color(0.3, 0.27, 0.23), "rough": 0.7, "metal": 0.5, "bump": 2.0, "grime": 0.5, "local_space": true}
 		"camo_army":
@@ -1492,12 +1555,12 @@ static func _preset(kind: String) -> Dictionary:
 		"suit":
 			# close-woven uniform cloth (a sneaking suit, a field jacket): a faint
 			# weave and soft folds, a little sheen
-			return {"pattern": CANVAS, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.43, 0.43, 0.43), "scale": 5.0, "rough": 0.78, "bump": 0.35, "grime": 0.3, "local_space": true}
+			return {"pattern": CANVAS, "col_a": Color(0.5, 0.5, 0.5), "col_b": Color(0.43, 0.43, 0.43), "scale": 5.0, "rough": 0.78, "bump": 0.35, "grime": 0.3, "local_space": true, "snow_hold": 0.3}
 		"armor":
 			# moulded armour and helmet shells: smooth, matte, scuffed
-			return {"pattern": PLAIN, "col_a": Color(0.5, 0.5, 0.5), "rough": 0.58, "bump": 0.25, "grime": 0.25, "local_space": true}
+			return {"pattern": PLAIN, "col_a": Color(0.5, 0.5, 0.5), "rough": 0.58, "bump": 0.25, "grime": 0.25, "local_space": true, "snow_hold": 0.35}
 		"webbing":
-			return {"pattern": CANVAS, "col_a": Color(0.2, 0.2, 0.2), "col_b": Color(0.16, 0.16, 0.16), "scale": 6.0, "rough": 0.9, "bump": 0.5, "grime": 0.2, "local_space": true}
+			return {"pattern": CANVAS, "col_a": Color(0.2, 0.2, 0.2), "col_b": Color(0.16, 0.16, 0.16), "scale": 6.0, "rough": 0.9, "bump": 0.5, "grime": 0.2, "local_space": true, "snow_hold": 0.3}
 		"wood_l":
 			return {"pattern": WOOD, "col_a": Color(0.3, 0.2, 0.12), "col_b": Color(0.2, 0.13, 0.08), "scale": 3.0, "rough": 0.6, "bump": 0.4, "grime": 0.0, "local_space": true}
 		"skin":
@@ -1505,7 +1568,7 @@ static func _preset(kind: String) -> Dictionary:
 		"gunmetal":
 			return {"pattern": PAINT, "col_a": Color(0.15, 0.15, 0.145), "col_b": Color(0.36, 0.35, 0.33), "rough": 0.52, "metal": 0.55, "bump": 0.35, "grime": 0.0, "local_space": true, "scale": 3.0}
 		"boot":
-			return {"pattern": CANVAS, "col_a": Color(0.16, 0.13, 0.1), "col_b": Color(0.11, 0.09, 0.07), "scale": 6.0, "rough": 0.75, "bump": 0.4, "grime": 0.0, "local_space": true}
+			return {"pattern": CANVAS, "col_a": Color(0.16, 0.13, 0.1), "col_b": Color(0.11, 0.09, 0.07), "scale": 6.0, "rough": 0.75, "bump": 0.4, "grime": 0.0, "local_space": true, "snow_hold": 0.0}
 	return {"pattern": PLAIN, "col_a": Color(0.6, 0.6, 0.6), "rough": 0.85}
 
 
@@ -1521,6 +1584,58 @@ void fragment() {
 	ALBEDO = COLOR.rgb;
 	ROUGHNESS = 0.9;
 	// CLOUD_FRAGMENT cloud_sun(wpos)
+}
+"""
+
+
+## The eight thaws nearest the camera (Mats.set_melt), as everything drawn
+## with the surface shader and the roofs' snow (SnowRoof) read them:
+## surface_thaw(p, rag) is how far the snow at `p` has melted, as snow_melted.
+const THAW_GLSL := """
+global uniform vec4 snow_thaw_0;  // (Mats.set_melt: the thaws nearest the camera)
+global uniform vec4 snow_thaw_1;
+global uniform vec4 snow_thaw_2;
+global uniform vec4 snow_thaw_3;
+global uniform vec4 snow_thaw_4;
+global uniform vec4 snow_thaw_5;
+global uniform vec4 snow_thaw_6;
+global uniform vec4 snow_thaw_7;
+float thaw_at(vec4 s, vec2 p, float rag) {
+	vec2 d = p - s.xy;
+	float dd = dot(d, d);
+	if (dd >= s.z * s.z) { return 0.0; }
+	float core = floor(s.w);
+	float u = max(0.0, sqrt(dd) - core) / max(s.z - core, 0.5);
+	return fract(s.w) / 0.99 * (1.0 - smoothstep(0.45, 1.0, u + rag));
+}
+float surface_thaw(vec2 p, float rag) {
+	float m = max(max(thaw_at(snow_thaw_0, p, rag), thaw_at(snow_thaw_1, p, rag)), max(thaw_at(snow_thaw_2, p, rag), thaw_at(snow_thaw_3, p, rag)));
+	return max(m, max(max(thaw_at(snow_thaw_4, p, rag), thaw_at(snow_thaw_5, p, rag)), max(thaw_at(snow_thaw_6, p, rag), thaw_at(snow_thaw_7, p, rag))));
+}
+"""
+
+## The thaws of snow round fires and idling engines (SnowMelt), as the ground,
+## the roads and the paving read them: snow_melted(p, rag) is how far the snow
+## at `p` has melted, 0 (lying) to 1 (bare), its edge broken up by `rag`. A thaw
+## is bare across its core (the fire's own size) and out from it, and softest
+## at its rim.
+const MELT_GLSL := """
+uniform vec4 melt_spots[24];  // x, z, reach, its core (whole metres) + melt * 0.99 (SnowMelt)
+uniform int melt_n = 0;
+float snow_melted(vec2 p, float rag) {
+	float m = 0.0;
+	for (int i = 0; i < melt_n; i++) {
+		vec4 s = melt_spots[i];
+		vec2 d = p - s.xy;
+		float dd = dot(d, d);
+		if (dd < s.z * s.z) {
+			// (bare across the fire's own core and out from it, slush to its reach)
+			float core = floor(s.w);
+			float u = max(0.0, sqrt(dd) - core) / max(s.z - core, 0.5);
+			m = max(m, fract(s.w) / 0.99 * (1.0 - smoothstep(0.45, 1.0, u + rag)));
+		}
+	}
+	return m;
 }
 """
 
@@ -1545,6 +1660,8 @@ uniform float bump = 1.0;
 uniform float grime = 0.5;
 uniform float wet = 0.0;  // streets in the rain (Mats.set_street_wet)
 global uniform float rain_wet;  // how soaked everything out in the rain is, 0..1 (Atmosphere._rain_tick)
+global uniform float snow_cover;  // how deep the snow weather lies, 0..1 (Atmosphere._snow_tick)
+""" + THAW_GLSL + """uniform float snow_hold = 1.0;  // how much of it this surface holds (none on a floor indoors, little on a man)
 uniform float weathering = 0.0;
 uniform bool grain_horizontal = false;
 uniform bool worn_armour = false;
@@ -1553,7 +1670,7 @@ instance uniform float armour_section = -1.0;
 uniform sampler2D wear_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float rust = 0.0;
 uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
-uniform float seams = 1.0;  // concrete: the formwork joints
+uniform float seams = 1.0;  // concrete: the formwork joints; fieldstone: the joints between stones (0: the part is one stone)
 uniform float boards = 0.0;  // concrete: the planks of the formwork it was cast against, printed on its walls
 uniform float cell_w = 1.05;  // HESCO: the width of a cell
 uniform float lit = 0.0;  // lamplight behind it (a window, a lantern): glows as the light goes
@@ -1609,6 +1726,13 @@ uniform float crater_half = 256.0;
 uniform sampler2D noise_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 instance uniform vec4 tint : source_color = vec4(1.0);
 instance uniform vec3 pofs = vec3(0.0);
+// A vehicle's own snow (Vehicle._snow_view): how much it carries (a parked or
+// wrecked hull all of it, one on the move far less), a seed so no two match
+// (the fraction) and how long its engine has run (the whole part, in quarters
+// of Vehicle.ENGINE_WARM), and where its warm engine deck lies (x, z in the
+// hull's frame). A burning structure's carry falls as its fire melts the snow
+// off it (Structure.melt_snow).
+instance uniform vec4 snow_k = vec4(1.0, 0.0, 10000.0, 10000.0);
 // CLOUD_SHADOW
 
 varying vec3 tp;
@@ -1629,6 +1753,7 @@ float tfbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) {
 // How much of a feature `period` units across survives at this pixel
 // footprint: 1 when it spans 5+ pixels, 0 when it's under 1.5.
 float keep(float period, float px) { return smoothstep(1.5, 5.0, period / max(px, 1e-5)); }
+// CAMO_PRINT
 
 // The atlas contains the hull and the rotating turret in their own local frames.
 vec3 armour_slice(vec2 xy, float z) {
@@ -1847,6 +1972,16 @@ void fragment() {
 		col = mix(col_b, col_a, grain) * (0.85 + 0.25 * mix(0.5, h12(vec2(row, off.y)), keep(pw, px)));
 		col *= 0.5 + 0.5 * gap;
 		h = gap * (0.8 + grain * 0.2);
+	} else if (pattern == 6 && camo_style > 0) {
+		// a printed pattern (Camo): in motifs, round the part's own shape
+		// (each man's pattern is placed by his own pofs)
+		vec3 cw = pow(abs(normalize(tn)), vec3(4.0));
+		cw /= max(cw.x + cw.y + cw.z, 0.0001);
+		vec3 cp = tp * scale;
+		col = camo_print(cp, cw, length(fwidth(cp)) * 0.7);
+		// faded unevenly, panel by panel, by sun and washing
+		col *= 0.93 + 0.14 * tnoise(cp.xz * 0.35 + cp.y * 0.2 + 5.0);
+		h = 0.5 + (tnoise(uv * 40.0) - 0.5) * 0.3 * keep(0.025, px);
 	} else if (pattern == 6) {
 		vec2 camo_uv = vehicle_surface ? uv * 2.4 : uv;
 		float c1 = tfbm(camo_uv * 1.0 + off);
@@ -1951,6 +2086,53 @@ void fragment() {
 		r = mix(0.98, clamp(rough - 0.04 + 0.06 * rb, 0.8, 0.96), e);
 		// About a centimetre of relief at the stone preset, not deep grooves.
 		h = e * (0.25 + 0.08 * relief);
+	} else if (pattern == 24 && seams < 0.5) {
+		// a stone set on edge along a field-stone wall's top: the part is the
+		// stone (its shade in its vertex colours), so here only what its face
+		// is like: mottled, gritty, pitted, and pale crusts of lichen on the
+		// faces turned up to the rain
+		float g1 = tnoise(uv * 9.0);
+		float g2 = mix(0.5, tnoise(uv * 31.0 + 3.1), keep(0.03, px));
+		col = col_a * (0.78 + 0.3 * g1) * (0.88 + 0.2 * tnoise(uv * 2.6 + 5.0));
+		float pit = smoothstep(0.58, 0.85, g2);
+		col *= 1.0 - 0.16 * pit;
+		float lichen = smoothstep(0.64, 0.72, tnoise(uv * 5.5 + 2.7)) * smoothstep(0.2, 0.7, tn.y) * keep(0.08, px);
+		col = mix(col, col_a * vec3(1.2, 1.22, 1.08), lichen * 0.6);
+		h = 0.5 + 0.3 * g1 + 0.08 * g2 - 0.05 * pit;
+		r = min(rough + 0.03, 0.98);
+	} else if (pattern == 24) {
+		// random rubble, laid as a waller lays field stones: stones of every
+		// size and shape (longer than they are tall), each its own tone,
+		// pointed between with mortar sunk back from their faces
+		vec2 sq = uv / vec2(0.3, 0.22);
+		vec2 ic = floor(sq);
+		vec2 fc = fract(sq);
+		float d1 = 8.0;
+		float d2 = 8.0;
+		vec2 id = vec2(0.0);
+		for (int j = -1; j <= 1; j++) {
+			for (int i = -1; i <= 1; i++) {
+				vec2 g = vec2(float(i), float(j));
+				vec2 o = vec2(h12(ic + g + off), h12(ic + g + off + 17.3)) * vec2(0.84, 0.6) + vec2(0.08, 0.2);
+				vec2 dv = g + o - fc;
+				dv.y *= 1.6;
+				float dd = dot(dv, dv);
+				if (dd < d1) { d2 = d1; d1 = dd; id = ic + g; }
+				else if (dd < d2) { d2 = dd; }
+			}
+		}
+		float edge = sqrt(d2) - sqrt(d1);
+		float kb = keep(0.22, px);
+		// each stone rounded: its middle stands proud, its edges fall away
+		// into the joint (so the mortar line wanders, thick at the corners)
+		float dome = 1.0 - smoothstep(0.0, 0.7, sqrt(d1));
+		float e = mix(0.84, smoothstep(0.05, 0.2, edge + dome * 0.06), kb);
+		float rb = mix(0.5, h12(id + off + 3.1), kb);
+		float tone = mix(0.5, h12(id + 7.7), kb);
+		vec3 sc = mix(mix(col_a, col_c, rb), col_a * vec3(1.05, 0.95, 0.82), step(0.82, tone) * 0.6) * (0.8 + 0.3 * tnoise(uv * 11.0)) * mix(1.0, 0.84 + 0.3 * tone, kb);
+		sc *= mix(1.0, 0.82 + 0.24 * dome, kb);
+		col = mix(col_b * 0.7, sc, e);
+		h = e * (0.55 + 0.45 * dome) * (0.85 + 0.15 * tnoise(uv * 7.0 + rb * 9.0));
 	} else if (pattern == 12) {
 		float fib = tfbm(vec2(uv.x * 9.0, uv.y * 0.8) + off);
 		col = mix(col_b, col_a, fib);
@@ -2218,6 +2400,10 @@ void fragment() {
 	}
 	col *= tint.rgb;
 	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
+	if (paint_on) {
+		vec3 meant = col_a * tint.rgb * (use_vcolor ? COLOR.rgb * vcolor_k : vec3(1.0));
+		col = camo_paint(col, meant, wpos, tn, wpos.y - ground_y, r, m);
+	}
 	// Rust is an oxide, not reflective steel tinted orange. Apply after the
 	// part tint so corroded fittings retain their mineral color.
 	col = mix(col, mix(vec3(0.09, 0.032, 0.012), vec3(0.28, 0.12, 0.035), corrosion), corrosion);
@@ -2420,6 +2606,183 @@ void fragment() {
 			}
 		}
 	}
+	if (snow_cover > 0.0 && snow_hold > 0.0 && pattern != 13 && pattern != 14 && !(vehicle_surface && (surface_finish == 8 || surface_finish == 6))) {
+		// Snow settles on whatever faces the sky and slides off whatever doesn't:
+		// a roof's pitch, the top of a sandbag wall and every sill and ledge hold
+		// it, walls stay bare. It never lies as an even coat: the wind scours some
+		// patches bare and heaps others into drifts, long along the wind and
+		// short across it, and it lies deepest in the hollows of the surface's own
+		// relief; as it falls it settles first there, then spreads. Neighbours
+		// differ (one roof or wreck holds more than the next). On a vehicle only
+		// the flat tops hold it, the deck, turret roof, fenders and stowage, and
+		// it slides off the glacis and the sides but for their ledges; the engine
+		// deck is warm and stays bare and wet, the warmth spreading the longer the
+		// engine runs, and a hull on the move shakes and blows most of it off
+		// (Vehicle._snow_view: snow_k). The pattern rides with the hull, so its
+		// snow keeps its place. (Running gear churns it straight off, glass is
+		// wiped or warm, a burnt hull is still too hot; a burning roof or wreck
+		// melts its own, SnowMelt and Structure.melt_snow.)
+		vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		// (snow_k.y: a hull's seed in its fraction, how long its engine has run in quarters)
+		float snow_seed = fract(snow_k.y);
+		float engine_run = floor(snow_k.y) * 0.25;
+		vec2 so = vec2(snow_seed * 13.7, snow_seed * 7.9);
+		float carry = snow_k.x;
+		if (snow_k.y == 0.0 && snow_hold > 0.5) {
+			carry *= mix(0.6, 1.12, smoothstep(0.3, 0.7, tnoise(wpos.xz * 0.021 + 3.7)));
+		}
+		// (snow_k.y below zero: a house's roof, Structure._snow_roof: how warm
+		// the house under it is in the fraction, its chimney at zw; how much
+		// this roof holds, house by house, is its carry)
+		float heat = snow_k.y < 0.0 ? clamp(-snow_k.y - 1.0, 0.0, 1.0) : 0.0;
+		// Which way the face itself looks (not its bumps: a rough stone wall's
+		// face is still a wall).
+		vec3 gn = vehicle_surface ? wn : normalize(local_space ? mat3(MODEL_MATRIX) * tn : tn);
+		// (Fires.WIND: drifts run with it)
+		vec2 along = vec2(0.924, 0.382);
+		float pitch_cos = gn.y;
+		float windward = 0.0;
+		if (!vehicle_surface) {
+			// A slope that faces the wind is scoured and the one in its lee is
+			// loaded; the one facing the sun thins first.
+			windward = -dot(gn.xz, along);
+			carry *= (1.0 - clamp(windward * 1.0, 0.0, 0.3)) * (1.0 + clamp(-windward * 0.8, 0.0, 0.25));
+			vec3 to_sun = vec3(0.415, 0.559, 0.718);  // (the "snow" mood's sun, as SnowLie's)
+			carry *= 1.0 - clamp(dot(gn.xz, normalize(to_sun.xz)) * 0.5, 0.0, 0.18);
+			// Steep metal sheds it (sheet past twenty-five degrees or so, tiles
+			// and slates past forty), leaving a film in streaks down the fall
+			// line; it piles at the eaves (SnowRoof). A flat roof keeps a full coat.
+			float shed = pattern == 9 ? smoothstep(0.9, 0.78, pitch_cos) : (pattern == 15 ? smoothstep(0.77, 0.68, pitch_cos) : 0.0);
+			if (shed > 0.0) {
+				vec2 fall_dir = gn.xz / max(length(gn.xz), 0.001);
+				float streak = tnoise(vec2(dot(tp.xz, vec2(-fall_dir.y, fall_dir.x)) * 3.1, dot(tp.xz, fall_dir) * 0.35) + seed.xz * 0.37);
+				carry *= mix(1.0, 0.45 + 0.45 * smoothstep(0.4, 0.75, streak), shed);
+			}
+			// a warm house thaws its own roof from below
+			carry *= 1.0 - heat * 0.15;
+		}
+		float depth = clamp(snow_cover * carry * snow_hold, 0.0, 1.0);
+		vec2 wq = vec2(dot(tp.xz, along) * 0.55, dot(tp.xz, vec2(-along.y, along.x)) * 1.9) + so;
+		float drift = tnoise(wq * 0.45 + tp.y * 0.4) * 0.5 + tnoise(wq * 1.3 + tp.y * 0.9 + 2.1) * 0.38 + tnoise(tp.xz * 6.0 + tp.y * 3.0 + so.yx) * 0.12;
+		float face = vehicle_surface ? smoothstep(0.8, 0.96, wn.y) : smoothstep(0.4, 0.78, mix(gn.y, wn.y, 0.25));
+		// (a hull's drifts are big patches, shaken loose; on a roof or a wall top
+		// a thin fall lies in the grooves between the tiles and the stones first)
+		float lying = vehicle_surface
+			? (drift - 0.5) * 3.8 + (0.5 - h) * 0.6 + (depth - 0.68) * 2.4
+			: (drift - 0.5) * 1.5 + (0.5 - h) * 1.8 + (depth - 0.72) * 2.6;
+		lying -= (1.0 - face) * 1.2;
+		// (a roof under a full fall is covered, but for thin places on the slope
+		// the wind strikes, where the tile edges just show)
+		if (snow_k.y < 0.0) { lying += mix(0.22, 0.02, clamp(windward * 2.5, 0.0, 1.0)); }
+		// (a crisp edge on a hull: snow lies or it doesn't; on anything standing
+		// it thins over a few centimetres, the tiles or stones faintly through)
+		float settled = (vehicle_surface ? smoothstep(0.0, 0.07, lying) : smoothstep(-0.14, 0.1, lying)) * face;
+		if (vehicle_surface) {
+			// (a hull that has shaken most of it off keeps a grey film between the patches)
+			settled = max(settled, smoothstep(-0.5, 0.0, lying) * face * depth * 0.22);
+		} else {
+			// A wall stays bare but for a crust the storm has plastered on the
+			// face toward the wind, in patches.
+			float plaster = smoothstep(0.3, 0.85, -dot(gn.xz, along)) * (1.0 - smoothstep(0.3, 0.6, abs(gn.y)));
+			settled = max(settled, plaster * smoothstep(0.66, 0.8, drift + (0.5 - h) * 0.5) * snow_cover * snow_hold * 0.75);
+		}
+		float warm = 0.0;
+		if (vehicle_surface) {
+			// The engine's warmth comes up through its deck (snow_k.zw: the
+			// deck's middle on the hull's line, at the engine's end): the
+			// grilles and plates over it clear first, back to the rear plate,
+			// and the bare metal creeps forward along the deck the longer the
+			// engine runs, a ragged edge of slush ahead of it. (No deck,
+			// zw far off: none.)
+			float along = (tp.z - snow_k.w) * -sign(snow_k.w);  // forward of the deck's middle
+			float rag = (tnoise(tp.xz * 2.7 + so) - 0.5) * 0.4;
+			float reach = mix(0.5, 2.8, engine_run);
+			float wide = mix(0.9, 1.5, engine_run);
+			warm = (1.0 - smoothstep(reach - 0.6, reach, along + rag))
+				* (1.0 - smoothstep(wide - 0.35, wide, abs(tp.x - snow_k.z) + rag * 0.5))
+				* (1.0 - smoothstep(1.6, 2.2, -along));
+			settled *= 1.0 - warm;
+		}
+		// trodden: the pavements, paths and the square to a grey, packed crust
+		// (a lane of it down the middle of a garden path), streets driven to
+		// slush; and the snow in a garden worn into paths
+		float trodden = 0.0;
+		if (pattern == 18 || pattern == 22) {
+			settled *= mix(0.3, 0.85, smoothstep(0.35, 0.7, tfbm(wpos.xz * 0.4 + 7.0)));
+		} else if (pattern == 19) {
+			// (a light packing all over, and the ways people take worn to a
+			// grey crust: meandering lanes a metre or two wide)
+			float lane = abs(tfbm(wpos.xz * 0.045 + 11.0) - 0.5);
+			trodden = max(0.3 + 0.15 * tnoise(wpos.xz * 0.3), (1.0 - smoothstep(0.025, 0.06, lane)) * 0.9);
+		} else if (pattern == 20) {
+			float worn = abs(tfbm(wpos.xz * 0.11 + seed.xz * 0.1) - 0.5);
+			trodden = (1.0 - smoothstep(0.03, 0.07, worn)) * 0.85;
+		}
+		// Round a fire it thaws off everything standing there, the paving, the
+		// yards and the neighbours' roofs, as off the ground (SnowMelt), and
+		// leaves it wet. A warm house thaws its roof in wet patches and bare
+		// round the chimney.
+		float thaw_wet = 0.0;
+		if (!vehicle_surface && snow_thaw_0.z > 0.0) {
+			float melted = surface_thaw(wpos.xz, (drift - 0.5) * 0.3);
+			settled *= 1.0 - smoothstep(0.1, 0.6, melted);
+			thaw_wet = smoothstep(0.45, 0.8, melted) * face * min(1.0, snow_cover * 4.0);
+		}
+		float slushed = 0.0;
+		float thinned = 0.0;
+		float wet_tile = 0.0;
+		if (warm > 0.0) {
+			// (the deck's bare metal dark and glossy with the melt, a rim of
+			// grey slush where it meets the snow)
+			thaw_wet = warm * face * min(1.0, snow_cover * 4.0);
+			slushed = smoothstep(0.15, 0.45, warm) * (1.0 - smoothstep(0.55, 0.85, warm));
+		}
+		if (heat > 0.0) {
+			// The warmth comes through where the house is warmest: round the
+			// chimney, and in a patch or two over the rooms (smooth noise, so
+			// the thaw has soft edges, not the tiles' steps). Through it the
+			// snow goes thin, so the tiles show faintly, then to a band of grey
+			// slush, and in the middle the tiles are bare and wet.
+			float rag = (tnoise(tp.xz * 2.3 + seed.zx) - 0.5) * 0.35;
+			float stack = 1.0 - smoothstep(0.6, 2.4, distance(wpos.xz, snow_k.zw) + rag);
+			float warmth = tnoise(tp.xz * 0.28 + seed.xz) + rag * 0.5;
+			float thaw = max(stack, smoothstep(0.72, 0.95, warmth) * 0.9) * heat;
+			thinned = smoothstep(0.1, 0.45, thaw);
+			slushed = smoothstep(0.35, 0.6, thaw) * (1.0 - smoothstep(0.7, 0.85, thaw));
+			wet_tile = smoothstep(0.7, 0.85, thaw);
+			settled = mix(settled, max(settled, face * 0.6), thinned * (1.0 - wet_tile)) * (1.0 - wet_tile);
+			thaw_wet = max(thaw_wet, wet_tile * face * min(1.0, snow_cover * 4.0));
+		}
+		if (pattern == 20) {
+			// (a lawn in winter, where it shows: flattened and gone a dull brown)
+			ALBEDO = mix(ALBEDO, vec3(dot(ALBEDO, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.92, 0.72), snow_cover * 0.65);
+		}
+		vec3 snow = vec3(0.8, 0.83, 0.88) * (0.93 + 0.07 * drift);
+		// (on a roof it follows the courses beneath it in faint ribs, and lies
+		// wind-packed and a shade greyer on the slope facing the wind)
+		if (snow_k.y < 0.0) {
+			snow *= mix(0.9, 1.03, smoothstep(0.2, 0.8, h)) * (1.0 - clamp(windward * 2.5, 0.0, 1.0) * 0.07);
+		}
+		// (packed down and trodden grey, the prints in it)
+		snow = mix(snow, vec3(0.36, 0.37, 0.39) * (0.85 + 0.3 * tnoise(wpos.xz * 2.7)), trodden);
+		snow = mix(snow, vec3(0.42, 0.44, 0.47), slushed * 0.8);
+		// (snow on a lawn or the paving, near the ground, as dim as the ground's)
+		if (pattern == 19 || pattern == 20) { snow *= 0.88; }
+		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
+		// (bare tile under meltwater: darker, duller in colour and glossy)
+		ALBEDO = mix(ALBEDO, mix(vec3(dot(ALBEDO, vec3(0.3, 0.5, 0.2))), ALBEDO, 0.6) * 0.55, wet_tile * face);
+		// (thinned, the snow lets the tiles show faintly through)
+		ALBEDO = mix(ALBEDO, snow, settled * (1.0 - thinned * 0.45 * (1.0 - slushed)));
+		// (meltwater on the thawed paving and roofs, on the warm deck, and round the snow's edge)
+		ALBEDO *= 1.0 - thaw_wet * 0.25;
+		ROUGHNESS = mix(ROUGHNESS, 0.3, thaw_wet);
+		ROUGHNESS = mix(mix(ROUGHNESS, 0.3, warm * snow_cover * 0.7), mix(0.85, 0.6, trodden), settled);
+		METALLIC *= 1.0 - settled;
+		SPECULAR = mix(SPECULAR, 0.3, settled);
+		CLEARCOAT *= 1.0 - settled;
+		// a soft blanket hides the plate seams and the bumps beneath it
+		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, settled * 0.4));
+	}
 	// CLOUD_FRAGMENT cloud_sun(wpos)
 }
 """
@@ -2440,6 +2803,7 @@ uniform bool use_vcolor = false;
 // shrivel brown, blacken and burn away, glowing at the edges while it burns
 uniform float scorch = 0.0;
 uniform float embers = 0.0;
+global uniform float snow_cover;  // (see SURFACE_SHADER)
 // CLOUD_SHADOW
 
 varying vec3 lpos;
@@ -2514,11 +2878,26 @@ void fragment() {
 		float edge = 1.0 - smoothstep(0.0, 0.05, burnt);
 		EMISSION = vec3(1.0, 0.32, 0.05) * embers * edge * (0.9 + 0.6 * sin(TIME * 7.0 + lpos.x * 3.0 + lpos.y * 5.0));
 	}
-	ALBEDO = c * (0.55 + 0.45 * shade);
+	// Snow lies on the tops of the boughs and the upper leaves, in clumps the
+	// branches hold, while the undersides stay dark (melting off a tree that's
+	// caught fire).
+	float snowed = 0.0;
+	if (snow_cover > 0.0 && scorch < 0.3) {
+		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y;
+		float clump = mix(0.5, n3(lpos * 2.6 + 3.1), smoothstep(1.5, 5.0, (1.0 / 2.6) / px));
+		// (the boughs hold it in lumps, the green showing between, and one tree
+		// in a stand has shed more of it than the next)
+		float lump = smoothstep(0.36, 0.66, clump);
+		float tree = n3(lpos * 0.09 + 11.0);
+		snowed = smoothstep(0.0, 0.16, up * 1.1 + shade * 0.45 - (leaf_cards ? 1.12 : 0.97) + (lump - 0.5) * 1.5 + (tree - 0.5) * 0.6 - (1.0 - snow_cover) * 1.4);
+		snowed *= 1.0 - scorch / 0.3;
+		c = mix(c, vec3(0.74, 0.77, 0.82) * (0.92 + 0.1 * clump), snowed * 0.92);
+	}
+	ALBEDO = c * (0.55 + 0.45 * mix(shade, 1.0, snowed * 0.6));
 	if (OUTPUT_IS_SRGB) { ALBEDO = mix(ALBEDO * 12.92, 1.055 * pow(max(ALBEDO, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), ALBEDO)); }
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.25;
-	BACKLIGHT = vec3(0.35, 0.42, 0.18) * (1.0 - scorch);
+	BACKLIGHT = vec3(0.35, 0.42, 0.18) * (1.0 - scorch) * (1.0 - snowed * 0.8);
 	AO = 0.55 + 0.45 * shade;
 	AO_LIGHT_AFFECT = 0.6;
 	if (leaf_cards) {
@@ -2594,8 +2973,14 @@ void fragment() {
 const NETTING_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
+// the garnish's four colours (Camo.NETS): the ground, then the blotches printed over it
 instance uniform vec4 tint : source_color = vec4(0.3, 0.34, 0.2, 1.0);
+instance uniform vec4 net_b : source_color = vec4(0.2, 0.24, 0.15, 1.0);
+instance uniform vec4 net_c : source_color = vec4(0.3, 0.25, 0.17, 1.0);
+instance uniform vec4 net_d : source_color = vec4(0.1, 0.1, 0.09, 1.0);
 uniform float sag = 0.45;  // a flat net slung between poles sags in the middle
+uniform float uv_m = 7.2;  // metres the net's UV runs 0..1 across, along its surface
+global uniform float snow_cover;  // (see SURFACE_SHADER)
 // CLOUD_SHADOW
 varying vec3 wp;
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -2607,29 +2992,107 @@ void vertex() {
 	vec2 u = UV * 2.0 - 1.0;
 	VERTEX.y -= (1.0 - u.x * u.x) * (1.0 - u.y * u.y) * sag;
 	VERTEX.y += sin(VERTEX.x * 0.9 + TIME * 0.7) * 0.03;
+	// a net is never drawn tight: it hangs in lumps and folds where the
+	// garnish bunches up on the cord
+	vec2 m = UV * uv_m;
+	VERTEX.y += (vn(m * 0.9 + 3.0) - 0.5) * 0.22 + (vn(m * 2.3 + 11.0) - 0.5) * 0.08;
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
-	vec2 p = wp.xz;
-	float n = vn(p * 1.9) * 0.55 + vn(p * 5.3) * 0.45;
-	float g = vn(p * 13.0);
+	// in metres along the net itself, so the garnish keeps its size where
+	// the net hangs down the sides
+	vec2 p = UV * uv_m;
 	vec2 u = UV * 2.0 - 1.0;
 	float edge = max(abs(u.x), abs(u.y));
-	float scraps = step(0.47 + smoothstep(0.8, 1.0, edge) * 0.3, n + g * 0.3);
-	// Garnish is tied to a fine diamond cord mesh, visible through the larger gaps.
+	// The garnish: a sheet cut into leaves about 12 cm across that lift
+	// and overlap, every one turned its own way, tied to a diamond cord
+	// mesh. Each leaf is the nearest of a jittered scatter of points, so
+	// they come out irregular, not in rows; it frays out at the edge.
+	vec2 g = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 0.1;
+	// (pushed about, so the leaves' edges curve rather than run straight)
+	g += vec2(vn(g * 0.8 + 3.1), vn(g * 0.8 + 17.3)) * 0.55 + vec2(vn(g * 2.1 + 5.5), vn(g * 2.1 + 9.1)) * 0.2;
+	vec2 base = floor(g);
+	vec2 cell = base;
+	vec2 f = vec2(0.0);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 c = base + vec2(float(x), float(y));
+			vec2 o = c + 0.5 + (vec2(h12(c + 3.3), h12(c + 9.9)) - 0.5) * 0.8 - g;
+			float d = dot(o, o);
+			if (d < d1) { d2 = d1; d1 = d; cell = c; f = -o; } else if (d < d2) { d2 = d; }
+		}
+	}
+	// how far inside its leaf this point is: 0 on the line where it meets
+	// the next one
+	float inside = sqrt(d2) - sqrt(d1);
+	float r1 = h12(cell);
+	float r2 = h12(cell + 7.1);
+	float r3 = h12(cell + 13.7);
+	float r4 = h12(cell + 21.3);
+	float a = r1 * 6.2832;
+	vec2 dir = vec2(cos(a), sin(a));
+	vec2 l = vec2(dot(f, dir), dot(f, vec2(-dir.y, dir.x)));
+	float thick = vn(p * 0.8) * 0.55 + vn(p * 2.6 + 5.0) * 0.45 - smoothstep(0.8, 1.0, edge) * 0.4;
+	float thin = 1.0 - smoothstep(0.35, 0.7, thick);
+	// a slit down the middle of some leaves, pointed at both ends, opened
+	// wider where the garnish is thin
+	float len = 0.22 + 0.2 * r2;
+	float t = clamp(l.x / len, -1.0, 1.0);
+	float wid = (0.025 + 0.08 * r3 * (0.5 + thin)) * (1.0 - t * t);
+	float cut = step(abs(l.y), wid) * step(abs(l.x), len) * step(r4, 0.3 + 0.4 * thin);
+	// leaves smaller than a few pixels: their cuts would only shimmer, so
+	// they close up
+	vec2 gw = fwidth(g);
+	float near = smoothstep(0.45, 0.18, max(gw.x, gw.y));
+	// whole gaps only where it frays out at the hem
+	float garnish = (1.0 - cut * near) * step(0.3 * smoothstep(0.7, 0.95, edge), thick);
 	vec2 weave = vec2(p.x + p.y, p.x - p.y) * 7.0;
 	vec2 cord_distance = abs(fract(weave) - 0.5);
-	float cord = 1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y));
-	if (max(scraps, cord) < 0.5) discard;
-	vec3 c = tint.rgb * (0.65 + 0.55 * g);
-	c = mix(c, c * vec3(1.25, 1.05, 0.7), step(0.62, vn(p * 3.1 + 9.0)) * 0.6);
-	// the garnish: darker brown and near-black scraps knotted in, breaking it up
-	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
-	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
-	c = mix(tint.rgb * 0.45, c, scraps);
+	float cord = (1.0 - smoothstep(0.015, 0.03, min(cord_distance.x, cord_distance.y))) * near;
+	// through most slits there's another layer of garnish, deep in shadow
+	float under = step(0.4, h12(cell + 5.7)) * step(edge, 0.85) * cut;
+	if (max(max(garnish, cord), under) < 0.5) discard;
+	// printed in big blotches like a uniform: the ground colour, a second
+	// shade, a third, and a few near-black. A whole leaf is one colour, so
+	// the blotches' edges are ragged leaf by leaf.
+	vec2 pc = mat2(vec2(0.8, -0.6), vec2(0.6, 0.8)) * ((g - f) * 0.1);
+	vec2 bp = mix(p, pc, near);
+	float b1 = vn(bp * 0.55 + 3.0) * 0.7 + vn(bp * 1.7 + 11.0) * 0.3;
+	float b2 = vn(bp * 0.62 + 17.0) * 0.7 + vn(bp * 1.9 + 3.0) * 0.3;
+	float b3 = vn(bp * 0.9 + 31.0) * 0.7 + vn(bp * 2.3 + 23.0) * 0.3;
+	vec3 c = tint.rgb;
+	c = mix(c, net_b.rgb, step(0.5, b1));
+	c = mix(c, net_c.rgb, step(0.57, b2));
+	c = mix(c, net_d.rgb, step(0.66, b3));
+	// each leaf faded and catching the light its own way, curling so one
+	// side is lit and the other in shadow, and darker where it tucks under
+	// the next leaf
+	float curl = clamp(dot(f, dir) / 0.45, -1.0, 1.0);
+	float dome = smoothstep(0.0, 0.35, inside);
+	c *= mix(1.0, (0.86 + 0.22 * r3 + curl * 0.1) * (0.9 + 0.12 * dome), near);
+	// the leaves overlap like scales, each one casting a thin shadow on the
+	// one below it (down the net, away from the light) and not on the rest
+	float below = smoothstep(-0.05, 0.15, dot(normalize(f + 1e-4), vec2(0.6, 0.8)));
+	c *= mix(1.0, mix(0.6, 1.0, smoothstep(0.0, 0.07, inside)), near * below * step(0.35, r2));
+	c = mix(tint.rgb * 0.35, c, garnish);
+	c = mix(c, c * 0.3, under * (1.0 - garnish));
+	// snow caught in the net lies in the sag and on the leaves, in drifts
+	float snowed = 0.0;
+	if (snow_cover > 0.0) {
+		float lumps = vn(p * 1.9) * 0.55 + vn(p * 5.3) * 0.45;
+		snowed = smoothstep(0.0, 0.3, vn(p * 0.9 + 3.0) * 0.6 + lumps * 0.5 - 0.45 - (1.0 - snow_cover) * 1.4) * 0.85 * garnish;
+		vec3 snow = vec3(0.78, 0.81, 0.86);
+		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
+		c = mix(c, snow, snowed);
+	}
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
-	BACKLIGHT = c * 0.5;
+	BACKLIGHT = c * 0.45 * (1.0 - snowed);
+	// the leaves curl off the cord: each one's own slant
+	vec3 tilt = (vec3(r2 - 0.5, 0.0, r3 - 0.5) * 0.8 + vec3(dir.x, 0.0, dir.y) * curl * 0.25) * garnish * near;
+	NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(tilt, 0.0)).xyz);
 	// CLOUD_FRAGMENT cloud_sun(wp)
 }
 """

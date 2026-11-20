@@ -162,6 +162,14 @@ var _engine_sound: AudioStreamPlayer3D
 var _track_sound: AudioStreamPlayer3D
 var _drive_load := 0.0
 var _last_pos := Vector3.ZERO
+## (view) How much snow it carries (see _snow_view), as last drawn, and its parts.
+var _snow := -1.0
+var _snow_drawn := Vector3(-1, -1, -1)  # (as last drawn: the hull's, the gun's, the engine's run)
+var _snow_yaw := 0.0
+var _barrel_snow := -1.0
+var _barrel_hot := 0.0  # (view) 1 just fired, cooling to 0
+var _engine_run := 0.0  # (view) s its engine has been running, for the warmth on its deck
+var _snow_meshes: Array[MeshInstance3D] = []
 var _rotor_spd := 0.0
 var engine_exhaust: GeometryInstance3D
 var _rotor_snd: AudioStreamPlayer3D
@@ -2973,6 +2981,9 @@ static func gunner_spot(area: Rect2, g: Vector2, f: Vector2) -> Vector2:
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
 	_cradle_age = 0.0
+	# (the blast throws the snow off the barrel, and it's too hot to hold more a while)
+	_barrel_hot = 1.0
+	_barrel_snow = 0.0
 	var fwd := Defs.dir_of(rotation.y)
 	var side := fwd.cross(Vector3.UP)
 	var k := 0.9 if weight() >= 2 else 0.5
@@ -3409,6 +3420,7 @@ func _view_process(dt: float) -> void:
 		var camera := get_viewport().get_camera_3d()
 		var near := v and camera != null and camera.global_position.distance_squared_to(global_position) < 10000.0
 		_vm.update_antennas((position - _last_pos) / dt, dt, near)
+	_snow_view(dt, Defs.flat(position - _last_pos).length())
 	_last_pos = position
 	if burner:
 		var hf := health_frac()
@@ -3427,6 +3439,88 @@ func _view_process(dt: float) -> void:
 		ring.visible = selected and (not world.cam or world.cam.mount_subject != self)
 		if ring.visible and is_heli():
 			_update_landing_ring()
+
+
+## (view) The snow it carries, in the snow weather (Mats' snow_k). A fresh fall
+## settles on a vehicle standing still as on everything else; one on the move
+## is shaken and blown clear of most of it, faster the faster it goes, and a
+## turret swinging round throws off what lay on it. A battle that opens in snow
+## finds them dusted from a night parked, some more and some less. Each hull
+## has its own drifts (a seed), and its engine deck stays warm and bare, the
+## bare patch spreading the longer the engine runs. A vehicle on fire melts
+## its snow off, and a gun that has fired is bare until its barrel cools.
+const SNOW_SHED := 20.0  # (s for one at 5 m/s to shake off most of it)
+const SNOW_KEPT := 0.25  # (what's left in the corners however far it drives)
+const SNOW_BURN := 15.0  # (s for a fire to melt it all off)
+const BARREL_COOL := 180.0  # (s a fired barrel stays too warm to hold snow)
+const ENGINE_WARM := 240.0  # (s for an engine's warmth to spread through its deck)
+
+
+func _snow_view(dt: float, moved: float) -> void:
+	var cover: float = world.atmo.snow_cover if world.atmo else 0.0
+	if cover <= 0.0 or dt <= 0.0 or model == null:
+		return
+	var own := float(absi(hash(eid)) % 997) / 997.0
+	if _snow < 0.0:
+		_snow = 0.5 + 0.4 * fmod(own * 7.31, 1.0)
+		_snow_yaw = turret_yaw
+		if _barrel_snow < 0.0:
+			_barrel_snow = _snow
+		# (its engine has been running a while before the battle opens)
+		_engine_run = 30.0 + 60.0 * fmod(own * 3.17, 1.0)
+	var swing := absf(wrapf(turret_yaw - _snow_yaw, -PI, PI)) / dt
+	_snow_yaw = turret_yaw
+	_snow = snow_carry(_snow, cover, moved / dt, swing, dt)
+	if burner and float(burner.get_meta("fire", 0.0)) > 0.02:
+		_snow = maxf(0.0, _snow - dt / SNOW_BURN)
+	_barrel_hot = maxf(0.0, _barrel_hot - dt / BARREL_COOL)
+	if _barrel_hot <= 0.0:
+		_barrel_snow += dt * cover / Atmosphere.SNOW_IN
+	_barrel_snow = clampf(_barrel_snow, 0.0, _snow)
+	_engine_run += dt
+	# (in steps, so a part's values change seldom: in the browser each new
+	# value is a material of its own, so fewer steps and seeds there)
+	var steps := 4.0 if Mats.per_material else 8.0
+	var run := engine_spread(_engine_run)
+	if Mats.per_material:
+		run = floorf(run / 2.0) * 2.0
+	var drawn := Vector3(roundf(_snow * steps) / steps, roundf(_barrel_snow * steps) / steps, run)
+	if drawn == _snow_drawn:
+		return
+	if _snow_drawn.x < 0.0 or (not _snow_meshes.is_empty() and not is_instance_valid(_snow_meshes[0])):
+		_snow_meshes = Mats.snow_parts(model)
+	_snow_drawn = drawn
+	# (the seed in snow_k.y's fraction, the engine's run in its whole part)
+	var sq := (floorf(own * 4.0) + 0.5) / 4.0 if Mats.per_material else 0.02 + own * 0.96
+	var deck := Vector2(10000.0, 10000.0)
+	if _vm and _vm.engine_deck.is_finite():
+		# (the engine bay spans the hull: its warmth is centred on the hull's
+		# line, at the deck's end; engine_deck itself is where a fire breaks
+		# through, over one grille)
+		deck = Vector2(0.0, _vm.engine_deck.z)
+	var gun: Node3D = _vm.gun_mount if _vm else null
+	for mi in _snow_meshes:
+		if is_instance_valid(mi):
+			var hull := turret == null or not turret.is_ancestor_of(mi)
+			var on_gun := gun != null and (gun == mi or gun.is_ancestor_of(mi))
+			Mats.set_inst(mi, &"snow_k", Vector4(drawn.y if on_gun else drawn.x, run + sq, deck.x if hull else 10000.0, deck.y if hull else 10000.0))
+
+
+## How far an engine's warmth has spread through its deck after `secs`
+## running, in quarters (0 just started, 4 as far as it goes).
+static func engine_spread(secs: float) -> float:
+	return clampf(floorf(secs / ENGINE_WARM * 4.0), 0.0, 4.0)
+
+
+## The snow a vehicle carries after `dt` more seconds: gathering at the pace
+## it settles on everything (Atmosphere.SNOW_IN) while it stands, shaken off by
+## driving (`speed`, m/s) and by its turret swinging (`swing`, rad/s), down to
+## what stays in the corners.
+static func snow_carry(was: float, cover: float, speed: float, swing: float, dt: float) -> float:
+	if speed > 0.3 or swing > 0.05:
+		var shake := minf(speed / 5.0, 2.0) + minf(swing, 0.5)
+		return maxf(minf(was, SNOW_KEPT), was - dt * shake / SNOW_SHED)
+	return minf(1.0, was + dt * cover / Atmosphere.SNOW_IN)
 
 
 ## The far side of a helicopter's footprint can be on a different contour from

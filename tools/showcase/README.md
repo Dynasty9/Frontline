@@ -83,6 +83,13 @@ before and after revisions; differences in source revision must be recorded in t
 godot --path . --resolution 1600x900 --script tests/fixtures/environment-views.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --focus=0,0 --capture-prefix=build/terrain/review
 ```
 
+Use `--capture-set=hq-roadside` for labeled command-height and close views of
+both generated HQ variants, framed from their roadside entrances. Add
+`--capture-orbit --capture-clip=all --capture-frames=30 --fixed-fps 15` for
+two seconds of matching camera motion per view. Keep `--fixed-fps` before `--`
+as an engine argument. This holds simulation at two seconds without moving
+structures or changing the generated map.
+
 Add `--capture-set=town` for street detail, the town entrance, an overview and a
 residential driveway. `--capture-set=roads` frames country shoulders close and
 at tactical distance, followed by the town entrance. `--capture-set=road-types`

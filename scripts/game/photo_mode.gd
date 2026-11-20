@@ -37,7 +37,7 @@ const SUPERSAMPLE := 2.0  # the render scale of a supersampled picture
 const SUPERSAMPLE_MAX_PX := 7680.0  # ...as long as its long side stays within this
 const SHOTS_DIR := "user://screenshots"
 ## The times of day, in the order the panel lists them.
-const MOODS := ["day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
+const MOODS := ["day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain", "snow"]
 ## The camera-and-lens passes (Settings > Lighting & Look): flare and glare,
 ## sun shafts, local exposure, eye adaptation, the film look, heat haze. The
 ## desktop renderer's only; photo mode turns them on and off for its picture.

@@ -90,44 +90,164 @@ static func _headlamp_reflector() -> ArrayMesh:
 ## frame and slats stand a centimetre or two in front. Set into an opening, the
 ## centre goes on the opening's plane; on a solid face with no opening, stand
 ## the centre about 3 cm proud of the face so the core isn't buried in it.
-static func grille(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation: Vector3, material: String, col = null, count := 8, vertical := false) -> void:
+static func grille(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector2, rotation: Vector3, material: String, col = null, count := 8, vertical := false, look := -1) -> void:
 	var basis := Basis.from_euler(rotation)
 	var surface := VehicleSurface.plane(center, basis.x, basis.y)
 	var x := size.x * 0.5
 	var y := size.y * 0.5
 	var cut := minf(0.035, minf(x, y) * 0.12)
 	var outline := PackedVector2Array([Vector2(-x + cut, -y), Vector2(x - cut, -y), Vector2(x, -y + cut), Vector2(x, y - cut), Vector2(x - cut, y), Vector2(-x + cut, y), Vector2(-x, y - cut), Vector2(-x, -y + cut)])
-	vent(k, parent, surface, outline, material, col, count, vertical)
+	vent(k, parent, surface, outline, material, col, count, vertical, look)
 
 
 ## Outline-aware grille in a metre-scaled surface domain. Fins and radiator
 ## channels are clipped to the inset; tapered vents need no bespoke slat loops.
 ## Placed as grille is: the surface is the vent's face, its core 2.5 cm below
 ## it, so on a solid face with no opening lift the surface about 3 cm proud.
-static func vent(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, material: String, col = null, count := 8, vertical := false) -> void:
+static func vent(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, material: String, col = null, count := 8, vertical := false, look := -1) -> void:
 	var bounds := Rect2(outline[0], Vector2.ZERO)
 	for q in outline:
 		bounds = bounds.expand(q)
 	var rim := minf(0.025, minf(bounds.size.x, bounds.size.y) * 0.065)
 	var inset := Geometry2D.offset_polygon(outline, -rim * 1.5)
 	assert(not inset.is_empty())
-	k._add(parent, surface.patch(outline, -0.025, 0.012), "plain_dark", Color(0.025, 0.028, 0.026), Vector3.ZERO)
+	var w := k.wreck
+	# The cavity under a painted panel is the hull's own paint in its own
+	# shadow, a third of the paint's value, not a near-black hole: a black core
+	# read as a black stripe between every louvre from the battle camera. Bare
+	# metal and a car's radiator keep the dark core. (A wreck's stays dark.)
+	var core := Color(0.025, 0.028, 0.026)
+	if not w and VehicleMaterials.profile(material, k.surface_family) in ["armor", "aircraft", "marine", "service"]:
+		var paint: Color = col if col is Color else Mats._preset(VehicleMaterials.key(material, k.surface_family)).get("col_a", Color(0.3, 0.3, 0.28))
+		core = Color(paint.r * 0.3, paint.g * 0.3, paint.b * 0.3)
+	k._add(parent, surface.patch(outline, -0.025, 0.012), "plain_dark", core, Vector3.ZERO)
 	VehicleBody.boundary(k, parent, surface, outline, 0.0, rim * 0.7, true, 0, material, col)
 	var axis := 0 if vertical else 1
+	# Armoured louvres are pressed at a few centimetres' pitch, never a hand's
+	# breadth apart: a caller's few slats over a big deck (four over 1.2 m on a
+	# Strider) read as wide black slots. So a panel in service keeps its slats
+	# 8 cm apart at most, whatever it was given. (A wreck keeps its count.)
+	if not w:
+		count = maxi(count, ceili(bounds.size[axis] / 0.08))
 	var pitch := bounds.size[axis] / maxf(count, 1)
+	# One factory's panel isn't another's: by its size (so every hull of a kind
+	# wears the same one, and two kinds differ) the louvres are pressed wider
+	# or narrower, and the panel is either a plain bank, a bank stiffened across
+	# its middle by a flat bar, or a cover plate bolted down round its rim. A
+	# caller can name the look its army builds instead (`look`): 3 the
+	# perforated armour cover a Merkava or Namer bolts over its radiator, 4 the
+	# woven mesh an AAF hull's intakes wear.
+	var style := look if look >= 0 and not w else posmod(roundi(bounds.size.x * 100.0) + roundi(bounds.size.y * 100.0) * 2 + (1 if vertical else 0), 3)
 	# Fine channels remain behind the protective slats, at a separate depth:
 	# strips of sheet seen only face on through the slats, so no edges or backs.
-	_slats(k, parent, surface, inset[0], bounds, 0, clampi(ceili(bounds.size.x / 0.055), 6, 40), 0.14, -0.012, 0.0, "gunmetal", Color(0.14, 0.15, 0.14))
-	_slats(k, parent, surface, inset[0], bounds, axis, count, 0.42, 0.012, minf(0.012, pitch * 0.15), material, col)
+	# The protective louvres overlap as seen from above, so no rain or shell
+	# splinter drops straight through: what shows between them is a narrow
+	# shadowed slot with the fins behind, not a stripe of black as wide as the
+	# louvre (which read as zebra stripes on every engine deck). Each wider
+	# louvre is pitched less steeply, so its raised edge stands where the
+	# narrower one's did, under the rim. (A wreck's vent stays as it was; the
+	# fins behind a perforated cover, below, don't show through its holes.)
+	if w or style != 3:
+		_slats(k, parent, surface, inset[0], bounds, 0, clampi(ceili(bounds.size.x / 0.055), 6, 40), 0.14 if w else 0.22, -0.012, 0.0, "gunmetal", Color(0.14, 0.15, 0.14) if w else Color(0.15, 0.16, 0.15))
+	if w:
+		_slats(k, parent, surface, inset[0], bounds, axis, count, 0.42, 0.012, minf(0.012, pitch * 0.15), material, col, 0.25)
+		return
+	if style == 3:
+		_perforated(k, parent, surface, outline, inset[0], bounds, material, col, core)
+		return
+	if style == 4:
+		# Woven steel mesh stretched over the intake: fine wires both ways at
+		# 4.5 cm, flat on the radiator's face, so from above the panel reads
+		# as a dark fine-grained square, not a bank of stripes.
+		for a in 2:
+			var wires := ceili(bounds.size[a] / 0.045)
+			_slats(k, parent, surface, inset[0], bounds, a, wires, 0.24, 0.006 + a * 0.005, 0.005, material, col, 0.0)
+		return
+	var coverage: float = [0.64, 0.7, 0.6][style]
+	_slats(k, parent, surface, inset[0], bounds, axis, count, coverage, 0.012, minf(0.012, pitch * 0.15), material, col, 0.165)
+	var run := 1 - axis
+	if style == 1 and bounds.size[run] > 0.45:
+		# a flat bar across the louvres' mid-span, standing on their raised edges
+		var mid := bounds.get_center()[run]
+		var half := minf(0.016, bounds.size[run] * 0.03)
+		var bar := PackedVector2Array([Vector2(mid - half, bounds.position.y), Vector2(mid + half, bounds.position.y), Vector2(mid + half, bounds.end.y), Vector2(mid - half, bounds.end.y)]) if run == 0 else PackedVector2Array([Vector2(bounds.position.x, mid - half), Vector2(bounds.end.x, mid - half), Vector2(bounds.end.x, mid + half), Vector2(bounds.position.x, mid + half)])
+		for clipped: PackedVector2Array in Geometry2D.intersect_polygons(inset[0], bar):
+			k._add(parent, surface.patch(clipped, 0.012 + pitch * coverage * 0.165 + 0.004, 0.014), material, col, Vector3.ZERO)
+	elif style == 2:
+		# the cover's bolts along its long sides, in line with the corner
+		# screws the rim already has (VehicleBody.boundary)
+		var center := bounds.get_center()
+		for i in outline.size():
+			var a: Vector2 = outline[i]
+			var b: Vector2 = outline[i + 1] if i + 1 < outline.size() else outline[0]
+			var bolts := floori(a.distance_to(b) / 0.28)
+			for j in range(1, bolts + 1):
+				var q := a.lerp(b, float(j) / (bolts + 1))
+				var distance := surface.point(q).distance_to(surface.point(center))
+				var uv := q.lerp(center, minf(0.2, 0.035 / maxf(distance, 0.001)))
+				VehicleBody.fastener(k, parent, surface.point(uv, 0.002), surface.normal(uv), minf(0.009, distance * 0.06))
 
-static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, inset: PackedVector2Array, bounds: Rect2, axis: int, count: int, coverage: float, lift: float, depth: float, material: String, col) -> void:
+## The perforated armour cover a Merkava- or Namer-pattern hull bolts over its
+## engine's intakes on the glacis: one plate in the hull's paint over the whole
+## panel, punched all over with small round holes that show the dark radiator
+## under them, and bolted down round its rim every 28 cm. A punch press lays
+## the holes in rows along the plate's edges, every other row stepped half a
+## pitch, 6.5 cm apart: from the battle camera the panel reads as a finely
+## darkened plate, close up as a field of holes. (Two rows of big holes read
+## as polka dots.) All the holes are one mesh.
+static func _perforated(k: VehicleModels, parent: Node3D, surface: VehicleSurface, outline: PackedVector2Array, inset: PackedVector2Array, bounds: Rect2, material: String, col, core: Color) -> void:
+	k._add(parent, surface.patch(inset, 0.014, 0.014), material, col, Vector3.ZERO)
+	var long := 0 if bounds.size.x >= bounds.size.y else 1
+	var short := 1 - long
+	var pitch := 0.065
+	var row_pitch := pitch * 0.866
+	var r := 0.019
+	var center := bounds.get_center()
+	var inner: Array[PackedVector2Array] = Geometry2D.offset_polygon(inset, -r * 1.8)
+	var field: PackedVector2Array = inner[0] if not inner.is_empty() else inset
+	var rows := floori(bounds.size[short] / row_pitch)
+	var cols := floori(bounds.size[long] / pitch)
+	# (a hole looks into the dark under the plate, matt: in the core's glossy
+	# finish the sky's sheen turned the holes the grey of the camouflage's
+	# own blots)
+	var dark := core.darkened(0.6)
+	var data := [[], [], []]
+	for row in rows + 1:
+		var stagger := pitch * 0.5 if (row & 1) == 1 else 0.0
+		for i in cols + 1:
+			var c := center
+			c[long] = center[long] + (i - cols * 0.5) * pitch + stagger - pitch * 0.25
+			c[short] = center[short] + (row - rows * 0.5) * row_pitch
+			if not Geometry2D.is_point_in_polygon(c, field):
+				continue
+			var ring: Array[Vector2] = []
+			for j in 6:
+				var turn := TAU * j / 6.0
+				ring.append(c + Vector2(cos(turn), sin(turn)) * r)
+			for j in range(1, 5):
+				surface._triangle(data, ring[0], ring[j], ring[j + 1], 0.0145, 0, false)
+	if not (data[0] as Array).is_empty():
+		k._add(parent, VehicleSurface._mesh(data), "rubber", dark, Vector3.ZERO)
+	for i in outline.size():
+		var a: Vector2 = outline[i]
+		var b: Vector2 = outline[i + 1] if i + 1 < outline.size() else outline[0]
+		var bolts := floori(a.distance_to(b) / 0.28)
+		for j in range(1, bolts + 1):
+			var q := a.lerp(b, float(j) / (bolts + 1))
+			var distance := surface.point(q).distance_to(surface.point(center))
+			var uv := q.lerp(center, minf(0.2, 0.05 / maxf(distance, 0.001)))
+			VehicleBody.fastener(k, parent, surface.point(uv, 0.015), surface.normal(uv), minf(0.009, distance * 0.06))
+
+
+## `slope`: how far each slat rises across its own width (its pitch).
+static func _slats(k: VehicleModels, parent: Node3D, surface: VehicleSurface, inset: PackedVector2Array, bounds: Rect2, axis: int, count: int, coverage: float, lift: float, depth: float, material: String, col, slope := 0.25) -> void:
 	var pitch := bounds.size[axis] / maxf(count, 1)
 	for i in count:
 		var lo := bounds.position[axis] + pitch * (i + (1.0 - coverage) * 0.5)
 		var hi := lo + pitch * coverage
 		var strip := PackedVector2Array([Vector2(lo, bounds.position.y), Vector2(hi, bounds.position.y), Vector2(hi, bounds.end.y), Vector2(lo, bounds.end.y)]) if axis == 0 else PackedVector2Array([Vector2(bounds.position.x, lo), Vector2(bounds.end.x, lo), Vector2(bounds.end.x, hi), Vector2(bounds.position.x, hi)])
 		for clipped: PackedVector2Array in Geometry2D.intersect_polygons(inset, strip):
-			var angled := VehicleSurface.new(func(q: Vector2) -> Vector3: return surface.point(q, lift + (q[axis] - lo) * 0.25), surface.outward)
+			var angled := VehicleSurface.new(func(q: Vector2) -> Vector3: return surface.point(q, lift + (q[axis] - lo) * slope), surface.outward)
 			k._add(parent, angled.patch(clipped, 0.0, depth), material, col, Vector3.ZERO)
 
 
@@ -550,16 +670,29 @@ static func ammo_can(k: VehicleModels, parent: Node3D, center: Vector3, col: Col
 		# box): a grab handle on either side, none on the lid
 		for side: float in [-1.0, 1.0]:
 			VehicleDoors.pull(k, mount, Vector3(side * 0.081, 0.03, 0), Vector3(side, 0, 0), Vector3.FORWARD, 0.07, 0.005, "gunmetal_w")
+	# (the latch plates are pressed sheet a centimetre thick: a chamfer of
+	# millimetres on them is lost past arm's length, so they are plain plates)
 	for z in [-0.157, 0.157]:
-		k._box(mount, Vector3(0.04, 0.055, 0.012), Vector3(0, 0.065, z), "gunmetal_w", null, Vector3.ZERO, false)
+		k._add(mount, VehicleEquipment._plate(Vector3(0.04, 0.055, 0.012)), "gunmetal_w", null, Vector3(0, 0.065, z), Vector3.ZERO, Vector3.ONE, false)
 		VehicleFrames.tube(k, mount, Vector3(-0.028, 0.089, z), Vector3(0.028, 0.089, z), 0.007, "gunmetal_w", null, 6, false)
 	for side: float in [-1.0, 1.0]:
 		for z in [-0.09, 0.09]:
 			k._box(mount, Vector3(0.006, 0.115, 0.012), Vector3(side * 0.081, -0.015, z), "paint", col, Vector3.ZERO, false)
 	var seam := VehicleSurface.plane(Vector3(0, -0.085, 0), Vector3.RIGHT, Vector3.FORWARD)
 	VehicleBody.boundary(k, mount, seam, PackedVector2Array([Vector2(-0.065, -0.15), Vector2(0.065, -0.15), Vector2(0.08, -0.135), Vector2(0.08, 0.135), Vector2(0.065, 0.15), Vector2(-0.065, 0.15), Vector2(-0.08, 0.135), Vector2(-0.08, -0.135)]), 0, 0.003, false, 0, "paint", col)
-	VehicleDoors.hinge(k, mount, Vector3(0, 0.09, 0.15), Vector3.BACK, Vector3.RIGHT, 0.008, "paint", col)
-	VehicleDoors.pull(k, mount, Vector3(0, 0.06, -0.164), Vector3.FORWARD, Vector3.UP, 0.035, 0.004)
+	# The lid's hinge is a pressed one, five centimetres wide on the can's
+	# back end: three rolled knuckles on their pin, and the two leaves riveted
+	# to the lid and the body. A door hinge's pin heads, straps and screws
+	# (VehicleDoors.hinge) are millimetres here, and a roof or bed carries a
+	# dozen cans.
+	VehicleBody.rod(k, mount, Vector3(-0.0224, 0.09, 0.158), Vector3(0.0224, 0.09, 0.158), 0.0042, "steel", null, 6, false, -1.0, false, false)
+	for i in 3:
+		VehicleBody.rod(k, mount, Vector3((i - 1) * 0.0136 - 0.0058, 0.09, 0.158), Vector3((i - 1) * 0.0136 + 0.0058, 0.09, 0.158), 0.008, "paint", col, 8, false)
+	k._box(mount, Vector3(0.036, 0.018, 0.004), Vector3(0, 0.081, 0.152), "paint", col, Vector3.ZERO, false)
+	if not open:
+		k._box(mount, Vector3(0.036, 0.012, 0.004), Vector3(0, 0.097, 0.157), "paint", col, Vector3.ZERO, false)
+	# The grip on the front latch: one bent wire, its feet on the plate.
+	VehicleFrames.path(k, mount, [Vector3(0, 0.0425, -0.163), Vector3(0, 0.0425, -0.1748), Vector3(0, 0.0775, -0.1748), Vector3(0, 0.0775, -0.163)], 0.004, "metal_dark", null, 6, false, 0)
 	k._fold(mount)
 
 
@@ -573,10 +706,11 @@ static func tow_shackle(k: VehicleModels, parent: Node3D, center: Vector3, facin
 	var z := size.z / 2 + radius * 0.85
 	k._box(mount, Vector3(radius * 0.8, radius * 0.7, radius * 1.15), Vector3(0, -0.02, size.z / 2 + radius * 0.42), mat, col)
 	# The bow is one bent bar: its pieces run on into each other round the
-	# curve (no joint balls), and both its ends lie inside the pin.
+	# curve (no joint balls), and both its ends lie inside the pin. Eight
+	# pieces round a bow a hand's width across leave a millimetre's facet.
 	var points: Array = []
-	for i in 13:
-		var a := PI + PI * i / 12.0
+	for i in 9:
+		var a := PI + PI * i / 8.0
 		points.append(Vector3(cos(a) * radius, sin(a) * radius - 0.02, z))
 	VehicleFrames.path(k, mount, points, radius * 0.23, mat, col, 8, true, 0)
 	VehicleFrames.tube(k, mount, Vector3(-radius * 1.35, -0.02, z), Vector3(radius * 1.35, -0.02, z), radius * 0.24, "steel", null, 10)
@@ -614,7 +748,9 @@ static func smoke_tube(k: VehicleModels, parent: Node3D, center: Vector3, rotati
 	var meshes: Array = _smoke_tubes[key]
 	k._add(mount, meshes[0], "gunmetal_w", null, Vector3(0, length / 2, 0))
 	k._add(mount, meshes[1], "burnt", Color(0.018, 0.019, 0.018), Vector3(0, length - depth / 2, 0))
-	k._add(mount, _ring(radius * 0.62, radius * 1.02), "gunmetal", Color(0.29, 0.30, 0.28), Vector3(0, length, 0), Vector3.ZERO, Vector3(1, 0.3, 1))
+	# (the rolled lip goes round in the tube's own twelve sides: sixteen put
+	# its flats out of step with the barrel's and added nothing)
+	k._add(mount, _ring(radius * 0.62, radius * 1.02, 12), "gunmetal", Color(0.29, 0.30, 0.28), Vector3(0, length, 0), Vector3.ZERO, Vector3(1, 0.3, 1))
 	k._fold(mount)
 	VehicleFrames.cyl(k, parent, radius * 1.15, radius * 1.15, length * 0.16, center - axis * length * 0.30, rotation, "gunmetal_w", null, 12, false)
 
@@ -677,11 +813,19 @@ static func smoke_bank(k: VehicleModels, parent: Node3D, center: Vector3, size: 
 static func periscope(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, rotation := Vector3.ZERO) -> void:
 	var mount := k._pivot(parent, center)
 	mount.rotation = rotation
-	k._box(mount, size, Vector3.ZERO, "gunmetal_w")
+	# The head is a welded armour box, its edges ground round, so each one
+	# catches a line of light on a dark deck (a wreck's keeps its plain box).
+	if k.wreck:
+		k._box(mount, size, Vector3.ZERO, "gunmetal_w")
+	else:
+		k._add(mount, BevelMesh.make(size, minf(0.008, minf(size.x, minf(size.y, size.z)) * 0.12)), "gunmetal_w", null, Vector3.ZERO)
 	var face := -size.z / 2
 	k._box(mount, Vector3(size.x * 0.86, size.y * 0.72, 0.008), Vector3(0, 0, face - 0.003), "rubber", null, Vector3.ZERO, false)
 	if not k.burnt:
-		k._box(mount, Vector3(size.x * 0.73, size.y * 0.52, 0.006), Vector3(0, 0, face - 0.008), "glass", Color(0.18, 0.30, 0.27), Vector3.ZERO, false)
+		# A vision block is a stack of laminated armour glass, green-black from
+		# the edge, not a pale window: the armoured profile and the blocks'
+		# green (a wreck's keeps the plain glass it had).
+		k._box(mount, Vector3(size.x * 0.73, size.y * 0.52, 0.006), Vector3(0, 0, face - 0.008), "glass" if k.wreck else "armor_glass", Color(0.18, 0.30, 0.27) if k.wreck else VehicleMounts.BLOCK, Vector3.ZERO, false)
 	# The overhanging lip shields the glass without becoming another window.
 	k._box(mount, Vector3(size.x * 1.04, size.y * 0.12, size.z * 0.65), Vector3(0, size.y * 0.48, face * 0.6), "gunmetal_w", null, Vector3.ZERO, false)
 	for side: float in [-1.0, 1.0]:
@@ -961,9 +1105,18 @@ static func panel_hatch(k: VehicleModels, parent: Node3D, center: Vector3, size:
 		k._box(mount, Vector3(rim, t * 0.55, size.z), Vector3(side * (size.x + rim) * 0.5, -t * 0.225, 0), material, col)
 	k._add(mount, BevelMesh.make(Vector3(size.x - 0.01, t, size.z - 0.01), minf(t * 0.3, 0.012)), material, col, Vector3.ZERO)
 	k._box(mount, Vector3(size.x - 0.004, 0.006, size.z - 0.004), Vector3(0, -t * 0.5 + 0.004, 0), "rubber", null, Vector3.ZERO, false)
+	# A lid's stiffeners are pressed in two parallel ribs running from its hinge
+	# straps to its far edge, where it would bend as it swings open: crossed
+	# ribs read from the battle camera as a "+" drawn on every roof hatch. (A
+	# wreck's lid keeps the crossed pair it has always had.)
 	var rib := minf(0.04, minf(size.x, size.z) * 0.08)
-	k._add(mount, BevelMesh.make(Vector3(size.x * 0.7, t * 0.3, rib), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
-	k._add(mount, BevelMesh.make(Vector3(rib, t * 0.3, size.z * 0.7), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
+	if k.wreck:
+		k._add(mount, BevelMesh.make(Vector3(size.x * 0.7, t * 0.3, rib), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
+		k._add(mount, BevelMesh.make(Vector3(rib, t * 0.3, size.z * 0.7), t * 0.1), material, col, Vector3(0, t * 0.6, 0))
+	else:
+		var ribs := BevelMesh.make(Vector3(rib, t * 0.3, size.z * 0.72), t * 0.1)
+		for side: float in [-1.0, 1.0]:
+			k._add(mount, ribs, material, col, Vector3(side * size.x * 0.3, t * 0.6, signf(hinge_side) * size.z * 0.06))
 	var hinge_z := signf(hinge_side) * (size.z * 0.5 - 0.02)
 	for side: float in [-1.0, 1.0]:
 		VehicleDoors.hinge(k, mount, Vector3(side * size.x * 0.3, t * 0.5, hinge_z), Vector3.UP, Vector3.RIGHT, minf(0.016, t * 0.3), material, col)
