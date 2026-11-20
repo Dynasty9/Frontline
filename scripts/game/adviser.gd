@@ -87,52 +87,59 @@ func _suggest(ti: Dictionary) -> void:
 	for tn in _towns:
 		if is_instance_valid(tn) and tn.team == team:
 			held += 1
-	if held >= RETIRE_TOWNS and _taken.is_empty():
-		objs = []
-		_picked.clear()
-		return
-	# from home: the middle of our FOBs (where the force comes from)
-	var home := Vector3.ZERO
-	var nf := 0
-	for f in ti.get("fobs", []):
-		var fe = world.entities.get(int(f[0]))
-		if fe != null and is_instance_valid(fe):
-			home += fe.position
-			nf += 1
-	if nf == 0:
-		objs = []
-		return
-	home /= float(nf)
 	# a suggested town that's ours now is shown done a moment, then makes way
 	for eid in _picked.keys():
 		var tn = world.entities.get(int(eid))
 		if tn == null or not is_instance_valid(tn):
 			_picked.erase(eid)
+			_taken.erase(eid)
 		elif tn.team == team and not _taken.has(eid):
 			_taken[eid] = world.time
 			world.stat("adviser_town_taken")
+		elif tn.team != team:
+			# A completion is feedback about current ownership, not a latch.
+			_taken.erase(eid)
 	for eid in _taken.keys():
 		if world.time - float(_taken[eid]) > 8.0:
 			_taken.erase(eid)
 			_picked.erase(eid)
-	# the nearest towns not ours: nobody's first, then the enemy's
-	var cands := []
-	for tn in _towns:
-		if not is_instance_valid(tn) or tn.team == team or _picked.has(tn.eid):
-			continue
-		var dd := Defs.flat(tn.position - home).length() + (0.0 if tn.team < 0 else 250.0)
-		cands.append([dd, tn])
-	cands.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
-	var used := {}
-	for eid in _picked:
-		used[String(_picked[eid])] = true
-	for c in cands:
-		if _picked.size() >= 2:
-			break
-		var letter := "A" if not used.has("A") else "B"
-		used[letter] = true
-		_picked[c[1].eid] = letter
-		world.stat("adviser_suggest")
+	if held >= RETIRE_TOWNS:
+		# Keep valid acknowledgements for their remaining display time,
+		# but retire active suggestions before considering any new ones.
+		for eid in _picked.keys():
+			if not _taken.has(eid):
+				_picked.erase(eid)
+	else:
+		# from home: the middle of our FOBs (where the force comes from)
+		var home := Vector3.ZERO
+		var nf := 0
+		for f in ti.get("fobs", []):
+			var fe = world.entities.get(int(f[0]))
+			if fe != null and is_instance_valid(fe):
+				home += fe.position
+				nf += 1
+		if nf == 0:
+			objs = []
+			return
+		home /= float(nf)
+		# the nearest towns not ours: nobody's first, then the enemy's
+		var cands := []
+		for tn in _towns:
+			if not is_instance_valid(tn) or tn.team == team or _picked.has(tn.eid):
+				continue
+			var dd := Defs.flat(tn.position - home).length() + (0.0 if tn.team < 0 else 250.0)
+			cands.append([dd, tn])
+		cands.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
+		var used := {}
+		for eid in _picked:
+			used[String(_picked[eid])] = true
+		for c in cands:
+			if _picked.size() >= 2:
+				break
+			var letter := "A" if not used.has("A") else "B"
+			used[letter] = true
+			_picked[c[1].eid] = letter
+			world.stat("adviser_suggest")
 	var out := []
 	for eid in _picked:
 		var tn: Structure = world.entities[eid]
@@ -179,7 +186,7 @@ func _watch_fobs(ti: Dictionary) -> void:
 		var was := float(_fob_hp.get(eid, fe.hp))
 		_fob_hp[eid] = fe.hp
 		if fe.hp < was - 5.0:
-			_say("fob", "FOB %s is under attack. {jump_alert} takes you there: send a squad to it with {defend}." % String(f[1]))
+			_say("fob", "FOB %s is under attack. {jump_alert} jumps to the latest alert or ping. Send a squad to it with {defend}." % String(f[1]))
 
 
 func _watch_idle(ti: Dictionary) -> void:

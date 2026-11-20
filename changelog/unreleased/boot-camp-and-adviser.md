@@ -45,3 +45,8 @@ caption = "Offered once, on a first launch"
   minutes, a FOB under attack.
 - It waits a long while before saying anything, says each thing only a few times, and stops suggesting once you
   hold four towns. Turn it off in **Settings → Interface → Adviser**.
+
+- Adviser completion marks follow current ownership. A reversed suggestion becomes active again; at the
+  four-town cutoff, valid completions finish their brief display without adding new suggestions or map markers.
+- The transient hint describes the shortcut accurately: it jumps to the latest alert or ping, which may differ
+  from the Adviser message still on screen.
