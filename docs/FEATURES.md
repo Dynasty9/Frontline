@@ -1433,6 +1433,15 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   graphics setting (Cloud shadows on everything; on from High, and in Cinematic; off, the grass and bushes fold the
   shade into their colour instead), works in both renderers and is drawn only on each screen, never simulated.
   Vehicle windows and the opt-in mocap soldiers still take full sun.
+- **Smoke and dust throw shadows** (`smoke_shadow.gd`): a smoke screen, a shell's dust cloud, a burning house's
+  column, a barrage's pall and a column's road dust each shade the ground, the soldiers, vehicles and trees under
+  them and the sunlit haze, so the sun's shafts stop at the smoke. Everything smoking is laid down as a soft blob of
+  optical depth on a small map (256 texels, over 256 m to 1 km round the camera's focus as it zooms out), each the
+  smoke's own squashed-ellipsoid shape projected along the sun's rays, so at midday the shade lies under the smoke and
+  at golden hour it stretches out long away from the sun, and darker, as the slanting rays cross more smoke. The map
+  is a 2D scene of additive sprites drawn on the graphics card each frame (about 0.01 ms); it keeps the smoke's height
+  too, so a hilltop or the air above a pall stays in the sun. Every surface reads it through the clouds' shade
+  (`cloud_sun`), so it works whatever the Cloud shadows setting reaches. Looks only; not in the browser.
 - **Layered air and weather across the map** (`air_layers.gd`, `weather_grid.gd`): the air between the camera and the
   far side of the field lies in layers. Mist lies level in the low ground, a few metres deep over the valley floor (deeper and thinner at dawn), filling the valley, the hollows and
   the ground along the water and leaving the rises clear, torn into wisps by the wind (thickest at dawn, rising off wet ground as it

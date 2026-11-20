@@ -16,6 +16,8 @@ const PLUMES := {"M": [1.0, 30, 13.0, 6, 16.0, 7.0], "L": [1.7, 52, 20.0, 10, 24
 const MAX_PLUMES := {"M": 8, "L": 6}
 const SMALL_KINDS := ["dust", "smoke", "fire", "spark", "dirt_spurt", "brass", "water_spurt"]
 
+## FL_DEBUG_SMOKE_HIDE: smoke screens not drawn (their shadows still are), for measuring.
+static var _hide_screens := OS.has_environment("FL_DEBUG_SMOKE_HIDE")
 ## The browser build's renderer (OpenGL), which can't do everything Forward+ does.
 static var gl := RenderingServer.get_current_rendering_method() == "gl_compatibility"
 
@@ -1636,7 +1638,9 @@ func make_smoke_screen() -> Node3D:
 func set_smoke_screen(h: Node3D, r: float) -> void:
 	var volume := h.get_node_or_null("ScreenVolume") as MeshInstance3D
 	if volume:
-		volume.visible = r > 0.3
+		# (FL_DEBUG_SMOKE_HIDE: the screen not drawn, its shadow still cast, to
+		# see and measure the ground under it)
+		volume.visible = r > 0.3 and not _hide_screens
 		if volume.visible:
 			volume.scale = Vector3(3.15, 1.36, 2.7) * r
 			volume.position = (Fires.WIND * 0.58 + Vector3.UP * 0.44) * r
@@ -2164,6 +2168,27 @@ func plume(p: Vector3, size: float) -> void:
 		set_ratio(ps, clampf(fx * strength, 0.1, 1.0))
 		Mats.set_inst(ps, &"seed", randf() * 100.0)
 		set_emitting(ps, true)
+
+
+## (view) The strikes' pillars of smoke still standing, as [where, seconds
+## since it went up, how much smoke (0..1), how big]: the shade each throws
+## (SmokeShadow).
+func plume_columns() -> Array:
+	var out := []
+	for cls in _plumes:
+		var big := float(PLUMES[cls][0])
+		for e in _plumes[cls]:
+			var node: Node3D = e[0]
+			var t := float(e[1])
+			var emit := float(e[2])
+			var life := float(e[3])
+			var col: GeometryInstance3D = node.get_meta("col")
+			if not col.visible or t > emit + life:
+				continue
+			var amount := float(node.get_meta("strength", 1.0)) * smoothstep(0.0, 1.5, t) * (1.0 - smoothstep(emit * 0.6, emit + life * 0.6, t))
+			if amount > 0.02:
+				out.append([node.global_position, t, amount, big])
+	return out
 
 
 func _tick_plumes(dt: float) -> void:

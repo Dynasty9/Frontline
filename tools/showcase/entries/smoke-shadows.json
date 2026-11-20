@@ -1,0 +1,65 @@
+{
+  "entry": "changelog/unreleased/smoke-shadows.md",
+  "title": "Smoke and dust cast shadows",
+  "version": "unreleased",
+  "kind": "improved",
+  "summary": "Smoke screens, dust clouds, fire columns, palls and road dust shade the ground, units and sunlit haze beneath them and away from the sun, as thick as the smoke drawn there.",
+  "medium": "still",
+  "stage": "Game battle map (--aivai town square) off-screen, frozen at 26 s with FL_DEBUG_AIR_FLIP=26 FL_DEBUG_AIR_FLIP_SHADOW=1 FL_DEBUG_AIR_FLIP_SHOT: the shadow off and on in one frozen frame (same-state frames 60 apart differ by 0.1/255 on average), plus FL_DEBUG_SMOKE_HIDE runs with the screens undrawn to measure the ground under them; motion clip from --write-movie of the same stage.",
+  "rationale": "The shade is subtle beside the smoke itself, so each still is the same frozen frame OFF, ON and the signed difference x4; a top-down view with the screens undrawn checks its direction against the engine's own shadows; a clip shows it following the drifting smoke without shimmer.",
+  "source_ref": "the head of dines/awesome-ramanujan-ac61b5 (Godot 4.7.2 Forward+, Windows, RTX 3090). Crops, labels and difference panels: PIL; WebM: VP9 via Playwright ffmpeg.",
+  "measurements": {
+    "smoke_screen_calibration": "blobs fitted to smoke_screen.gdshader's density integrated vertically (0.42 extinction a metre, averaged over rolls and noise): full screen r 6.5 peaks at tau 0.73 straight down; two blobs, tau0 0.144 r and 0.098 r",
+    "ground_under_core": "screens hidden, linear luminance, darkest 1% of the shade: midday (sun 52 deg) 50% darker oblique and top-down; golden hour (sun 24 deg) 53% oblique, 51% top-down; single darkest pixel 70% / 79% where screens overlap; rest of frame 1.000",
+    "direction": "top-down, shade centre vs drawn-smoke centre: golden hour 104 px (~3.8 m) at +15 deg from the sun-away direction; midday 49 px (~1.8 m), direction not meaningful at that offset",
+    "smoke_self_shade": "pixels where the drawn smoke gives 60-100% of the light: 1% darker with the shade on, while the ground behind them darkens 9% (midday) / 16% (golden hour)",
+    "gpu": "map draw 0.011 ms (viewport GPU time, 1440p Ultra); per-pixel lookup ~0.02 ms (16x amplified build /16); whole-frame interleaved A/B within the shared GPU's noise"
+  },
+  "sources": [
+    {
+      "file": "changelog/unreleased/smoke-shadows/golden-hour-off-on-diff.jpg",
+      "sha256": "b7800e590258d511ebe44483bceb0cbc3c183a242cd4bc4479c873def2dbaee7",
+      "caption": "--mood=golden --zoom=55 --pitch=-35 --aivai --seed=3 --focus=0,0 --focus-struct=town --demo-support=smoke --demo-at=1, 1920x1080, Ultra preset; flip frames 45 (off) and 75 (on), crop 960x540 at (640,160); third panel 128 + 4 x (on - off)."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/midday-off-on-diff.jpg",
+      "sha256": "9558cde7b102d68f98aeb35f213bf4115fbe71e91c0d3c013c47737f34980557",
+      "caption": "--mood=day --zoom=55 --pitch=-35 --aivai --seed=3 --focus=0,0 --focus-struct=town --demo-support=smoke --demo-at=1, 1920x1080, Ultra preset; as above."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/golden-hour-top-down-diff.jpg",
+      "sha256": "3a92759c7b9e616e82e93473bd62e0aab5adf6a298779ec0eaeb261e43b5dc6e",
+      "caption": "--mood=golden --zoom=60 --pitch=-86 --aivai --seed=3 --focus=0,0 --focus-struct=town --demo-support=smoke --demo-at=1, 1920x1080, Ultra preset, FL_DEBUG_SMOKE_HIDE=1; crop 960x540 at (480,0)."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/golden-hour-drift.webm",
+      "sha256": "c99a6c7b8a609e61ace4873fc0d1ab3ce421fc686df04590c31b2bb335138b23",
+      "caption": "Seconds 12-24 of a 60 fps --write-movie (1600x900 frames), every 2nd frame (30 fps): --aivai --seed=3 --mood=golden --focus=0,0 --focus-struct=town --zoom=38 --pitch=-38 --demo-support=smoke --demo-at=1."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/golden-hour-drift.jpg",
+      "sha256": "6b8d8e52de6c1ec77c3ea712de6d2dbbb485c9a12439594c1c35dd14e23fbbdf",
+      "caption": "Frame at 20 s of the clip."
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/zoom-threshold.webm",
+      "sha256": "206761411ecea7d63f709c65085756645d5c8b144cb71dbb9901e98afa048865"
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/zoom-threshold.jpg",
+      "sha256": "c09ed37ddec2716b029513c5f6aa69f1c1fe4ae69720bc3ed4c06cc4e6700067"
+    },
+    {
+      "file": "changelog/unreleased/smoke-shadows/zoom-threshold-capture.json",
+      "sha256": "a05007d279fc6c81c6a3456175c5298b217ecd8c2c6a46bf8de177f26224d1ae"
+    }
+  ],
+  "output": null,
+  "supplemental_zoom_review": {
+    "base_head": "22b8f94e80b7c352ec13c19d32891c553d0c4866",
+    "candidate_source_sha256": "51c25b6c5310b28c5d0b41a45e41b278e1c77b5ac0b08efa6d433d427754cba7",
+    "stage": "Embedded inert harness in zoom-threshold-capture.json",
+    "rationale": "Isolates the generic map-resolution discontinuity at fixed scene/phase. Existing gameplay clip and stills remain the primary evidence.",
+    "hardware": "Software Vulkan only; no performance measurement."
+  }
+}

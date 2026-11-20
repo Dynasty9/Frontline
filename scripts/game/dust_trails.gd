@@ -75,6 +75,21 @@ func feed(movers: Array) -> void:
 		best[5] = minf(1.6, float(best[5]) + 0.35 * k)
 
 
+## The shade each stretch of dust throws (SmokeShadow): a long low blob
+## along the road. Dust is pale and thin: a strip a little darker, no more.
+func shadow_casters(sh: SmokeShadow) -> void:
+	for sg in _s:
+		var v: FogVolume = sg[0]
+		if not v.visible:
+			continue
+		var dens := float((sg[1] as ShaderMaterial).get_shader_parameter("density")) / _debug_k
+		if dens < 0.005:
+			continue
+		var sz := v.size
+		var c := v.position + Vector3.UP * (sz.y * (0.3 - 0.5))
+		sh.puff(c, sz.x * 0.3, sz.z * 0.2, sz.y * 0.2, -v.rotation.y, dens * 0.6 * sz.y * 0.5, float(_s.find(sg)) * 0.53)
+
+
 ## How far p is from the stretch a..b (flat), or a long way past its ends.
 func _off_line(p: Vector3, a: Vector3, b: Vector3) -> float:
 	var ab := Defs.flat(b - a)

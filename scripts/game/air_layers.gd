@@ -69,6 +69,7 @@ var plumes: SmokePlumes  # the smoke hanging close up (volumetric fog only)
 var trails: DustTrails  # the dust vehicles raise close up (volumetric fog only)
 var curtains: RainCurtains  # under rain, the showers further off (both renderers)
 var headlights: Headlights  # after dark, the beams of the vehicles driving near the camera (not in the browser)
+var shadow: SmokeShadow  # the shade the smoke and dust throw (not in the browser)
 var volume: FogVolume
 var mat: ShaderMaterial
 var _mood := ""
@@ -94,6 +95,19 @@ var _flip_frame := -1
 ## FL_DEBUG_AIR_FLIP_GLOW: the flip leaves the layers on and turns only the
 ## fires' light on their smoke and the bursts' flash in the pall off and on.
 var _flip_glow := OS.has_environment("FL_DEBUG_AIR_FLIP_GLOW")
+## FL_DEBUG_AIR_FLIP_SHADOW: the flip leaves everything on and turns only the
+## smoke's shadow off and on (SmokeShadow).
+var _flip_shadow := OS.has_environment("FL_DEBUG_AIR_FLIP_SHADOW")
+## FL_DEBUG_AIR_FLIP_SHOT=PATH: the flip saves a frame from the middle of each
+## block, as PATH_on_<frame>.png / PATH_off_<frame>.png.
+var _flip_shot := OS.get_environment("FL_DEBUG_AIR_FLIP_SHOT") if OS.has_environment("FL_DEBUG_AIR_FLIP_SHOT") else ""
+## FL_DEBUG_AIR_FLIP_BLOCK=N, FL_DEBUG_AIR_FLIP_FRAMES=M: blocks of N frames
+## (30) for M frames in all (240), e.g. many short blocks to time a change
+## while other programs' load comes and goes. It prints the GPU's time a frame
+## each way at the end.
+var _flip_block := int(OS.get_environment("FL_DEBUG_AIR_FLIP_BLOCK")) if OS.has_environment("FL_DEBUG_AIR_FLIP_BLOCK") else 30
+var _flip_frames := int(OS.get_environment("FL_DEBUG_AIR_FLIP_FRAMES")) if OS.has_environment("FL_DEBUG_AIR_FLIP_FRAMES") else 240
+var _flip_gpu := [[], []]  # (each frame's GPU time, off and on)
 var _debug_k := float(OS.get_environment("FL_DEBUG_AIR")) if OS.has_environment("FL_DEBUG_AIR") else 1.0  # thicken it all, to see where it lies
 
 
@@ -110,6 +124,10 @@ func setup(a: Atmosphere) -> void:
 		headlights = Headlights.new()
 		add_child(headlights)
 		headlights.setup(world)
+	if SmokeShadow.supported():
+		shadow = SmokeShadow.new()
+		add_child(shadow)
+		shadow.setup(world, self)
 	apply_mood(atmo.mood)
 
 
@@ -245,6 +263,8 @@ func _process(dt: float) -> void:
 			grid.dust_fresh = false
 			trails.feed(grid.vehicle_dust)
 		trails.tick(dt, volume != null and volume.visible)
+	if shadow:
+		shadow.tick(dt)
 	curtains.level = atmo.by_mood(RAIN_CURTAINS, 0.0)
 	curtains.tick(dt)
 	if headlights:
@@ -275,6 +295,10 @@ func _ab(real_dt: float) -> void:
 ## With (1) or without (0) everything this adds: the volume and plumes, the
 ## water's caustics, and (for the flip) the fog settings as they were before.
 func _show(state: int) -> void:
+	if _flip_shadow and _flip_frame >= 0:
+		if shadow:
+			shadow.enabled_k = float(state)
+		return
 	if _flip_glow and _flip_frame >= 0:
 		if plumes:
 			plumes.glow_k = float(state)
@@ -316,14 +340,41 @@ func _flip() -> void:
 			return
 		Engine.time_scale = 0.0
 		_flip_frame = Engine.get_process_frames()
+		var to_sun: Vector3 = atmo.sun.global_transform.basis.z.normalized()
+		print("AIR FLIP sun: elevation %.1f deg, toward (x %.3f, z %.3f); camera yaw %.3f" % [rad_to_deg(asin(clampf(to_sun.y, -1.0, 1.0))), to_sun.x, to_sun.z, world.cam.yaw if world.cam else 0.0])
 	var n := Engine.get_process_frames() - _flip_frame
-	if n >= 240:
+	var vp := get_viewport().get_viewport_rid()
+	RenderingServer.viewport_set_measure_render_time(vp, true)
+	if n >= _flip_frames:
+		# (the GPU's time a frame each way, leaving out each block's first
+		# frames; and the medians, which other programs' bursts don't drag about)
+		if _ab_n[0] > 0 and _ab_n[1] > 0:
+			print("AIR FLIP gpu: off %.3f ms (%d frames), on %.3f ms (%d frames); medians off %.3f, on %.3f" % [_ab_sum[0] / _ab_n[0], _ab_n[0], _ab_sum[1] / _ab_n[1], _ab_n[1], _median(_flip_gpu[0]), _median(_flip_gpu[1])])
+		if shadow and shadow.gpu_n > 0:
+			print("AIR FLIP smoke shadow map gpu: %.3f ms (%d frames)" % [shadow.gpu_sum / shadow.gpu_n, shadow.gpu_n])
 		get_tree().quit()
 		return
-	var state := 1 if (n / 30) % 2 == 0 else 0
-	if n % 30 == 0:
+	var state := 1 if (n / _flip_block) % 2 == 0 else 0
+	if n % _flip_block >= mini(8, _flip_block / 2):
+		var ms := RenderingServer.viewport_get_measured_render_time_gpu(vp)
+		_ab_sum[state] += ms
+		_ab_n[state] += 1
+		(_flip_gpu[state] as Array).append(ms)
+	if _flip_shot != "" and n % _flip_block == _flip_block / 2:
+		var img := get_viewport().get_texture().get_image()
+		if img:
+			img.save_png("%s_%s_%d.png" % [_flip_shot, "on" if state == 1 else "off", n])
+	if n % _flip_block == 0:
 		_show(state)
 		print("AIR FLIP %s %d" % ["on" if state == 1 else "off", n])
+
+
+static func _median(a: Array) -> float:
+	if a.is_empty():
+		return 0.0
+	var s := a.duplicate()
+	s.sort()
+	return float(s[s.size() >> 1])
 
 
 ## A blast (fx.gd's _explode): smoke and dust in the grid, and close up a
@@ -467,9 +518,12 @@ void fog() {
 	DENSITY = total * strength * far * clamp(min(inside.x, inside.y) / edge, 0.0, 1.0);
 	vec3 col = (mist_col * mist + haze_col * haze + smoke_col * smoke + dust_col * dust + rain_col * rain) / max(total, 1e-6);
 	// under a cloud the air isn't sunlit: follow the sun's ray down to the
-	// ground's shadow pattern, so the clouds cast shafts through the haze
+	// ground's shadow pattern, so the clouds cast shafts through the haze; and
+	// in the shade of a smoke screen or a pall it isn't either, so the shafts
+	// stop at the smoke (SmokeShadow: only smoke higher up the ray than this
+	// air shades it)
 	vec3 to_sun = cloud_sun_disc.xyz;
-	float shade = cloud_sun(p - to_sun * (h / max(to_sun.y, 0.2)));
+	float shade = cloud_only(p - to_sun * (h / max(to_sun.y, 0.2))) * smoke_sun(p);
 	// and where a ridge stands between this air and a low sun: up the sun's ray
 	// over the ground a few times, out to a couple of hundred metres (the
 	// houses' and trees' shadows the sun's own shadow map gives the fog)

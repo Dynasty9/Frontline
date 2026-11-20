@@ -165,6 +165,7 @@ game/vfx.gd             GPU particle explosions, smoke, flames, char, grass fire
 game/gunfx.gd           gunfire on the GPU: tracers, muzzle flashes, impacts, sparks, grit, brass (MultiMesh rings flown by their shaders)
 game/atmosphere.gd      sky, sun, fog, ground shader, post effects, moods
 game/cloud_shadow.gd    the clouds' drifting shade on everything (global shader uniforms; the engine's light model in a light())
+game/smoke_shadow.gd    the shade smoke and dust throw: a sun-projected opacity map read through cloud_sun()
 game/grass.gd           instanced grass, bushes and stones
 game/mats.gd            procedural surface uber-shader, foliage, camouflage netting
 game/vehicle_models.gd  lofted procedural vehicle models (also used for wrecks and the menu); dispatches to
