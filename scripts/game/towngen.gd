@@ -43,6 +43,7 @@ var square_flag: Array = []  # the flagpole on it (decor; the town's supply dump
 ## decor, so every older piece keeps its place in the list and so its look.
 var _yard_decor: Array = []
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
+var _plant_decor: Array = []  # what grows in the gardens (decor, after the shops'; see _planting)
 
 
 func _init(m) -> void:
@@ -549,7 +550,8 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 			continue
 		var bp := back + d * ((k + 0.5) * sl - W * 0.5) - n * 0.5
 		if kind < 0.7:
-			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 1})
+			# (a garden's hedge, kept clipped: Structure's low_wall variant 4)
+			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 4})
 		elif kind < 0.88:
 			mg._try("low_wall", bp, yaw_d, -1, {"size": Vector3(sl, 1.0, 0.5), "variant": 0})
 	var style := rng.randi() % 3
@@ -562,9 +564,11 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 			_d("fence", sp, yaw_along(n), Vector3(flen - 0.6, 1.1, style))
 	if not shop:
 		# a low front fence with a gate, a mailbox, a tree or a vegetable patch behind
-		if rng.randf() < 0.55:
+		var fenced := rng.randf() < 0.55
+		if fenced:
 			_front_fence(front, n, d, W, gate, drive_x, style)
-		if rng.randf() < 0.4:
+		var mailbox := rng.randf() < 0.4
+		if mailbox:
 			_d("mailbox", front + n * 0.5 + d * (W * 0.5 - 1.2), axis)
 		var yard := _depth - setback - dep
 		if yard > 3.0:
@@ -583,6 +587,11 @@ func _lot_house(front: Vector3, n: Vector3, d: Vector3, W: float, shop: bool) ->
 			elif r < 0.85 and not _in_wing(yc, 2.0):
 				_d("clothesline", yc, yaw_d)
 		_yard_life(front, n, d, W, hc, w, dep, setback, entrances)
+		var main_decor := decor
+		decor = _plant_decor
+		_planting(front, n, d, W, hc, w, dep, setback, entrances, fenced, mailbox, gate, drive_x)
+		_plant_decor = decor
+		decor = main_decor
 	if drive:
 		var dc := front + n * (setback + 2.6) + d * (-signf(side) * (W * 0.5 - 1.8))
 		var apron := FRONT - WALK if _curb_crossing(front + d * drive_x, n, d, 2.6) else 0.0
@@ -670,6 +679,122 @@ func _place_yard_life(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vect
 		has_shed = true
 	if yard > 4.4 and not has_set and not has_shed and life.randf() < 0.3:
 		_d_clear("trampoline", back + n * (yard * 0.5), 0.0, life.randi() % BuildingYards.PADS.size(), 1.7)
+
+
+## The shrubs a front garden is planted with, by how often (BuildingPlanting
+## kinds): box balls, hydrangeas, roses, lavender, now and then a golden
+## privet; and behind the house, where there's room for something bigger,
+## laurels too.
+const FRONT_SHRUBS := [0, 0, 1, 1, 2, 2, 3, 3, 5]
+const BACK_SHRUBS := [4, 4, 1, 1, 2, 5, 0]
+
+
+## What grows round a house (BuildingPlanting): along its front wall a bed of
+## flowers or a row of shrubs of one kind either side of the door (clear of the bins and the
+## pots by it), a clipped hedge along the front of a garden with no fence
+## (gaps for the path, the drive and the mailbox), and a shrub or two behind
+## the house at its corners. From a stream of its own seeded from where the
+## lot is, and placed after everything else, so the rest of the town is as it
+## was. Set dressing: no cover, and a blast or a truck flattens it.
+func _planting(front: Vector3, n: Vector3, d: Vector3, W: float, hc: Vector3, w: float, dep: float, setback: float, entrances: Array[Vector3], fenced: bool, mailbox: bool, gate: float, drive_x: float) -> void:
+	var pl := RandomNumberGenerator.new()
+	pl.seed = int(absf(front.x) * 13.0) * 7919 + int(absf(front.z) * 13.0) * 31 + 29
+	var axis := atan2(n.x, n.z)
+	var x0 := (hc - front).dot(d)  # (the house's middle along the street)
+	# where the yard's own things stand: the bins at the front corner away
+	# from the door, pots by it (drawn as _place_yard_life draws them)
+	var life := RandomNumberGenerator.new()
+	life.seed = int(absf(front.x) * 13.0) * 7919 + int(absf(front.z) * 13.0) * 31 + 17
+	var door := entrances[0] if not entrances.is_empty() else hc - n * dep * 0.5
+	var corner := -1.0 if (door - hc).dot(d) > 0.0 else 1.0
+	var bins := life.randf() < 0.7 and setback > 0.9
+	if bins:
+		life.randi_range(1, 2)
+		life.randi()
+	var pots := life.randf() < 0.35
+	var door_front := absf((door - hc).dot(n) + dep * 0.5) < 0.6
+	var door_x := (door - hc).dot(d)
+	# along the front wall, a bed or shrubs in each stretch clear of the door
+	var keep: Array[Vector2] = []
+	if door_front:
+		keep.append(Vector2(door_x - (2.1 if pots else 1.3), door_x + (2.1 if pots else 1.3)))
+	if bins:
+		var bx := corner * (w * 0.5 - 0.5)
+		keep.append(Vector2(bx - 0.95, bx + 0.95))
+	# (outside the paved apron round the house, clear of the front fence or
+	# hedge)
+	var face := hc - n * (dep * 0.5 + 0.6)
+	var room := setback - 1.35
+	for span: Vector2 in _clear_spans(-w * 0.5 + 0.3, w * 0.5 - 0.3, keep):
+		var len := span.y - span.x
+		var roll := pl.randf()
+		var mid := (span.x + span.y) * 0.5
+		if len < 0.9 or room < 0.35:
+			continue
+		if roll < 0.45:
+			_d("bed", face + d * mid, axis + PI, Vector3(len - 0.1, minf(0.75, room), 0))
+		elif roll < 0.85:
+			# a row as a gardener plants one: all of a kind, or (in a longer
+			# row, half the time) box balls at its ends and the kind between;
+			# no two quite the same size
+			var count := maxi(1, int(len / 1.3))
+			var kind: int = FRONT_SHRUBS[pl.randi() % FRONT_SHRUBS.size()]
+			var bloom := pl.randi() % 4 if pl.randf() < 0.85 else -1
+			var framed := count >= 3 and kind != BuildingPlanting.BOX and pl.randf() < 0.5
+			var size := pl.randf_range(0.6, 0.85)
+			for i in count:
+				var end := framed and (i == 0 or i == count - 1)
+				# (no wider than the room left before the hedge or fence: that
+				# stands 0.75 m into the lot, `room` is measured from 1.35 m)
+				var r := minf(size * pl.randf_range(0.85, 1.12) * (0.85 if end else 1.0), room - 0.15)
+				var x := span.x + (i + 0.5) * len / count + pl.randf_range(-0.15, 0.15)
+				if r >= 0.3:
+					_d("shrub", face - n * (r * 0.5 + 0.12) + d * x, pl.randf() * TAU, Vector3(r, BuildingPlanting.BOX if end else kind, -1 if end else bloom))
+	# a clipped hedge along the front of an unfenced garden
+	if not fenced and pl.randf() < 0.45:
+		var gaps: Array[Vector2] = [Vector2(gate - 0.75, gate + 0.75)]
+		if is_finite(drive_x):
+			gaps.append(Vector2(drive_x - 1.5, drive_x + 1.5))
+		if mailbox:
+			gaps.append(Vector2(W * 0.5 - 1.6, W * 0.5 - 0.8))
+		# A low front boundary frames the flowers instead of screening them.
+		var h := pl.randf_range(0.45, 0.65)
+		var green := pl.randi() % BuildingPlanting.HEDGES.size()
+		for span: Vector2 in _clear_spans(-W * 0.5 + 0.25, W * 0.5 - 0.25, gaps):
+			var len := span.y - span.x
+			if len < 0.6:
+				continue
+			var pieces := ceili(len / 2.2)
+			for i in pieces:
+				var px := span.x + (i + 0.5) * len / pieces
+				_d("hedge_trim", front + n * 0.45 + d * px, axis, Vector3(len / pieces, h, green))
+	# a shrub or two behind the house at its corners (not on the drive's side)
+	var yard := _depth - setback - dep
+	if yard > 3.0:
+		for e: float in [-1.0, 1.0]:
+			if is_finite(drive_x) and signf(drive_x) == e:
+				continue
+			if pl.randf() < 0.45:
+				var r := pl.randf_range(0.7, 1.1)
+				var p := front + n * (setback + dep + 1.0) + d * e * (W * 0.5 - 0.6)
+				var bloom := pl.randi() % 4 if pl.randf() < 0.7 else -1
+				if not _in_wing(p, r):
+					_d("shrub", p, pl.randf() * TAU, Vector3(r, BACK_SHRUBS[pl.randi() % BACK_SHRUBS.size()], bloom))
+
+
+## The stretches of [a, b] clear of `keep` (each [from, to]), in order.
+func _clear_spans(a: float, b: float, keep: Array[Vector2]) -> Array[Vector2]:
+	var sorted := keep.duplicate()
+	sorted.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.x < q.x)
+	var out: Array[Vector2] = []
+	var start := a
+	for k: Vector2 in sorted:
+		if k.x > start:
+			out.append(Vector2(start, minf(k.x, b)))
+		start = maxf(start, k.y)
+	if b > start:
+		out.append(Vector2(start, b))
+	return out
 
 
 func _curb_crossing(front: Vector3, n: Vector3, d: Vector3, width: float) -> bool:
@@ -813,7 +938,7 @@ func _park(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	for k in segs:
 		if k == segs / 2:
 			continue
-		mg._try("low_wall", front + n * 0.5 + d * ((k + 0.5) * W / segs - W * 0.5), yaw, -1, {"size": Vector3(W / segs, 1.0, 0.5), "variant": 1})
+		mg._try("low_wall", front + n * 0.5 + d * ((k + 0.5) * W / segs - W * 0.5), yaw, -1, {"size": Vector3(W / segs, 1.0, 0.5), "variant": 4})
 	_d("bin", front + n * 1.0 + d * 1.6)
 
 
@@ -1121,7 +1246,9 @@ func finish(build_view := true) -> void:
 			mg._keep_clear([Vector2(arr[k].x, arr[k].z), 3.6])
 	decor.append_array(_yard_decor)
 	decor.append_array(_shop_decor)
+	decor.append_array(_plant_decor)
 	_yard_decor = []
 	_shop_decor = []
+	_plant_decor = []
 	if build_view:
 		world.set_decor(decor, rect)

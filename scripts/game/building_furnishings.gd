@@ -67,7 +67,7 @@ static func window_box(k: BuildingKit, x: float, y: float, w: float, bloom: Colo
 	for sx: float in [-1.0, 1.0]:
 		k.plate(Vector3(0.03, 0.12, 0.16), Vector3(x + sx * w * 0.36, y - 0.04, z - 0.03), "metal_dark", Color(0.18, 0.18, 0.17))
 	k.part_with(Res.foliage_cards(false), Mats.leaf_cards(false), Transform3D(Basis.from_scale(Vector3(w * 0.5, 0.17, 0.12)), Vector3(x, y + 0.24, z)), Color(0.25, 0.4, 0.18), false)
-	k.part_with(Res.foliage_cards(false), Mats.leaf_cards(false), Transform3D(Basis.from_scale(Vector3(w * 0.42, 0.11, 0.1)), Vector3(x, y + 0.3, z + 0.02)), bloom, false)
+	k.part_with(Res.foliage_cards(false), Mats.leaf_cards_tinted(), Transform3D(Basis.from_scale(Vector3(w * 0.42, 0.11, 0.1)), Vector3(x, y + 0.3, z + 0.02)), bloom, false)
 
 
 # --- outside ---------------------------------------------------------------------------

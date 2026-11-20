@@ -226,6 +226,50 @@ door to the house) and some lawns with room for it a trampoline; these are drawn
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 
+## Planting
+
+`BuildingPlanting` builds what grows round a house from the trees' photographed leaves, each plant in its own
+colour (`Mats.leaf_cards_tinted`: the photo's light and shade over the part's tint, where plain leaf cards take only
+a hint of it). A plant is a skin of single leaves cut from the photo (four leaves, of varied sizes), facing out
+over a dark core, so it is dense with no see-through gaps, and it bakes with the rest of the scenery. Each skin is
+one of `Res.LEAF_VARIANTS` arrangements drawn from the plant's stream, so no two neighbours are leaf for leaf alike:
+- `shrub` (r across, of a kind in `KINDS`): a box ball shorn smooth; a hydrangea under big round heads of florets;
+  a rose bush, open, with long canes standing out of it and small flowers all over; lavender, a low silver-green
+  dome under purple spikes; a laurel; a golden privet. All but the box ball grow as a dome from the ground, broad
+  at the foot and never quite round, their crowns lighter with new growth (`Res.leaf_ball`'s skin starts at the
+  ground). One that isn't clipped grows lumpy, with lobes of leaves of their own sizes out of its shoulders and
+  loose sprays.
+- `hedge`: clipped, its faces, ends and top shorn flat, the faces leaning in a little as a hedge is cut, the top
+  lighter with new growth; a hedge's greens are `HEDGES`. Its faces are `Res.leaf_tile`s: leaves laid in real
+  measure over the whole height (so they keep their shape at any size), waving a centimetre or two as shears leave
+  them, each tile a variant turned end for end at random, so no seam or pattern shows along a hedge.
+- `bed`: turned earth edged with bricks on end, planted in rows, spires of flowers at the back, cushions of
+  flowers in the middle and a low edging in front, in two or three colours and white.
+
+The core casts the plant's shadow, so its leaves needn't. `TownGen._planting` places them after everything else,
+from a stream of its own seeded from where the lot is: along a house's front, outside the paved apron and clear of
+the fence, a bed or a row of shrubs (`FRONT_SHRUBS`: all of a kind, or box balls at the ends of a longer row with
+the kind between, no two quite the same size) in each stretch clear of the door, the bins and the pots (it draws the yard's stream as
+`_place_yard_life` does to know where they are); a clipped hedge along the front of nearly half the unfenced
+gardens, with gaps for the path, the drive and the mailbox; and a shrub or two behind the house at its corners
+(`BACK_SHRUBS`, laurels among them), never in a wing or on the drive's side. They're Decor (`shrub`,
+`hedge_trim`, `bed`): no cover, and a blast or a truck flattens them. The flowers in window boxes and pots by
+the door take their own colours the same way.
+
+The back of a garden is kept too:
+- The hedge along its back, a `low_wall` of variant 4, is a garden's hedge kept clipped, drawn by
+  `BuildingPlanting.hedge` with its leaves a little coarser for the number of them. In play it is the same as a
+  field hedge (variant 1): every rule reads `variant % 3`.
+- A vegetable plot (Decor `garden`, `BuildingPlanting.veg_patch`) is turned earth in a board edging, a crop to a row:
+  cabbages, lettuces, potatoes earthed up, carrots, and on most plots runner beans up crossed canes along its far
+  edge.
+- On a washing line (Decor `clothesline`, `BuildingYards.laundry`) hang sheets folded over it, shirts, towels and
+  trousers, pegged along its sag.
+
+Render a planted garden with `--building-kinds=house_garden` in the studio stage, every plant in rows (with the
+vegetable plots and a line of washing) with `--building-kinds=planting`, and the garden hedges with
+`--building-kinds=garden_hedges`.
+
 ## Wall fittings
 
 What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,

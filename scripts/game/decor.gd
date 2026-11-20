@@ -23,7 +23,7 @@ const BREAKABLE := {
 	"mailbox": [Vector3(0.3, 1.25, 0.45), 15.0], "bus_stop": [Vector3(3.3, 2.4, 1.6), 300.0],
 	"bins": [Vector3(1.3, 1.0, 0.75), 25.0], "pots": [Vector3(1.2, 0.5, 0.45), 15.0],
 	"bike": [Vector3(0.5, 1.0, 1.7), 15.0], "garden_set": [Vector3(1.7, 1.0, 1.7), 30.0], "kennel": [Vector3(0.75, 0.85, 0.95), 40.0],
-	"wares": [Vector3(1.6, 1.0, 1.0), 30.0], "shed": [Vector3(2.4, 2.3, 1.9), 120.0], "trampoline": [Vector3(3.3, 0.9, 3.3), 40.0],
+	"wares": [Vector3(1.6, 1.0, 1.0), 30.0], "shrub": [Vector3(1.0, 0.9, 1.0), 25.0], "hedge_trim": [Vector3(2.2, 1.0, 0.6), 60.0], "bed": [Vector3(2.0, 0.4, 0.7), 10.0], "shed": [Vector3(2.4, 2.3, 1.9), 120.0], "trampoline": [Vector3(3.3, 0.9, 3.3), 40.0],
 	"planter": [Vector3(1.2, 1.1, 1.2), 400.0], "bollard": [Vector3(0.2, 0.85, 0.2), 60.0],
 	"stall": [Vector3(2.6, 2.3, 1.5), 80.0], "fence": [Vector3(2.0, 1.1, 0.15), 40.0],
 	"clothesline": [Vector3(4.0, 1.9, 0.9), 20.0], "flagpole": [Vector3(0.2, 8.0, 0.2), 60.0],
@@ -520,23 +520,30 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"fence":
 			_fence(ex)
 		"garden":
+			# a vegetable plot at the bottom of a garden (BuildingPlanting)
 			var g: Vector3 = ex
-			_m(Res.box(Vector3(g.x, 0.05, g.z)), "earth", Vector3(0, 0.025, 0), null, Vector3.ZERO, false)
-			var rows := maxi(1, int(g.z / 0.75))
-			var per := maxi(1, int(g.x / 0.55))
-			var leaf: Color = [Color(0.3, 0.5, 0.2), Color(0.42, 0.55, 0.22), Color(0.25, 0.42, 0.25)][rng.randi() % 3]
-			for r in rows:
-				for k in per:
-					if rng.randf() < 0.85:
-						_leaf(rng.randf_range(0.15, 0.24), Vector3(-g.x * 0.5 + (k + 0.5) * g.x / per, 0.13, -g.z * 0.5 + (r + 0.5) * g.z / rows), leaf, false)
+			BuildingPlanting.veg_patch(BuildingKit.baked(_bake, rng, _at), g.x, g.z, rng)
 		"clothesline":
 			for x in [-2.0, 2.0]:
 				_m(Res.box(Vector3(0.07, 1.9, 0.07)), "wood", Vector3(x, 0.95, 0))
 				_m(Res.box(Vector3(0.06, 0.06, 0.9)), "wood", Vector3(x, 1.85, 0))
+			var wk := BuildingKit.baked(_bake, rng, _at)
 			for z in [-0.35, 0.35]:
 				_sag(h.transform * Vector3(-2.0, 1.85, z), h.transform * Vector3(2.0, 1.85, z), 0.15)
-				for i in rng.randi_range(2, 3):
-					_m(Res.box(Vector3(rng.randf_range(0.4, 0.7), rng.randf_range(0.5, 0.75), 0.02)), "fabric", Vector3(-1.4 + i * 1.1 + rng.randf_range(-0.2, 0.2), 1.45, z), CANVAS[rng.randi() % CANVAS.size()].lightened(0.25), Vector3.ZERO, false)
+				# the washing out on it (BuildingYards)
+				if rng.randf() < 0.85:
+					BuildingYards.laundry(wk.at_point(Vector3(0, 0, z)), 2.0, 1.85, 0.15, rng)
+		"shrub", "hedge_trim", "bed":
+			# what grows round the houses (BuildingPlanting)
+			var pk := BuildingKit.baked(_bake, rng, _at)
+			var v: Vector3 = ex
+			match kind:
+				"shrub":
+					BuildingPlanting.shrub(pk, v.x, int(v.y), int(v.z), rng)
+				"hedge_trim":
+					BuildingPlanting.hedge(pk, v.x, v.y, 0.55, BuildingPlanting.HEDGES[int(v.z) % BuildingPlanting.HEDGES.size()], rng)
+				"bed":
+					BuildingPlanting.bed(pk, v.x, v.y, rng)
 		"bins", "pots", "woodpile", "garden_set", "kennel", "bike", "shed", "trampoline":
 			# what people keep round their houses (BuildingYards)
 			var yk := BuildingKit.baked(_bake, rng, _at)

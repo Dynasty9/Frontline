@@ -269,6 +269,11 @@ func _ready() -> void:
 			BuildingFittings.house_number(k, Vector3(-3, 1.7, 0), 47, BuildingFittings.NUMBERS[0][0], BuildingFittings.NUMBERS[0][1])
 			BuildingFittings.letterbox(k, Vector3(-3, 1.15, 0), BuildingFittings.LETTERBOXES[0])
 			BuildingFittings.doormat(k, Vector3(-5, 0.14, 0.3), BuildingFittings.MATS[0]),
+		"planting": func(k: BuildingKit):
+			BuildingPlanting.shrub(k, 0.8, BuildingPlanting.HYDRANGEA, 0, k.rng)
+			BuildingPlanting.shrub(k.at_point(Vector3(2, 0, 0)), 1.1, BuildingPlanting.LAUREL, -1, k.rng)
+			BuildingPlanting.hedge(k.at_point(Vector3(0, 0, 3)), 2.2, 0.9, 0.55, BuildingPlanting.HEDGES[2], k.rng)
+			BuildingPlanting.bed(k.at_point(Vector3(0, 0, -3)), 2.4, 0.7, k.rng),
 		"furniture": func(k: BuildingKit):
 			BuildingInteriors.wardrobe(k, 0.0, BuildingInteriors.WOODS[0], k.rng)
 			BuildingInteriors.bookcase(k.at_point(Vector3(2, 0, 0)), 0.0, BuildingInteriors.WOODS[1], k.rng)
@@ -584,6 +589,60 @@ func _ready() -> void:
 		ls.free()
 		ds.free()
 	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
+
+	# What grows round a house keeps to the room the town gives it: a shrub of
+	# every kind within its spread (its lowest leaves on the ground) and under a
+	# window's sill, a hedge to its
+	# length and height, a bed flat on the ground within its strip; and the
+	# flowers are their own colour, not the leaves' green.
+	for s in 12:
+		var kind := s % BuildingPlanting.KINDS.size()
+		var pk := kit()
+		pk.rng.seed = s
+		BuildingPlanting.shrub(pk, 0.9, kind, s % 4 if s < 6 else -1, pk.rng)
+		var sb := _bounds(pk.sink.root, Transform3D.IDENTITY)
+		check(sb.position.y >= -0.08 and sb.end.y <= 1.02 and absf(sb.get_center().x) < 0.2 and sb.size.x <= 1.1 and sb.size.z <= 1.1, "a shrub keeps to its spread (%d: %s)" % [kind, sb])
+		var petals := 0
+		for child in pk.sink.root.get_children():
+			var tint: Variant = Mats.get_inst(child as GeometryInstance3D, &"tint")
+			if Mats.base_of((child as MeshInstance3D).material_override) == Mats.leaf_cards_tinted() and tint is Color and ((tint as Color).r > (tint as Color).g or (tint as Color).b > (tint as Color).g):
+				petals += 1
+		var blooms: Array = BuildingPlanting.KINDS[kind]["blooms"]
+		check((petals > 0) == (s < 6 and not blooms.is_empty()), "a flowering shrub's flowers are their own colour (%d: %d)" % [kind, petals])
+		pk.sink.root.free()
+		var hk2 := kit()
+		hk2.rng.seed = s
+		BuildingPlanting.hedge(hk2, 2.2, 0.9, 0.55, BuildingPlanting.HEDGES[s % BuildingPlanting.HEDGES.size()], hk2.rng)
+		var hb := _bounds(hk2.sink.root, Transform3D.IDENTITY)
+		check(hb.size.x <= 2.35 and hb.end.y <= 0.98 and hb.size.z <= 0.65, "a hedge keeps to its length and height (%s)" % hb)
+		hk2.sink.root.free()
+		var bk3 := kit()
+		bk3.rng.seed = s
+		BuildingPlanting.bed(bk3, 2.4, 0.7, bk3.rng)
+		var bb2 := _bounds(bk3.sink.root, Transform3D.IDENTITY)
+		check(bb2.size.x <= 2.6 and bb2.position.z >= -0.15 and bb2.end.z <= 0.85 and bb2.end.y <= 0.7, "a bed keeps to its strip, under a window's sill (%s)" % bb2)
+		bk3.sink.root.free()
+	# A garden's hedge (low_wall variant 4) is clipped within the hedge's own
+	# box (1.15 m high, 0.9 thick), its lowest leaves tucked into the ground.
+	for s in 4:
+		var gh := Structure.preview_model("low_wall", -1, 4, Vector3(3.6, 1.0, 0.5), false, 40 + s)
+		var ghb := _bounds(gh, Transform3D.IDENTITY)
+		check(gh.get_child_count() > 0 and ghb.size.x <= 3.8 and ghb.end.y <= 1.2 and ghb.size.z <= 0.95 and ghb.position.y >= -0.12, "a garden's hedge is clipped within its box (%s)" % ghb)
+		gh.free()
+	# A vegetable plot keeps inside its edging (its potato ridges half sunk in
+	# the earth), its bean canes (on most plots deep enough for them) no taller
+	# than a man.
+	var bean_plots := 0
+	for s in 10:
+		var vk := kit()
+		vk.rng.seed = s
+		BuildingPlanting.veg_patch(vk, 4.3, 2.6, vk.rng)
+		var vb := _bounds(vk.sink.root, Transform3D.IDENTITY)
+		check(vb.size.x <= 4.45 and vb.size.z <= 2.75 and vb.position.y >= -0.08 and vb.end.y <= 1.85, "a vegetable plot keeps to its edging (%s)" % vb)
+		if vb.end.y > 1.0:
+			bean_plots += 1
+		vk.sink.root.free()
+	check(bean_plots >= 4 and bean_plots <= 9, "most vegetable plots have a row of beans (%d of 10)" % bean_plots)
 
 	# What a ruined or shelled house sheds lies flat on the ground in front of
 	# the wall it came off, within its length and a metre and a half of it;

@@ -14,6 +14,10 @@ const PARASOLS := [Color(0.78, 0.22, 0.16), Color(0.86, 0.82, 0.7), Color(0.22, 
 const TERRACOTTA := Color(0.62, 0.32, 0.2)
 const SHEDS := [Color(0.42, 0.3, 0.2), Color(0.3, 0.38, 0.3), Color(0.55, 0.5, 0.42), Color(0.28, 0.32, 0.38)]
 const PADS := [Color(0.15, 0.32, 0.6), Color(0.2, 0.5, 0.25), Color(0.75, 0.2, 0.15)]
+## Washing: white and cream sheets first, then shirts', towels' and
+## trousers' colours.
+const LAUNDRY := [Color(0.95, 0.94, 0.91), Color(0.9, 0.86, 0.78), Color(0.84, 0.88, 0.95), Color(0.5, 0.6, 0.8),
+	Color(0.78, 0.3, 0.26), Color(0.32, 0.38, 0.5), Color(0.92, 0.8, 0.5), Color(0.55, 0.62, 0.48)]
 
 
 ## A wheelie bin or two side by side, lids shut, handles to the back.
@@ -169,5 +173,46 @@ static func pots(k: BuildingKit, count: int, rng: RandomNumberGenerator) -> void
 		var p := Vector3((float(i) - (count - 1) * 0.5) * 0.42, 0, rng.randf_range(-0.06, 0.06))
 		var r := rng.randf_range(0.12, 0.2)
 		k.cyl(r, r * 0.75, r * 1.5, p + Vector3(0, r * 0.75, 0), "paint", TERRACOTTA.darkened(rng.randf_range(0.0, 0.2)), Vector3.ZERO, 8)
-		k.part_with(Res.foliage_cards(false), Mats.leaf_cards(false), Transform3D(Basis.from_scale(Vector3(r * 1.3, r * 1.4, r * 1.3)), p + Vector3(0, r * 2.1, 0)),
+		k.part_with(Res.foliage_cards(false), Mats.leaf_cards_tinted(), Transform3D(Basis.from_scale(Vector3(r * 1.3, r * 1.4, r * 1.3)), p + Vector3(0, r * 2.1, 0)),
 			[Color(0.75, 0.15, 0.15), Color(0.86, 0.5, 0.65), Color(0.3, 0.45, 0.2), Color(0.9, 0.78, 0.25)][rng.randi() % 4], false)
+
+
+## Washing pegged out along a line from x = -`half` to `half` at `top`,
+## sagging `sag` in the middle (the line itself drawn by whoever strung it):
+## sheets folded over it, shirts with their arms down, towels with a stripe
+## near the hem, trousers by their waistband; a peg at each top corner. Each
+## hangs plumb from where the line is at its middle.
+static func laundry(k: BuildingKit, half: float, top: float, sag: float, rng: RandomNumberGenerator) -> void:
+	var x := -half + rng.randf_range(0.2, 0.5)
+	while x < half - 0.6:
+		var kind := rng.randi() % 4
+		var w: float = [rng.randf_range(0.9, 1.25), 0.5, rng.randf_range(0.42, 0.6), 0.44][kind]
+		if x + w > half - 0.2:
+			break
+		var cx := x + w * 0.5
+		var y := top - sag * (1.0 - (cx / half) * (cx / half))
+		var col: Color = LAUNDRY[rng.randi() % 3] if kind == 0 else LAUNDRY[rng.randi() % LAUNDRY.size()]
+		match kind:
+			0:
+				# a sheet over the line, the side towards us hanging longer
+				var drop := rng.randf_range(0.8, 0.95)
+				k.box(Vector3(w, drop, 0.012), Vector3(cx, y - drop * 0.5, 0.025), "fabric", col, Vector3(0.05, 0, 0), false)
+				k.box(Vector3(w, drop * 0.8, 0.012), Vector3(cx, y - drop * 0.4, -0.025), "fabric", col.darkened(0.04), Vector3(-0.05, 0, 0), false)
+			1:
+				# a shirt: its body, the arms hanging down and out a little
+				k.box(Vector3(0.44, 0.62, 0.014), Vector3(cx, y - 0.33, 0), "fabric", col, Vector3.ZERO, false)
+				for side: float in [-1.0, 1.0]:
+					k.box(Vector3(0.14, 0.42, 0.013), Vector3(cx + side * 0.27, y - 0.26, 0.004), "fabric", col.darkened(0.03), Vector3(0, 0, side * 0.35), false)
+			2:
+				# a towel, a darker stripe near its hem
+				var drop := rng.randf_range(0.6, 0.8)
+				k.box(Vector3(w, drop, 0.016), Vector3(cx, y - drop * 0.5, 0), "fabric", col, Vector3.ZERO, false)
+				k.box(Vector3(w, 0.06, 0.018), Vector3(cx, y - drop + 0.14, 0), "fabric", col.darkened(0.35), Vector3.ZERO, false)
+			3:
+				# trousers by the waistband
+				k.box(Vector3(w, 0.1, 0.016), Vector3(cx, y - 0.05, 0), "fabric", col, Vector3.ZERO, false)
+				for side: float in [-1.0, 1.0]:
+					k.box(Vector3(w * 0.44, 0.78, 0.014), Vector3(cx + side * w * 0.25, y - 0.48, 0), "fabric", col.darkened(0.02), Vector3(0, 0, -side * 0.03), false)
+		for side: float in [-1.0, 1.0]:
+			k.box(Vector3(0.016, 0.07, 0.024), Vector3(cx + side * (w * 0.5 - 0.04), y - 0.01, 0.0), "wood", Color(0.6, 0.5, 0.36), Vector3.ZERO, false)
+		x += w + rng.randf_range(0.08, 0.3)
