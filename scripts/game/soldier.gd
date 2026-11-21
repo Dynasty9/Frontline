@@ -1226,6 +1226,7 @@ func scan_candidates() -> Array:
 	var out := []
 	var p := position
 	var r := sight_range()
+	var night := Vision.night_share(world, team)
 	if world.perception:
 		var ids: PackedInt32Array = world.perception.nearest(p.x, p.z, team, r)
 		for id in ids:
@@ -1234,7 +1235,10 @@ func scan_candidates() -> Array:
 				if e is Soldier and (e.life not in [Life.ALIVE, Life.DOWNED] or (e.life == Life.DOWNED and world.time - e.last_shot_t > 2.0)):
 					continue
 				var diff := e.position - p
-				out.append([diff.x * diff.x + diff.z * diff.z, e])
+				var dd := diff.x * diff.x + diff.z * diff.z
+				if night < 1.0 and e is Soldier and dd > r * r * night * night and not world.rules.seen_in_dark(e):
+					continue  # (out in the dark, and not giving himself away)
+				out.append([dd, e])
 		return out
 	var limit := maxf(r, 85.0) ** 2
 	var cell := Vector2i(floori(p.x / World.HCELL), floori(p.z / World.HCELL))
@@ -1264,6 +1268,8 @@ func scan_candidates() -> Array:
 					rr *= 0.7
 				if d2 > rr * rr:
 					continue
+				if night < 1.0 and d2 > rr * rr * night * night and not world.rules.seen_in_dark(s):
+					continue  # at night a man in the dark is seen only close to, unless a flare lights him or he fires
 			elif e is Vehicle:
 				var v := e as Vehicle
 				if not v.is_air() and world.terrain.netted[world.terrain.idx_of(ep)] > 0 and d2 > maxf(r, 85.0) ** 2 * 0.25:
@@ -3870,7 +3876,8 @@ func _mortar_pit_tick(dt: float, st: Structure) -> void:
 	_face(dir, dt)
 	if absf(wrapf(Defs.yaw_of(dir) - rotation.y, -PI, PI)) > 0.035:
 		return
-	mortar_cd = world.time + _pit_delay
+	# (the second star shell waits till the first is well alight: one burns as the next comes)
+	mortar_cd = world.time + (ILLUM_GAP if _pit_kind == "illum" and _next_illum(st.fire_queue) else _pit_delay)
 	last_shot_t = world.time
 	world.combat.fire_mortar(self, st.position + Vector3(0, 1.0, 0), _pit_aim, _pit_kind)
 	_pit_aim = Vector3.INF
@@ -3907,6 +3914,15 @@ func _at_post_tick(dt: float, st: Structure) -> void:
 	say("Missile away!" if team == Defs.ARMY else "Recoilless, fire!")
 
 
+## Seconds between one star shell of a fire mission and the next: the next
+## goes up as the first is half burnt, so the ground stays lit.
+const ILLUM_GAP := 18.0
+
+
+static func _next_illum(queue: Array) -> bool:
+	return not queue.is_empty() and String(queue[0][1]) == "illum"
+
+
 ## Mobile mortar teams: fire missions first, otherwise shell spotted enemies.
 func _try_mortar() -> bool:
 	if mortar_rounds <= 0 or world.time < mortar_cd or is_moving() or squad == null:
@@ -3930,7 +3946,7 @@ func _try_mortar() -> bool:
 		if tp == Vector3.INF:
 			return false
 	mortar_rounds -= 1
-	mortar_cd = world.time + 3.5
+	mortar_cd = world.time + (ILLUM_GAP if kind == "illum" and _next_illum(squad.fire_queue) else 3.5)
 	_begin_action("mortar", 1.0, {"pos": tp, "kind": kind})
 	if world.rng.randf() < 0.4:
 		say(_pick(["Rounds out!", "Firing for effect!", "Hang it!"]))

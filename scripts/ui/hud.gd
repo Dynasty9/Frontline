@@ -1979,6 +1979,8 @@ func mode_text() -> String:
 				return "Left-click: mortar fire mission (HE)"
 			"arty_he":
 				return "Left-click: artillery fire mission"
+			"mortar_illum", "pit_illum":
+				return "Left-click: mortar fire mission (illumination)"
 			_:
 				return "Left-click: mortar fire mission (smoke)"
 	return ""
@@ -2067,6 +2069,7 @@ func _update_card() -> void:
 			if key.contains(":mortar"):
 				_button("Mortar HE", Keys.label("fire_mission"), "Fire mission: 4 high-explosive rounds (25-140 m).", func(): inp.ability = "mortar_he")
 				_button("Mortar smoke", "", "Fire mission: 4 smoke rounds to screen an advance or a rescue.", func(): inp.ability = "mortar_smoke")
+				_button("Mortar illum", "", "Fire mission: 2 star shells, one after the other, over a spot: flares on parachutes that light the ground for most of a minute. At night whoever is in their light is seen as far as by day, on both sides.", func(): inp.ability = "mortar_illum")
 			_button("Grenade", Keys.label("grenade"), "Throw a frag grenade at a spot.", func(): inp.ability = "frag")
 			_button("Smoke", Keys.label("smoke"), "Throw smoke to block line of sight.", func(): inp.ability = "smoke")
 			_button("Retreat", Keys.label("retreat"), "Run back to the nearest FOB, keeping clear of known enemy fire. Retreating men shrug off half the suppression.", func(): inp.retreat())
@@ -2157,6 +2160,7 @@ func _update_card() -> void:
 			card_title.text = "Mortar pit · fires on spotted enemies"
 			_button("Fire HE", "", "Fire mission: 6 high-explosive rounds on a spot.", func(): inp.ability = "pit_he")
 			_button("Fire smoke", "", "Fire mission: 6 smoke rounds to screen an area.", func(): inp.ability = "pit_smoke")
+			_button("Fire illum", "", "Fire mission: 2 star shells over a spot, flares that light the ground for most of a minute. At night whoever is under them is seen as far as by day.", func(): inp.ability = "pit_illum")
 		elif st.skind == "tunnel":
 			card_title.text = "Tunnel network"
 			_button("Exit here", "", "Bring everyone inside back out at this entrance.", func(): world.send_cmd({"t": "tunnel_exit", "building": st.eid, "exit": st.eid}))
@@ -2323,6 +2327,7 @@ func _card_active() -> void:
 		"Hold sector": inp.order_mode == "intent:hold", "Take objective": inp.order_mode == "intent:take", "Screen": inp.order_mode == "intent:screen",
 		"Reserve": inp.order_mode == "intent:reserve", "Ambush": inp.order_mode == "intent:ambush",
 		"Smoke": inp.ability == "smoke", "Mortar HE": inp.ability == "mortar_he", "Mortar smoke": inp.ability == "mortar_smoke",
+		"Mortar illum": inp.ability == "mortar_illum", "Fire illum": inp.ability == "pit_illum",
 		"Fire mission": inp.ability == "arty_he", "Fire HE": inp.ability == "pit_he", "Fire smoke": inp.ability == "pit_smoke"}
 	for b in card.get_children():
 		if not b.has_meta("key"):

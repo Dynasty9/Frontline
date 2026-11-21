@@ -984,12 +984,12 @@ func selection_has_arty() -> bool:
 
 func _use_ability() -> void:
 	var gp := world.cam.ground_point(_mouse())
-	var smoke := ability.ends_with("smoke")
+	var round_kind := ability.get_slice("_", 1)  # he, smoke or illum
 	match ability:
-		"mortar_he", "mortar_smoke":
-			world.send_cmd({"t": "fire_mission", "squads": sel_squads, "pos": gp, "kind": "smoke" if smoke else "he"})
-		"pit_he", "pit_smoke":
-			world.send_cmd({"t": "fire_mission", "building": sel_structure, "pos": gp, "kind": "smoke" if smoke else "he"})
+		"mortar_he", "mortar_smoke", "mortar_illum":
+			world.send_cmd({"t": "fire_mission", "squads": sel_squads, "pos": gp, "kind": round_kind})
+		"pit_he", "pit_smoke", "pit_illum":
+			world.send_cmd({"t": "fire_mission", "building": sel_structure, "pos": gp, "kind": round_kind})
 		"arty_he":
 			world.send_cmd({"t": "fire_mission", "vehicles": sel_vehicles, "pos": gp, "kind": "he"})
 		"support":
@@ -999,7 +999,7 @@ func _use_ability() -> void:
 				world.send_cmd({"t": "unit", "soldier": sel_unit, "o": "throw", "pos": gp, "kind": ability})
 			else:
 				world.send_cmd({"t": "throw", "squads": sel_squads, "pos": gp, "kind": ability})
-	_marker(gp, Color(0.85, 0.85, 0.85) if smoke else Color(1.0, 0.6, 0.2))
+	_marker(gp, Color(0.85, 0.85, 0.85) if round_kind in ["smoke", "illum"] else Color(1.0, 0.6, 0.2))
 	Sfx.ui("click")
 	ability = ""
 

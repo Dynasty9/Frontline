@@ -139,6 +139,7 @@ func tick(dt: float) -> void:
 	world.stat("ai_think_t%d" % team)
 	var sqs := _my_squads()
 	_support()
+	_illuminate(sqs)
 	_recon()
 	_economy(sqs)
 	_production(sqs)
@@ -185,6 +186,77 @@ func _support() -> void:
 		_cmd({"t": "support", "kind": kind, "pos": best, "dir": dir})
 
 
+var _illum_t := 0.0
+var _illum_sent: Array = []  # [where, until]: star shells ordered and not yet burst
+
+
+## At night, light up the fighting: where its squads hear fire they can't see,
+## or have just lost sight of an enemy, and no flare is burning, the commander
+## has a mortar team (or a crewed pit, or the battery behind the lines) put a
+## star shell up - aimed a little upwind, as a mortar crew does, so the flare
+## drifts down over the spot rather than away from it.
+func _illuminate(sqs: Array) -> void:
+	if not world.dark or world.time < _illum_t:
+		return
+	_illum_t = world.time + 3.0
+	for i in range(_illum_sent.size() - 1, -1, -1):
+		if float(_illum_sent[i][1]) < world.time:
+			_illum_sent.remove_at(i)
+	var spots := []  # [where, how recent]
+	for sq in sqs:
+		for h in sq.heard:
+			if world.time - float(h[1]) < 10.0:
+				spots.append([h[0], float(h[1])])
+		for k in sq.known.values():
+			var age := world.time - float(k.t)
+			if age > 1.5 and age < 15.0:
+				spots.append([k.pos, float(k.t)])  # (lost in the dark a moment ago)
+	if spots.is_empty():
+		return
+	spots.sort_custom(func(a: Array, b: Array) -> bool: return float(a[1]) > float(b[1]))
+	var fd: Dictionary = Defs.FLARE
+	var lead := Fires.WIND * float(fd.drift) * float(fd.life[0]) * 0.35
+	for sp in spots:
+		var c: Vector3 = sp[0]
+		if world.flares.burning_near(c, float(fd.lit_r) * 0.6) > 0:
+			continue
+		var sent := false
+		for o in _illum_sent:
+			if Defs.flat((o[0] as Vector3) - c).length() < float(fd.lit_r) * 0.6:
+				sent = true
+				break
+		if sent:
+			continue
+		var aim := c - lead
+		if _fire_illum(sqs, aim):
+			_illum_sent.append([c, world.time + 30.0])
+			world.stat("ai_illum")
+		return  # (one fire mission a look)
+
+
+## Puts a star shell over `aim`: a mortar team in range first, then a crewed
+## pit, then the off-map battery if it's ready and the side can spare it.
+func _fire_illum(sqs: Array, aim: Vector3) -> bool:
+	for sq in sqs:
+		if not sq.has_mortar() or not sq.fire_queue.is_empty():
+			continue
+		var d := Defs.flat(sq.centroid() - aim).length()
+		if d > 30.0 and d < 135.0:
+			_cmd({"t": "fire_mission", "squads": [sq.sid], "pos": aim, "kind": "illum"})
+			return true
+	for st in _my_structs("mortar_pit", true):
+		var d2 := Defs.flat(st.position - aim).length()
+		if st.fire_queue.is_empty() and st.gunner and not st.gunner.gone and d2 > 32.0 and d2 < 155.0:
+			_cmd({"t": "fire_mission", "building": st.eid, "pos": aim, "kind": "illum"})
+			return true
+	for k in Defs.supports_for(team):
+		var sd: Dictionary = Defs.SUPPORT[k]
+		if sd.get("illum", false) and world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(sd.cost) + 60:
+			_cmd({"t": "support", "kind": k, "pos": aim, "dir": Vector3.ZERO})
+			return true
+	return false
+
+
 ## Shuffles with this commander's own generator: Array.shuffle() draws on the
 ## global one, which no seed reaches, and a seed must replay the same battle.
 func _shuffle(a: Array) -> void:
@@ -200,8 +272,8 @@ func _support_kind() -> String:
 	var opts := Defs.supports_for(team)
 	_shuffle(opts)
 	for k in opts:
-		if Defs.SUPPORT[k].get("recon", false):
-			continue  # (recon flights are for finding the enemy: see _recon)
+		if Defs.SUPPORT[k].get("recon", false) or Defs.SUPPORT[k].get("illum", false):
+			continue  # (recon flights are for finding the enemy: see _recon; star shells for seeing him: _illuminate)
 		if world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(Defs.SUPPORT[k].cost) + 40:
 			return k
 	return ""
