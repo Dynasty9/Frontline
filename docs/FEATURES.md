@@ -605,7 +605,7 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
 - **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (from
   the start) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
   Selecting a drone or recon vehicle shows its sight ring.
-- Jets and reconnaissance planes bank into curved approaches and departures. The A-10 eases into its climb.
+- Jets and reconnaissance planes bank into curved approaches, and a recon pass curves away again; bomb runs break away climbing and the A-10 pulls off in a climbing turn (see "Off-map support").
 - **Every aircraft spots.** A jet on a bomb run sees 70 m round it as it flies, a gun run 55 m, and an orbiting
   gunship or armed drone the 70 m circle its sensor turret is watching (and the ground beneath it). So an air strike
   also shows you what's around the target, and the minimap draws each aircraft with the ground it can see.
@@ -1275,9 +1275,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   it off and needs .50 cals, cannons, AA or rockets; tanks only fear anti-tank weapons.
 - **Off-map support**, from minute five (recon flights sooner), each on its own cooldown:
   - Coalition: **F/A-181 Black Wasp II strike** (a stick of four high-drag bombs across the spot), **A-10C
-    Thunderbolt II** and **A-164 Wipeout gun runs** (in low and visible, nose down, walking a burst of 30 mm
-    through the target: the impacts land first, the BRRRT arrives after), **AC-130U Spooky** and the cheaper
-    **V-44X Blackfish** gunships (a left-hand orbit, port wing down, for 25 seconds, hunting anything in the
+    Thunderbolt II** and **A-164 Wipeout gun runs** (diving on the target, nose down, walking a burst of 30 mm
+    through it: the impacts land first, the BRRRT arrives after), **AC-130U Spooky** and the cheaper
+    **V-44X Blackfish** gunships (a left-hand orbit, port wing down, for 26 seconds, hunting anything in the
     circle with the side-firing 105, 40 and 25/20 mm), **A-143 Buzzard** strafe, **A-149 Gryphon** precision strike,
     **MQ-4A Greyhawk** drone (circles firing guided missiles), **UCAV Sentinel** (two bombs, no warning to the
     enemy), **155 mm artillery** (eight heavy shells, visible arcs and a tearing whistle).
@@ -1287,6 +1287,24 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     **KH-3A Fenghuang Overwatch** (Rebels): see "Reconnaissance and the fog of war". Every aircraft on a run spots
     for its side as it flies.
   - Mortar and artillery shells are drawn a little larger than life with a smoke trail, so you can follow the arcs.
+  - **The aircraft fly as aeroplanes** (`FlightModel`, flown by `Projectile._fly`). The flight model is a pilot's
+    stick and throttle: the roll axis rolls it about its nose, the pitch axis asks the wing for g (neutral holds
+    1 g, full back the airframe's limit), and the lift, along the aircraft's own up, bends the flight path; so a
+    turn is a bank and a pull, a loop is a held pull, and inverted flight works. The wing gives no more than
+    (V / v_stall)^2 g, so a slow aeroplane sinks however hard it's pulled; thrust against drag (more of it
+    under load) and gravity along the path set the speed, so a dive gains it, a hard turn bleeds it, and speed
+    brakes are the throttle's negative half. The support aircraft fly it by autopilot (a heading, a climb, a
+    speed), banking no steeper than the wing can hold and climbing no steeper than the engine keeps up; a player
+    could set the stick and throttle directly. They hold their height over the ground ahead of them, so a ridge
+    is one smooth climb. Each runs in on a track that swings onto the line through the target (straight for
+    110 m either side, a gun run 280 m so it lines up before it rolls in; the bends lengthen with speed, so each
+    flies them at about 55 degrees of bank). A bomb run releases level at 60 m and breaks away in a climbing
+    turn at 65 degrees of bank; a gun run aims its fixed gun with the whole airframe, pushing over from 70 m
+    into a 12 to 15 degree dive, opening fire at 165 m slant range and walking the burst through by easing the
+    nose up, then pulling off in a climbing turn; a recon pass swings away again along its track; an orbiting
+    gunship runs in wings level, rolls into a pylon turn banked the 45 degrees its circle needs, and rolls out to
+    fly off climbing. The nose rides above the flight path by the angle of attack the wing's load needs.
+    Clients work out velocity and bank from the snapshots.
   - The AI calls them on dense groups of spotted enemies, never danger-close to its own troops, running gun runs
     in from its own lines.
 

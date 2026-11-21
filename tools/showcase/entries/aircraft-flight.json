@@ -1,0 +1,31 @@
+{
+  "entry": "changelog/unreleased/aircraft-flight.md",
+  "summary": "Jets, gun runs and gunships now bank into their turns, dive to aim, and climb away. They no longer slide along rails, jump in height or appear already circling.",
+  "medium": "motion",
+  "stage": "tools/showcase/support-flight.tscn --side: the Field Manual's support range (scripts/ui/support_demo.gd) over a plain floor, a camera 150 m off the run's flank panning with the aircraft",
+  "rationale": "The change is motion: attitude, dive and turns. A matched side-on clip shows the gun run's dive and pull-off; a still sheet pairs one telling moment from each of the three flight profiles. The flight itself is measured by tests/aircraft_flight_test.gd.",
+  "source_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f + dines/eloquent-tesla-qa6510 working tree",
+  "before_ref": "Clean worktree of 38b3d6b1d954178b6added13e28a5ec56cc23d7f with only tools/showcase/support-flight.gd and .tscn copied in.",
+  "capture": {
+    "renderer": "Godot 4.7.2 Forward+ on lavapipe (llvmpipe) under Xvfb, 1600x900, seed 7, day, no HUD",
+    "command": "godot --path . --fixed-fps 30 --write-movie OUT/f.png res://tools/showcase/support-flight.tscn -- --kind=a10|airstrike|ac130 --side",
+    "comparison": "Frames scaled uniformly to 800x450, before left, after right. Gun run frames 205 / 150 (each while firing), bomb run 150 / 150, gunship 0 / 90.",
+    "clip": "Frames 45 to 344 of the a10 takes at 30 fps, side by side 1600x450, H.264 yuv420p CRF 26, silent, faststart."
+  },
+  "validation": [
+    "AIRCRAFT FLIGHT 1107 checks, 0 failures (tests/aircraft_flight_test.tscn)",
+    "SUPPORT_DEMO_TEST failures=0",
+    "node --test determinism, replay, replay-compatibility, scenarios-air-sea: pass 14, fail 0",
+    "--scenario=support and --scenario=air, seed 3, 40 s: exit 0",
+    "Generated seed 3 map, every profile flown across and onto its highest ridge: no position snaps, lowest pass 12 m (gun run), bombs land along the stick"
+  ],
+  "limitations": [
+    "Software-rendered on a plain floor, not a battlefield. Wind, particles and the demo's own camera are not compared."
+  ],
+  "sources": [
+    {"file": "changelog/unreleased/aircraft-flight/comparison.jpg", "sha256": "da0f9ed3a35feb30c477880066bc9b3a0e860eccb14b6b9573a4ded8858a5f7d"},
+    {"file": "changelog/unreleased/aircraft-flight/gun-run.jpg", "sha256": "369e3227bef5d0230afdd58883b719e76ae6875209e3b09a43c64801b0ad2fbb"},
+    {"file": "changelog/unreleased/aircraft-flight/gun-run.mp4", "sha256": "a2c4a06ca2f8c6953ec3ab92169c0b8c39ecc7b1bfbe955f4fba947dd84a56a9"}
+  ],
+  "output": null
+}

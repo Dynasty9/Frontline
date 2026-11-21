@@ -141,6 +141,7 @@ game/fires.gd           what burns, catching alight, spreading downwind, burning
 game/cover.gd           fighting positions on everything solid, what each material stops, stances by height
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory
 game/vision.gd          every eye a side has (men, vehicles, towers, drones, aircraft) as circles of sight
+game/flight_model.gd    a fixed-wing aircraft on stick and throttle (roll, g, thrust, drag, stall) and its autopilot; flies the support aircraft
 game/fog_view.gd        the fog of war drawn on the battlefield and the minimap (a sight map + a full-screen pass)
 game/nav.gd             two compact NavRaster layers (infantry: vaultable/slow cells; vehicles: smashable cells)
 game/hnav.gd            hierarchical A* (clusters, entrances, danger-weighted abstract graphs)
