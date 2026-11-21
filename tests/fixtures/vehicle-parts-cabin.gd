@@ -160,10 +160,11 @@ func _ready() -> void:
 		# crate, and a stack turned on the bed.
 		k = kit(burnt)
 		VehicleCargo.crate_stack(k, k.root, Vector3(0.56, 1.38, -1.7), Vector3(1.05, 0.74, 1.1), Vector3i(2, 1, 2), "paint", olive, 0.12, [0.0])
-		check(k, AABB(Vector3(0.01, 1.38, -2.26), Vector3(1.1, 0.76, 1.12)), "ammunition pallet")
+		# (a strap's ratchet stands 3.5 cm off the side it hangs on, either side)
+		check(k, AABB(Vector3(-0.005, 1.38, -2.26), Vector3(1.13, 0.76, 1.12)), "ammunition pallet")
 		k = kit(burnt)
 		VehicleCargo.crate_stack(k, k.root, Vector3(0.6, 1.44, 1.53), Vector3(1.05, 0.82, 0.98), Vector3i(1, 3, 1), "paint", olive, 0.1, [-0.25, 0.25])
-		check(k, AABB(Vector3(0.055, 1.44, 1.03), Vector3(1.09, 0.84, 1.0)), "strapped stack")
+		check(k, AABB(Vector3(0.035, 1.44, 1.03), Vector3(1.13, 0.84, 1.0)), "strapped stack")
 		k = kit(burnt)
 		VehicleCargo.crate_stack(k, k.root, Vector3(0, 1.51, 0.95), Vector3(2.1, 0.92, 0.8), Vector3i(3, 2, 1), "paint", olive, 0.1, [], -0.15)
 		check(k, AABB(Vector3(-1.06, 1.51, 0.54), Vector3(2.12, 0.93, 0.82)), "case row")

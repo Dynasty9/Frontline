@@ -30,6 +30,7 @@ const TURF := 20
 const WEATHERED_PHOTO := 21
 const ROAD_PAINT := 22
 const RUBBER_CRUMB := 23
+const FIELDSTONE := 24
 const PHOTO_MEAN := preload("res://assets/town/material_means.tres")
 
 # One world-space surface keeps junction overlays continuous with street ribbons.
@@ -292,7 +293,8 @@ static var _cache := {}
 
 static func shader() -> Shader:
 	if _shader == null:
-		_shader = CloudShadow.make(code(TerrainTexture.shader(SURFACE_SHADER.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// RAIN_DROPS", RAIN_DROPS + RAIN_COVER))), CloudShadow.CLEARCOAT | CloudShadow.PROBES)
+		var surface: String = SURFACE_SHADER.replace("// CAMO_PRINT", Camo.GLSL)
+		_shader = CloudShadow.make(code(TerrainTexture.shader(surface.replace("// STREET_SURFACE", ASPHALT_SHADER).replace("// RAIN_DROPS", RAIN_DROPS + RAIN_COVER))), CloudShadow.CLEARCOAT | CloudShadow.PROBES)
 	return _shader
 
 
@@ -924,6 +926,10 @@ static func _distant_arrays(groups: Dictionary) -> Array:
 		var base: Color = material.get_shader_parameter("col_a")
 		if int(material.get_shader_parameter("pattern")) == CAMO:
 			base = base.lerp(material.get_shader_parameter("col_b"), 0.35)
+			# the old two-colour camo never sets a style: unset reads back null
+			var style: Variant = material.get_shader_parameter("camo_style")
+			if style != null and int(style) > 0:
+				base = material.get_shader_parameter("camo_mean")
 		if not per_material:
 			base = base.srgb_to_linear()
 		var scale := VC_K
@@ -1314,16 +1320,19 @@ static func netting() -> ShaderMaterial:
 	return _netting
 
 
-static var _netting_tent: ShaderMaterial
+static var _netting_tent := {}
 
 
 ## The same netting for a net whose mesh is already shaped (pitched over a
-## pole, draped to the ground): no sag of its own.
-static func netting_tent() -> ShaderMaterial:
-	if _netting_tent == null:
-		_netting_tent = netting().duplicate() as ShaderMaterial
-		_netting_tent.set_shader_parameter("sag", 0.0)
-	return _netting_tent
+## pole, draped to the ground): no sag of its own; its UV runs 0..1 over
+## `span` metres.
+static func netting_tent(span := 7.2) -> ShaderMaterial:
+	if not _netting_tent.has(span):
+		var m := netting().duplicate() as ShaderMaterial
+		m.set_shader_parameter("sag", 0.0)
+		m.set_shader_parameter("uv_m", span)
+		_netting_tent[span] = m
+	return _netting_tent[span]
 
 
 static var _wire_mesh := {}
@@ -1353,6 +1362,10 @@ static func _wire_mesh_shader() -> Shader:
 static func _preset(kind: String) -> Dictionary:
 	if kind.begins_with("vehicle/"):
 		return VehicleMaterials.preset(kind)
+	if kind.begins_with("camo/"):
+		return Camo.cloth_preset(kind.substr(5))
+	if kind.begins_with("paint") and kind.find(":") == 6:
+		return Camo.paint_preset(kind, _preset(kind.substr(7)))
 	match kind:
 		"steel":
 			return {"pattern": PAINT, "col_a": Color(0.25, 0.26, 0.27), "col_b": Color(0.4, 0.38, 0.35), "rough": 0.6, "metal": 0.6, "bump": 0.8, "grime": 0.4, "rust": 0.3}
@@ -1406,6 +1419,15 @@ static func _preset(kind: String) -> Dictionary:
 		"alpine_stone":
 			# Broken natural stone has grain, without the mortar joints used by masonry.
 			return {"pattern": NATURAL_ROCK, "col_a": Color(0.44, 0.43, 0.39), "rough": 0.95, "bump": 2.5, "grime": 0.0, "scale": 0.75, "stone_texture": preload("res://assets/terrain/rock_face_03_color_height.png")}
+		"fieldstone":
+			# a dry-laid or pointed field-stone wall (a garden's, a field's):
+			# random rubble, grey and brown stones, the mortar darker
+			return {"pattern": FIELDSTONE, "col_a": Color(0.58, 0.55, 0.49), "col_b": Color(0.4, 0.38, 0.34), "col_c": Color(0.5, 0.45, 0.37), "rough": 0.93, "bump": 2.4, "grime": 0.7}
+		"fieldstone_cap":
+			# the stones on edge along a field-stone wall's top (BuildingWalls.
+			# cock_and_hen): the same stone with no joints drawn on it, since
+			# each part is a stone of its own, its shade in its vertex colours
+			return {"pattern": FIELDSTONE, "col_a": Color(0.58, 0.55, 0.49), "col_b": Color(0.4, 0.38, 0.34), "col_c": Color(0.5, 0.45, 0.37), "rough": 0.93, "bump": 1.6, "grime": 0.7, "seams": 0.0}
 		"stone":
 			return {"pattern": STONE, "col_a": Color(0.58, 0.55, 0.5), "col_b": Color(0.42, 0.4, 0.36), "col_c": Color(0.5, 0.46, 0.4), "rough": 0.9, "bump": 2.0, "grime": 0.7}
 		"church_stone":
@@ -1648,7 +1670,7 @@ instance uniform float armour_section = -1.0;
 uniform sampler2D wear_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform float rust = 0.0;
 uniform float pitting = 1.0;  // concrete: how much of the old pitting shows
-uniform float seams = 1.0;  // concrete: the formwork joints
+uniform float seams = 1.0;  // concrete: the formwork joints; fieldstone: the joints between stones (0: the part is one stone)
 uniform float boards = 0.0;  // concrete: the planks of the formwork it was cast against, printed on its walls
 uniform float cell_w = 1.05;  // HESCO: the width of a cell
 uniform float lit = 0.0;  // lamplight behind it (a window, a lantern): glows as the light goes
@@ -1731,6 +1753,7 @@ float tfbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) {
 // How much of a feature `period` units across survives at this pixel
 // footprint: 1 when it spans 5+ pixels, 0 when it's under 1.5.
 float keep(float period, float px) { return smoothstep(1.5, 5.0, period / max(px, 1e-5)); }
+// CAMO_PRINT
 
 // The atlas contains the hull and the rotating turret in their own local frames.
 vec3 armour_slice(vec2 xy, float z) {
@@ -1949,6 +1972,16 @@ void fragment() {
 		col = mix(col_b, col_a, grain) * (0.85 + 0.25 * mix(0.5, h12(vec2(row, off.y)), keep(pw, px)));
 		col *= 0.5 + 0.5 * gap;
 		h = gap * (0.8 + grain * 0.2);
+	} else if (pattern == 6 && camo_style > 0) {
+		// a printed pattern (Camo): in motifs, round the part's own shape
+		// (each man's pattern is placed by his own pofs)
+		vec3 cw = pow(abs(normalize(tn)), vec3(4.0));
+		cw /= max(cw.x + cw.y + cw.z, 0.0001);
+		vec3 cp = tp * scale;
+		col = camo_print(cp, cw, length(fwidth(cp)) * 0.7);
+		// faded unevenly, panel by panel, by sun and washing
+		col *= 0.93 + 0.14 * tnoise(cp.xz * 0.35 + cp.y * 0.2 + 5.0);
+		h = 0.5 + (tnoise(uv * 40.0) - 0.5) * 0.3 * keep(0.025, px);
 	} else if (pattern == 6) {
 		vec2 camo_uv = vehicle_surface ? uv * 2.4 : uv;
 		float c1 = tfbm(camo_uv * 1.0 + off);
@@ -2053,6 +2086,53 @@ void fragment() {
 		r = mix(0.98, clamp(rough - 0.04 + 0.06 * rb, 0.8, 0.96), e);
 		// About a centimetre of relief at the stone preset, not deep grooves.
 		h = e * (0.25 + 0.08 * relief);
+	} else if (pattern == 24 && seams < 0.5) {
+		// a stone set on edge along a field-stone wall's top: the part is the
+		// stone (its shade in its vertex colours), so here only what its face
+		// is like: mottled, gritty, pitted, and pale crusts of lichen on the
+		// faces turned up to the rain
+		float g1 = tnoise(uv * 9.0);
+		float g2 = mix(0.5, tnoise(uv * 31.0 + 3.1), keep(0.03, px));
+		col = col_a * (0.78 + 0.3 * g1) * (0.88 + 0.2 * tnoise(uv * 2.6 + 5.0));
+		float pit = smoothstep(0.58, 0.85, g2);
+		col *= 1.0 - 0.16 * pit;
+		float lichen = smoothstep(0.64, 0.72, tnoise(uv * 5.5 + 2.7)) * smoothstep(0.2, 0.7, tn.y) * keep(0.08, px);
+		col = mix(col, col_a * vec3(1.2, 1.22, 1.08), lichen * 0.6);
+		h = 0.5 + 0.3 * g1 + 0.08 * g2 - 0.05 * pit;
+		r = min(rough + 0.03, 0.98);
+	} else if (pattern == 24) {
+		// random rubble, laid as a waller lays field stones: stones of every
+		// size and shape (longer than they are tall), each its own tone,
+		// pointed between with mortar sunk back from their faces
+		vec2 sq = uv / vec2(0.3, 0.22);
+		vec2 ic = floor(sq);
+		vec2 fc = fract(sq);
+		float d1 = 8.0;
+		float d2 = 8.0;
+		vec2 id = vec2(0.0);
+		for (int j = -1; j <= 1; j++) {
+			for (int i = -1; i <= 1; i++) {
+				vec2 g = vec2(float(i), float(j));
+				vec2 o = vec2(h12(ic + g + off), h12(ic + g + off + 17.3)) * vec2(0.84, 0.6) + vec2(0.08, 0.2);
+				vec2 dv = g + o - fc;
+				dv.y *= 1.6;
+				float dd = dot(dv, dv);
+				if (dd < d1) { d2 = d1; d1 = dd; id = ic + g; }
+				else if (dd < d2) { d2 = dd; }
+			}
+		}
+		float edge = sqrt(d2) - sqrt(d1);
+		float kb = keep(0.22, px);
+		// each stone rounded: its middle stands proud, its edges fall away
+		// into the joint (so the mortar line wanders, thick at the corners)
+		float dome = 1.0 - smoothstep(0.0, 0.7, sqrt(d1));
+		float e = mix(0.84, smoothstep(0.05, 0.2, edge + dome * 0.06), kb);
+		float rb = mix(0.5, h12(id + off + 3.1), kb);
+		float tone = mix(0.5, h12(id + 7.7), kb);
+		vec3 sc = mix(mix(col_a, col_c, rb), col_a * vec3(1.05, 0.95, 0.82), step(0.82, tone) * 0.6) * (0.8 + 0.3 * tnoise(uv * 11.0)) * mix(1.0, 0.84 + 0.3 * tone, kb);
+		sc *= mix(1.0, 0.82 + 0.24 * dome, kb);
+		col = mix(col_b * 0.7, sc, e);
+		h = e * (0.55 + 0.45 * dome) * (0.85 + 0.15 * tnoise(uv * 7.0 + rb * 9.0));
 	} else if (pattern == 12) {
 		float fib = tfbm(vec2(uv.x * 9.0, uv.y * 0.8) + off);
 		col = mix(col_b, col_a, fib);
@@ -2320,6 +2400,10 @@ void fragment() {
 	}
 	col *= tint.rgb;
 	if (use_vcolor) { col *= COLOR.rgb * vcolor_k; }
+	if (paint_on) {
+		vec3 meant = col_a * tint.rgb * (use_vcolor ? COLOR.rgb * vcolor_k : vec3(1.0));
+		col = camo_paint(col, meant, wpos, tn, wpos.y - ground_y, r, m);
+	}
 	// Rust is an oxide, not reflective steel tinted orange. Apply after the
 	// part tint so corroded fittings retain their mineral color.
 	col = mix(col, mix(vec3(0.09, 0.032, 0.012), vec3(0.28, 0.12, 0.035), corrosion), corrosion);
@@ -2889,8 +2973,13 @@ void fragment() {
 const NETTING_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
+// the garnish's four colours (Camo.NETS): the ground, then the blotches printed over it
 instance uniform vec4 tint : source_color = vec4(0.3, 0.34, 0.2, 1.0);
+instance uniform vec4 net_b : source_color = vec4(0.2, 0.24, 0.15, 1.0);
+instance uniform vec4 net_c : source_color = vec4(0.3, 0.25, 0.17, 1.0);
+instance uniform vec4 net_d : source_color = vec4(0.1, 0.1, 0.09, 1.0);
 uniform float sag = 0.45;  // a flat net slung between poles sags in the middle
+uniform float uv_m = 7.2;  // metres the net's UV runs 0..1 across, along its surface
 global uniform float snow_cover;  // (see SURFACE_SHADER)
 // CLOUD_SHADOW
 varying vec3 wp;
@@ -2903,37 +2992,107 @@ void vertex() {
 	vec2 u = UV * 2.0 - 1.0;
 	VERTEX.y -= (1.0 - u.x * u.x) * (1.0 - u.y * u.y) * sag;
 	VERTEX.y += sin(VERTEX.x * 0.9 + TIME * 0.7) * 0.03;
+	// a net is never drawn tight: it hangs in lumps and folds where the
+	// garnish bunches up on the cord
+	vec2 m = UV * uv_m;
+	VERTEX.y += (vn(m * 0.9 + 3.0) - 0.5) * 0.22 + (vn(m * 2.3 + 11.0) - 0.5) * 0.08;
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
-	vec2 p = wp.xz;
-	float n = vn(p * 1.9) * 0.55 + vn(p * 5.3) * 0.45;
-	float g = vn(p * 13.0);
+	// in metres along the net itself, so the garnish keeps its size where
+	// the net hangs down the sides
+	vec2 p = UV * uv_m;
 	vec2 u = UV * 2.0 - 1.0;
 	float edge = max(abs(u.x), abs(u.y));
-	float scraps = step(0.47 + smoothstep(0.8, 1.0, edge) * 0.3, n + g * 0.3);
-	// Garnish is tied to a fine diamond cord mesh, visible through the larger gaps.
+	// The garnish: a sheet cut into leaves about 12 cm across that lift
+	// and overlap, every one turned its own way, tied to a diamond cord
+	// mesh. Each leaf is the nearest of a jittered scatter of points, so
+	// they come out irregular, not in rows; it frays out at the edge.
+	vec2 g = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 0.1;
+	// (pushed about, so the leaves' edges curve rather than run straight)
+	g += vec2(vn(g * 0.8 + 3.1), vn(g * 0.8 + 17.3)) * 0.55 + vec2(vn(g * 2.1 + 5.5), vn(g * 2.1 + 9.1)) * 0.2;
+	vec2 base = floor(g);
+	vec2 cell = base;
+	vec2 f = vec2(0.0);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 c = base + vec2(float(x), float(y));
+			vec2 o = c + 0.5 + (vec2(h12(c + 3.3), h12(c + 9.9)) - 0.5) * 0.8 - g;
+			float d = dot(o, o);
+			if (d < d1) { d2 = d1; d1 = d; cell = c; f = -o; } else if (d < d2) { d2 = d; }
+		}
+	}
+	// how far inside its leaf this point is: 0 on the line where it meets
+	// the next one
+	float inside = sqrt(d2) - sqrt(d1);
+	float r1 = h12(cell);
+	float r2 = h12(cell + 7.1);
+	float r3 = h12(cell + 13.7);
+	float r4 = h12(cell + 21.3);
+	float a = r1 * 6.2832;
+	vec2 dir = vec2(cos(a), sin(a));
+	vec2 l = vec2(dot(f, dir), dot(f, vec2(-dir.y, dir.x)));
+	float thick = vn(p * 0.8) * 0.55 + vn(p * 2.6 + 5.0) * 0.45 - smoothstep(0.8, 1.0, edge) * 0.4;
+	float thin = 1.0 - smoothstep(0.35, 0.7, thick);
+	// a slit down the middle of some leaves, pointed at both ends, opened
+	// wider where the garnish is thin
+	float len = 0.22 + 0.2 * r2;
+	float t = clamp(l.x / len, -1.0, 1.0);
+	float wid = (0.025 + 0.08 * r3 * (0.5 + thin)) * (1.0 - t * t);
+	float cut = step(abs(l.y), wid) * step(abs(l.x), len) * step(r4, 0.3 + 0.4 * thin);
+	// leaves smaller than a few pixels: their cuts would only shimmer, so
+	// they close up
+	vec2 gw = fwidth(g);
+	float near = smoothstep(0.45, 0.18, max(gw.x, gw.y));
+	// whole gaps only where it frays out at the hem
+	float garnish = (1.0 - cut * near) * step(0.3 * smoothstep(0.7, 0.95, edge), thick);
 	vec2 weave = vec2(p.x + p.y, p.x - p.y) * 7.0;
 	vec2 cord_distance = abs(fract(weave) - 0.5);
-	float cord = 1.0 - smoothstep(0.025, 0.045, min(cord_distance.x, cord_distance.y));
-	if (max(scraps, cord) < 0.5) discard;
-	vec3 c = tint.rgb * (0.65 + 0.55 * g);
-	c = mix(c, c * vec3(1.25, 1.05, 0.7), step(0.62, vn(p * 3.1 + 9.0)) * 0.6);
-	// the garnish: darker brown and near-black scraps knotted in, breaking it up
-	c = mix(c, c * vec3(0.62, 0.5, 0.38), step(0.6, vn(p * 2.3 + 31.0)) * 0.75);
-	c = mix(c, c * 0.35, step(0.7, vn(p * 4.1 + 57.0)) * 0.6);
-	c = mix(tint.rgb * 0.45, c, scraps);
-	// snow caught in the net lies in the sag and on the scraps, in drifts
+	float cord = (1.0 - smoothstep(0.015, 0.03, min(cord_distance.x, cord_distance.y))) * near;
+	// through most slits there's another layer of garnish, deep in shadow
+	float under = step(0.4, h12(cell + 5.7)) * step(edge, 0.85) * cut;
+	if (max(max(garnish, cord), under) < 0.5) discard;
+	// printed in big blotches like a uniform: the ground colour, a second
+	// shade, a third, and a few near-black. A whole leaf is one colour, so
+	// the blotches' edges are ragged leaf by leaf.
+	vec2 pc = mat2(vec2(0.8, -0.6), vec2(0.6, 0.8)) * ((g - f) * 0.1);
+	vec2 bp = mix(p, pc, near);
+	float b1 = vn(bp * 0.55 + 3.0) * 0.7 + vn(bp * 1.7 + 11.0) * 0.3;
+	float b2 = vn(bp * 0.62 + 17.0) * 0.7 + vn(bp * 1.9 + 3.0) * 0.3;
+	float b3 = vn(bp * 0.9 + 31.0) * 0.7 + vn(bp * 2.3 + 23.0) * 0.3;
+	vec3 c = tint.rgb;
+	c = mix(c, net_b.rgb, step(0.5, b1));
+	c = mix(c, net_c.rgb, step(0.57, b2));
+	c = mix(c, net_d.rgb, step(0.66, b3));
+	// each leaf faded and catching the light its own way, curling so one
+	// side is lit and the other in shadow, and darker where it tucks under
+	// the next leaf
+	float curl = clamp(dot(f, dir) / 0.45, -1.0, 1.0);
+	float dome = smoothstep(0.0, 0.35, inside);
+	c *= mix(1.0, (0.86 + 0.22 * r3 + curl * 0.1) * (0.9 + 0.12 * dome), near);
+	// the leaves overlap like scales, each one casting a thin shadow on the
+	// one below it (down the net, away from the light) and not on the rest
+	float below = smoothstep(-0.05, 0.15, dot(normalize(f + 1e-4), vec2(0.6, 0.8)));
+	c *= mix(1.0, mix(0.6, 1.0, smoothstep(0.0, 0.07, inside)), near * below * step(0.35, r2));
+	c = mix(tint.rgb * 0.35, c, garnish);
+	c = mix(c, c * 0.3, under * (1.0 - garnish));
+	// snow caught in the net lies in the sag and on the leaves, in drifts
 	float snowed = 0.0;
 	if (snow_cover > 0.0) {
-		snowed = smoothstep(0.0, 0.3, vn(p * 0.9 + 3.0) * 0.6 + n * 0.5 - 0.45 - (1.0 - snow_cover) * 1.4) * 0.85;
+		float lumps = vn(p * 1.9) * 0.55 + vn(p * 5.3) * 0.45;
+		snowed = smoothstep(0.0, 0.3, vn(p * 0.9 + 3.0) * 0.6 + lumps * 0.5 - 0.45 - (1.0 - snow_cover) * 1.4) * 0.85 * garnish;
 		vec3 snow = vec3(0.78, 0.81, 0.86);
 		if (OUTPUT_IS_SRGB) { snow = pow(snow, vec3(1.0 / 2.2)); }
 		c = mix(c, snow, snowed);
 	}
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
-	BACKLIGHT = c * 0.5 * (1.0 - snowed);
+	BACKLIGHT = c * 0.45 * (1.0 - snowed);
+	// the leaves curl off the cord: each one's own slant
+	vec3 tilt = (vec3(r2 - 0.5, 0.0, r3 - 0.5) * 0.8 + vec3(dir.x, 0.0, dir.y) * curl * 0.25) * garnish * near;
+	NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(tilt, 0.0)).xyz);
 	// CLOUD_FRAGMENT cloud_sun(wp)
 }
 """

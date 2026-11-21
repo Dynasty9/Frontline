@@ -26,6 +26,7 @@ var components := false
 var view_direction := Vector3(1.0, 0.7, -1.35)
 var night := false  # --building-night: the lamps on, the sun down
 var motion := false
+var orbit_review := false
 var motion_cells := []
 var cameras := {}  # subject -> [centre x, y, z, size, distance] as framed (in capture.json)
 var framing := {}  # the same, read from an earlier run's capture.json (--building-match)
@@ -44,6 +45,9 @@ func _ready() -> void:
 			output = arg.trim_prefix("--building-out=")
 		elif arg.begins_with("--building-kinds="):
 			kinds.assign(arg.trim_prefix("--building-kinds=").split(","))
+		elif arg == "--building-orbit-review":
+			orbit_review = true
+			motion = true
 		elif arg == "--building-motion":
 			motion = true
 		elif arg == "--building-single":
@@ -64,8 +68,8 @@ func _ready() -> void:
 	RenderingServer.global_shader_parameter_set("window_glow", 1.0 if night else 0.0)
 	DirAccess.make_dir_recursive_absolute(output)
 	var manifest := {"renderer": RenderingServer.get_current_rendering_method(), "subjects": kinds, "single": single,
-		"components": components, "view_direction": str(view_direction), "motion": motion,
-		"motion_frames": 48 if motion else 0, "motion_stage": "Orthographic native component fixture; fixed exposure, grazing directional light" if motion else ""}
+		"components": components, "view_direction": str(view_direction), "motion": motion, "orbit_review": orbit_review,
+		"motion_frames": 48 if motion else 0, "motion_stage": ("Orthographic native component fixture; fixed exposure and lighting, camera orbit" if orbit_review else "Orthographic native component fixture; fixed exposure, grazing directional light") if motion else ""}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (6 if components else 6)
 	for start in range(0, kinds.size(), per_page):
@@ -176,6 +180,11 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		center = Vector3(float(m[0]), float(m[1]), float(m[2]))
 		camera.size = float(m[3])
 		camera.position = center + view_direction.normalized() * float(m[4])
+		camera.look_at(center)
+	if kind in ["kerbside_stop", "kerbside_lamp_joint"]:
+		center = Vector3(0, 2.15, 0) if kind == "kerbside_stop" else Vector3(0.9, 6.24, 0)
+		camera.size = 1.25 if kind == "kerbside_stop" else 1.8
+		camera.position = center + Vector3(1.7, 0.65, -3.5)
 		camera.look_at(center)
 	cameras[kind] = [center.x, center.y, center.z, camera.size, camera.position.distance_to(center)]
 	motion_cells.append({"camera": camera, "sun": sun, "center": center, "size": camera.size})
@@ -383,6 +392,32 @@ func _subject(kind: String) -> Node3D:
 					br.seed = 3 + i
 					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
 			return row
+		"kerbside_stop", "kerbside_lamp_joint":
+			var detail := Node3D.new()
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 5
+			var kit := BuildingKit.nodes(detail, rng)
+			if kind == "kerbside_stop": BuildingKerbside.stop_sign(kit, rng)
+			else: BuildingKerbside.column(kit)
+			return detail
+		"kerbside":
+			# street lamps, a lantern, a hydrant, a stop sign, a mailbox and the
+			# electricity cabinet, where BuildingKerbside has them
+			var kerb := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_kerbside.gd"):
+				var kb: GDScript = load("res://scripts/game/building_kerbside.gd")
+				var kr := RandomNumberGenerator.new()
+				kr.seed = 5
+				var kk := BuildingKit.nodes(kerb, kr)
+				kk.box(Vector3(14.0, 0.12, 5.0), Vector3(0, -0.06, 0), "pavement", Color(0.62, 0.6, 0.56))
+				kb.call("column", kk.at_point(Vector3(-6.0, 0, 1.2)))
+				kb.call("pole_lamp", kk.at_point(Vector3(-3.4, 0, 1.6)))
+				kb.call("lantern_post", kk.at_point(Vector3(-0.8, 0, 1.0)))
+				kb.call("hydrant", kk.at_point(Vector3(1.0, 0, -0.6)))
+				kb.call("stop_sign", kk.at_point(Vector3(2.6, 0, -0.8), Vector3(0, -0.6, 0)), kr)
+				kb.call("mailbox", kk.at_point(Vector3(4.2, 0, -0.6)), Color(0.15, 0.25, 0.45), true)
+				kb.call("cabinet", kk.at_point(Vector3(6.0, 0, 0.6)))
+			return kerb
 		"water_tower":
 			# the town's water tower (BuildingLandmarks, where it exists)
 			var wt := Node3D.new()
@@ -700,8 +735,13 @@ func _motion(kind: String) -> void:
 		for cell: Dictionary in motion_cells:
 			var camera: Camera3D = cell.camera
 			var sun: DirectionalLight3D = cell.sun
-			camera.size = float(cell.size) * lerpf(1.0, 3.5, phase)
-			sun.rotation_degrees = Vector3(-12.0, lerpf(-38.0, 142.0, phase), 0)
+			if orbit_review:
+				var angle := lerpf(-0.65, 0.65, phase)
+				camera.position = cell.center + Vector3(sin(angle) * 4.0, 0.65, -cos(angle) * 4.0)
+				camera.look_at(cell.center)
+			else:
+				camera.size = float(cell.size) * lerpf(1.0, 3.5, phase)
+				sun.rotation_degrees = Vector3(-12.0, lerpf(-38.0, 142.0, phase), 0)
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		assert(get_viewport().get_texture().get_image().save_png(folder.path_join("%04d.png" % frame)) == OK)

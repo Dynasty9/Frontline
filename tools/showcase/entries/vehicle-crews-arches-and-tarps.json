@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-crews-arches-and-tarps.md",
+  "summary": "Helicopter crews behind clear cockpits and a faint rotor disc in flight; wheel arches on 8x8s; crew kit and rolled tarps on roofs and cabs; tarps that take the shape of the boxes under them; louvred, perforated and meshed engine decks; a remodelled SUV, MB 4WD, quad bike and kart; and a cost pass that leaves the roster lighter.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Glass, geometry, cloth and colour changes across many families: one matched studio sheet shows a representative of each, framed close where the change is small.",
+  "source_ref": "7398848b27e0af9191263c405f4da152d2b6f244",
+  "before_ref": "7398848b27e0af9191263c405f4da152d2b6f244",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-crews-arches-and-tarps/comparison.jpg",
+      "sha256": "3d8ce36881d6410f31e90f08c1059385ef6bcb432797459b2b0fb0ef07e51d8c"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-crews-arches-and-tarps/capture.json",
+      "sha256": "ecd407f68a251953c0cab895d15abded2a9d877836b01189d37aa71fb747520d"
+    }
+  ],
+  "output": null
+}

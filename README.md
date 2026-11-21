@@ -64,7 +64,10 @@ When you're ready, choose **Play vs AI**, pick a side and an opponent (**Recruit
 5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach. Trenches deepen as crews dig, retain unfinished work, and can be cleared after collapse. Dig in with trenches, sandbags, HESCO walls or barricades, wire, mines and tank traps; throw camouflage nets over your guns and push an ammo cache up behind the line.
 6. **Take the towns.** The town and every village fly a flag by their supply dump. Right-click one with a squad selected: hold its ground with no enemy there and it's yours, and its trucks start bringing supply to your nearest FOB. The more you hold, the more you can build.
 7. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
-8. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
+8. **Grow your force.** A Research Post opens the **doctrine tree** (**Y**): land, air, sea and the infantry's kit, step by step from carriers to tanks and artillery, from transport helicopters to gunships and drones, from riverine boats to a patrol ship. Every vehicle in the game is on it.
+9. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
+
+The screen stays quiet so you can watch the battle: an order shows for a moment as you give it and the squad answers over the radio, then it's out of sight. Rest the cursor on a squad (on the ground, its map symbol or its line in the order of battle) to see how it's doing and what it was told.
 
 Press **F1** at any time for help, and **F4** for the Field Manual. Hold **Tab** to see how the battle is going: kills, losses, supply and how well each commander is doing. When it's over, the **after-action report** shows both sides' figures, who fought best and why, every squad's record and how the battle swung.
 
@@ -121,6 +124,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Select every unit of that type on screen | Double-click |
 | Command one soldier on his own | Alt + click him |
 | Save a group / recall it | Ctrl + 1-9 / 1-9 |
+| Every unit in the air (or at sea, or on land) | Click its heading in the order of battle |
 
 **Orders**
 
@@ -160,6 +164,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Tactical map | Tab |
 | Battle statistics (your side's so far) | Hold Tab |
 | Order of battle (all your units) | O |
+| Doctrine tree (research) | Y |
 | Help | F1 |
 | Hide the interface | F2 |
 | Photo mode | F9 |

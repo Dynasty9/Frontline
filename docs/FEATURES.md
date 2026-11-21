@@ -497,9 +497,10 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   moving one way while he aims another turns his hips and legs towards where he's going and his shoulders
   back to the target. Kicking, lying on a grenade, cooking one (grenade in hand), breathing at rest, a
   knee-buckle before the fall, three ways to lie dead.
-- Kit: Coalition soldiers wear slate sneaking suits under armour vests, helmets and goggles (or a bandana),
-  codec headsets, shoulder, elbow, knee and shin pads, and carry carbines with optics; Rebels wear balaclavas,
-  berets, field caps and mismatched field jackets with chest rigs or bandoliers, and carry AKs.
+- Kit: Coalition soldiers wear slate sneaking suits printed in a tonal slate camouflage under armour vests,
+  camouflage-covered helmets and goggles (or a bandana), codec headsets, shoulder, elbow, knee and shin pads, and
+  carry carbines with optics; Rebels wear balaclavas, berets, field caps and mismatched field jackets and trousers
+  in surplus camouflage of every kind (or plain), with chest rigs or bandoliers, and carry AKs.
 
 **Standing orders** (`soldier.gd`, `squad.gd`, `vehicle.gd`; `World.execute_cmd` "stance", "roe", "prio",
 "pop_smoke", "dismount")
@@ -610,8 +611,8 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   lighter, because everything is dark already. The "Fog of war" map layer (the eye) turns it off.
 - **Watchtowers** see over the hedges and roofs: 85 m, and 115 m with a lookout up it (any idle soldier beside it
   climbs up). Placing one shows both rings; selecting one shows what it sees now.
-- **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (tier
-  1) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
+- **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (from
+  the start) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
   Selecting a drone or recon vehicle shows its sight ring.
 - Jets and reconnaissance planes bank into curved approaches and departures. The A-10 eases into its climb.
 - **Every aircraft spots.** A jet on a bomb run sees 70 m round it as it flies, a gun run 55 m, and an orbiting
@@ -831,7 +832,7 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   grow on the tiles in uneven patches. Tiled roofs are weathered clay or concrete tile in five shades or slate and grey tile in three,
   barns dull galvanised, rusted or red sheet; walls are dirty under the eaves and damp at the foot, with the odd run down from a gutter; brick is old red-brown, and stone is coursed rubble (courses of three heights, stones
   of their own lengths and shades) in pale lime mortar. Flat roofs are felted black or green-grey, bare concrete or old asphalt, and carry rain stains, patched membrane, moss along a parapet and vent pipes; flat roofs have a coped parapet, scuppers with a hopper and downpipe, and the
-  water tanks, air conditioners and dishes on them. Garden walls have saddleback stone copings, or brick-on-edge
+  water tanks, air conditioners and dishes on them. Stone garden and field walls are random rubble (field stones of every size, longer than tall, rounded, each its own tone, pointed with darker mortar: the surface `fieldstone`) finished along the top with field stones set on edge, tall and short in turn (cock and hen), or brick-on-edge
   over a blue-brick base. Houses look lived in: drapes, blinds and nets in the windows, flowers in window boxes,
   lanterns by front doors, TV aerials on the roofs, and inside (seen when the roof hides for the men in there, or
   in a ruin) painted walls with skirting, radiators, pictures, mirrors, clocks, shelves of books and rugs, all
@@ -968,14 +969,42 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   recruitment attribution intact. Construction can assign an allied engineer, and tunnel orders move allied
   passengers, without requiring the issuing commander to own them. Supply convoys and supply helicopters
   continue their automatic routes rather than taking troop orders.
-- **Order of battle** (O): every unit down the left, grouped into infantry, support teams and vehicles, each
-  with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
-  fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
-  and look at it, Shift+click to add, double-click to zoom in. Observers see both sides.
+- **A quiet command display.** Orders are given, acknowledged and then left to the men: a new order draws its
+  path and its tag on the ground for a couple of seconds (`Hud.ACK_SECS`) and the squad answers on the command
+  net, then it goes out of sight. A unit's orders show again while it is selected or while the hand is over it
+  (`Hud.focus_sid`: the unit on the ground, its symbol on the map, or its row in the order of battle); the tactical
+  map (Tab) and the Orders map layer show everyone's. Speech bubbles are capped at the few that matter (a man hit, then shouts, then the
+  radio, then banter, the nearest the middle first). The left column (the order of battle and the fire missions)
+  steps back while the cursor is out on the battlefield and comes up as it goes to it (Settings > Interface >
+  Quiet side panels). Finished mission objectives fold into one line (3 DONE) after a few seconds.
+- **Hover cards** (`hud_pointer_overlay.gd`): the hand over a squad shows its card by the cursor: callsign and
+  type, a pip per man and how many are fit to fight, its nerve, its ammunition, whether the XO has it, what it was
+  told to do and what it's doing about it, and the man under the cursor (name, role, health, what he's doing).
+  A vehicle's card has its role, hull, who's aboard and what it's doing. An enemy squad shows only what can be
+  seen of it.
+- **The command net** (`hud_radio.gd`): what comes over the radio - the XO's reports, the mission's traffic,
+  another commander's orders - is heard one transmission at a time as a subtitle low in the middle of the screen,
+  opened by a burst of squelch, typed on and held while it's read, rather than piled in the corner with the
+  alerts. Squads and vehicles answer the orders you give them on it, in their element's words ("Moving to D8,
+  out.", "Inbound to D8.", "Under way to D8."). Everything said stays in the message history (L).
+- **Notifications** (top right): three lines at most, and briefly. The same news again (another lorry lost,
+  another strongpoint knocked down) updates its line and counts (x3) instead of stacking up; routine news (a
+  squad trained, a building finished) passes quickest and faintest; a warning outlasts newer routine lines.
+- **Order of battle** (O): every unit down the left, grouped by where it fights: infantry, support teams, then
+  land, air and sea vehicles, each with its symbol, callsign and a pip per man. A row says what the unit was told
+  to do (MOV D8, DEF E4, where an attack has got to) only while it's selected or under the hand; otherwise it
+  speaks up only when the unit needs its commander (ROUTING, PINNED, LOW AMMO, CONTACT; IMMOBILISED, ENGAGING
+  for vehicles). Click to select and look at it, Shift+click to add, double-click to zoom in; click a heading
+  (Air, Sea...) for every unit under it. Observers see both sides.
 - **Map layers** (the column beside the minimap): unit symbols at any zoom, orders and attack plans for all your
-  units, intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
-  selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the
-  A-H / 1-8 grid on the ground.
+  units (off by default: see above), intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
+  selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols and contacts, with the
+  A-H / 1-8 grid on the ground, and every order and plan: the planning board, where the battlefield view keeps them out of sight.
+- **The doctrine tree** (Y, or the Research Post's card; `hud_doctrine.gd`): research as a tree of four branches,
+  land, air, sea and the infantry's kit, each a few steps deep, joined by rules to what each step needs. Every step
+  shows what it costs and takes, what it unlocks, and whether it's done, under way (how far), ready (lit) or still
+  locked (and by what). Click a lit step to queue it at the Research Post with the shortest queue. See Research,
+  under The systems.
 - **Battle statistics and the after-action report** (`battle_stats.gd`, `stats_panel.gd`). The host keeps a record of
   the battle and credits everything to the commander whose unit did it (a player, or a side's AI): the man who last
   hurt a soldier gets the kill even if he bleeds out later, fire support and mines count for whoever called or laid
@@ -1168,10 +1197,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     BTR-K Kamysh, T-100 Varsuk, T-100X Futura (railgun), T-140 Angara and T-140K, ZSU-39 Tigris, 2S9 Sochor,
     Tempest transport / ammo / medical / repair, Mi-48 Kajman, PO-30 Orca (and armed), Mi-290 Taru, AR-2 Tayran,
     KH-3A Fenghuang.
-- **Tiers.** Light vehicles, trucks and transport helicopters from the start; tanks, IFVs, anti-aircraft
-  vehicles and attack helicopters after Armoured Warfare (Coalition) or Foreign Advisers (Rebels); artillery, the
-  heaviest tanks and drones after Combined Arms / Expeditionary Corps. The Factory and Helipad pages long lists
-  by category (Light, Armour, Fire support, Logistics, Air) and show what's still locked.
+- **The doctrine tree** (`Defs.UPGRADES`, the Research Post, Y). Light vehicles, trucks, transport helicopters,
+  small drones and light boats are there from the start; everything else is unlocked by one step of the side's
+  tree, and every vehicle the Factory, the Helipad and the Dock can build is on it (the economy test checks).
+  - Land. Coalition: Mechanised Infantry (IFVs and carriers: IFV, Marshall, Gorgon, Mora, Panther, Nyx
+    autocannon and recon, Prowler AT, Bobcat), then Armoured Warfare (the tanks and tank destroyers) and Air
+    Defence (Cheetah, Nyx AA); after those, Fire Support (Scorcher, Sandstorm), Urban Armour Packages (Slammer UP,
+    Rhino UP) and Unmanned Ground Vehicles (Stomper). Rebels: Foreign Advisers (BTR, Marid, Kamysh, Qilin AT) and
+    Workshop Rockets (Zamak MRL); then Armour Shipments (the old tank, Varsuk) and Air Defence (Tigris); then the
+    Expeditionary Corps (Angara, Angara K, Futura, Sochor).
+  - Air: Army Aviation (Pawnee, Ghost Hawk, Hellcat), then Attack Aviation (the gunship, Blackfoot, the stub-wing
+    Ghost Hawk) and Unmanned Aircraft (Falcon); the Rebels' Armed Helicopters (armed Orca), then CSAT Attack
+    Aviation (Kajman) and the Drone Programme (Fenghuang).
+  - Sea: Riverine Squadron (the armed SURC), then Coastal Patrol (the patrol ship); the Rebels' Gunboats (gun
+    trawler), then CSAT Riverine Craft.
+  - Infantry: Body Armor and Grenade Pouches, then Field Medicine and Optics, and for the Rebels FPV Warheads and
+    Deep Tunnels after those.
+  A step needs the one before it in its branch, and a side may run as many Research Posts as it can pay for, a
+  queue of four at each. The AI commander works through the infantry's kit and the land branch as they come due,
+  and the air and sea branches once it has a Helipad or a Dock to use them. The Factory and Helipad pages list long
+  rosters by category (Light, Armour, Fire support, Logistics, Air) with how many of each are unlocked, and a
+  locked vehicle says which step it needs.
 - **What they do:** ATGMs at armour and bunkers, homing SAMs at anything flying; self-propelled guns and rocket
   launchers halt, lay the barrel or raise the launcher and fire salvos at spotted enemies (or on a fire mission:
   F); repair, ammunition and medical vehicles look after everything parked near them; troop helicopters fly
@@ -1282,6 +1328,13 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   over the last two minutes) and how many towns you hold; beside the FOB lines, a line of its own (stock, rate,
   where its trucks go) for each town being taken or whose trucks aren't getting through, and the quiet ones in
   one line once there are more than a couple. The order of battle moves down to make room.
+- Each side's HQ is a compound facing the way the battle puts it: a wall towards the enemy (HESCO for the
+  Coalition, sandbags and drums for the Rebels), a yard behind it under a camouflage net between two shipping
+  containers (the signals office and the stores), a precast command post sandbagged round its roof with a mast
+  and a satellite dish, two generators and a long-range aerial behind the office, and on the road side the gate
+  (barrier, guard booth, stop board) with the vehicle park inside it. The command post's door, the gate and the
+  flag face the rear, where the traffic comes from and the side's commander first looks from. A regular army's
+  containers are olive, tan or grey; a militia's are rusty, faded commercial ones.
 - Buildings: FOB, barracks, factory, medic tent, research post, helipad (supply helicopters fly over cut
   roads), sandbags, HESCO walls and T-walls (Coalition), barricades (Rebels), barbed wire, minefields, tank traps,
   camouflage nets, ammo caches, watchtowers (see 85 m, 115 m with a lookout up; shoot over walls), and Rebel
@@ -1853,6 +1906,19 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   stacked from individual bags in proper courses, FOBs and camouflage nets throw dappled shadows, trees sway.
   Defences sit in the ground: trodden earth round the nests and pits, earth banked against the bunkers up to their
   slits.
+- Camouflage (`camo.gd`): uniforms are printed, not tinted: hard-edged motifs at their real size, laid out so a
+  blotch runs on unbroken round a sleeve or a helmet, each man cut from a different part of the bolt. The patterns
+  follow real issue: woodland, leaf, three-colour desert, fleck dots, square-pixel digital, tiger stripe, rain
+  dashes and multi-terrain, plus the Coalition's tonal slate. The Coalition wear their slate (the detailed riflemen
+  its digital form); a Rebel's jacket and trousers are surplus from anywhere, often two different patterns, or
+  plain. On the imported character the shader reprints the cloth in its texture space, keeping its folds, and its
+  black webbing takes the man's rig colour. Detail too fine to see fades to the colour the print averages to.
+  The Coalition's concrete bunker is painted over in
+  big disruptive blotches of three colours, green, brown and black, running on
+  across walls, corners and roof, sun-bleached on top and flaked through low down. Camouflage nets are garnish
+  cut into leaves, each turned its own way, tied to a diamond cord mesh and printed in blotches, woodland for the
+  Coalition and desert for the Rebels; the FOB's net is pitched over the block on its poles and hangs to head
+  height.
 - Vehicles are built from sloped, lofted armour: road wheels that turn, tracks, mantlets, cupolas, stowage, rotor blur.
   On the Abrams, T-55 and Bradley, each track cycles independently and its road wheels follow the ground under that side.
   Hinged shoes retain their place around the track. The T-55's upper run rests on its road wheels and sags in the gaps.
@@ -2008,6 +2074,32 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   are pierced steel, tracks show their pins, bolts and hatches stop glinting, soot fades into the paint, and
   the M35 and FIA truck have cabs you can see into. See "Twelfth pass" in
   [the component guide](vehicle-components.md).
+- **Canvas, kit, seats and covers** (thirteenth and fourteenth passes): truck tilts drape over their hoops with
+  laced hems and rolled curtains, bags and bedrolls look packed and strapped, webbing, nylon, vinyl and rope each
+  have their own finish, cockpits and cabs have real seats, helicopter doors open on troop seats, and some
+  vehicles carry air-recognition panels and covers. See "Thirteenth pass" and "Fourteenth pass" in
+  [the component guide](vehicle-components.md).
+- **Bolted plate, painted marks and armoured glass** (fifteenth to seventeenth passes): some rebel vehicles bolt
+  on improvised plate, team marks are painted chevrons and bands, tyres stay rubber, armoured glass is dark and
+  thick, tilts open on their benches, rotors shimmer, vans, tractors and the Blackfoot show their crews, and boats
+  fly slack ensigns. Two critics ranked the roster's worst-looking parts to steer these passes. See "Fifteenth
+  pass" to "Seventeenth pass" in [the component guide](vehicle-components.md).
+- **Helicopter crews, wheel arches and tarps over boxes** (eighteenth to twentieth passes): helicopters show their
+  crews through clear cockpits and a faint dark rotor disc in flight, wheeled carriers turn their wheels in proper
+  arches, roofs and cabs carry crew kit and rolled tarps, tarps take the shape of the boxes under them, engine decks
+  are louvred, perforated or meshed by army, and the SUV, MB 4WD, quad bike and kart are remodelled. A cost pass
+  left the roster 3% lighter than before the eighteenth pass. A third critic steered the last two passes. See
+  "Eighteenth pass" to "Twentieth pass" in [the component guide](vehicle-components.md).
+- **Canvas over loads, dark buckles and perforated decks** (twenty-first pass): a fourth critic's two regressions
+  fixed (tarps over boxes now read as canvas, NATO engine decks as finely perforated plate), dark buckles on kit and
+  harnesses, flatter matt sandbags, shaded floors under truck tilts, cab panels varied by body, painted M35 wheels,
+  and spare wheels that skip the face nobody sees. See "Twenty-first pass" in [the component
+  guide](vehicle-components.md).
+- **Faded markings and glass that reads as glass** (twenty-second pass): every vehicle reviewed against the morning
+  before the thirteenth pass; side markings are faded tactical paint near the hull's value, truck cabs carry no
+  recognition panels, canopies, armoured windscreens and vision blocks read as glass, rotor discs show again, and
+  tonneaus, tops, windscreens, truck beds, tilts, coils, brackets, grilles and kit that had come out worse are fixed.
+  See "Twenty-second pass" in [the component guide](vehicle-components.md).
 - Explosions are layered GPU particles: a flash and light burst, a rolling fireball that cools from the edges in
   until it's dark smoke, a lit smoke column that drifts with the wind, a dirt plume, sparks and debris that
   bounce on the ground, a rolling dust ring, a faint heat-shimmer shockwave and a scorch mark. Heavy rounds
