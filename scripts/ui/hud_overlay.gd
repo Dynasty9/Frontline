@@ -1014,8 +1014,13 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		var supp: int = g.supp
 		var alive: int = g.n
 		MapSymbols.nato(self, sp, sz, mine, tm, sym[0], sym[1], a, not hud.tactical)
+		# under the hand, in the order of battle or here on the map
+		var focused := int(sid) == hud.focus_sid
 		if sel:
 			draw_arc(sp, hw + 7.0, 0.0, TAU, 28, Color(1, 1, 1, 0.55 * a), 1.5, true)
+		if focused:
+			# the accent's ticks find it, so a name in the list finds its place
+			UiKit.ticks(self, Rect2(sp - Vector2(hw + 4.0, hw + 2.0), Vector2(sz + 8.0, sz + 4.0)), UiKit.fa(UiKit.ACCENT, a), 5.0, 3.0, 1.5)
 		# Shared troops have no exclusive controller. Only mark a teammate
 		# who is actively selecting them, not the commander who recruited them.
 		var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
@@ -1040,7 +1045,12 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 			draw_rect(Rect2(px, py, 4, 3), Color(pc.r, pc.g, pc.b, a))
 			px += 5.0
 		var ty := py + 15.0
-		if mine:
+		# its name only when it helps: picked out (selected, or under the hand
+		# here or in the list), on the tactical map, under fire, or just ordered.
+		# A field of names over every squad hides the battle they're fighting.
+		var named := sel or focused or hud.tactical or age < 6.0 \
+			or (supp * 2 >= maxi(1, alive) and alive > 0)
+		if mine and named:
 			_map_text(Vector2i(int(sid), 0), Vector2(sp.x, ty), g.callsign, UiKit.cond(600, 1), 11, UiKit.fa(UiKit.TEXT, 0.95 * a))
 			ty += 13.0
 		if oa > 0.0 and (age < Hud.ACK_SECS or int(sid) == hud.focus_sid or sel):
@@ -1070,7 +1080,7 @@ func _nato_markers(cam: Camera3D, lt: int, a: float) -> void:
 		_place_rect(vr)
 		_hits.append([vr.grow(4.0), "veh", v.eid])
 		MapSymbols.nato(self, vp, 28.0 if hud.tactical else 24.0, v.team == lt or lt < 0, v.team, vs3[0], vs3[1], a, not hud.tactical)
-		if v.selected:
+		if v.selected or v.eid == hud.focus_veh:
 			UiKit.ticks(self, Rect2(vp - Vector2(17, 13), Vector2(34, 26)), UiKit.fa(UiKit.ACCENT, a), 5.0, 2.0, 1.5)
 		var vby := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
 		if vby != 0:

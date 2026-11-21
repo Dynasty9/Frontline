@@ -22,7 +22,7 @@ var _content_h := 0.0
 var _rows: Array = []  # [Rect2, kind ("sq"/"veh"), id, commandable]
 var _sections: Array = []  # [Rect2, [[kind, id], ...]]: a heading selects everything under it
 var _head := Rect2()
-var _hover := -1
+var _pointer := Vector2.INF  # where the cursor is over the list (rows are matched to it as they're drawn)
 
 
 func _ready() -> void:
@@ -32,21 +32,21 @@ func _ready() -> void:
 
 func _gui_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseMotion:
-		var h := -1
-		for i in _rows.size():
-			if (_rows[i][0] as Rect2).has_point(ev.position):
-				h = i
-		if h != _hover:
-			_hover = h
-			queue_redraw()
+		_pointer = ev.position
+		queue_redraw()
 	elif ev is InputEventPanGesture:
 		# two fingers on a trackpad scroll the list
 		_scroll = clampf(_scroll + (ev as InputEventPanGesture).delta.y * 30.0, 0.0, maxf(0.0, _content_h - size.y))
+		_rows.clear()  # the rows moved under the cursor: drawn again before they're asked
+		queue_redraw()
 		accept_event()
 	elif ev is InputEventMouseButton and ev.pressed:
 		var mb := ev as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_scroll = clampf(_scroll + (-ROW_H if mb.button_index == MOUSE_BUTTON_WHEEL_UP else ROW_H), 0.0, maxf(0.0, _content_h - size.y))
+			_pointer = mb.position
+			_rows.clear()
+			queue_redraw()
 			accept_event()
 			return
 		if mb.button_index != MOUSE_BUTTON_LEFT:
@@ -68,16 +68,24 @@ func _gui_input(ev: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_MOUSE_EXIT and _hover != -1:
-		_hover = -1
+	if what == NOTIFICATION_MOUSE_EXIT:
+		_pointer = Vector2.INF
 		queue_redraw()
 
 
-## The row under the cursor: ["sq", sid] or ["veh", eid], or [].
+## The row under the cursor: ["sq", sid] or ["veh", eid], or []. Matched by
+## where the rows are now, so a list scrolled under a still cursor follows.
 func hovered() -> Array:
-	if _hover < 0 or _hover >= _rows.size() or not is_visible_in_tree():
-		return []
-	return [String(_rows[_hover][1]), int(_rows[_hover][2])]
+	if not open or (is_inside_tree() and not is_visible_in_tree()):
+		return []  # folded, or hidden with the rest of the HUD
+	for row in _rows:
+		if _is_hovered(row[0]):
+			return [String(row[1]), int(row[2])]
+	return []
+
+
+func _is_hovered(rect: Rect2) -> bool:
+	return Rect2(Vector2.ZERO, size).has_point(_pointer) and rect.has_point(_pointer)
 
 
 func content_h() -> float:
@@ -86,6 +94,7 @@ func content_h() -> float:
 
 func toggle() -> void:
 	open = not open
+	_rows.clear()
 	Settings.v["orbat"] = open
 	Sfx.ui("click")
 	queue_redraw()
@@ -317,12 +326,12 @@ func _section(y: float, label: String, top: float, bottom: float, n := -1) -> fl
 
 ## A row's ground: the selected one washed with the accent fading out across
 ## it, the one under the cursor faintly lit; a rule under every one.
-func _row_bg(r: Rect2, sel: bool, idx: int) -> void:
+func _row_bg(r: Rect2, sel: bool) -> void:
 	if sel:
 		var a := UiKit.fa(UiKit.ACCENT, 0.22)
 		var b := UiKit.fa(UiKit.ACCENT, 0.05)
 		draw_polygon(PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]), PackedColorArray([a, b, b, a]))
-	elif idx == _hover:
+	elif _is_hovered(r):
 		draw_rect(r, UiKit.fa(UiKit.TEXT, 0.05))
 	UiKit.rule(self, Vector2(r.position.x, r.end.y - 0.5), Vector2(r.end.x, r.end.y - 0.5))
 
@@ -344,11 +353,11 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	var r := Rect2(0, y, W, ROW_H)
 	var team: int = mem[0].team
 	var mine: bool = w.input.is_mine(mem[0])
-	var idx := _rows.size()
 	var sel: bool = sid in w.input.sel_squads
 	_rows.append([r, "sq", sid, mine])
-	_row_bg(r, sel, idx)
+	_row_bg(r, sel)
 	var st: Dictionary = hud.squad_state(sid, mem)
+	var look: bool = sel or _is_hovered(r) or sid == hud.focus_sid
 	var sym: Array = MapSymbols.squad_symbol(mem)
 	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 1.0)
 	var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
@@ -372,7 +381,6 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	# what it's doing, as a code, cut to fit: the whole of it under the hand,
 	# else only an alarm
 	var cx := maxf(x + 12.0, 128.0)
-	var look: bool = sel or idx == _hover or sid == hud.focus_sid
 	var code := String(st.code) if look else squad_alarm(st)
 	if st.low_ammo and look:
 		code += " · LOW AMMO"
@@ -392,19 +400,18 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 		return y + ROW_H
 	var r := Rect2(0, y, W, ROW_H)
 	var mine: bool = w.input.is_mine(v)
-	var idx := _rows.size()
 	var sel: bool = v.eid in w.input.sel_vehicles
 	_rows.append([r, "veh", v.eid, mine])
-	_row_bg(r, sel, idx)
+	_row_bg(r, sel)
+	var hf: float = v.health_frac()
+	var look: bool = sel or _is_hovered(r) or v.eid == hud.focus_veh
 	var vs: Array = MapSymbols.vehicle_symbol(v.vkind)
 	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, v.team == w.local_team or w.local_team < 0, v.team, vs[0], "", 1.0)
 	var by := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
 	if by != 0:
 		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
 	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), String(v.display_name()), 13, UiKit.ACCENT if sel else UiKit.TEXT)
-	var hf: float = v.health_frac()
 	UiKit.steps(self, Vector2(W - 40, y + 8), hf * 6.0, 6, UiKit.GOOD if hf > 0.6 else (UiKit.WARN if hf > 0.3 else UiKit.BAD), 5.0, 9.0)
-	var look: bool = sel or idx == _hover or v.eid == hud.focus_veh
 	var code := "HOLD" if look else ""
 	var col := UiKit.ACCENT if sel else UiKit.DIM
 	if (v.flags & Vehicle.F_TRACK) != 0:

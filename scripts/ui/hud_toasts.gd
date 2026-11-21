@@ -16,9 +16,11 @@ const LIFE_ROUTINE := 3.5
 const MAX_LINES := 3
 const TIME_W := 46.0
 const FROM_W := 92.0
+const MERGE_S := 4.0  # how long after a unit's report another unit's same report joins its line
+const MERGE_KINDS := ["info", "alert", "warn"]  # units' reports (not players' comings and goings, nor chat)
 
 var hud: Hud
-var items: Array = []  # [kind, text, age, life, time stamp, template, count]
+var items: Array = []  # [kind, text, age, life, time stamp, template, count, who, what, grouping age]
 
 
 ## The same news again, whatever the numbers and places in it: "The supply
@@ -45,8 +47,25 @@ static func routine(kind: String, text: String) -> bool:
 
 func push(kind: String, text: String) -> void:
 	var tpl := template_of(text)
+	# several units reporting the same thing at once ("Bravo 1 is moving out of
+	# the shellfire", then Charlie 1, then Delta 1) is one event: say it once,
+	# naming them, rather than one line each or a bare count
+	var said := _subject_split(text) if kind in MERGE_KINDS else []
+	if not said.is_empty():
+		for it in items:
+			if it[0] != kind or float(it[9]) >= MERGE_S or (it[7] as Array).is_empty() or String(it[8]) != String(said[1]):
+				continue
+			var who: Array = it[7]
+			if not String(said[0]) in who:
+				who.append(String(said[0]))
+				it[1] = _joined(who, String(said[1]))
+				it[5] = template_of(String(it[1]))
+			it[2] = 0.0
+			queue_redraw()
+			return
 	for it in items:
-		if it[1] == text or (it[0] == kind and it[5] == tpl):
+		# (a message in the chat stands on its own, however often it's said)
+		if it[0] == kind and kind != "chat" and (it[1] == text or it[5] == tpl):
 			it[6] = int(it[6]) + 1
 			it[1] = text
 			it[2] = 0.0
@@ -54,7 +73,7 @@ func push(kind: String, text: String) -> void:
 			return
 	var t := hud.world.time if hud and hud.world else 0.0
 	var life := LIFE_LOUD if kind in ["alert", "intel", "warn", "ping"] else (LIFE_ROUTINE if routine(kind, text) else LIFE)
-	items.push_front([kind, text, 0.0, life, t, tpl, 1])
+	items.push_front([kind, text, 0.0, life, t, tpl, 1, [String(said[0])] if not said.is_empty() else [], String(said[1]) if not said.is_empty() else "", 0.0])
 	if items.size() > MAX_LINES:
 		# the oldest goes, unless it's louder than everything newer
 		var drop := items.size() - 1
@@ -73,10 +92,32 @@ func tick(dt: float) -> void:
 		# Between arrival and departure the log's drawing stays unchanged.
 		changed = changed or items[i][2] < 0.24 or items[i][2] + dt >= items[i][3] - 0.15
 		items[i][2] += dt
+		items[i][9] += dt
 		if items[i][2] > items[i][3]:
 			items.remove_at(i)
 	if changed:
 		queue_redraw()
+
+
+## "Bravo 1 is moving out of the shellfire." as [who, what it's doing], or []
+## when the line isn't a unit saying what it is doing.
+static func _subject_split(text: String) -> Array:
+	var i := text.find(" is ")
+	if i <= 0 or i > 28 or text.find(": ") >= 0:
+		return []
+	return [text.substr(0, i), text.substr(i + 4)]
+
+
+## Several units doing the same thing, in a line: "Bravo 1 and Charlie 1 are
+## …", "Bravo 1, Charlie 1 and Delta 1 are …", "Bravo 1, Charlie 1 +3 are …".
+static func _joined(who: Array, what: String) -> String:
+	if who.size() == 1:
+		return "%s is %s" % [who[0], what]
+	if who.size() == 2:
+		return "%s and %s are %s" % [who[0], who[1], what]
+	if who.size() == 3:
+		return "%s, %s and %s are %s" % [who[0], who[1], who[2], what]
+	return "%s, %s +%d are %s" % [who[0], who[1], who.size() - 2, what]
 
 
 ## Who a message is from, and what it says: "Bravo 1: Contact east" splits at

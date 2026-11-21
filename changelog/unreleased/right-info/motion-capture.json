@@ -1,0 +1,45 @@
+{
+  "source_ref": "f2a1efed883378260f2eb2ec52c41289f87ac995",
+  "before_ref": "9d4da7515b2a8f7d67ddd383e2d348756cc78e38",
+  "capture_fixture": "tests/fixtures/hud-info-clips.gd",
+  "capture_fixture_sha256": "ec2e53747ae14dc0e9b17d06c63abb8d9e7ce615ee27554054e39970e486c582",
+  "engine": "Godot 4.7.2 stable Linux",
+  "renderer": "gl_compatibility / Mesa llvmpipe (software)",
+  "display": "isolated workspace Xvfb; no local PC",
+  "command": "Godot_v4.7.2-stable_linux.x86_64 --path REPO --audio-driver Dummy --rendering-method gl_compatibility --resolution 1280x720 --fixed-fps 15 --script tests/fixtures/hud-info-clips.gd -- --scenario=attack --preset=low --seed=3 --play=0 --no-stun --perf=0 --capture-fps=15 --frames=OUTPUT --label=BEFORE_OR_AFTER",
+  "camera": {
+    "position": [
+      8,
+      60,
+      98
+    ],
+    "look_at": [
+      0,
+      0,
+      34
+    ]
+  },
+  "sequence": "Before 0\u20133 seconds, then after 0\u20139 seconds; each segment plays at the captured 15 simulation frames/second. No time acceleration. Before and after use identical fixture, camera, seed and preset.",
+  "staging": "Actual attack scenario with eight real reserve squads. Pointer pan, assault order, and report messages are deliberately cued by the capture fixture. Game units and controls continue running.",
+  "observations": {
+    "before_hover": [
+      "sq",
+      2
+    ],
+    "before_after_scroll": [
+      "sq",
+      2
+    ],
+    "after_hover": [
+      "sq",
+      2
+    ],
+    "after_after_scroll": [
+      "sq",
+      3
+    ],
+    "reports": "First report at capture t3, second at t4, repeated first subject at t8 (five seconds after group opened)."
+  },
+  "limits": "Software-rendered presentation evidence, not a performance benchmark. Compatibility footage does not establish Forward+ parity. Original comparison.jpg retained with its original catalog provenance.",
+  "audio": "none"
+}

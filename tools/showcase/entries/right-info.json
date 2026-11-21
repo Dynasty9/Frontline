@@ -1,0 +1,34 @@
+{
+  "entry": "changelog/unreleased/right-info.md",
+  "summary": "Map callsigns show on demand, the unit under the hand is marked on the map, and the same report from several units merges into one log line.",
+  "medium": "still",
+  "stage": "game capture at 1920x1080, --perf=0: --scenario=roster --seed=3 --focus=-84,24 --zoom=34 --shot-at=12; --mission=bridgehead --play --shot-at=40",
+  "rationale": "Matched native-pixel crops of the same frames, before (main after #306) and after this branch: the log and the map labels. The earlier clip (scroll-and-reports.webm) predates the merge with #306 and shows ORBAT dimming and per-repeat lines that no longer ship; it is kept here for provenance but no longer shown in the entry, and needs re-recording with tests/fixtures/hud-info-clips.gd.",
+  "source_ref": "cc9d0286de67b0676a8f557eb37c330e5e983667 + merge with main",
+  "before_ref": "a47d03f7a2476641def9886714e95103a6efb762",
+  "sources": [
+    {
+      "file": "changelog/unreleased/right-info/comparison.jpg",
+      "sha256": "cf3d5d6f9b57736e5b7f9606421ff18bacbe944d5a525a129d6109c64d3bed33"
+    },
+    {
+      "file": "changelog/unreleased/right-info/scroll-and-reports.webm",
+      "sha256": "dc34db27dfeed01f7f06f6972432d94283f1b75642e4e670fc7d69a0ea1f1b78"
+    },
+    {
+      "file": "changelog/unreleased/right-info/scroll-and-reports.jpg",
+      "sha256": "1a615938ee319bcf57357c4e48b61dd08ce46a7f227ae4423ca385d8d127e6ad"
+    },
+    {
+      "file": "changelog/unreleased/right-info/motion-capture.json",
+      "sha256": "57bb88ad74370ea166c2c4b41ba132df1e71dad1e1a8806b9c7c0b68e5f544fb"
+    }
+  ],
+  "output": null,
+  "original_still_provenance": {
+    "stage": "game capture at 1920x1080, --perf=0: --scenario=roster --seed=3 --focus=-84,24 --zoom=34 --shot-at=12; --mission=bridgehead --play --shot-at=40",
+    "rationale": "Matched native-pixel crops of the same frames show the order of battle, log and map labels before and after; hover behaviour is covered by the UI layout test, not a still.",
+    "source_ref": "690053683a3d4cc4fb92236ed37e95391a2baf4f + working tree",
+    "before_ref": "99b8723de85d0f6e04c2ab5f2350377c15dfadb7"
+  }
+}

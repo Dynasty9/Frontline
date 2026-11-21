@@ -151,7 +151,9 @@ says in prose. They come in three levels:
 - a **caution** (`▲ CAUTION`) is ruled off above and below in `WARN` and flickers on once;
 - a **warning** (`▲ WARNING`) is ruled off in `BAD` and flickers on twice.
 
-Three lines at most: the same news again updates its line with a count (`×3`) rather than adding one, routine
+Three lines at most: several units making the same report within a few seconds share one line that names them
+(`Bravo 1, Charlie 1 and Delta 1 are moving out of the shellfire.`, then `Bravo 1, Charlie 1 +3 are …`); the same
+news again updates its line with a count (`×3`) rather than adding one (chat excepted), routine
 news (trained, built) is faintest and shortest, and radio traffic goes to the command net instead. The message
 history (L by default) opens in their place on a lighter ink.
 
@@ -165,7 +167,9 @@ another answer but never talks over real traffic (`HudRadio.ack`).
 
 Say a thing when it's new or when it needs the commander, then get out of the way. An order is drawn for a moment
 as it's given and again only while its unit is selected or under the hand (`HudOverlay.order_alpha`); a row of the
-ORBAT says what its unit is doing only under the hand and otherwise only its alarms; finished objectives fold away.
+ORBAT says what its unit is doing only under the hand and otherwise only its alarms; a squad's callsign over its symbol on
+the map shows only while it's selected, under the hand, suppressed, newly ordered or on the tactical map, and the
+unit under the hand wears accent ticks there; finished objectives fold away.
 Detail is one hover away, not on the screen all the time.
 
 ## Marks on the battlefield
