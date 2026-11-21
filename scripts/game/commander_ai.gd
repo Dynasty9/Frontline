@@ -269,11 +269,13 @@ func _shuffle(a: Array) -> void:
 
 ## Any off-map fire support that is ready and affordable ("" if none).
 func _support_kind() -> String:
-	var opts := Defs.supports_for(team)
+	# (star shells are for seeing him, not hitting him: _illuminate. They're left
+	# out before the shuffle, so the draws, and a seed's battle, are as they were.)
+	var opts := Defs.supports_for(team).filter(func(k: String) -> bool: return not Defs.SUPPORT[k].get("illum", false))
 	_shuffle(opts)
 	for k in opts:
-		if Defs.SUPPORT[k].get("recon", false) or Defs.SUPPORT[k].get("illum", false):
-			continue  # (recon flights are for finding the enemy: see _recon; star shells for seeing him: _illuminate)
+		if Defs.SUPPORT[k].get("recon", false):
+			continue  # (recon flights are for finding the enemy: see _recon)
 		if world.rules.support_left(team, k) <= 0.0 and world.rules.supply_total(team) >= int(Defs.SUPPORT[k].cost) + 40:
 			return k
 	return ""

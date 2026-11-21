@@ -1674,7 +1674,8 @@ func _view_process(_dt: float) -> void:
 		_activity = lerpf(_activity, clampf(act / 12.0, 0.0, 1.0), 1.0 - exp(-_dt * 0.8))
 		_rumble.volume_db = lerpf(RUMBLE_DB.x, RUMBLE_DB.y, _activity) - hush
 		Music.heat = _activity
-	if not world.flares.list.is_empty() or not _flare_views.is_empty():
+	# (a world put together by hand, as a test fixture's, may have no flares)
+	if world.flares and (not world.flares.list.is_empty() or not _flare_views.is_empty()):
 		_flares_tick()
 	if _rain:
 		_rain_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016)
