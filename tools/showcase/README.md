@@ -269,6 +269,19 @@ nearest generated bollard's contact with the paving. Only that close inspection
 bypasses the command camera's minimum height, within this capture script;
 gameplay camera settings and post placement are unchanged.
 
+For bounded captures, `--motion-frames=N`, `--motion-fps=N` and
+`--motion-warmup=N` control each view; match `--fixed-fps` to the motion FPS.
+`--motion-defer-draw` finishes scenery preparation before enabling rendering.
+Each view saves a checkpoint and its camera transforms; `--motion-only-view=N`
+selects one view. Set `FL_CAPTURE_REF` to the rendering commit and keep each
+revision's output directory separate. Match the recorded transforms, seed,
+exposure and lighting before making a before/after clip.
+
+`--motion-stage=utility` selects an actual farm transformer without a
+pole-to-pole wire connection, then a separate generated connected roadside span.
+It records the farm establishing view, transformer fittings and connected span;
+it does not construct or infer an electrical network.
+
 ```sh
 godot --path . --fixed-fps 30 --resolution 1280x720 --script tools/showcase/environment-motion.gd -- --aivai --seed=3 --offscreen --nohud --set=perf:0 --preset=high --mood=day --motion-stage=stones --motion-output=build/media-review
 # Set FFMPEG if it is not on PATH; SHOWCASE_FONT can select a local TrueType font.

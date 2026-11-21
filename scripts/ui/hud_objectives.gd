@@ -4,6 +4,8 @@ extends Control
 ## objective with its letter (the same letter marks it on the ground and the
 ## minimap), what's left of it and whether it's done. When one is set, met or
 ## lost, a banner says so across the top of the screen with a radio chime.
+## Objectives met or lost stay a few seconds, then fold into one line (3 DONE)
+## so the list holds only what's still to do.
 
 const W := 380.0
 
@@ -11,6 +13,8 @@ var hud: Hud
 var need_h := 0.0  # how tall the panel is (the notifications go under it)
 var _states := {}  # objective text -> state, to spot the changes
 var _banners: Array = []  # [caption, text, colour, age]
+var _settled := {}  # objective text -> battle time it was met or lost
+const FOLD_AFTER := 6.0  # seconds a finished objective stays in the list
 
 
 func _process(dt: float) -> void:
@@ -36,6 +40,8 @@ func _spot_changes(info: Dictionary) -> void:
 		if was == st:
 			continue
 		_states[key] = st
+		if st == MissionDirector.DONE or st == MissionDirector.FAILED:
+			_settled[key] = hud.world.time if was >= 0 else -1e9
 		match st:
 			MissionDirector.ACTIVE:
 				_banner("NEW OBJECTIVE" if not bool(o[7]) else "OPTIONAL OBJECTIVE", key, UiKit.ACCENT, "objective")
@@ -81,10 +87,20 @@ func _draw_panel(info: Dictionary) -> void:
 	# measure first: each objective's text wraps
 	var rows := []
 	var h := 50.0
+	var folded := 0
+	var lost := 0
 	for o in objs:
+		if _folded(o):
+			folded += 1
+			if int(o[2]) == MissionDirector.FAILED:
+				lost += 1
+			rows.append([])
+			continue
 		var lines: Array = MapSymbols.wrap(String(o[1]), 13, 400, W - 110.0)
 		rows.append(lines)
 		h += 6.0 + lines.size() * 17.0
+	if folded > 0:
+		h += 22.0
 	var left := float(info.get("left", -1.0))
 	if left >= 0.0:
 		left -= hud.world.time - hud.world.mission_rx_t if int(info.get("over", 0)) == 0 else 0.0
@@ -98,10 +114,17 @@ func _draw_panel(info: Dictionary) -> void:
 	UiKit.caps_at(self, Vector2(x0, y0 + 34), String(info.get("title", "")), 17, UiKit.TEXT)
 	UiKit.rule(self, Vector2(x0, y0 + 43.5), Vector2(x0 + W, y0 + 43.5))
 	var y := y0 + 58.0
+	if folded > 0:
+		var ft := "%d DONE" % (folded - lost) + (" · %d LOST" % lost if lost > 0 else "")
+		draw_polyline(PackedVector2Array([Vector2(x0 + 4, y - 4), Vector2(x0 + 7, y), Vector2(x0 + 15, y - 9)]), UiKit.fa(UiKit.GOOD, 0.6), 1.4, true)
+		UiKit.mono_at(self, Vector2(x0 + 26, y), ft, 11, UiKit.FAINT)
+		y += 22.0
 	for i in objs.size():
 		var o: Array = objs[i]
 		var st := int(o[2])
 		var lines: Array = rows[i]
+		if lines.is_empty():
+			continue
 		var col := UiKit.TEXT
 		var mark_col := UiKit.ACCENT
 		match st:
@@ -149,6 +172,14 @@ func _draw_panel(info: Dictionary) -> void:
 		UiKit.caps_at(self, Vector2(x0, y + 8), "Time left", 11, lc)
 		var tl := "%02d:%02d" % [int(left) / 60, int(left) % 60]
 		UiKit.mono_at(self, Vector2(x0 + W - UiKit.mono_w(tl, 13), y + 8), tl, 13, lc)
+
+
+## A finished objective that has had its moment: off the list.
+func _folded(o: Array) -> bool:
+	var st := int(o[2])
+	if st != MissionDirector.DONE and st != MissionDirector.FAILED:
+		return false
+	return hud.world.time - float(_settled.get(String(o[1]), -1e9)) > FOLD_AFTER
 
 
 ## An objective set, met or lost, across the top of the screen: a band of ink

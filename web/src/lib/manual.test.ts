@@ -92,7 +92,9 @@ describe("the rest of the Field Manual", () => {
     expect(find("support", "artillery")?.group).toBe("Artillery & mortars")
     expect(find("support", "artillery")?.support).toBeUndefined()
     expect(find("support", "gryphon_recon")?.group).toBe("Reconnaissance")
-    expect(fact("research", "combined_arms", "Needs")).toBe("Armoured Warfare")
+    expect(fact("research", "c_fires", "Needs")).toBe("Armoured Warfare")
+    expect(fact("research", "c_armour", "Unlocks")).toMatch(/^Battle Tank, M2A1 Slammer/)
+    expect(find("research", "c_aviation")?.group).toBe("Air doctrine")
     expect(find("research", "armor")?.model).toBe(false)
   })
   it("counts what the overview quotes", () => {

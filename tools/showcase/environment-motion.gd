@@ -49,6 +49,37 @@ func capture() -> void:
 			views = [["Town square camera: bollards at the paving edge", Vector3(-1,0,12), 10.0, -26.0, 2.6],
 				["Decorative collar contact with generated paving", close + Vector3.UP * 0.35, 3.0, -22.0, 2.6, true]]
 			print("MOTION_BOLLARD position=", close)
+		"utility":
+			var poles := []
+			var wires := []
+			for entry: Array in world.decor:
+				if entry[0] == "pole": poles.append(entry)
+				if entry[0] == "wire": wires.append(entry)
+			var farm := []
+			for pole: Array in poles:
+				if pole[3] == null or int(pole[3]) != 1: continue
+				var connections := 0
+				for wire: Array in wires:
+					if (wire[1] as Vector3).distance_to(pole[1]) < 0.01 or (wire[3][0] as Vector3).distance_to(pole[1]) < 0.01: connections += 1
+				if connections == 0:
+					farm = pole
+					break
+			assert(not farm.is_empty(), "Expected an actual standalone farm transformer")
+			var connected := []
+			var nearest := INF
+			for wire: Array in wires:
+				var middle: Vector3 = (wire[1] + wire[3][0]) * 0.5
+				var span: float = (wire[1] as Vector3).distance_to(wire[3][0])
+				if span < 20.0 or span > 35.0: continue
+				if middle.length_squared() < nearest:
+					nearest = middle.length_squared()
+					connected = wire
+			assert(not connected.is_empty(), "Expected a generated pole-to-pole wire span")
+			var mid: Vector3 = (connected[1] + connected[3][0]) * 0.5
+			views = [["Standalone farm transformer: generated placement, no line connection", farm[1] + Vector3.UP * 4.2, 26.0, -25.0, float(farm[2]) + PI * 0.5],
+				["Standalone farm transformer fittings", farm[1] + Vector3.UP * 6.3, 10.0, -12.0, float(farm[2]) + PI * 0.5],
+				["Actual connected roadside pole span", mid + Vector3.UP * 4.5, 58.0, -22.0, float(connected[2]) + 0.12]]
+			print("MOTION_UTILITY farm=", farm, " connected=", connected)
 		"clouds":
 			world.cam.cam.fov = 55.0
 			for mood in ["day", "golden", "rain", "night"]:

@@ -261,6 +261,7 @@ func activity(p: Presence, where := false) -> String:
 		Mode.ABILITY:
 			return String({"frag": "Throwing a grenade", "smoke": "Throwing smoke", "mortar_he": "Mortar fire mission",
 				"pit_he": "Mortar fire mission", "mortar_smoke": "Mortar smoke mission", "pit_smoke": "Mortar smoke mission",
+				"mortar_illum": "Mortar illumination mission", "pit_illum": "Mortar illumination mission",
 				"arty_he": "Artillery fire mission"}.get(p.kind, "Targeting")) + at
 		Mode.ORDER:
 			return String({"assault": "Ordering an attack", "defend": "Ordering a defence"}.get(p.kind, "Giving a move order")) + at
