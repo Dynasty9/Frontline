@@ -4,7 +4,9 @@ extends Node3D
 ## the list the server generated: sidewalks and curbs, street lights, utility
 ## poles and their sagging wires, benches, bins, hydrants, signs, a bus stop,
 ## the square's fountain or statue and market stalls, playground kit, fences,
-## vegetable patches, washing lines, hay bales, a water tower.
+## vegetable patches, washing lines, hay bales, a water tower, what a farm
+## keeps round its yard (troughs, ploughs and harrows, churn stands, hen
+## houses, barrows).
 ##
 ## Parts are baked into merged meshes per 32 m chunk (so they still cull), the
 ## wires are drawn as lines and the lamp lenses glow; at dusk and at night the
@@ -23,7 +25,7 @@ const BREAKABLE := {
 	"mailbox": [Vector3(0.3, 1.25, 0.45), 15.0], "bus_stop": [Vector3(3.3, 2.4, 1.6), 300.0],
 	"bins": [Vector3(1.3, 1.0, 0.75), 25.0], "pots": [Vector3(1.2, 0.5, 0.45), 15.0],
 	"bike": [Vector3(0.5, 1.0, 1.7), 15.0], "garden_set": [Vector3(1.7, 1.0, 1.7), 30.0], "kennel": [Vector3(0.75, 0.85, 0.95), 40.0],
-	"wares": [Vector3(1.6, 1.0, 1.0), 30.0], "shed": [Vector3(2.4, 2.3, 1.9), 120.0], "trampoline": [Vector3(3.3, 0.9, 3.3), 40.0],
+	"wares": [Vector3(1.6, 1.0, 1.0), 30.0], "graves": [Vector3(3.6, 1.1, 0.5), 120.0], "shed": [Vector3(2.4, 2.3, 1.9), 120.0], "trampoline": [Vector3(3.3, 0.9, 3.3), 40.0],
 	"planter": [Vector3(1.2, 1.1, 1.2), 400.0], "bollard": [Vector3(0.2, 0.85, 0.2), 60.0],
 	"stall": [Vector3(2.6, 2.3, 1.5), 80.0], "fence": [Vector3(2.0, 1.1, 0.15), 40.0],
 	"clothesline": [Vector3(4.0, 1.9, 0.9), 20.0], "flagpole": [Vector3(0.2, 8.0, 0.2), 60.0],
@@ -34,6 +36,9 @@ const BREAKABLE := {
 	"traffic_light": [Vector3(0.5, 3.4, 0.5), 120.0], "phone_box": [Vector3(1.0, 2.6, 1.0), 300.0],
 	"post_box": [Vector3(0.55, 1.4, 0.55), 200.0], "ad_column": [Vector3(1.4, 2.9, 1.4), 600.0],
 	"hoarding": [Vector3(5.0, 3.8, 0.6), 150.0], "street_name": [Vector3(0.9, 2.6, 0.9), 20.0],
+	"trough": [Vector3(2.0, 0.75, 0.62), 150.0], "plough": [Vector3(2.5, 1.2, 1.2), 300.0],
+	"harrow": [Vector3(2.4, 0.3, 1.6), 200.0], "churn_stand": [Vector3(2.5, 1.7, 1.0), 80.0],
+	"hen_house": [Vector3(3.6, 1.6, 3.0), 40.0], "barrow": [Vector3(0.7, 0.7, 1.5), 20.0],
 }
 
 var world
@@ -317,6 +322,110 @@ func _m(mesh: Mesh, kind: String, p: Vector3, col = null, rot := Vector3.ZERO, s
 		tn if tn != Color(1, 1, 1) else null, shadow, _at)
 
 
+## A crossroads corner with its kerb turned on a radius: the corner square
+## of sidewalk with a quarter circle taken out of the inside, asphalt in the
+## bite, and kerbstones laid round the curve. `ex` is the square's size, its
+## signs giving which corner of the crossroads it is; ex.y is the radius.
+func _walk_corner(ex: Vector3) -> void:
+	var sx := signf(ex.x)
+	var sz := signf(ex.z)
+	var w := absf(ex.x)
+	var r := ex.y
+	# (a, b): metres out from the square's road corner, along x and along z
+	var at := func(a: float, b: float, y: float) -> Vector3:
+		return Vector3(sx * (a - w * 0.5), y, sz * (b - w * 0.5))
+	var centre := Vector2(r, r)
+	var arc := PackedVector2Array()  # from (r, 0) round to (0, r), bulging toward the road
+	var steps := 12
+	for i in steps + 1:
+		var angle := PI * 1.5 - PI * 0.5 * float(i) / steps
+		arc.append(centre + Vector2(cos(angle), sin(angle)) * r)
+	var walk := PackedVector2Array([Vector2(w, w), Vector2(w, 0.0)])
+	walk.append_array(arc)
+	walk.append(Vector2(0.0, w))
+	_m(_fan_mesh(walk, 0.12, at, w), "pavement", Vector3.ZERO, null, Vector3.ZERO, false, true)
+	var bite := PackedVector2Array([Vector2.ZERO])
+	bite.append_array(arc)
+	_m(_fan_mesh(bite, 0.04, at, -1.0), "asphalt", Vector3.ZERO, null, Vector3.ZERO, false, true)
+	# The road's own gutter runs on along its edge where the kerb has curved
+	# away; lay the junction's asphalt over that stretch of it too.
+	for strip: PackedVector2Array in [PackedVector2Array([Vector2(-0.6, -0.6), Vector2(0.0, -0.6), Vector2(0.0, r), Vector2(-0.6, r)]),
+			PackedVector2Array([Vector2(-0.6, -0.6), Vector2(r, -0.6), Vector2(r, 0.0), Vector2(-0.6, 0.0)])]:
+		_m(_fan_mesh(strip, 0.04, at, -1.0), "asphalt", Vector3.ZERO, null, Vector3.ZERO, false, true)
+	for i in 8:
+		var a0 := PI * 1.5 - PI * 0.5 * float(i) / 8.0
+		var a1 := PI * 1.5 - PI * 0.5 * float(i + 1) / 8.0
+		var mid := (a0 + a1) * 0.5
+		var p2 := centre + Vector2(cos(mid), sin(mid)) * (r - 0.09)
+		var tangent := Vector2(-sin(mid), cos(mid))
+		var along := Vector2(sx * tangent.x, sz * tangent.y)
+		_m(Res.box(Vector3(r * absf(a1 - a0) * 1.04, 0.17, 0.18)), "curbstone", at.call(p2.x, p2.y, 0.085), null, Vector3(0, atan2(-along.y, along.x), 0), false, true)
+	var rest := w - r
+	if rest > 0.01:
+		_m(Res.box(Vector3(rest, 0.17, 0.18)), "curbstone", at.call(r + rest * 0.5, 0.09, 0.085), null, Vector3.ZERO, false, true)
+		_m(Res.box(Vector3(rest, 0.17, 0.18)), "curbstone", at.call(0.09, r + rest * 0.5, 0.085), null, Vector3(0, PI * 0.5, 0), false, true)
+
+
+## A flat piece of paving `top` metres up, fanned from its first point round
+## the rest (every point of the outline must be in sight of the first), laid
+## on the ground as _paving_mesh lays a box. When `back` is positive, the
+## square's two far edges (a = back and b = back) step down to the ground,
+## where the walk meets the lots. `at` turns outline coordinates into the
+## piece's own.
+func _fan_mesh(outline: PackedVector2Array, top: float, at: Callable, back: float) -> ArrayMesh:
+	var geology: Landform = world.terrain.landform
+	var to_piece := _at.basis.inverse()
+	# (plain Arrays: a lambda gets a copy of a packed array, but shares an Array)
+	var vertices: Array[Vector3] = []
+	var normals: Array[Vector3] = []
+	var lay := func(c: Vector2, y: float, normal: Vector3) -> void:
+		var v: Vector3 = at.call(c.x, c.y, y)
+		var point := _at * v
+		v.y += geology.height(point) - _at.origin.y
+		vertices.append(v)
+		if normal == Vector3.ZERO:
+			var dx: float = geology.height(point - Vector3(0.2, 0, 0)) - geology.height(point + Vector3(0.2, 0, 0))
+			var dz: float = geology.height(point - Vector3(0, 0, 0.2)) - geology.height(point + Vector3(0, 0, 0.2))
+			normal = Vector3(dx, 0.4, dz).normalized()
+		normals.append(to_piece * normal)
+	# Godot draws the face whose corners run clockwise as seen from in front.
+	var facing := func(c0: Vector2, y0: float, c1: Vector2, y1: float, c2: Vector2, y2: float, toward: Vector3) -> bool:
+		var p0: Vector3 = at.call(c0.x, c0.y, y0)
+		var p1: Vector3 = at.call(c1.x, c1.y, y1)
+		var p2: Vector3 = at.call(c2.x, c2.y, y2)
+		return (p1 - p0).cross(p2 - p0).dot(toward) < 0.0
+	for i in range(1, outline.size() - 1):
+		var c0: Vector2 = outline[0]
+		var c1: Vector2 = outline[i]
+		var c2: Vector2 = outline[i + 1]
+		if not facing.call(c0, top, c1, top, c2, top, Vector3.UP):
+			var swap := c1
+			c1 = c2
+			c2 = swap
+		for c: Vector2 in [c0, c1, c2]:
+			lay.call(c, top, Vector3.ZERO)
+	if back > 0.0:
+		for edge in [[Vector2(back, 0.0), Vector2(back, back), Vector3(1, 0, 0)], [Vector2(0.0, back), Vector2(back, back), Vector3(0, 0, 1)]]:
+			var e0: Vector2 = edge[0]
+			var e1: Vector2 = edge[1]
+			var axis: Vector3 = edge[2]
+			# out of the square, through its far edge
+			var out: Vector3 = at.call(back + axis.x, back + axis.z, 0.0) - at.call(back, back, 0.0)
+			var quad := [[e0, top], [e1, top], [e1, 0.0], [e0, top], [e1, 0.0], [e0, 0.0]]
+			if not facing.call(e0, top, e1, top, e1, 0.0, out):
+				quad = [[e0, top], [e1, 0.0], [e1, top], [e0, top], [e0, 0.0], [e1, 0.0]]
+			for q in quad:
+				lay.call(q[0], q[1], out)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(vertices)
+	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(normals)
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	Mats.keep_arrays(mesh, arrays)
+	return mesh
+
+
 func _paving_mesh(box: Mesh, local: Transform3D, lowered := Vector2.INF) -> ArrayMesh:
 	var grid := BoxMesh.new()
 	grid.size = Res.box_size(box)
@@ -419,6 +528,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 		"curb":
 			var s: Vector3 = ex
 			_m(Res.box(s), "curbstone", Vector3(0, s.y * 0.5, 0), null, Vector3.ZERO, false, true)
+		"walk_corner":
+			_walk_corner(ex)
 		"walk_crossing", "curb_crossing":
 			var s: Vector3 = ex[0]
 			var local := Transform3D(Basis.IDENTITY, Vector3(0, s.y * 0.5, 0))
@@ -426,34 +537,32 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(mesh, "pavement" if kind == "walk_crossing" else "curbstone", local.origin, null, Vector3.ZERO, false, true)
 		"junction":
 			var s: Vector3 = ex
-			_m(Res.box(Vector3(s.x, 0.02, s.z)), "asphalt", Vector3(0, 0.032, 0), null, Vector3.ZERO, false, true)
+			# (2 mm thick: its sides mustn't draw an outline on the road)
+			_m(Res.box(Vector3(s.x, 0.002, s.z)), "asphalt", Vector3(0, 0.04, 0), null, Vector3.ZERO, false, true)
 		"zebra":
 			var wd := float(ex)
 			var n := 6
 			# The centre line stops short of a crossing: the same asphalt as the
 			# road (it's laid in world space, so it joins without a seam) over it.
-			_m(Res.box(Vector3(6.6, 0.02, 0.5)), "asphalt", Vector3(0, 0.032, 0), null, Vector3.ZERO, false, true)
+			# (2 mm thick: its sides mustn't show as lines on the road)
+			_m(Res.box(Vector3(6.6, 0.002, 0.5)), "asphalt", Vector3(0, 0.035, 0), null, Vector3.ZERO, false, true)
 			for i in n:
 				var z := -wd * 0.5 + (i + 0.5) * wd / n
 				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "road_paint", Vector3(0, 0.044, z), Color(0.95, 0.95, 0.93), Vector3.ZERO, false, true)
 		"lamp":
+			# a street lamp (BuildingKerbside): a village's on a wooden pole, or a
+			# town's steel column; its lens glows where its head hangs
+			var lk := BuildingKit.baked(_bake, rng, _at)
 			if ex == 1:
-				_m(Res.cyl(0.08, 0.12, 6.0, 8), "wood_dark", Vector3(0, 3.0, 0))
-				_m(Res.box(Vector3(1.0, 0.07, 0.07)), "wood_dark", Vector3(0.5, 5.6, 0))
-				_m(Res.cyl(0.07, 0.3, 0.22, 10), "metal_dark", Vector3(1.0, 5.45, 0), Color(0.22, 0.25, 0.22))
+				BuildingKerbside.pole_lamp(lk)
 				_lens(h, Vector3(0.36, 0.04, 0.36), Vector3(1.0, 5.33, 0))
 			else:
-				_m(Res.cyl(0.17, 0.21, 0.45, 10), "metal_dark", Vector3(0, 0.22, 0))
-				_m(Res.cyl(0.055, 0.095, 6.2, 8), "metal_dark", Vector3(0, 3.1, 0), Color(0.3, 0.32, 0.32))
-				_m(Res.box(Vector3(1.5, 0.07, 0.07)), "metal_dark", Vector3(0.72, 6.16, 0), Color(0.3, 0.32, 0.32), Vector3(0, 0, 0.08))
-				_m(Res.box(Vector3(0.64, 0.14, 0.3)), "metal_dark", Vector3(1.44, 6.14, 0), Color(0.3, 0.32, 0.32))
+				BuildingKerbside.column(lk)
 				_lens(h, Vector3(0.52, 0.04, 0.24), Vector3(1.44, 6.05, 0))
 		"lamp_deco":
-			_m(Res.cyl(0.12, 0.16, 0.5, 10), "metal_dark", Vector3(0, 0.25, 0), Color(0.12, 0.16, 0.13))
-			_m(Res.cyl(0.05, 0.07, 3.4, 8), "metal_dark", Vector3(0, 1.95, 0), Color(0.12, 0.16, 0.13))
-			_m(Res.cyl(0.22, 0.12, 0.12, 8), "metal_dark", Vector3(0, 4.12, 0), Color(0.12, 0.16, 0.13))
-			_m(Res.cyl(0.04, 0.24, 0.16, 8), "metal_dark", Vector3(0, 4.7, 0), Color(0.12, 0.16, 0.13))
-			_lens(h, Vector3(0.3, 0.42, 0.3), Vector3(0, 4.4, 0))
+			# the square's lanterns (BuildingKerbside)
+			BuildingKerbside.lantern_post(BuildingKit.baked(_bake, rng, _at))
+			_lens(h, Vector3(0.26, 0.42, 0.26), Vector3(0, 4.3, 0))
 		"pole":
 			_m(Res.cyl(0.11, 0.16, 8.4, 8), "wood_dark", Vector3(0, 4.2, 0), Color(0.3, 0.24, 0.17))
 			_m(Res.box(Vector3(0.12, 0.11, 2.0)), "wood_dark", Vector3(0, 7.45, 0), Color(0.3, 0.24, 0.17))
@@ -464,69 +573,41 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			if ex == 1:
 				_m(Res.cyl(0.27, 0.27, 0.85, 12), "paint", Vector3(0.38, 6.3, 0), Color(0.5, 0.52, 0.48))
 		"hydrant":
-			_m(Res.cyl(0.12, 0.14, 0.62, 10), "paint", Vector3(0, 0.31, 0), Color(0.7, 0.12, 0.08), Vector3.ZERO, false)
-			_m(Res.sphere(0.13, 8), "paint", Vector3(0, 0.62, 0), Color(0.7, 0.12, 0.08), Vector3.ZERO, false)
-			_m(Res.cyl(0.05, 0.05, 0.36, 6), "paint", Vector3(0, 0.42, 0), Color(0.75, 0.7, 0.6), Vector3(0, 0, PI * 0.5), false)
+			# (BuildingKerbside)
+			BuildingKerbside.hydrant(BuildingKit.baked(_bake, rng, _at))
 		"bin":
-			_m(Res.cyl(0.24, 0.21, 0.85, 10), "metal_dark", Vector3(0, 0.43, 0), Color(0.12, 0.2, 0.13), Vector3.ZERO, false)
-			_m(Res.cyl(0.26, 0.26, 0.05, 10), "metal_dark", Vector3(0, 0.88, 0), Color(0.1, 0.15, 0.1), Vector3.ZERO, false)
+			# (BuildingStreet)
+			BuildingStreet.litter_bin(BuildingKit.baked(_bake, rng, _at))
 		"bench":
 			_bench(Vector3.ZERO)
 		"sign_stop":
-			_m(Res.cyl(0.035, 0.035, 2.3, 6), "metal_dark", Vector3(0, 1.15, 0), Color(0.5, 0.5, 0.5))
-			_m(Res.cyl(0.39, 0.39, 0.02, 8), "paint", Vector3(0, 2.15, -0.03), Color(0.9, 0.9, 0.88), Vector3(PI * 0.5, 0, 0))
-			_m(Res.cyl(0.35, 0.35, 0.02, 8), "paint", Vector3(0, 2.15, -0.05), Color(0.72, 0.08, 0.06), Vector3(PI * 0.5, 0, 0))
+			# (BuildingKerbside)
+			BuildingKerbside.stop_sign(BuildingKit.baked(_bake, rng, _at), rng)
 		"sign_town":
-			for x in [-0.8, 0.8]:
-				_m(Res.cyl(0.04, 0.04, 2.2, 6), "metal_dark", Vector3(x, 1.1, 0), Color(0.5, 0.5, 0.5))
-			_m(Res.box(Vector3(2.0, 0.7, 0.05)), "paint", Vector3(0, 1.9, 0), Color(0.88, 0.8, 0.22))
-			_m(Res.box(Vector3(1.86, 0.56, 0.01)), "paint", Vector3(0, 1.9, -0.03), Color(0.95, 0.88, 0.3), Vector3.ZERO, false)
-			for y in [2.0, 1.8]:
-				_m(Res.box(Vector3(1.3 if y > 1.9 else 0.9, 0.09, 0.01)), "paint", Vector3(0, y, -0.04), Color(0.08, 0.08, 0.08), Vector3.ZERO, false)
+			# (BuildingStreet)
+			BuildingStreet.town_sign(BuildingKit.baked(_bake, rng, _at), rng)
 		"bus_stop":
-			for x in [-1.5, 1.5]:
-				for z in [-0.6, 0.6]:
-					_m(Res.box(Vector3(0.07, 2.3, 0.07)), "metal_dark", Vector3(x, 1.15, z), Color(0.28, 0.33, 0.36))
-			_m(Res.box(Vector3(3.0, 1.9, 0.04)), "glass", Vector3(0, 1.25, 0.6))
-			_m(Res.box(Vector3(0.04, 1.9, 1.15)), "glass", Vector3(1.5, 1.25, 0.0))
-			_m(Res.box(Vector3(3.3, 0.08, 1.55)), "metal_dark", Vector3(0, 2.34, 0.0), Color(0.28, 0.33, 0.36))
-			_m(Res.box(Vector3(2.4, 0.05, 0.38)), "wood", Vector3(0, 0.46, 0.35))
-			_m(Res.cyl(0.035, 0.035, 2.6, 6), "metal_dark", Vector3(-2.1, 1.3, -0.4), Color(0.5, 0.5, 0.5))
-			_m(Res.cyl(0.26, 0.26, 0.03, 12), "paint", Vector3(-2.1, 2.5, -0.4), Color(0.15, 0.35, 0.62), Vector3(PI * 0.5, 0, 0))
+			# (BuildingStreet)
+			BuildingStreet.bus_shelter(BuildingKit.baked(_bake, rng, _at), rng)
 		"planter":
-			_m(Res.box(Vector3(1.2, 0.5, 1.2)), "concrete", Vector3(0, 0.25, 0), Color(0.6, 0.58, 0.54))
-			_leaf(0.55, Vector3(0, 0.85, 0), Color(0.3, 0.42, 0.2))
-			for i in 3:
-				var a := TAU * i / 3.0 + 0.4
-				_leaf(0.2, Vector3(cos(a) * 0.32, 0.72, sin(a) * 0.32), [Color(0.75, 0.2, 0.28), Color(0.85, 0.7, 0.2), Color(0.6, 0.35, 0.7)][i], false)
+			# (BuildingStreet)
+			BuildingStreet.planter(BuildingKit.baked(_bake, rng, _at), rng)
 		"bollard":
 			_m(Res.cyl(0.08, 0.1, 0.85, 8), "metal_dark", Vector3(0, 0.42, 0), Color(0.2, 0.2, 0.2), Vector3.ZERO, false)
 		"fountain":
-			_m(Res.cyl(2.35, 2.35, 0.1, 20), "stone", Vector3(0, 0.05, 0))
-			for i in 16:
-				var a := TAU * i / 16.0
-				_m(Res.box(Vector3(0.98, 0.55, 0.32)), "stone", Vector3(cos(a) * 2.4, 0.28, sin(a) * 2.4), null, Vector3(0, -a + PI * 0.5, 0))
-			_m(Res.cyl(0.25, 0.35, 1.4, 10), "stone", Vector3(0, 0.7, 0))
-			_m(Res.cyl(0.85, 0.35, 0.25, 14), "stone", Vector3(0, 1.45, 0))
+			# the square's fountain (BuildingStreet), its water drawn on its own
+			BuildingStreet.fountain(BuildingKit.baked(_bake, rng, _at))
 			var water := StandardMaterial3D.new()
-			water.albedo_color = Color(0.12, 0.22, 0.24)
+			water.albedo_color = Color(0.1, 0.18, 0.19)
 			water.roughness = 0.05
 			water.metallic_specular = 0.9
-			Res.mi(h, Res.cyl(2.25, 2.25, 0.04, 20), water, Vector3(0, 0.44, 0), Vector3.ZERO, false)
-			Res.mi(h, Res.cyl(0.74, 0.74, 0.03, 14), water, Vector3(0, 1.56, 0), Vector3.ZERO, false)
+			Res.mi(h, Res.cyl(2.25, 2.25, 0.04, 24), water, Vector3(0, 0.44, 0), Vector3.ZERO, false)
+			Res.mi(h, Res.cyl(0.92, 0.92, 0.03, 20), water, Vector3(0, 1.88, 0), Vector3.ZERO, false)
+			Res.mi(h, Res.cyl(0.46, 0.46, 0.03, 16), water, Vector3(0, 2.68, 0), Vector3.ZERO, false)
 		"statue":
-			_m(Res.box(Vector3(1.8, 1.0, 1.8)), "stone", Vector3(0, 0.5, 0))
-			if ex == 1:
-				_m(Res.cyl(0.18, 0.45, 4.2, 4), "stone", Vector3(0, 3.1, 0), Color(0.62, 0.6, 0.56), Vector3(0, PI * 0.25, 0))
-			else:
-				var bronze := Color(0.22, 0.32, 0.27)
-				_m(Res.box(Vector3(1.2, 1.4, 1.2)), "stone", Vector3(0, 1.7, 0))
-				_m(Res.box(Vector3(0.36, 0.9, 0.24)), "metal_dark", Vector3(0, 2.85, 0), bronze)
-				_m(Res.box(Vector3(0.52, 0.72, 0.32)), "metal_dark", Vector3(0, 3.66, 0), bronze)
-				_m(Res.sphere(0.17, 10), "metal_dark", Vector3(0, 4.18, 0), bronze)
-				_m(Res.box(Vector3(0.12, 0.72, 0.12)), "metal_dark", Vector3(0.36, 4.1, 0), bronze, Vector3(0, 0, -0.45))
-				_m(Res.box(Vector3(0.12, 0.6, 0.12)), "metal_dark", Vector3(-0.33, 3.5, 0), bronze, Vector3(0, 0, 0.2))
-				_m(Res.box(Vector3(0.6, 0.35, 0.02)), "metal_dark", Vector3(0, 1.6, -0.61), Color(0.45, 0.35, 0.18), Vector3.ZERO, false)
+			# the war memorial (BuildingSquare): a bronze soldier on his
+			# pedestal, or (1) an obelisk
+			BuildingSquare.memorial(BuildingKit.baked(_bake, rng, _at), ex == 1, rng)
 		"flagpole":
 			_m(Res.cyl(0.045, 0.07, 8.0, 8), "steel", Vector3(0, 4.0, 0))
 			# the town's own colours
@@ -534,27 +615,17 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.box(Vector3(0.5, 1.0, 0.03)), "fabric", Vector3(0.29, 7.25, 0), Color(0.2, 0.42, 0.3))
 			_m(Res.box(Vector3(1.1, 0.16, 0.03)), "fabric", Vector3(1.09, 7.25, 0), Color(0.62, 0.16, 0.12))
 		"stall":
-			var ci := int(ex) if ex != null else 0
-			_m(Res.box(Vector3(2.2, 0.06, 1.0)), "wood", Vector3(0, 0.9, 0))
-			for x in [-1.0, 1.0]:
-				for z in [-0.42, 0.42]:
-					_m(Res.box(Vector3(0.06, 0.9, 0.06)), "wood_dark", Vector3(x, 0.45, z))
-				_m(Res.cyl(0.03, 0.03, 2.35, 6), "wood_dark", Vector3(x * 1.15, 1.17, 0.5))
-				_m(Res.cyl(0.03, 0.03, 2.0, 6), "wood_dark", Vector3(x * 1.15, 1.0, -0.55))
-			_m(Res.box(Vector3(2.6, 0.05, 1.5)), "fabric", Vector3(0, 2.2, 0.0), CANVAS[ci % CANVAS.size()], Vector3(-0.15, 0, 0))
-			_m(Res.box(Vector3(2.6, 0.25, 0.02)), "fabric", Vector3(0, 2.0, -0.75), CANVAS[ci % CANVAS.size()])
-			for i in 4:
-				var gx := -0.8 + i * 0.53
-				_m(Res.box(Vector3(0.42, 0.14, 0.32)), "wood", Vector3(gx, 1.0, 0.0), null, Vector3.ZERO, false)
-				_m(Res.box(Vector3(0.36, 0.06, 0.26)), "paint", Vector3(gx, 1.09, 0.0), [Color(0.75, 0.15, 0.1), Color(0.9, 0.55, 0.12), Color(0.35, 0.6, 0.2), Color(0.85, 0.75, 0.25)][(i + ci) % 4], Vector3.ZERO, false)
+			# a market stall (BuildingSquare): its striped canopy, the produce
+			BuildingSquare.stall(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 0, rng)
 		"transformer":
-			_m(Res.box(Vector3(1.1, 1.4, 0.6)), "paint", Vector3(0, 0.7, 0), Color(0.3, 0.4, 0.3))
-			_m(Res.box(Vector3(1.2, 0.06, 0.7)), "paint", Vector3(0, 1.43, 0), Color(0.26, 0.34, 0.26))
-			_m(Res.box(Vector3(0.22, 0.2, 0.01)), "paint", Vector3(0, 1.0, -0.31), Color(0.95, 0.8, 0.1), Vector3.ZERO, false)
+			# the electricity board's cabinet (BuildingKerbside)
+			BuildingKerbside.cabinet(BuildingKit.baked(_bake, rng, _at))
 		"awning":
 			# a shop's front (BuildingShops): its fascia and name, the awning
 			var a3: Vector3 = ex
-			BuildingShops.front(BuildingKit.baked(_bake, rng, _at), a3.x, int(a3.z), rng)
+			# (a3.y the house's colour index and one, so the fascia matches the
+			# shopfront under it: 0 for none)
+			BuildingShops.front(BuildingKit.baked(_bake, rng, _at), a3.x, int(a3.z), rng, int(a3.y) - 1)
 		"wares":
 			# what the shop puts out on the pavement
 			BuildingShops.wares(BuildingKit.baked(_bake, rng, _at), int(ex), rng)
@@ -578,7 +649,7 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				_sag(h.transform * Vector3(-2.0, 1.85, z), h.transform * Vector3(2.0, 1.85, z), 0.15)
 				for i in rng.randi_range(2, 3):
 					_m(Res.box(Vector3(rng.randf_range(0.4, 0.7), rng.randf_range(0.5, 0.75), 0.02)), "fabric", Vector3(-1.4 + i * 1.1 + rng.randf_range(-0.2, 0.2), 1.45, z), CANVAS[rng.randi() % CANVAS.size()].lightened(0.25), Vector3.ZERO, false)
-		"bins", "pots", "woodpile", "garden_set", "kennel", "bike", "shed", "trampoline":
+		"bins", "pots", "woodpile", "garden_set", "kennel", "bike", "shed", "trampoline", "graves":
 			# what people keep round their houses (BuildingYards)
 			var yk := BuildingKit.baked(_bake, rng, _at)
 			match kind:
@@ -594,6 +665,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 					BuildingYards.kennel(yk, [Color(0.45, 0.32, 0.2), Color(0.25, 0.35, 0.25), Color(0.6, 0.55, 0.45)][rng.randi() % 3])
 				"bike":
 					BuildingYards.bicycle(yk, BuildingYards.BIKE_COLS[int(ex) % BuildingYards.BIKE_COLS.size()])
+				"graves":
+					BuildingYards.graves(yk, int(ex), rng)
 				"shed":
 					BuildingYards.shed(yk, BuildingYards.SHEDS[int(ex) % BuildingYards.SHEDS.size()], rng)
 				"trampoline":
@@ -616,12 +689,31 @@ func _make(h: Node3D, kind: String, ex) -> void:
 					BuildingStreet.street_name(sk, rng)
 				"belongings":
 					BuildingStreet.belongings(sk, rng)
+		"trough", "plough", "harrow", "churn_stand", "hen_house", "barrow":
+			# a farmyard's kit (BuildingFarm)
+			var fk := BuildingKit.baked(_bake, rng, _at)
+			match kind:
+				"trough":
+					BuildingFarm.trough(fk, rng)
+				"plough":
+					BuildingFarm.plough(fk, rng)
+				"harrow":
+					BuildingFarm.harrow(fk, rng)
+				"churn_stand":
+					BuildingFarm.churn_stand(fk, rng)
+				"hen_house":
+					BuildingFarm.hen_house(fk, rng)
+				"barrow":
+					BuildingFarm.barrow(fk, int(ex) if ex != null else 0)
 		"mailbox":
-			_m(Res.box(Vector3(0.07, 1.0, 0.07)), "wood_dark", Vector3(0, 0.5, 0), null, Vector3.ZERO, false)
-			_m(Res.box(Vector3(0.26, 0.24, 0.42)), "paint", Vector3(0, 1.1, 0), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], Vector3.ZERO, false)
+			# a farm's or a cottage's mailbox on its post (BuildingKerbside)
+			BuildingKerbside.mailbox(BuildingKit.baked(_bake, rng, _at), [Color(0.2, 0.35, 0.25), Color(0.6, 0.15, 0.12), Color(0.15, 0.25, 0.45), Color(0.12, 0.12, 0.12)][rng.randi() % 4], rng.randf() < 0.3)
 		"soft":
 			var s2: Vector3 = ex
-			_m(Res.box(Vector3(s2.x, 0.04, s2.z)), "rubber", Vector3(0, 0.02, 0), Color(0.42, 0.2, 0.16), Vector3.ZERO, false)
+			# poured rubber crumb, in the colours councils buy it in (chosen
+			# from the lot's size, so the rest of the street's look is untouched)
+			var pour: Color = [Color(0.4, 0.19, 0.14), Color(0.4, 0.19, 0.14), Color(0.19, 0.27, 0.18), Color(0.17, 0.23, 0.3)][absi(roundi(s2.x * 10.0 + s2.z * 7.0)) & 3]
+			_m(Res.box(Vector3(s2.x, 0.04, s2.z)), "rubber_crumb", Vector3(0, 0.02, 0), pour, Vector3.ZERO, false)
 		"swing":
 			var c1: Color = PAINT[rng.randi() % PAINT.size()]
 			for x in [-1.7, 1.7]:
@@ -675,26 +767,12 @@ func _make(h: Node3D, kind: String, ex) -> void:
 				var a2 := TAU * i / 4.0
 				_beam(Vector3(cos(a2) * 0.9, 0.38, sin(a2) * 0.9), Vector3(cos(a2) * 0.2, 1.0, sin(a2) * 0.2), 0.04, "metal_dark", Color(0.6, 0.6, 0.6), false)
 		"water_tower":
-			var steel := Color(0.58, 0.6, 0.58)
-			for sx in [-1.0, 1.0]:
-				for sz in [-1.0, 1.0]:
-					_beam(Vector3(sx * 2.7, 0, sz * 2.7), Vector3(sx * 1.7, 9.2, sz * 1.7), 0.24, "paint", steel)
-					_m(Res.box(Vector3(0.7, 0.4, 0.7)), "concrete", Vector3(sx * 2.7, 0.2, sz * 2.7))
-			for y in [3.0, 6.2]:
-				var k: float = 2.7 - float(y) / 9.2
-				for e in [[Vector3(-k, y, -k), Vector3(k, y, -k)], [Vector3(k, y, -k), Vector3(k, y, k)], [Vector3(k, y, k), Vector3(-k, y, k)], [Vector3(-k, y, k), Vector3(-k, y, -k)]]:
-					_beam(e[0], e[1], 0.1, "paint", steel)
-			_m(Res.cyl(2.6, 2.6, 0.1, 18), "metal_dark", Vector3(0, 9.15, 0))
-			_m(Res.cyl(2.3, 2.3, 3.2, 18), "paint", Vector3(0, 10.8, 0), Color(0.62, 0.64, 0.6))
-			_m(Res.cyl(0.15, 2.45, 1.1, 18), "paint", Vector3(0, 12.95, 0), Color(0.5, 0.52, 0.5))
-			_beam(Vector3(2.75, 0, 0.25), Vector3(2.4, 12.4, 0.25), 0.05, "metal_dark")
-			_beam(Vector3(2.75, 0, -0.25), Vector3(2.4, 12.4, -0.25), 0.05, "metal_dark")
+			# the town's water tower (BuildingLandmarks)
+			BuildingLandmarks.water_tower(BuildingKit.baked(_bake, rng, _at), rng)
 		"hay":
-			var n2 := int(ex) if ex != null else 1
-			for i in n2:
-				_m(Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3((i - (n2 - 1) * 0.5) * 1.35, 0.65, 0), Color(0.75, 0.64, 0.32), Vector3(0, 0, PI * 0.5))
-			if n2 >= 3:
-				_m(Res.cyl(0.65, 0.65, 1.2, 14), "fabric", Vector3(0, 1.85, 0), Color(0.72, 0.62, 0.3), Vector3(0, 0, PI * 0.5))
+			# round bales by a farm (BuildingFarm): straw, or now and then silage
+			# wrapped in film
+			BuildingFarm.bales(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 1, rng.randf() < 0.35, rng)
 		"drive":
 			var d2: Vector3 = ex
 			_m(Res.box(Vector3(d2.x, 0.03, d2.z)), "concrete_floor", Vector3(0, 0.015, 0), Color(0.46, 0.45, 0.42), Vector3.ZERO, false, true)
@@ -715,6 +793,10 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			for i in slots + 1:
 				var x := -lp.x * 0.5 + i * 2.6 + (lp.x - slots * 2.6) * 0.5
 				_m(Res.box(Vector3(0.08, 0.005, 4.6)), "road_paint", Vector3(x, 0.05, lp.y * 2.6), Color(0.94, 0.94, 0.9), Vector3.ZERO, false, true)
+			# kerbed on its three open sides; the side on the street is the way in
+			for side: float in [-1.0, 1.0]:
+				_m(Res.box(Vector3(0.15, 0.12, lp.z)), "curbstone", Vector3(side * (lp.x * 0.5 - 0.075), 0.06, 0), null, Vector3.ZERO, false, true)
+			_m(Res.box(Vector3(lp.x, 0.12, 0.15)), "curbstone", Vector3(0, 0.06, lp.y * (lp.z * 0.5 - 0.075)), null, Vector3.ZERO, false, true)
 
 
 func _bench(o: Vector3) -> void:
@@ -846,6 +928,7 @@ func _apply_mood_chunk(key: Vector2i) -> void:
 		l.omni_range = 15.0
 		l.omni_attenuation = 1.1
 		l.shadow_enabled = false
+		l.light_volumetric_fog_energy = 40.0  # (a soft halo in the night's damp air, not a wash over the town: AirLayers)
 		l.position = p
 		l.add_to_group(&"fx_light")
 		l.add_to_group(&"probe_light")  # (its glow lights the probes round it: LightProbes)

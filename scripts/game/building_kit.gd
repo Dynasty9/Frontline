@@ -32,6 +32,9 @@ class Sink:
 var sink: Sink
 var frame := Transform3D.IDENTITY
 var rng: RandomNumberGenerator
+## A side's disruptive paint over what this kit builds (Camo.painted), or -1:
+## a field work (the bunker) is painted over, the base's buildings and the town's are not.
+var paint := -1
 
 static var _shapes := {}
 static var _plates := {}
@@ -71,6 +74,7 @@ func moved(xf: Transform3D) -> BuildingKit:
 	k.sink = sink
 	k.rng = rng
 	k.frame = frame * xf
+	k.paint = paint
 	return k
 
 
@@ -98,6 +102,8 @@ func to_model(p: Vector3) -> Vector3:
 ## to `col` (or the surface's own colour), casting a shadow or not.
 func part(mesh: Mesh, kind: String, xf: Transform3D, col: Variant = null, shadow := true) -> void:
 	sink.parts += 1
+	if paint >= 0:
+		kind = Camo.painted(kind, paint)
 	shadow = shadow or sink.cast_all
 	var tint := Mats.tint_for(kind, col) if col is Color else Color(1, 1, 1)
 	var placed := frame * xf
@@ -140,6 +146,15 @@ func box(size: Vector3, p: Vector3, kind: String, col: Variant = null, rot := Ve
 ## A trim, sheet or bar too thin for a chamfer to show: a plain box.
 func plate(size: Vector3, p: Vector3, kind: String, col: Variant = null, rot := Vector3.ZERO, shadow := false) -> void:
 	part(plain(size), kind, Mats.place(p, rot), col, shadow)
+
+
+## A plain box of any size: one unit box stretched to it, for the many small
+## things of sizes picked at random (goods on a shelf, books, bales). Every
+## size box() or plate() is asked for makes and keeps a mesh of its own, and
+## box()'s are chamfered: thousands of vertices a shelf, and a cache that
+## only grows.
+func block(size: Vector3, p: Vector3, kind: String, col: Variant = null, rot := Vector3.ZERO, shadow := true) -> void:
+	part(plain(Vector3.ONE), kind, Mats.place(p, rot, size), col, shadow)
 
 
 func cyl(r_top: float, r_bottom: float, h: float, p: Vector3, kind: String, col: Variant = null, rot := Vector3.ZERO, segs := 8, shadow := true) -> void:

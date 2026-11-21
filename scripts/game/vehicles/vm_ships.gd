@@ -266,12 +266,17 @@ static func _digits(k: VehicleModels, m: Node3D, p: Dictionary, s: float, text: 
 		_decal(k, m, p, s, zc - s * c.x, yc + c.y, r.size.x, r.size.y, "paint", col, 0.008 if shade == null else 0.01)
 
 
-## How strongly each coat of a rust streak stains the paint under it, the
-## long pale tail first, the dark core under the weep last.
-const STREAK_STAIN := [0.5, 0.78, 1.0]
+## How strongly each coat of a rust streak stains the paint under it: two
+## faint fringes a little wider and longer than the rest first (where the
+## water ran thin, so the streak's edge fades into the paint in steps too
+## small to read as a line), the long pale tail, and the dark core under the
+## weep last. FRINGE counts the fringes, which are laid in the tail's finish.
+const STREAK_STAIN := [0.1, 0.26, 0.5, 0.78, 1.0]
+const FRINGE := 2
 
 ## A rust streak's coats (see _coat) on the trawler's steel topsides and on
-## her painted bulwarks and deckhouse.
+## her painted bulwarks and deckhouse, from the pale tail (the fringe is laid
+## in the tail's finish) to the crust.
 const ON_STEEL := ["steel", "steel", "rust_steel"]
 const ON_PAINT := ["plain", "plain", "rust_steel"]
 
@@ -315,7 +320,7 @@ static func _streak(k: VehicleModels, m: Node3D, p: Dictionary, s: float, z: flo
 		for q: Vector2 in coats[i]:
 			shape.append(q * 2.0 + Vector2(0, h))
 		var c := _stain(col, base, STREAK_STAIN[i])
-		_decal(k, m, p, s, z - s * run.x, top + run.y, w, h, _coat(c, kinds, i), c, t + i * 0.0012, tilt, shape, 0)
+		_decal(k, m, p, s, z - s * run.x, top + run.y, w, h, _coat(c, kinds, maxi(i - FRINGE, 0)), c, t + i * 0.0012, tilt, shape, 0)
 
 
 ## The same streak on a flat wall facing +-x (`s`) at x, from (z, top): a
@@ -327,25 +332,27 @@ static func _wall_streak(k: VehicleModels, m: Node3D, s: float, x: float, z: flo
 		var at := Vector3(s * 0.0012 * (i + 1), 0, 0)
 		var c := _stain(col, base, STREAK_STAIN[i])
 		VehicleMarkings.polygons(k, m, [coats[i]], func(q: Vector2) -> Vector3: return wall.sample.call(q) + at,
-			Vector3(s, 0, 0), c, _coat(c, kinds, i), false, 0)
+			Vector3(s, 0, 0), c, _coat(c, kinds, maxi(i - FRINGE, 0)), false, 0)
 
 
 ## Soot on the trawler's funnel (round, 0.3 m in radius at `top`, its upper
 ## end, swelling to 0.33 m 2.3 m below), under its black top band, whose foot
 ## is at `at` on its axis: the smoke curls down round the stack in the boat's
 ## own wake and leaves a grimy collar, its lower edge ragged, reaching `h`
-## down on the after side and a third of that forward, in two coats graded
-## from a grey film over `base` to soot black under the band.
+## down on the after side and a third of that forward, in four coats graded
+## from two faint fringes a little lower than the rest (so the collar fades
+## out down the stack instead of ending at a line) through a grey film over
+## `base` to soot black under the band.
 static func _funnel_soot(k: VehicleModels, m: Node3D, at: Vector3, top: float, h: float, base: Color) -> void:
-	for i in 2:
-		var depth := h * (1.0 if i == 0 else 0.4)
+	for i in 4:
+		var depth: float = h * float([1.32, 1.15, 1.0, 0.4][i])
 		var lift := 0.006 + i * 0.0012
-		var c := _stain(Color(0.06, 0.055, 0.05), base, 0.45 if i == 0 else 1.0)
+		var c := _stain(Color(0.06, 0.055, 0.05), base, float([0.1, 0.24, 0.45, 1.0][i]))
 		# (a strip of narrow panels round the stack, so none cuts a chord
 		# into it, in three sectors each laid facing its own middle; an
 		# outline's x is the angle round from aft)
 		var foot := func(a: float) -> float:
-			return -depth * (0.66 + 0.34 * cos(a) + 0.12 * sin(a * 5.0 + 1.3 + i) + 0.07 * sin(a * 9.0 + 0.4))
+			return -depth * (0.66 + 0.34 * cos(a) + 0.12 * sin(a * 5.0 + 1.3 + maxi(i - 2, 0)) + 0.07 * sin(a * 9.0 + 0.4))
 		for sector in 3:
 			var a0 := -PI + sector * TAU / 3.0
 			var strips := []
@@ -358,16 +365,17 @@ static func _funnel_soot(k: VehicleModels, m: Node3D, at: Vector3, top: float, h
 				var y := at.y + q.y
 				var r := 0.3 + 0.03 * (top - y) / 2.3 + lift
 				return Vector3(at.x + sin(q.x) * r, y, at.z + cos(q.x) * r),
-				Vector3(sin(mid), 0.0, cos(mid)), c, _coat(c, ["plain", "plain_dark"], i), false, 0)
+				Vector3(sin(mid), 0.0, cos(mid)), c, _coat(c, ["plain", "plain", "plain", "plain_dark"], i), false, 0)
 
 
 ## A rust streak's coats as outlines (metres, x across, y up, its top edge at
 ## y = 0), one inside the next: each a tongue `w` wide at the top narrowing to
-## a blunt end, the long pale tail running all `h` down, the core under the
-## source a third of it, each one's end drifting off to the side by `lean`.
+## a blunt end, the faint fringes a little past the long pale tail, which runs
+## all `h` down, the core under the source a third of it, each one's end
+## drifting off to the side by `lean`.
 static func _drip(w: float, h: float, lean: float) -> Array:
 	var out := []
-	for c: Vector2 in [Vector2(1.0, 1.0), Vector2(0.8, 0.62), Vector2(0.55, 0.3)]:
+	for c: Vector2 in [Vector2(1.3, 1.18), Vector2(1.14, 1.08), Vector2(1.0, 1.0), Vector2(0.8, 0.62), Vector2(0.55, 0.3)]:
 		var a := w * 0.5 * c.x
 		var l := h * c.y
 		var lx := lean * a * 0.8
@@ -472,22 +480,43 @@ static func _bitts(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float, sc: fl
 	VehicleMarine.mooring(k, m, pos, Vector3(0.62, 0.35, 0.24) * sc, yaw, "bitts", kind, col)
 
 
-## A coil of rope lying on the deck.
+## A coil of rope lying on the deck: laid mooring line, its hairy twisted
+## strands matte and coarser than any cloth (a wreck's burns away as before).
 static func _coil(k: VehicleModels, m: Node3D, pos: Vector3, r: float, col: Color) -> void:
+	var kind := "fabric" if k.wreck or k.burnt else "rope"
 	for i in 3:
 		var rr := r * (1.0 - i * 0.12)
-		k._add(m, _torus(rr - 0.045, rr), "fabric", col, pos + Vector3(0.02 * i, 0.022 + i * 0.04, -0.015 * i), Vector3.ZERO, Vector3(1, 1.3, 1))
+		k._add(m, _torus(rr - 0.045, rr), kind, col, pos + Vector3(0.02 * i, 0.022 + i * 0.04, -0.015 * i), Vector3.ZERO, Vector3(1, 1.3, 1))
 
 
 ## A life ring on a bracket, its face out along `nrm` (horizontal).
 static func _lifering(k: VehicleModels, m: Node3D, pos: Vector3, nrm: Vector3) -> void:
 	var yaw := atan2(nrm.x, nrm.z)
 	var b := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, PI / 2)
-	k._add(m, _torus(0.2, 0.33), "plain", ORANGE, pos, b.get_euler())
-	for i in 4:
-		var a := PI / 4 + i * PI / 2
-		var q := pos + Basis(Vector3.UP, yaw) * Vector3(cos(a) * 0.265, sin(a) * 0.265, 0.0)
-		_bx(k, m, Vector3(0.05, 0.05, 0.135), q, "plain", Color(0.85, 0.85, 0.82), Vector3(0, yaw, a), false)
+	# (closed-cell foam in a PVC skin: smooth and a little glossy, it doesn't
+	# chip and wear like the paint round it; a wreck's is as it was)
+	k._add(m, _torus(0.2, 0.33), "plain" if k.wreck or k.burnt else "coated", ORANGE, pos, b.get_euler())
+	if k.wreck or k.burnt:
+		for i in 4:
+			var a := PI / 4 + i * PI / 2
+			var q := pos + Basis(Vector3.UP, yaw) * Vector3(cos(a) * 0.265, sin(a) * 0.265, 0.0)
+			_bx(k, m, Vector3(0.05, 0.05, 0.135), q, "plain", Color(0.85, 0.85, 0.82), Vector3(0, yaw, a), false)
+	else:
+		# A lifebuoy's retro-reflective tape wraps flush round the ring at
+		# four places, and its grabline runs round the outside in four
+		# bights, seized to the ring at each tape so a man in the water can
+		# get a hand on it anywhere.
+		var face := Basis(Vector3.UP, yaw)
+		var grab := []
+		for i in 4:
+			var a := PI / 4 + i * PI / 2
+			var q := pos + face * Vector3(cos(a) * 0.265, sin(a) * 0.265, 0.0)
+			k._cyl(m, 0.069, 0.069, 0.05, q, VmBoat._aim(face * Vector3(-sin(a), cos(a), 0.0)), "coated", Color(0.86, 0.86, 0.83), 8, false)
+			grab.append(pos + face * Vector3(cos(a) * 0.336, sin(a) * 0.336, 0.0))
+			var mid := a + PI / 4
+			grab.append(pos + face * Vector3(cos(mid) * 0.37, sin(mid) * 0.37 - 0.012, 0.0))
+		grab.append(grab[0])
+		VehicleCloth.rope(k, m, grab, 0.007, Color(0.82, 0.8, 0.72))
 	_bx(k, m, Vector3(0.08, 0.06, 0.12), pos + Vector3(0, 0.31, 0) - nrm * 0.03, "gunmetal_w", null, Vector3(0, yaw, 0), false)
 
 
@@ -500,13 +529,48 @@ static func _liferaft(k: VehicleModels, m: Node3D, pos: Vector3, tilt: float, cr
 	for e in [-1.0, 1.0]:
 		k._add(pv, Res.sphere(0.29, 10), "plain", white, Vector3(0, 0.31, e * 0.45), Vector3.ZERO, Vector3(1, 1, 0.42))
 	k._cyl(pv, 0.305, 0.305, 0.05, Vector3(0, 0.31, 0), Vector3(PI / 2, 0, 0), "plain", white.darkened(0.12), 16, false)
+	# (the lashing straps over it are polyester webbing, a wreck's as before)
+	var lash := "plain" if k.wreck or k.burnt else "webbing"
 	for dz in [-0.32, 0.32]:
-		k._cyl(pv, 0.298, 0.298, 0.035, Vector3(0, 0.31, dz), Vector3(PI / 2, 0, 0), "plain", Color(0.2, 0.2, 0.2), 16, false)
+		k._cyl(pv, 0.298, 0.298, 0.035, Vector3(0, 0.31, dz), Vector3(PI / 2, 0, 0), lash, Color(0.2, 0.2, 0.2), 16, false)
 		# the cradle's saddle
 		_bx(k, pv, Vector3(0.62, 0.12, 0.08), Vector3(0, 0.06, dz), "paint", cradle_col)
 	_bx(k, pv, Vector3(0.1, 0.05, 0.9), Vector3(0.24, 0.02, 0), "paint", cradle_col)
 	_bx(k, pv, Vector3(0.1, 0.05, 0.9), Vector3(-0.24, 0.02, 0), "paint", cradle_col)
+	if not (k.wreck or k.burnt):
+		# The straps meet in the hydrostatic release on the cradle's rail,
+		# which frees the canister if the ship sinks under it, and the
+		# painter runs from the canister's end to the release's weak link,
+		# so the raft inflates on the end of it.
+		_bx(k, pv, Vector3(0.07, 0.08, 0.06), Vector3(0.265, 0.085, 0.0), "plain_dark", Color(0.12, 0.12, 0.13), Vector3.ZERO, false)
+		_bx(k, pv, Vector3(0.02, 0.04, 0.035), Vector3(0.305, 0.09, 0.0), "plain", Color(0.86, 0.4, 0.1), Vector3.ZERO, false)
+		VehicleCloth.rope(k, pv, [Vector3(0.0, 0.31, 0.57), Vector3(0.16, 0.14, 0.54), Vector3(0.3, 0.06, 0.4), Vector3(0.315, 0.08, 0.03)], 0.006, Color(0.78, 0.76, 0.68))
 	VmBoat._bake(k, pv)
+
+
+## The tarpaulin over a fish hold's hatch boards (a 1.4 by 1.3 m coaming,
+## `top` the middle of the boards' top): thrown over them, lying in loose
+## lumps on the boards and hanging down over the coaming's sides, held by two
+## lines lashed across it to the coaming's cleats, as a crew leaves a hatch
+## they open every haul.
+static func _hatch_tarp(k: VehicleModels, m: Node3D, top: Vector3, col: Color) -> void:
+	var xs: Array[float] = [-0.715, -0.705, -0.62, -0.3, 0.0, 0.3, 0.62, 0.705, 0.718]
+	var xd: Array[float] = [-0.27, -0.015, 0.0, 0.0, 0.0, 0.0, 0.0, -0.015, -0.21]
+	var zs: Array[float] = [-0.665, -0.655, -0.55, -0.25, 0.05, 0.35, 0.55, 0.655, 0.668]
+	var zd: Array[float] = [-0.19, -0.015, 0.0, 0.0, 0.0, 0.0, 0.0, -0.015, -0.28]
+	var pts := PackedVector3Array()
+	for j in zs.size():
+		for i in xs.size():
+			var x: float = xs[i]
+			var z: float = zs[j]
+			var hang := minf(xd[i], zd[j])
+			# (lumps where the cloth has bunched, none along the hanging edges)
+			var lump := (0.034 * maxf(0.0, sin(x * 4.3 + z * 6.1 + 0.7)) + 0.008 * sin(x * 9.0 - z * 7.0)) * (1.0 if hang == 0.0 else 0.0)
+			pts.append(Vector3(x, 0.012 + hang + lump, z))
+	k._add(m, VehicleMarine.cloth("ship_tr_tarp", pts, xs.size(), zs.size()), "canvas", col, top)
+	var line := Color(0.62, 0.56, 0.42)
+	for z: float in [-0.32, 0.3]:
+		VehicleCloth.rope(k, m, [top + Vector3(-0.728, -0.2, z), top + Vector3(-0.712, 0.0, z), top + Vector3(-0.3, 0.05, z), top + Vector3(0.3, 0.05, z), top + Vector3(0.712, 0.0, z), top + Vector3(0.728, -0.2, z)], 0.009, line)
 
 
 ## A mushroom ventilator on the deck.
@@ -515,9 +579,13 @@ static func _vent(k: VehicleModels, m: Node3D, pos: Vector3, kind: String, col) 
 	k._cyl(m, 0.17, 0.12, 0.08, pos + Vector3(0, 0.36, 0), Vector3.ZERO, kind, col, 12)
 
 
-## A flag on a staff's head at pos (its hoist), flying aft along +z.
+## A flag on a staff's head at pos (its hoist), flying aft along +z: the
+## slack ensign (VehicleMarine.ensign); a wreck's is the stiff old one.
 static func _flag(k: VehicleModels, m: Node3D, pos: Vector3, team: int, w: float, h: float) -> void:
 	if team < 0 or team >= Defs.TEAM_COLORS.size() or k.burnt:
+		return
+	if not k.wreck:
+		VehicleMarine.ensign(k, m, pos, team, w, h)
 		return
 	var tc: Color = Defs.TEAM_COLORS[team].lerp(Color(0.45, 0.45, 0.42), 0.35).darkened(0.12)
 	var n := 3
@@ -574,33 +642,50 @@ static func _mk38(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	# the barrel: a support sleeve out of the housing's nose, the long tube, a
 	# muzzle device on its end
 	VehicleWeapons.autocannon(k, tv, Vector3(0, 0.58, -0.63), Vector3(0, 0.58, -2.64), Vector2(0.08, 0.3), Vector2(0.03, 0.042), Vector2(0.045, 0.16))
-	# the electro-optical sight on the left, its windows forward
-	_bx(k, tv, Vector3(0.08, 0.1, 0.3), Vector3(-0.34, 0.6, -0.1), cm, col)
-	k._add(tv, VehicleModels.loft("ship_mk38_eos", VmBoat._rr(0.28, 0.46, 0.0, 0.06, 0.04), VmBoat._rr(0.24, 0.4, 0.02, 0.05, 0.03), 0.0, 0.4, 0.02), cm, col, Vector3(-0.53, 0.44, -0.12))
-	_bx(k, tv, Vector3(0.16, 0.1, 0.012), Vector3(-0.53, 0.72, -0.35), "glass", null, Vector3.ZERO, false)
-	_bx(k, tv, Vector3(0.1, 0.08, 0.012), Vector3(-0.53, 0.58, -0.35), "glass", null, Vector3.ZERO, false)
-	_bx(k, tv, Vector3(0.3, 0.02, 0.2), Vector3(-0.53, 0.855, -0.3), cm, col, Vector3(-0.12, 0, 0), false)
-	# the ammunition box on the right and its feed chute into the receiver
+	# the electro-optical sight on the left, on its arm off the housing: the
+	# head's three windows forward (the TV camera's over the thermal
+	# imager's, the laser rangefinder's small one beside), bezelled, under
+	# their visors
+	_bx(k, tv, Vector3(0.12, 0.1, 0.3), Vector3(-0.33, 0.6, -0.1), cm, col)
+	VehicleMounts.sight(k, tv, Vector3(-0.53, 0.64, -0.12), Vector3(0.28, 0.4, 0.46), [Rect2(Vector2(-0.045, 0.09), Vector2(0.15, 0.1)), Rect2(Vector2(-0.045, -0.06), Vector2(0.15, 0.1)), Rect2(Vector2(0.09, -0.06), Vector2(0.05, 0.05))], cm, col)
+	# the ammunition box on the right, its lid's seam and the two latches
+	# that clamp it, and the ribbed chute the linked rounds ride up out of
+	# it and into the receiver's feed
 	_bx(k, tv, Vector3(0.26, 0.38, 0.66), Vector3(0.52, 0.42, 0.18), cm, col.darkened(0.06))
-	_bx(k, tv, Vector3(0.2, 0.06, 0.2), Vector3(0.38, 0.66, 0.0), "gunmetal_w", null, Vector3(0, 0, -0.5))
+	_bx(k, tv, Vector3(0.268, 0.008, 0.668), Vector3(0.52, 0.55, 0.18), "plain_dark", Color(0.12, 0.13, 0.13), Vector3.ZERO, false)
 	for z in [-0.05, 0.4]:
-		_bx(k, tv, Vector3(0.28, 0.03, 0.04), Vector3(0.52, 0.62, z), "gunmetal_w", null, Vector3.ZERO, false)
+		_bx(k, tv, Vector3(0.012, 0.07, 0.04), Vector3(0.656, 0.55, z), "gunmetal_w", null, Vector3.ZERO, false)
+		_bx(k, tv, Vector3(0.28, 0.02, 0.04), Vector3(0.52, 0.62, z), "gunmetal_w", null, Vector3.ZERO, false)
+	var feed: Array[Vector3] = [Vector3(0.5, 0.6, -0.04), Vector3(0.45, 0.71, -0.06), Vector3(0.35, 0.73, -0.08), Vector3(0.26, 0.66, -0.1)]
+	VehicleFrames.path(k, tv, feed, 0.045, "metal_dark", null, 8)
+	for i in feed.size() - 1:
+		k._add(tv, Res.torus(0.04, 0.054), "metal_dark", null, feed[i].lerp(feed[i + 1], 0.5), VehicleFrames.aim(feed[i + 1] - feed[i]).get_euler(), Vector3.ONE, false)
 	# the spent case chute under the housing, a cable loom at the back
 	_bx(k, tv, Vector3(0.12, 0.2, 0.14), Vector3(0, 0.3, -0.2), "gunmetal_w")
 	_rod(k, tv, Vector3(-0.2, 0.42, 0.68), Vector3(-0.32, 0.12, 0.5), 0.03, "rubber", null, 6)
 	return tv
 
 
-## The M2 .50 cal on a pedestal mount: a post with a flange, the cradle,
-## receiver, barrel with its carrying handle and flash hider, spade grips, the
-## ammo can on the left. Trained `yaw` (0 = forward), elevated `el`.
+## The M2 .50 cal on a shipboard stanchion mount: the pedestal on its deck
+## plate with four braced feet, the swivel and yoke on top with the gun's
+## trunnion block between the cheeks, the receiver, barrel with its carrying
+## handle and flash hider, spade grips, the ammo can on the left and the
+## canvas bag under the receiver that catches the spent brass and links (a
+## ship's gun throws them on a deck the crew has to stand on). Trained `yaw`
+## (0 = forward), elevated `el`.
 static func _m2(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float, el := 0.06) -> void:
-	var pv := k._pivot(m, pos + Vector3(0, 0.88, 0))
+	var pv := k._pivot(m, pos + Vector3(0, 0.78, 0))
 	pv.rotation = Vector3(el, yaw, 0)
-	# the post's flange on the deck plate, the post and the cradle under the
-	# receiver (an HMG of size 0.9: 0.144 wide, 0.171 high)
-	VehicleMounts.pintle(k, m, pos + Vector3(0, 0.012, 0), pv.transform * Vector3(0, 0.13, -0.05), "gunmetal_w", null, Vector2(0.05, 0.06), Vector2(0.144, 0.171), -pv.basis.z)
-	VehicleWeapons.hmg(k, pv, Vector3(0, 0.13, -0.05), Vector3(0, 0.13, -1.625), 0.9, -1.0, true, "gunmetal_w", Color(0.3, 0.33, 0.22))
+	# (an HMG of size 0.9: its trunnion block 0.1 under the receiver's axis and
+	# 0.22 ahead of its centre, so the gun sits back over the post)
+	var head := k._pivot(m, pv.position)
+	head.rotation.y = yaw
+	VehicleMounts.pedestal(k, m, pos, pv.position, head, "gunmetal_w", null, 0.42, Vector2(0.055, 0.065), 4, Vector3(0.1, 0.15, 0.16))
+	k._fold(head)
+	VehicleWeapons.hmg(k, pv, Vector3(0, 0.23, 0.216), Vector3(0, 0.23, -1.359), 0.9, -1.0, true, "gunmetal_w", Color(0.3, 0.33, 0.22))
+	# the brass bag under the ejection port, hung off the receiver's back
+	k._bag(pv, Vector3(0.11, 0.15, 0.2), Vector3(0, 0.07, 0.28), "canvas", Color(0.36, 0.35, 0.26))
+	_rod(k, pv, Vector3(-0.05, 0.14, 0.19), Vector3(0.05, 0.14, 0.19), 0.006, "steel", null, 6, false)
 	VmBoat._bake(k, pv)
 
 
@@ -635,7 +720,8 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	for sx in [-0.16, 0.16]:
 		# receivers, then each barrel from its jacket to the slotted flash hider
 		VehicleMounts.receiver(k, el, Vector3(0.14, 0.2, 1.05), Vector3(sx, 0.02, 0.05), gm)
-		VehicleWeapons.autocannon(k, el, Vector3(sx, 0.04, -0.46), Vector3(sx, 0.04, -2.7), Vector2(0.06, 0.4), Vector2(0.032, 0.036), Vector2(0.05, 0.3), gm)
+		VehicleWeapons.autocannon(k, el, Vector3(sx, 0.04, -0.46), Vector3(sx, 0.04, -2.7), Vector2(0.06, 0.4), Vector2(0.032, 0.03), Vector2(0.03, 0.001), gm)
+		VehicleWeapons.cone_hider(k, el, Vector3(sx, 0.04, -2.7), 0.03, 0.05, 0.27)
 		# the box magazine on the gun's outer side
 		var ox: float = signf(sx) * 0.37
 		_bx(k, el, Vector3(0.2, 0.36, 0.52), Vector3(ox, 0.08, 0.05), cm, col.darkened(0.08))
@@ -659,28 +745,25 @@ static func _zu23(k: VehicleModels, m: Node3D, pos: Vector3, col: Color) -> Node
 	return tv
 
 
-## DShK 12.7 mm on a pintle: the post, the cradle, the receiver, the finned
-## barrel and its big muzzle brake, spade grips, a 50-round box on the left,
-## a scrap-steel shield in front. Trained `yaw`.
+## DShK 12.7 mm on a pintle: the post, the cradle, the gun itself (the
+## ground forces' DShK: its finned barrel, the flat muzzle brake, the ring
+## sight, wooden spade grips, the 50-round box on the left), a scrap-steel
+## shield in front. Trained `yaw`.
 static func _dshk(k: VehicleModels, m: Node3D, pos: Vector3, yaw: float) -> void:
 	var gm := "gunmetal_w"
 	var pv := k._pivot(m, pos + Vector3(0, 0.97, 0))
 	pv.rotation = Vector3(0.1, yaw, 0)
 	# the pintle (its socket on the roof, the post, the cradle under the
 	# receiver) and three legs welded on to steady it
-	VehicleMounts.pintle(k, m, pos, pv.transform * Vector3(0, 0.12, 0.0), gm, null, Vector2(0.06, 0.07), Vector2(0.14, 0.17), -pv.basis.z)
+	VehicleMounts.pintle(k, m, pos, pv.transform * Vector3(0, 0.12, 0.0), gm, null, Vector2(0.06, 0.07), Vector2(0.13, 0.15), -pv.basis.z)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(0.35, 0.0, 0.2), 0.025, gm, null, 6, true)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(-0.35, 0.0, 0.2), 0.025, gm, null, 6, true)
 	_rod(k, m, pos + Vector3(0, 0.3, 0), pos + Vector3(0.0, 0.0, -0.4), 0.025, gm, null, 6, true)
-	VehicleMounts.receiver(k, pv, Vector3(0.14, 0.17, 0.7), Vector3(0, 0.12, 0.0), gm)
-	for i in 6:
-		k._cyl(pv, 0.05, 0.05, 0.035, Vector3(0, 0.13, -0.42 - i * 0.07), Vector3(PI / 2, 0, 0), gm, null, 10, false)
-	k._cyl(pv, 0.026, 0.026, 1.1, Vector3(0, 0.13, -0.92), Vector3(PI / 2, 0, 0), gm, null, 6)
-	_bx(k, pv, Vector3(0.11, 0.09, 0.16), Vector3(0, 0.13, -1.5), gm)
-	for sx in [-0.07, 0.07]:
-		_rod(k, pv, Vector3(sx, 0.1, 0.33), Vector3(sx, 0.2, 0.42), 0.017, "wood_dark", null, 6, true)
-	_bx(k, pv, Vector3(0.14, 0.22, 0.3), Vector3(-0.17, 0.07, 0.0), "paint", Color(0.3, 0.33, 0.22))
-	_bx(k, pv, Vector3(0.5, 0.32, 0.025), Vector3(0, 0.06, -0.4), "steel", Color(0.32, 0.31, 0.27), Vector3(-0.1, 0, 0))
+	VmCore._dshk(k, pv, Vector3(0, 0.12, 0.0))
+	# the shield: a slab of plate cut from the hull's scrap, notched for the
+	# barrel and the gas tube under it, clamped to the cradle just ahead of
+	# the receiver (it turns with the gun), so the ring sight stands over it
+	VmCore._shield_face(k, pv, 0.0, 0.21, 0.52, -0.12, 0.27, [Rect2(-0.05, 0.03, 0.1, 0.16)], [false], "steel", 0.02)
 	VmBoat._bake(k, pv)
 
 
@@ -703,7 +786,14 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	var zs: float = zt - float(p["len"])
 	_hull_bands(k, m, p, "ship_pb", ["plain", Color(0.3, 0.13, 0.11), "plain", blk, "plain", grey], "plain", grey, 0.07, 0.56)
 	var all := _hull(p)
-	k._add(m, _deck_mesh("ship_pb_deck", all, 0.09, 0.012), "nonslip", dkc, Vector3.ZERO)
+	# The deck runs out under the forward bulwark's inner face (0.07 in), as
+	# on the trawler: 9 cm in, the grey of the hull's top showed as a pale
+	# line along its foot. Aft, the margin it leaves still carries the toe
+	# rail. (A wreck's deck stays as it was.)
+	if k.wreck:
+		k._add(m, _deck_mesh("ship_pb_deck", all, 0.09, 0.012), "nonslip", dkc, Vector3.ZERO)
+	else:
+		k._add(m, _deck_mesh("ship_pb_deck_in", all, 0.06, 0.012), "nonslip", dkc, Vector3.ZERO)
 	# spray rails and chine flats on the bottom, the rubbing strake under the
 	# deck edge, a toe rail round the open decks, a capping on the bulwark
 	for s in [-1.0, 1.0]:
@@ -790,11 +880,22 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 	# the roof, its visor over the windscreen, a coaming round its edge
 	var rc := VmBoat._scale_xz(roof, 1.04, -2.2)
 	k._add(m, VehicleModels.solid([VmBoat._ry(rc, y2 - 0.02), VmBoat._ry(rc, y2 + 0.1)], "ship_pb_roof", false, 0.035, 0.02), "plain", sup, Vector3.ZERO)
+	# the roof is a working deck (the mast, the radar and the lights are
+	# tended from it): deck-grey non-skid inside a margin of the house's
+	# haze grey, as the Navy coats every surface a sailor walks on, so from
+	# above it reads as deck, not as a pale slab in the sun
+	if not k.wreck and not k.burnt:
+		var rm := VmBoat._scale_xz(roof, 0.9, -2.2)
+		k._add(m, VehicleModels.solid([VmBoat._ry(rm, y2 + 0.1), VmBoat._ry(rm, y2 + 0.112)], "ship_pb_roofmat"), "nonslip", dkc, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+	# (the visor's brim runs out level with the roof's edge, as the house's
+	# own: drooped 13 degrees toward the bow quarters, the corner ones caught
+	# the sun square on and glared pure white over the panes)
+	var droop := 0.1 if k.wreck or k.burnt else 0.02
 	for f in [[5, 0], [0, 1], [1, 2]]:
 		var a := VmBoat._pt(rc, f[0], y2 + 0.06)
 		var b := VmBoat._pt(rc, f[1], y2 + 0.06)
 		var o := Vector3((b - a).z, 0, -(b - a).x).normalized() * 0.42
-		VmBoat._panel(k, m, a, b, b + o + Vector3(0, -0.1, 0), a + o + Vector3(0, -0.1, 0), Vector3(0, 0, -2.0), 0.0, 0.04, "plain", sup, 0.0)
+		VmBoat._panel(k, m, a, b, b + o + Vector3(0, -droop, 0), a + o + Vector3(0, -droop, 0), Vector3(0, 0, -2.0), 0.0, 0.04, "plain", sup, 0.0)
 	# the pilothouse's after wall above the after house: two small windows, a door to the roof
 	for sx in [-1.0, 1.0]:
 		VehicleGlazing.rectangle(k, m, Vector2(0.6, 0.32), Vector3(sx * 1.1, 4.82, -0.44), Vector3.ZERO, false, Color(0.12, 0.15, 0.18), 0.03)
@@ -833,7 +934,7 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		_rod(k, m, Vector3(sx, _dk(p, 4.6), 4.56), Vector3(sx, ya + 0.9, 4.38), 0.022, "gunmetal_w", null, 6, true)
 	# --- the after house's roof: rails round it, four liferafts tipped
 	# outboard, the satcom dome, HVAC boxes, whips at the corners
-	_bx(k, m, Vector3(3.8, 0.012, 4.7), Vector3(0, ya + 0.006, 1.85), "plain", dkc, Vector3.ZERO, false)
+	_bx(k, m, Vector3(3.8, 0.012, 4.7), Vector3(0, ya + 0.006, 1.85), "plain" if k.wreck or k.burnt else "nonslip", dkc, Vector3.ZERO, false)
 	for s in [-1.0, 1.0]:
 		var rp := [Vector3(s * 1.9, ya, -0.3), Vector3(s * 1.9, ya, 3.85), Vector3(s * 1.66, ya, 4.3)]
 		for q in rp:
@@ -890,7 +991,10 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 		_bitts(k, m, Vector3(s * 0.95, _dk(p, -10.1), -10.1), 0.0, 1.0, "plain", grey.darkened(0.15))
 		_bitts(k, m, Vector3(s * 2.45, _dk(p, -3.2), -3.2), 0.0, 1.0, "plain", grey.darkened(0.15))
 		_bitts(k, m, Vector3(s * 2.35, _dk(p, 10.9), 10.9), 0.0, 1.0, "plain", grey.darkened(0.15))
-		_coil(k, m, Vector3(s * 1.75, _dk(p, 10.3), 10.3), 0.3, Color(0.75, 0.73, 0.66))
+		# (flaked down clear of the bitts' posts, not round one; a wreck's lies
+		# where it always has)
+		var cz := 10.3 if k.wreck or k.burnt else 10.15
+		_coil(k, m, Vector3(s * (1.75 if k.wreck or k.burnt else 1.55), _dk(p, cz), cz), 0.3, Color(0.75, 0.73, 0.66))
 		# fairleads through the bulwark by the bow bitts
 		var fz := -10.5
 		var fst := _at(p, fz)
@@ -988,6 +1092,21 @@ static func _patrol_ship(k: VehicleModels, team: int, seed: int) -> void:
 ## the trawl winch, a stern gantry with the trawl doors hanging off it, a net
 ## drum, nets and floats; rust streaking from every scupper and hawse. A
 ## ZU-23-2 welded on the foredeck (the turret), a DShK on the wheelhouse roof.
+## A heap's centre moved just far enough that its footprint (an ellipse of
+## half-axes `a` across and `c` along, turned by `yaw`) lies on the deck
+## inside the bulwarks and forward of the transom: netting piled against the
+## bulwark slumps against it, it doesn't pass through the plating.
+static func _heap_fit(p: Dictionary, at: Vector3, a: float, c: float, yaw: float) -> Vector3:
+	var ex := sqrt(pow(a * cos(yaw), 2.0) + pow(c * sin(yaw), 2.0))
+	var ez := sqrt(pow(a * sin(yaw), 2.0) + pow(c * cos(yaw), 2.0))
+	var out := at
+	out.z = minf(out.z, float(p["z0"]) - 0.2 - ez)
+	var st := _at(p, out.z)
+	var inner := VmBoat._hw(st[1], float(st[2]) + 0.4) - 0.15
+	out.x = clampf(out.x, -maxf(0.0, inner - ex), maxf(0.0, inner - ex))
+	return out
+
+
 static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var m := k.root
 	var p := TR
@@ -999,7 +1118,14 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var zs: float = zt - float(p["len"])
 	_hull_bands(k, m, p, "ship_tr", ["paint", Color(0.42, 0.17, 0.11), "paint", Color(0.14, 0.13, 0.12), "steel", blue], "plain", white, 0.06)
 	var all := _hull(p)
-	k._add(m, _deck_mesh("ship_tr_deck", all, 0.07, 0.012), "nonslip", deckc, Vector3.ZERO)
+	# The deck plating runs out under the bulwark's inner face (0.06 in from
+	# the shell), as it's welded to the shell plate: stopped short of it, the
+	# topsides' blue showed as a bright line round the foot of the bulwark.
+	# (A wreck's deck stays as it was.)
+	if k.wreck:
+		k._add(m, _deck_mesh("ship_tr_deck", all, 0.07, 0.012), "nonslip", deckc, Vector3.ZERO)
+	else:
+		k._add(m, _deck_mesh("ship_tr_deck_in", all, 0.05, 0.012), "nonslip", deckc, Vector3.ZERO)
 	# the transom's bulwark across the stern
 	var tst := _station(p, 0.0)
 	var tw := VmBoat._hw(tst[1], tst[2])
@@ -1110,6 +1236,12 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	k._add(m, VehicleModels.solid([VmBoat._ry(wb, wy0), VmBoat._ry(ws, wy1), VmBoat._ry(wr, wy2)], "ship_tr_wheel"), "plain", white.lightened(0.03), Vector3.ZERO)
 	var wroof := VmBoat._scale_xz(wr, 1.06, 1.5)
 	k._add(m, VehicleModels.solid([VmBoat._ry(wroof, wy2 - 0.02), VmBoat._ry(wroof, wy2 + 0.1)], "ship_tr_wroof", false, 0.035, 0.02), "plain", blue.lightened(0.05), Vector3.ZERO)
+	# The wheelhouse roof is the DShK gunner's platform now, its plating
+	# coated in the foredeck's green non-skid inside a margin of the old
+	# blue: from above, a pale sky-blue slab was the brightest thing aboard.
+	if not k.wreck and not k.burnt:
+		var wmat := VmBoat._scale_xz(wr, 0.97, 1.5)
+		k._add(m, VehicleModels.solid([VmBoat._ry(wmat, wy2 + 0.1), VmBoat._ry(wmat, wy2 + 0.112)], "ship_tr_wroofmat"), "nonslip", deckc, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 	var win := Vector3(0, wy1, 1.6)
 	for f in [[0, 1, 4], [1, 2, 1], [5, 0, 1], [2, 3, 3], [4, 5, 3], [3, 4, 2]]:
 		var a: int = f[0]
@@ -1215,7 +1347,10 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	var hz2 := -3.25
 	_bx(k, m, Vector3(1.4, 0.45, 1.3), Vector3(0, _dk(p, hz2) + 0.22, hz2), "plain", white.darkened(0.1))
 	_bx(k, m, Vector3(1.32, 0.06, 1.22), Vector3(0, _dk(p, hz2) + 0.48, hz2), "wood_dark")
-	_bx(k, m, Vector3(0.9, 0.04, 0.8), Vector3(0.1, _dk(p, hz2) + 0.52, hz2 + 0.1), "canvas", Color(0.3, 0.34, 0.3), Vector3(0, 0.15, 0))
+	if k.wreck:
+		_bx(k, m, Vector3(0.9, 0.04, 0.8), Vector3(0.1, _dk(p, hz2) + 0.52, hz2 + 0.1), "canvas", Color(0.3, 0.34, 0.3), Vector3(0, 0.15, 0))
+	else:
+		_hatch_tarp(k, m, Vector3(0, _dk(p, hz2) + 0.51, hz2), Color(0.3, 0.34, 0.3))
 	# --- the foredeck: the ZU-23-2 on a welded plinth (the turret), ammo
 	# crates, sandbags along the bulwark, the windlass and the bow fairlead
 	var gz := -5.15
@@ -1233,11 +1368,25 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		VehicleCargo.crate_stack(k, m, Vector3(q[0], _dk(p, cz), cz), Vector3(0.62, 0.3, 0.4), Vector3i.ONE, "wood_painted", Color(0.3, 0.33, 0.22), 0.0, [], 0.12, Color(0.28, 0.26, 0.2), q[2])
 	# (one more on the first, set down a little askew)
 	VehicleCargo.crate_stack(k, m, Vector3(1.6, _dk(p, -4.1) + 0.3, -4.12), Vector3(0.62, 0.3, 0.4), Vector3i.ONE, "wood_painted", Color(0.28, 0.31, 0.21), 0.0, [], 0.12, Color(0.28, 0.26, 0.2), 0.1)
+	# The gun crew's parapet: filled sacks laid two courses high along the
+	# inside of each bulwark beside the gun, end to end and bonded, as a crew
+	# throws up a sandbag wall (VehicleCloth.sandbags; a wreck's and scenery's
+	# keep the old blocks, their sacks split and spilt).
+	var lot := VehicleCloth.sack_lot(k)
 	for s in [-1.0, 1.0]:
+		if not lot.is_empty():
+			var ends: Array[Vector3] = []
+			for sz: float in [gz - 1.25, gz + 1.25]:
+				var st := _at(p, sz)
+				ends.append(Vector3(s * (VmBoat._hw(st[1], st[3]) - 0.19), float(st[3]), sz))
+			VehicleCloth.sandbags(k, m, ends[0], ends[1], VehicleCargo.kit(k, m, ends[0], 43), lot, 2)
 		for i in 5:
 			var sz := gz - 1.0 + i * 0.5
 			var st := _at(p, sz)
-			_bx(k, m, Vector3(0.32, 0.16, 0.52), Vector3(s * (VmBoat._hw(st[1], st[3]) - 0.12), float(st[3]) + 0.1, sz), "sandbag", Color(0.6, 0.53, 0.38), Vector3(0, rng.randf_range(-0.15, 0.15), 0))
+			# (drawn either way, so the rest of the boat's rust and wear stay put)
+			var turn := rng.randf_range(-0.15, 0.15)
+			if lot.is_empty():
+				_bx(k, m, Vector3(0.32, 0.16, 0.52), Vector3(s * (VmBoat._hw(st[1], st[3]) - 0.12), float(st[3]) + 0.1, sz), "sandbag", Color(0.6, 0.53, 0.38), Vector3(0, turn, 0))
 	var lz := zs + 1.55
 	var ly := _dk(p, lz)
 	_bx(k, m, Vector3(0.7, 0.4, 0.55), Vector3(0.0, ly + 0.2, lz), "steel", Color(0.4, 0.2, 0.12))
@@ -1255,7 +1404,12 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 		_bx(k, m, Vector3(0.12, 0.95, 0.5), Vector3(sx * 1.25, ny - 0.47, nz), "steel", Color(0.4, 0.2, 0.12))
 		k._cyl(m, 0.8, 0.8, 0.05, Vector3(sx * 1.1, ny, nz), Vector3(0, 0, PI / 2), "steel", Color(0.4, 0.2, 0.12), 20)
 	k._cyl(m, 0.3, 0.3, 2.3, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), "steel", Color(0.25, 0.24, 0.23), 12)
-	k._cyl(m, 0.66, 0.66, 2.14, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), "canvas", Color(0.17, 0.25, 0.2), 18)
+	# (the net wound on the drum: the same synthetic netting as the heaps.
+	# Netting is knotted twine, a mesh of it: from the deck it reads as the
+	# coarse, hairy fibre of rope, not a woven cloth's smooth face, and the
+	# fenders' lines share the finish. A wreck's burns away as it always has.)
+	var netting := "fabric" if k.wreck else "rope"
+	k._cyl(m, 0.66, 0.66, 2.14, Vector3(0, ny, nz), Vector3(0, 0, PI / 2), netting, Color(0.17, 0.25, 0.2), 18)
 	for i in 9:
 		var a := TAU * i / 9.0 + 0.2
 		k._add(m, Res.sphere(0.09, 6), "plain", ORANGE if i % 3 != 0 else Color(0.85, 0.75, 0.2), Vector3(-0.85 + i * 0.21, ny + sin(a) * 0.67, nz + cos(a) * 0.67))
@@ -1290,9 +1444,28 @@ static func _gun_trawler(k: VehicleModels, team: int, seed: int) -> void:
 	for h in heaps:
 		var hz3: float = h[1]
 		var r: float = h[2]
-		k._add(m, Res.sphere(1.0, 9), "canvas", Color(0.18, 0.27, 0.22), Vector3(h[0], _dk(p, hz3) + r * 0.25, hz3), Vector3(0, rng.randf() * PI, 0), Vector3(r * 1.3, r * 0.6, r))
+		var yaw := rng.randf() * PI
+		# Netting dumped on a deck slumps into a heap of folds, not a dome: the
+		# main pile, then two smaller bights slid off its sides, in polyethylene
+		# netting (a synthetic mesh, not cotton duck) gone a shade or two
+		# different where an older net lies in with the new.
+		var heap_at := _heap_fit(p, Vector3(h[0], 0.0, hz3), r * 1.3, r, yaw)
+		heap_at.y = _dk(p, heap_at.z) + r * 0.25
+		k._add(m, Res.sphere(1.0, 9), netting, Color(0.18, 0.27, 0.22), heap_at, Vector3(0, yaw, 0), Vector3(r * 1.3, r * 0.6, r))
+		var across := Vector3(cos(yaw), 0, -sin(yaw))
+		var along := Vector3(sin(yaw), 0, cos(yaw))
+		for f: float in [-1.0, 1.0]:
+			var fold := _heap_fit(p, heap_at + across * f * r * 0.85 + along * f * r * 0.3, r * 0.62, r * 0.55, yaw + f * 0.6)
+			fold.y = heap_at.y - r * 0.12
+			var shade := Color(0.16, 0.24, 0.21) if f < 0.0 else Color(0.2, 0.28, 0.21)
+			k._add(m, Res.sphere(1.0, 9), netting, shade, fold, Vector3(0, yaw + f * 0.6, 0), Vector3(r * 0.62, r * 0.42, r * 0.55))
+		# the floats strung through the net, half sunk in the heap's surface
 		for i in 4:
-			k._add(m, Res.sphere(0.085, 6), "plain", ORANGE if i % 2 == 0 else Color(0.85, 0.75, 0.2), Vector3(float(h[0]) + rng.randf_range(-r, r) * 0.9, _dk(p, hz3) + r * 0.45 + rng.randf() * 0.12, hz3 + rng.randf_range(-r, r) * 0.6))
+			var fu := rng.randf_range(-1.0, 1.0) * 0.75
+			var sink := rng.randf()
+			var fw := rng.randf_range(-1.0, 1.0) * 0.6
+			var top := heap_at.y + r * 0.6 * sqrt(maxf(0.0, 1.0 - fu * fu - fw * fw)) - 0.03 - sink * 0.02
+			k._add(m, Res.sphere(0.085, 6), "plain", ORANGE if i % 2 == 0 else Color(0.85, 0.75, 0.2), heap_at + across * fu * r * 1.3 + along * fw * r + Vector3(0, top - heap_at.y, 0))
 	for q in [[-1.45, 4.86, 0], [-1.45, 4.86, 1], [-1.45, 4.86, 2], [-0.85, 4.88, 0], [-0.85, 4.88, 1]]:
 		var cz: float = q[1]
 		var lv: int = q[2]

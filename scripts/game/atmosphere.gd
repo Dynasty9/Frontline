@@ -20,6 +20,11 @@ const MOODS := {
 		"horizon": Color(0.46, 0.49, 0.52), "fog": Color(0.42, 0.45, 0.48), "fog_d": 0.0038, "ambient": 0.8, "soft": 6.0, "clouds": 0.0, "exposure": 1.2},
 	"hazy": {"elev": 38.0, "azim": 25.0, "sun": Color(1.0, 0.9, 0.76), "energy": 1.7, "zenith": Color(0.42, 0.52, 0.66),
 		"horizon": Color(0.82, 0.8, 0.74), "fog": Color(0.8, 0.77, 0.7), "fog_d": 0.0042, "ambient": 0.65, "soft": 1.5, "clouds": 0.25, "exposure": 1.05},
+	# a winter's day under a lid of snow cloud: no shadows to speak of, the light
+	# coming off a pale sky and back off the snow, cold and blue-grey, and the
+	# falling snow closing the distance in
+	"snow": {"elev": 34.0, "azim": 30.0, "sun": Color(0.8, 0.85, 0.95), "energy": 0.55, "zenith": Color(0.5, 0.55, 0.63),
+		"horizon": Color(0.76, 0.79, 0.83), "fog": Color(0.7, 0.73, 0.78), "fog_d": 0.0046, "ambient": 0.95, "soft": 9.0, "clouds": 0.0, "exposure": 1.0},
 }
 
 # Atmospheric haze is scenery, not concealment. Keep its optical depth low at
@@ -28,6 +33,8 @@ const MOODS := {
 const HAZE_STRENGTH := 0.25
 const VOLUME_STRENGTH := 0.15
 const HAZE_DISTANCE := 32.0
+## How often a random battle's weather is snow (see pick_mood).
+const SNOW_CHANCE := 0.06
 
 var world: World
 var mood := "golden"
@@ -43,6 +50,11 @@ static func pick_mood(settings: Dictionary) -> String:
 		# weight the prettier moods a bit higher
 		var bag := ["golden", "golden", "day", "day", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
 		pick = bag[r.randi() % bag.size()]
+		# Now and then it snows instead: a second draw, so every other seed keeps
+		# the weather it always had, and never over a seed that rains (the rain
+		# damps the fires, Fires.wet, and snow changes no rules).
+		if pick != "rain" and r.randf() < SNOW_CHANCE:
+			pick = "snow"
 		if not MOODS.has(pick):
 			pick = MOODS.keys()[0]
 	return pick
@@ -77,6 +89,8 @@ var heat := HeatHaze.new()  # what the heat haze bends the view over (only gathe
 var _heat_t := 0.0
 var _phys_sky: ShaderMaterial
 var _phys_on := false
+var air: AirLayers  # the mist, haze and weather in the air (AirLayers)
+var weather: WeatherGrid  # (air's) what's in the air over each part of the map
 ## How much of each mood the light is now: one at 1.0 while time stands still,
 ## two sharing it while Time passes blends one into the next (by_mood).
 var weights := {}
@@ -114,6 +128,10 @@ func setup(w: World) -> void:
 	wildlife.name = "Wildlife"
 	wildlife.world = world
 	add_child(wildlife)
+	air = AirLayers.new()
+	add_child(air)
+	air.setup(self)
+	weather = air.grid
 	Settings.changed.connect(apply_settings)
 	apply_settings()
 	if Sfx.enabled and world.has_view:
@@ -123,6 +141,7 @@ func setup(w: World) -> void:
 		add_child(_rumble)
 		Music.play_cue("battle")
 	_setup_rain()
+	_setup_snow()
 
 
 # --- noise textures shared by the ground shader and grass placement -------------
@@ -506,7 +525,7 @@ func _build_env() -> void:
 	rim = DirectionalLight3D.new()
 	rim.rotation_degrees = Vector3(-25.0, float(_d.azim) + 180.0, 0)
 	rim.light_color = Color(0.6, 0.72, 0.95)
-	rim.light_energy = 0.28 if mood != "overcast" else 0.12
+	rim.light_energy = 0.12 if mood in ["overcast", "snow"] else 0.28
 	rim.shadow_enabled = false
 	rim.light_specular = 0.3
 	rim.light_volumetric_fog_energy = 0.0
@@ -548,6 +567,9 @@ const MEADOW_MATERIALS := ["grass_ground", "rocky_terrain_02", "dirt_aerial_02"]
 ## Rain-cut gullies (9) and a close 1.3 m soil scan for excavated cuts (10).
 ## The gullies are baked by tools/bake_alpine_assets.py eroded_face.
 const DETAIL_MATERIALS := ["eroded_face", "brown_mud"]
+## Then the roads: the supply tracks' trail grit (11) and the gravel roads'
+## loose aggregate (12), town scans (assets/town) with their height in alpha.
+const TRACK_MATERIALS := ["rocky_trail_02", "gravel_floor_02"]
 static var _material_arrays: Array[Texture2DArray] = []
 
 
@@ -566,6 +588,9 @@ static func terrain_materials() -> Array[Texture2DArray]:
 			images.append(grains)
 			for name in MEADOW_MATERIALS + DETAIL_MATERIALS:
 				var texture: Texture2D = load("res://assets/terrain/%s_%s.png" % [name, suffix])
+				images.append(texture.get_image())
+			for name in TRACK_MATERIALS:
+				var texture: Texture2D = load("res://assets/town/%s_%s.png" % [name, suffix])
 				images.append(texture.get_image())
 			var array := Texture2DArray.new()
 			var error := array.create_from_images(images)
@@ -636,10 +661,6 @@ func _build_ground() -> void:
 	road_mat.set_shader_parameter("paving_noise", preload("res://assets/town/aerial_asphalt_01_color.jpg"))
 	road_mat.set_shader_parameter("street_detail", preload("res://assets/town/road_damaged_clean_color.jpg"))
 	road_mat.set_shader_parameter("street_noise", Mats.noise_tex())
-	road_mat.set_shader_parameter("gravel_color", preload("res://assets/town/gravel_floor_02_color.jpg"))
-	road_mat.set_shader_parameter("roadbed_color", preload("res://assets/town/gravel_road_color.jpg"))
-	road_mat.set_shader_parameter("roadbed_surface", preload("res://assets/town/gravel_road_surface.png"))
-	road_mat.set_shader_parameter("gravel_surface", preload("res://assets/town/gravel_floor_02_surface.png"))
 	road_mat.set_shader_parameter("paving_surface", preload("res://assets/town/road_damaged_clean_surface.png"))
 	# see-through (its edges fade into the verges), so it draws with the smoke
 	# and fire: before them, or it paints over every blast on a road
@@ -850,6 +871,23 @@ void fragment() {
 """
 
 
+# --- snow: flakes drifting down around the camera ------------------------------
+
+var _snowfall: Snowfall
+
+
+func _setup_snow() -> void:
+	var want := mood == "snow" and world.has_view
+	if not want:
+		if _snowfall:
+			_snowfall.queue_free()
+			_snowfall = null
+		return
+	if _snowfall == null:
+		_snowfall = Snowfall.new()
+		add_child(_snowfall)
+
+
 # --- night: illumination flares drifting down over the fighting ----------------
 
 static var _flare_canopy_mesh: ArrayMesh
@@ -963,12 +1001,12 @@ static func _flare_canopy() -> ArrayMesh:
 
 ## How much of the lamplight in windows shows in a mood: all of it at
 ## night, some at dusk and dawn, a little on a dark day, none in sunshine.
-const LAMPLIGHT := {"night": 1.0, "dusk": 0.55, "dawn": 0.35, "rain": 0.18, "overcast": 0.12}
+const LAMPLIGHT := {"night": 1.0, "dusk": 0.55, "dawn": 0.35, "rain": 0.18, "overcast": 0.12, "snow": 0.15}
 ## The painted sky's cloud, the volumetric haze's density, the colour
 ## grading's saturation, the stars and the night's flares, by mood (what
 ## isn't listed takes the default given where it's used).
-const CLOUDINESS := {"overcast": 1.0, "rain": 1.0, "day": 0.3}
-const VOLUME_FOG := {"hazy": 0.003}
+const CLOUDINESS := {"overcast": 1.0, "rain": 1.0, "snow": 1.0, "day": 0.3}
+const VOLUME_FOG := {"hazy": 0.003, "snow": 0.0022}
 const SATURATION := {"golden": 1.05, "dusk": 1.05, "dawn": 1.05}
 const STARS := {"night": 1.0}
 const FLARES := {"night": 1.0}
@@ -1012,6 +1050,7 @@ func apply_mood(m: String) -> void:
 	Mats.set_shared(road_mat, &"wet", 1.0 if mood == "rain" else 0.0)
 	Mats.set_street_wet(1.0 if mood == "rain" else 0.0)
 	_setup_rain()
+	_setup_snow()
 	env.tonemap_exposure = float(_d.exposure) * float(Settings.get_v("brightness"))
 	env.fog_light_color = _d.fog
 	_apply_haze(world.cam.dist if world.cam else HAZE_DISTANCE)
@@ -1023,7 +1062,7 @@ func apply_mood(m: String) -> void:
 	if _phys_on:
 		PhysicalSky.set_sun(_phys_sky, sun)
 	rim.rotation_degrees = Vector3(-25.0, float(_d.azim) + 180.0, 0)
-	rim.light_energy = 0.28 if mood != "overcast" else 0.12
+	rim.light_energy = 0.12 if mood in ["overcast", "snow"] else 0.28
 	CloudShadow.set_strength(float(_d.clouds))
 	ground_mat.set_shader_parameter("sun_tint", _d.sun)
 	ground_mat.set_shader_parameter("air_color", _d.fog)
@@ -1034,6 +1073,8 @@ func apply_mood(m: String) -> void:
 		mountain_clouds.apply_settings(self)
 	if water_view:
 		water_view.apply_mood(_d, mood)
+	if air:
+		air.apply_mood(mood)
 	if world.fx and world.fx.vfx:
 		world.fx.vfx.apply_lighting()
 	if cine:
@@ -1216,6 +1257,8 @@ func _apply_light(st: Dictionary) -> void:
 	env.ambient_light_energy = float(_d.ambient)
 	env.tonemap_exposure = base_exposure()
 	env.fog_light_color = _d.fog
+	if air:
+		air.apply_mood(mood)
 	_apply_haze(world.cam.dist if world.cam else HAZE_DISTANCE)
 	env.volumetric_fog_albedo = (_d.fog as Color).lerp(Color(0.9, 0.9, 0.9), 0.55)
 	_apply_look()
@@ -1391,6 +1434,8 @@ func apply_grade(look_i: int, contrast_mul: float, saturation_mul := 1.0) -> voi
 func _exit_tree() -> void:
 	CloudShadow.set_strength(0.0)  # no clouds over the menu, or the next battle's loading
 	RenderingServer.global_shader_parameter_set(&"rain_wet", 0.0)  # nor rain on the Field Manual's models
+	RenderingServer.global_shader_parameter_set(&"snow_cover", 0.0)  # nor snow
+	Mats.set_melt(PackedVector4Array())  # nor its thaws
 	RenderingServer.global_shader_parameter_set(&"rain_fx", Vector4.ZERO)
 	RenderingServer.global_shader_parameter_set(&"rain_cover_map", Vector4.ZERO)
 
@@ -1416,6 +1461,42 @@ func _wet_tick(dt: float) -> void:
 		rain_wet = maxf(want, rain_wet - dt / DRY_OUT)
 	if rain_wet != was:
 		RenderingServer.global_shader_parameter_set(&"rain_wet", rain_wet)
+
+
+## How deep the snow lies on everything (the `snow_cover` global the ground,
+## the roads, the grass, the trees and the shared surfaces read): a battle
+## that opens in the snow has had it falling all night, so it starts covered;
+## snow that sets in mid-battle settles over four minutes, first in the
+## hollows and on the flat, and thaws over a quarter of an hour once it stops.
+const SNOW_IN := 240.0
+const THAW := 900.0
+var snow_cover := -1.0
+var snow_melt: SnowMelt
+var snow_drift: SnowDrift
+
+
+func _snow_tick(dt: float) -> void:
+	var want := 1.0 if mood == "snow" else 0.0
+	var was := snow_cover
+	if snow_cover < 0.0:
+		snow_cover = want
+	elif want > snow_cover:
+		snow_cover = minf(want, snow_cover + dt / SNOW_IN)
+	else:
+		snow_cover = maxf(want, snow_cover - dt / THAW)
+	if snow_cover != was:
+		RenderingServer.global_shader_parameter_set(&"snow_cover", snow_cover)
+	# the heat of fires and engines melting it (looks only)
+	if snow_cover > 0.0 and world and world.has_view and world.loaded:
+		if snow_melt == null:
+			snow_melt = SnowMelt.new(self)
+		snow_melt.tick(dt)
+		# and the wind heaping it against walls and hedges
+		if snow_drift == null:
+			snow_drift = SnowDrift.new()
+			add_child(snow_drift)
+			snow_drift.setup(self)
+		snow_drift.tick(dt)
 
 
 ## The rain as it falls on things (the `rain_fx` global, Mats.RAIN_DROPS): it
@@ -1477,6 +1558,7 @@ func _process(_dt: float) -> void:
 ## battle from a lull to the thick of it.
 const WIND_DB := Vector2(-19.0, -15.0)
 const RUMBLE_DB := Vector2(-14.0, -6.0)
+const SNOW_HUSH_DB := 4.0
 
 var _wind: AudioStreamPlayer
 var _rumble: AudioStreamPlayer
@@ -1492,11 +1574,14 @@ func _view_process(_dt: float) -> void:
 	CloudShadow.tick(_dt)
 	CloudShadow.set_sun(sun)
 	_wet_tick(_dt)
+	_snow_tick(_dt)
 	if world.cam == null:
 		return
 	if _wind:
 		var z := clampf((world.cam.dist - 15.0) / 60.0, 0.0, 1.0)
-		_wind.volume_db = lerpf(WIND_DB.x, WIND_DB.y, z)
+		# snow lying deep soaks up sound: the wind and the battle are hushed
+		var hush := snow_cover * SNOW_HUSH_DB if snow_cover > 0.0 else 0.0
+		_wind.volume_db = lerpf(WIND_DB.x, WIND_DB.y, z) - hush
 		var act := 0.0
 		if world.director:
 			var now := Time.get_ticks_msec() / 1000.0
@@ -1505,12 +1590,14 @@ func _view_process(_dt: float) -> void:
 				if now - float(h[2]) < 8.0:
 					act += float(h[1])
 		_activity = lerpf(_activity, clampf(act / 12.0, 0.0, 1.0), 1.0 - exp(-_dt * 0.8))
-		_rumble.volume_db = lerpf(RUMBLE_DB.x, RUMBLE_DB.y, _activity)
+		_rumble.volume_db = lerpf(RUMBLE_DB.x, RUMBLE_DB.y, _activity) - hush
 		Music.heat = _activity
 	if mood == "night" or not _flares.is_empty():
 		_flares_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.0)
 	if _rain:
 		_rain_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016)
+	if _snowfall:
+		_snowfall.follow(world.cam.cam)
 	_apply_haze(world.cam.dist)
 	var real_dt := _dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016
 	_rain_fx_tick(real_dt)
@@ -1651,7 +1738,7 @@ static func pick_shadowed(lights: Array, focus: Vector3, n: int) -> Array[OmniLi
 ## How far the eye has gone over to its rods (night vision), by mood.
 const NIGHT_VISION := {"night": 0.8, "dusk": 0.18, "dawn": 0.12, "rain": 0.06}
 ## How strongly the sun streams through what stands against it, by mood.
-const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15, "hazy": 1.35, "overcast": 0.12, "rain": 0.0, "night": 0.3}
+const SHAFTS_BY_MOOD := {"day": 0.55, "golden": 1.0, "dawn": 1.15, "dusk": 1.15, "hazy": 1.35, "overcast": 0.12, "rain": 0.0, "snow": 0.05, "night": 0.3}
 
 
 ## Photo mode's own camera-and-lens choices, over the player's settings while
@@ -1701,6 +1788,7 @@ func _add_effect(fx: CompositorEffect) -> void:
 	var effects: Array[CompositorEffect] = we.compositor.compositor_effects
 	if fx is SsgiFx:
 		effects.push_front(fx)
+		effects.push_front((fx as SsgiFx).snap)
 	else:
 		effects.append(fx)
 	we.compositor.compositor_effects = effects
@@ -1721,6 +1809,7 @@ func _apply_ssgi() -> void:
 		return
 	ssgi.quality = q
 	ssgi.enabled = q > 0
+	ssgi.snap.enabled = q > 0 and not OS.has_environment("FL_DEBUG_SSGI_NOSNAP")  # (to time it)
 
 
 ## How far a ray looks for a surface to light it (m), and how strongly what it
@@ -1734,12 +1823,19 @@ const SSGI_STRENGTH := 2.0
 ## Seen from further than SSGI_FAR.x (m) and fully past SSGI_FAR.y, rays
 ## reach SSGI_FAR_REACH times as far and the light is laid on SSGI_FAR_STRENGTH
 ## times as strong: from the command height a wall is a few pixels tall and a
-## lift of a few levels in its shade goes unseen.
-const SSGI_FAR := Vector2(25.0, 90.0)
+## lift of a few levels in its shade goes unseen. (Full by 50 m, so the usual
+## command height, about 55 m off, gets all of it: ramped out to 90 m, it got
+## less than half, and the light there was too faint to see. It was 2.5
+## times: with the rays capped at what they hit, the shade at a wall's foot
+## was then filled to nearly the sunlit grass's light, a hard brown band from
+## 55 m; 1.5 leaves a faint lift that still reads there.)
+const SSGI_FAR := Vector2(15.0, 50.0)
 const SSGI_FAR_REACH := 2.0
-const SSGI_FAR_STRENGTH := 2.0
-## How much more saturated the gathered light is laid on (1 as gathered).
+const SSGI_FAR_STRENGTH := 1.5
+## How much more saturated the gathered light is laid on (1 as gathered),
+## near and from afar (FL_DEBUG_SSGI_GREYFAR: the old 0.75 from afar, to compare).
 const SSGI_BLEED := 1.6
+const SSGI_FAR_BLEED := 1.3
 ## The brightest a surface's estimated colour may be (a white wall's ~0.8).
 const SSGI_ALBEDO_CAP := 0.8
 
@@ -1765,6 +1861,11 @@ func _ssgi_tick() -> void:
 	p[17] = SSGI_FAR.y
 	p[18] = SSGI_FAR_REACH
 	p[19] = SSGI_FAR_STRENGTH
+	# FL_DEBUG_SSGI_FAR="from,full,reach,strength": the far view's weights, for tuning
+	if OS.has_environment("FL_DEBUG_SSGI_FAR"):
+		var f := OS.get_environment("FL_DEBUG_SSGI_FAR").split(",")
+		for i in mini(f.size(), 4):
+			p[16 + i] = float(f[i])
 	var to_sun := sun.global_transform.basis.z
 	p[20] = to_sun.x
 	p[21] = to_sun.y
@@ -1776,6 +1877,26 @@ func _ssgi_tick() -> void:
 	p[24] = sc.r
 	p[25] = sc.g
 	p[26] = sc.b
+	# how much of last frame's bounce light goes round again (under all of
+	# it, so a closed room settles), and whether the upsample looks further
+	# out at thin edges. FL_DEBUG_SSGI_BOUNCES=1 (one bounce only) and
+	# FL_DEBUG_SSGI_NOFIX (the plain upsample) compare them. (Medium casting
+	# half its rays where a pixel's history already held was tried: it saved
+	# nothing measurable and lost a fifth of the light, since what is gathered
+	# is capped at what its rays hit, and fewer rays a frame cap it lower.)
+	p[28] = 0.0 if OS.get_environment("FL_DEBUG_SSGI_BOUNCES") == "1" else 0.8
+	p[29] = 0.0 if OS.has_environment("FL_DEBUG_SSGI_NOFIX") else 1.0
+	p[30] = 0.75 if OS.has_environment("FL_DEBUG_SSGI_GREYFAR") else SSGI_FAR_BLEED
+	var to_rim := rim.global_transform.basis.z
+	var rc := rim.light_color.srgb_to_linear() * rim.light_energy * (1.0 if rim.visible else 0.0)
+	p[32] = to_rim.x
+	p[33] = to_rim.y
+	p[34] = to_rim.z
+	p[36] = rc.r
+	p[37] = rc.g
+	p[38] = rc.b
+	if OS.has_environment("FL_DEBUG_SSGI") and Engine.get_process_frames() % 300 == 0:
+		print("SSGI sky light %s, to the sun %s, sun %s" % [Vector3(p[4], p[5], p[6]), to_sun, Vector3(p[24], p[25], p[26])])
 	ssgi.params = p
 
 
@@ -1949,6 +2070,8 @@ func _apply_haze(distance: float) -> void:
 			forest.set_air(ground_mat.get_shader_parameter("air_color"), terrain_air)
 	env.fog_density = float(_d.fog_d) * HAZE_STRENGTH * k
 	env.volumetric_fog_density = by_mood(VOLUME_FOG, 0.0011) * VOLUME_STRENGTH * volume_k
+	if air:
+		air.apply_env(env)
 
 
 ## Builds the road strip mesh for a team (called by World when roads change).
@@ -2071,6 +2194,8 @@ func build_water(w: WaterMap) -> void:
 		water_view.mat.set_shader_parameter("fresh_tint", Color(0.1, 0.32, 0.30))
 		water_view.mat.set_shader_parameter("fresh_absorb", Vector3(0.85, 0.32, 0.28))
 	water_view.apply_mood(_d, mood)
+	if air:
+		air.survey()
 	if grass:
 		grass.request_rebuild(0.5)
 
@@ -2134,6 +2259,8 @@ func _update_deform(dt: float) -> void:
 			forest.setup(self)
 		forest.set_lighting(_scenery_bake.get_texture(), sun.basis.z)
 		_update_terrain_probe(true)
+		if air:
+			air.survey()
 		_probe_hour = float(_clock.get("hour", -100.0))
 		var post := post_rect.material as ShaderMaterial
 		post.set_shader_parameter("fringe", 0.00015)
@@ -2483,14 +2610,15 @@ uniform vec3 sun_tint : source_color = vec3(1.0);
 uniform float bump = 0.85;
 uniform float snow_line = 10000.0;
 uniform float wet = 0.0;
+global uniform float snow_cover;  // how deep the snow weather lies, 0..1 (Atmosphere._snow_tick)
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 // TERRAIN_TEXTURE_HELPER
 uniform sampler2D water_mask : hint_default_transparent, filter_linear, repeat_disable;
 uniform float sea_x = 1e9;
-// CLOUD_SHADOW
+""" + SnowMelt.GLSL + """// CLOUD_SHADOW
 // RAIN_DROPS
-
+""" + SnowLie.GLSL + """
 varying vec3 wpos;
 varying float puddle;
 varying float terrain_sun;
@@ -2631,6 +2759,12 @@ vec3 shore_gravel_color(vec2 p) {
 	return mix(vec3(luma), scan, 0.4) * vec3(1.12, 1.09, 1.02);
 }
 
+// A surface normal opposes the height gradient: the far side of a rut
+// rises out of the depression, so its normal points back into the rut.
+vec3 track_normal(vec3 base, vec2 outward, float slope, float coverage) {
+	return normalize(base - vec3(outward.x, 0.0, outward.y) * slope * coverage);
+}
+
 void fragment() {
 	vec2 p = wpos.xz;
 	if (texture(trench_mask, (p + __MAP_HALF__) / __MAP_SIZE__).r > 0.5) {
@@ -2674,7 +2808,8 @@ void fragment() {
 	// shell holes: churned dark earth in the bowl, dry thrown soil on the rim
 	float geology = terrain_geology(deform_tex, (p + __MAP_HALF__) / __MAP_SIZE__);
 	if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) { geology = dfm(p); }
-	float hd = dfm(p) - geology;
+	float here = dfm(p);
+	float hd = here - geology;
 	float bowl = smoothstep(-0.03, -0.35, hd) * (1.0 - wm.g);
 	float lip = smoothstep(0.02, 0.12, hd) * (1.0 - wm.g);
 	// (linear colours: freshly turned earth is dark, the bottom blackened)
@@ -2861,7 +2996,9 @@ void fragment() {
 	// The slope over twenty metres: ledges and benches on a crag read as part of it.
 	// (the distant ranges' faces are read over forty, their mesh being coarser)
 	float wide_step = edge >= __MAP_HALF__ ? 40.0 : 10.0;
-	float wide = length(vec2(dfm(p + vec2(wide_step, 0.0)) - dfm(p - vec2(wide_step, 0.0)), dfm(p + vec2(0.0, wide_step)) - dfm(p - vec2(0.0, wide_step)))) / (2.0 * wide_step);
+	// (kept: the snow reads the lie of the land from them too, SnowLie)
+	vec4 around = vec4(dfm(p + vec2(wide_step, 0.0)), dfm(p - vec2(wide_step, 0.0)), dfm(p + vec2(0.0, wide_step)), dfm(p - vec2(0.0, wide_step)));
+	float wide = length(vec2(around.x - around.y, around.z - around.w)) / (2.0 * wide_step);
 	// Ledges among the crags hold only thin turf between stones, not lush lawn.
 	float ledge = smoothstep(0.35, 0.75, wide) * smoothstep(8.0, 20.0, geology);
 	float stony = max(smoothstep(0.04, 0.35, cover), ledge) * (1.0 - exposed);
@@ -2871,6 +3008,7 @@ void fragment() {
 		moss = mix(moss, stones, height_blend(moss_sample.a, shoulder.a, stony * 0.85));
 	}
 	// Needle litter and sheltered undergrowth connect the same stands as the tree cards.
+	float wood_floor = 0.0;
 	if (terrain_detail) {
 		float woodland;
 		if (max(abs(p.x), abs(p.y)) >= __MAP_HALF__) {
@@ -2896,6 +3034,7 @@ void fragment() {
 			moss_n = normalize(mix(moss_n, litter_n, litter_blend));
 		}
 		exposed *= 1.0 - woodland * 0.85;
+		wood_floor = woodland;
 	} else if (max(abs(p.x), abs(p.y)) < __MAP_HALF__) {
 		// Keep shaded woodland soil when the expensive terrain layers are disabled.
 		vec2 half_texel = 0.5 / vec2(textureSize(biome_tex, 0));
@@ -2903,6 +3042,7 @@ void fragment() {
 		woodland *= 1.0 - smoothstep(0.35, 0.8, slope);
 		moss = mix(moss, mix(vec3(0.055, 0.043, 0.025), moss * 0.55, d2), woodland * 0.85);
 		exposed *= 1.0 - woodland * 0.85;
+		wood_floor = woodland;
 	}
 	// Gullies drop their load where they reach gentler ground: pale fans of washed
 	// soil and gravel below the crags, as on any eroded hillside.
@@ -2916,6 +3056,141 @@ void fragment() {
 		vec3 silt = scan_linear(texture(material_colors, vec3(mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 20.0 + 0.4, 8.0)).rgb);
 		vec3 wash = mix(scree_sample.rgb * vec3(0.95, 0.97, 1.0), silt * vec3(0.82, 0.86, 0.9), 0.3);
 		moss = mix(moss, wash, height_blend(moss_sample.a, scree_sample.a, fan * 0.8));
+	}
+	// Roads are the ground's own, not a strip laid over it: the road map (each
+	// texel's nearness to a road in the biome texture's blue, and in its alpha
+	// whether that road is gravelled, packed by the grass job) says where wheels
+	// have worn the turf away, and the scans' heights decide, stone by stone,
+	// where the meadow takes it back. The sides' supply routes are bare earth:
+	// two wheel ruts a few centimetres deep with a crown of grass between them.
+	// The country roads are gravel over packed fines: two lanes of wheel paths
+	// pressed smooth, loose stone banked on the crown and swept to the
+	// shoulders, and the shoulders roll off into the turf.
+	// (and for the snow: how much of the ground here is road, its wheel ruts,
+	// and the grass down a track's crown)
+	float road_track = 0.0;
+	float road_rut = 0.0;
+	float road_crown = 0.0;
+	float road_edge = -9.0;  // (metres in from where the wheels' wear gives out)
+	if (woodland_ready && edge < __MAP_HALF__ - 1.0) {
+		vec2 road_uv = (p + __MAP_HALF__) / __MAP_SIZE__;
+		vec2 texel = 1.0 / vec2(textureSize(biome_tex, 0));
+		vec4 road_map = texture(biome_tex, road_uv);
+		float near_road = road_map.b;
+		if (near_road > 0.01) {
+			float road_d = (1.0 - near_road) * 4.5;  // metres from the road's middle (Grass.ROAD_REACH)
+			float gravelled = smoothstep(0.3, 0.7, road_map.a);
+			// across the road, outward: down the nearness field
+			vec2 down = vec2(texture(biome_tex, road_uv - vec2(texel.x, 0.0)).b - texture(biome_tex, road_uv + vec2(texel.x, 0.0)).b,
+				texture(biome_tex, road_uv - vec2(0.0, texel.y)).b - texture(biome_tex, road_uv + vec2(0.0, texel.y)).b);
+			vec2 outward = length(down) > 0.00001 ? normalize(down) : vec2(0.0);
+			vec3 trail_uv = wpos / 2.0;
+			vec4 trail = surface_color(11.0, trail_uv, weights);
+			vec3 trail_n;
+			vec2 trail_data = surface_data(11.0, trail_uv, weights, geometric, trail_n);
+			// how far in from the ragged line where the turf has the ground back:
+			// metre-scale bays, then a fringe of tufts (a gravel road is wider,
+			// and its graded edge straighter)
+			float ragged = (texture(detail_tex, p / 9.0 + 0.13).r - 0.5) * mix(1.1, 0.7, gravelled) + (texture(detail_tex, p / 2.1 + 0.57).r - 0.5) * 0.6
+				+ (texture(detail_tex, p / 0.55 + 0.29).r - 0.5) * 0.35;
+			float worn = mix(2.55, 3.15, gravelled) - road_d + ragged;
+			// down the crown of a track, where no wheel runs, grass holds on in patches
+			// (a strip half a metre wide, broken where the bumpers scrape it)
+			float crown_grass = smoothstep(0.25, 0.6, (0.5 - road_d) / 0.5 + (d2 - 0.5) * 1.2 + (texture(detail_tex, p / 0.9 + 0.33).r - 0.5) * 0.7) * (1.0 - gravelled);
+			// (in tufts with the earth between them, not a lawn)
+			float tufts = texture(detail_tex, p / 0.31 + 0.71).r * 0.6 + texture(detail_tex, p / 0.13 + 0.19).r * 0.4;
+			float coverage = smoothstep(mix(-0.25, -0.55, gravelled), 0.9, worn) * (1.0 - crown_grass * smoothstep(0.38, 0.62, tufts));
+			float track = height_blend(moss_sample.a, trail.a, coverage);
+			// the trail's grain, in the dust of this country (its mean linear colour
+			// 0.247, 0.150, 0.086, luminance 0.166): a warm, dull earth
+			float grain = dot(trail.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.166;
+			vec3 hue = clamp((trail.rgb / max(grain * 0.166, 0.002)) / vec3(1.488, 0.904, 0.518), vec3(0.6), vec3(1.6));
+			vec3 dust = vec3(0.118, 0.092, 0.062) * pow(clamp(grain, 0.2, 3.0), 0.85) * mix(vec3(1.0), hue, 0.3);
+			// the wheels' lines, 1.7 m apart on a track; on a gravel road two lanes
+			// of them. Each wanders a hand's width, widens and fades as it goes,
+			// and breaks up where drivers have pulled aside.
+			float rut_wobble = (texture(detail_tex, p / 3.3 + 0.41).r - 0.5) * 0.3;
+			float rut_w = mix(0.17, 0.32, texture(detail_tex, p / 5.7 + 0.83).r) * mix(1.0, 1.5, gravelled);
+			float rk = (road_d - 0.86 - rut_wobble) / rut_w;
+			// (on gravel most traffic keeps to the crown, pulling over only to
+			// pass: the outer wheel paths are faint)
+			float rk2 = (road_d - 2.0 + rut_wobble * 0.7) / rut_w;
+			float outer_lane = mix(0.0, 0.4, gravelled) * smoothstep(0.35, 0.65, d2);
+			float rk_near = abs(rk) < abs(rk2) || outer_lane < 0.01 ? rk : rk2;
+			// (graded gravel keeps its wheel paths unbroken; a track's come and go)
+			float rut = max(exp(-rk * rk), exp(-rk2 * rk2) * outer_lane) * smoothstep(mix(0.25, -0.2, gravelled), 0.65, d1 * 0.7 + texture(detail_tex, p / 1.3 + 0.17).r * 0.3);
+			dust *= mix(1.0, 0.7, rut * (1.0 - gravelled));
+			// the crown and the shoulders dry and dust paler where nothing wets them
+			dust *= 1.0 + (1.0 - rut) * 0.08 * smoothstep(0.3, 0.7, d2);
+			vec2 road_data = trail_data;
+			vec3 road_n = trail_n;
+			float road_height = trail.a;
+			if (gravelled > 0.001) {
+				// The gravel: a pale limestone aggregate (its scan's mean linear
+				// colour 0.425, 0.404, 0.349) dulled with the dust of the road, over
+				// fines the wheels have packed into a smooth, lighter crust.
+				vec4 stones = surface_color(12.0, trail_uv * 1.15, weights);
+				vec3 stones_n;
+				vec2 stones_data = surface_data(12.0, trail_uv * 1.15, weights, geometric, stones_n);
+				// (quarried locally, the stone takes the colour of the country: a
+				// buff limestone, stained by the soil it is spread on)
+				float stone_light = dot(stones.rgb, vec3(0.2126, 0.7152, 0.0722));
+				vec3 aggregate = mix(stones.rgb * vec3(0.33, 0.31, 0.28), stone_light * vec3(0.4, 0.33, 0.25), 0.55);
+				float fines_light = dot(dust, vec3(0.2126, 0.7152, 0.0722));
+				vec3 fines = mix(dust, vec3(fines_light), 0.4) * vec3(1.08, 1.0, 0.9) * 1.06;
+				// loose stone banks up where no wheel runs: along the crown, between
+				// the lanes and out at the shoulders, in drifts; the wheels push it
+				// aside and run on the fines beneath
+				float drift = texture(detail_tex, p / 2.6 + 0.91).r * 0.6 + d3 * 0.4;
+				float loose = clamp((1.0 - rut * 1.3) * 0.8 + (drift - 0.5) * 0.9 + smoothstep(2.2, 3.0, road_d) * 0.3 - 0.1, 0.0, 1.0);
+				float stony = height_blend(trail.a * 0.6, stones.a, loose);
+				vec3 gravel_col = mix(fines, aggregate, stony);
+				// over tens of metres the road was laid and patched from different
+				// loads, and the low spots hold the damp
+				gravel_col *= mix(0.84, 1.14, smoothstep(0.2, 0.8, d1)) * mix(0.92, 1.06, texture(detail_tex, p / 17.0 + 0.27).r);
+				// potholes, where water stood and traffic broke the crust: a dark
+				// bowl of wet fines a hand deep
+				// (they come in clusters, where the drainage is worst, and in the
+				// wheel paths)
+				float pothole_cluster = smoothstep(0.6, 0.72, texture(detail_tex, p / 29.0 + 0.11).r);
+				float pothole = smoothstep(0.7, 0.75, texture(detail_tex, p / 1.5 + 0.63).r) * pothole_cluster * smoothstep(0.35, 0.75, rut);
+				gravel_col = mix(gravel_col, fines * 0.55, pothole);
+				stony *= 1.0 - pothole;
+				puddle = max(puddle, wet * pothole * gravelled * track);
+				dust = mix(dust, gravel_col, gravelled);
+				road_data = mix(road_data, mix(vec2(trail_data.x, 0.7), stones_data, stony), gravelled);
+				road_n = normalize(mix(road_n, mix(normalize(mix(geometric, trail_n, 0.4)), stones_n, stony), gravelled));
+				road_height = mix(road_height, max(trail.a * 0.7, stones.a), gravelled);
+				// past the gravel's edge, its spill thins out into the grass
+				track = mix(track, height_blend(moss_sample.a, road_height, coverage), gravelled);
+			}
+			// at the sides the grit gives way to the meadow's own bare soil (as the
+			// mud is drawn above, from the same rutted-soil scan)
+			vec4 rutted_soil = texture(material_colors, vec3(mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 20.0, 8.0));
+			float soil_light = dot(scan_linear(rutted_soil.rgb), vec3(0.2126, 0.7152, 0.0722)) / 0.1329;
+			vec3 bare_soil = vec3(0.084, 0.07, 0.049) * pow(clamp(soil_light, 0.3, 1.6), 0.6) * 1.15;
+			// (a gravel road's spill thins out over a metre of soil and stones)
+			dust = mix(dust, bare_soil, (1.0 - smoothstep(mix(0.15, 0.1, gravelled), mix(0.95, 1.4, gravelled), worn)) * mix(0.85, 0.7, gravelled));
+			dust *= 1.0 - wet * 0.3;
+			// what grass there is down the crown is trampled and dusty
+			moss = mix(moss, mix(moss * vec3(0.78, 0.76, 0.62), dust, 0.25), crown_grass * 0.8);
+			moss = mix(moss, dust, track);
+			moss_data = mix(moss_data, road_data, track);
+			moss_n = normalize(mix(moss_n, road_n, track * 0.8));
+			// the cross-section: ruts 5-8 cm deep on a track, a few millimetres on
+			// gravel; shoulders rolling 5 cm down
+			float rut_slope = mix(0.09, 0.02, gravelled) * rut * 2.0 * rk_near / rut_w;
+			float roll = smoothstep(mix(1.4, 2.0, gravelled), mix(2.6, 3.2, gravelled), road_d);
+			float roll_slope = -0.05 * roll * (1.0 - roll) * 4.0 / 1.2;
+			moss_n = track_normal(moss_n, outward, rut_slope + roll_slope, track);
+			exposed *= 1.0 - track;
+			// rain lies in the ruts first
+			puddle = max(puddle, wet * track * smoothstep(0.5, 0.7, rut * mix(0.45, 0.3, gravelled) + d1 * 0.55));
+			road_track = track;
+			road_rut = rut;
+			road_crown = crown_grass;
+			road_edge = mix(2.55, 3.15, gravelled) - road_d + ragged * 0.3;
+		}
 	}
 	vec3 alpine = mix(moss, rock, exposed);
 	float clean = (1.0 - wm.g) * (1.0 - wm.a) * (1.0 - clamp(bowl, 0.0, 1.0));
@@ -2946,6 +3221,76 @@ void fragment() {
 	snow *= 1.0 - scoured * smoothstep(0.22, 0.95, slope) * mix(0.88, 0.25, flow);
 	snow = height_blend(rock_sample.a, scree_sample.a, snow);
 	snow *= clean;
+	// Snow weather: a fresh fall lies white over the gentler ground, deep and
+	// smooth in the hollows and the lee of the hills, thin on the rises facing
+	// the wind, the ridges and the slopes facing the sun (SnowLie), and thin
+	// under the trees, whose crowns caught most of it. Where it's thin what
+	// stands in it pokes through, in clumps: the tussocks of a meadow, stones,
+	// dead stalks, the litter under the trees; where it's deep the open ground
+	// is clean. It slides off the steep, which stand out dark. Whatever has
+	// been churned since it fell shows through as dark mud flecked with grey
+	// slush: the bowl of a shell hole and the earth it threw out, and the soft
+	// ground of a bog that boots and wheels have worked. (The tracks' own
+	// prints draw over it: Vfx.tread_print.)
+	float fall = 0.0;
+	float slush = 0.0;
+	float thawed = 0.0;
+	float lie = 1.0;
+	float road_slush = 0.0;
+	float road_bank = 0.0;
+	if (snow_cover > 0.0) {
+		lie = snow_lie(p, here, around, wide_step, snow_sun());
+		lie += smoothstep(0.1, 0.6, flow) * 0.35 + max(0.0, cavity) * 0.3;
+		lie -= wood_floor * 0.4;
+		// (a fresh fall fills the hollows first)
+		float depth = lie * snow_cover;
+		float clump = smoothstep(0.4, 0.8, d2 * 0.65 + d1 * 0.35 + meadow_turf * 0.12 + wood_floor * 0.25);
+		float tussock = d3 * 0.4 + texture(detail_tex, p / 0.55 + 0.13).r * 0.6;
+		float poke = tussock * mix(0.3, 1.5, clump);
+		float lies = 1.0 - smoothstep(0.32, 0.95, slope + (patch - 0.5) * 0.3);
+		// (a bog shows wet only in spots, where the water stands through)
+		float boggy = mud_cover * smoothstep(0.62, 0.8, d2 * 0.5 + d1 * 0.3 + d3 * 0.2) * smoothstep(1.3, 0.6, lie);
+		float churned = smoothstep(0.25, 0.6, bowl * 1.3 + lip * 1.2 + boggy * 0.7 + (d3 - 0.5) * 0.3);
+		// (dusted at the edges, not cut out; and further off, where a tussock
+		// is smaller than a pixel, a gradual thinning rather than a hard line)
+		float soft = 0.3 + clamp(length(fwidth(p)) * 0.15, 0.0, 0.6);
+		float cover_amt = smoothstep(-0.04, soft, depth - poke * 0.85);
+		// (even where it's scoured, snow stays in the hollows between the tussocks)
+		cover_amt = max(cover_amt, (1.0 - tussock) * 0.65 * smoothstep(-0.6, 0.3, depth));
+		fall = cover_amt * lies * (1.0 - wm.a) * (1.0 - wet_sand);
+		slush = fall * churned * smoothstep(0.3, 0.75, d2 * 0.6 + d3 * 0.4);
+		fall *= 1.0 - churned;
+		// Heat melts it (SnowMelt): round a fire down to bare, wet earth with
+		// a rim of grey slush, under an idling engine to a damp, dark patch.
+		if (melt_n > 0) {
+			float melted = snow_melted(p, (d2 - 0.5) * 0.3 + (d3 - 0.5) * 0.12);
+			float bare = smoothstep(0.55, 0.8, melted);
+			float thin = smoothstep(0.1, 0.5, melted);
+			slush = max(slush * (1.0 - bare), fall * thin * (1.0 - bare) * (0.6 + 0.4 * d2));
+			fall *= 1.0 - thin;
+			thawed = bare * lies * (1.0 - wm.a) * min(1.0, snow_cover * 4.0);
+		}
+		// A dirt road is a lane of slush between white verges: the wheels keep
+		// the ruts open down to dark, wet mud, and the lane between them holds
+		// a thin, trodden cover. (The town's streets are ploughed: ROAD_SHADER.)
+		if (road_track > 0.001) {
+			road_slush = fall * smoothstep(0.2, 0.6, road_rut) * road_track;
+			fall *= (1.0 - road_track * 0.3 * (1.0 - road_crown)) * (1.0 - road_slush * 0.92);
+		}
+		// (and the plough has heaped what it cleared in a low bank along each
+		// side, just past the lane's edge: some 20 cm, shaded as a ridge)
+		road_bank = fall * exp(-pow((road_edge + 0.3) / 0.45, 2.0)) * 0.2 * (0.7 + 0.6 * d3);
+		snow = max(snow, fall);
+		// (under the snow the grass has died back to a dull winter brown: where
+		// it shows through, it's straw and dead stalks, not a summer lawn)
+		// (and in the open, bleached pale: dead straw stands out of snow light
+		// and warm, not as dark holes)
+		vec3 winter = vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7);
+		winter = mix(winter, vec3(0.2, 0.18, 0.145) * (0.8 + 0.4 * d3), 0.85 * (1.0 - wood_floor));
+		// (under the trees, a floor of dead leaves and needles, not the meadow's rows)
+		winter = mix(winter, vec3(0.085, 0.065, 0.045) * (0.7 + 0.6 * d3), 0.8 * wood_floor);
+		col = mix(col, winter, snow_cover * mix(0.75, 0.95, wood_floor) * (1.0 - exposed * clean));
+	}
 	// Wind ripples are resolved only while they cover several pixels.
 	float snow_phase = dot(p, vec2(0.8, 0.6)) * 1.3 + (macro - 0.5) * 7.0 + patch * 9.0;
 	float snow_resolved = 1.0 - smoothstep(0.5, 2.5, fwidth(snow_phase));
@@ -2954,16 +3299,50 @@ void fragment() {
 	vec3 snow_color = mix(vec3(0.65, 0.75, 0.84), vec3(0.88, 0.90, 0.92), smoothstep(-0.3, 0.6, lee + macro));
 	vec3 snow_n = geometric;
 	vec2 snow_data = vec2(1.0, mix(0.68, 0.94, macro));
+	// Sastrugi: where the wind has packed the snow thin and hard it carves it
+	// into low ridges along its line, a metre or two apart (shading, not
+	// marks); deep in a hollow it lies smooth.
+	vec2 sas_w = vec2(0.924, 0.382);
+	vec2 sas_q = vec2(dot(p, sas_w) / 9.0, dot(p, vec2(-sas_w.y, sas_w.x)) / 1.7);
+	// (none under the trees, where the wind can't get at it)
+	float sas_keep = (1.0 - smoothstep(0.08, 0.3, length(fwidth(sas_q)))) * (1.0 - smoothstep(0.75, 1.35, lie)) * snow * (1.0 - wood_floor);
+	// (one read: its slope comes from the pixel's neighbours, surface_relief)
+	float sas_h = terrain_detail ? texture(detail_tex, sas_q + 0.29).r : 0.5;
 	if (terrain_detail && snow > 0.001) {
 		// Metre-scale powder and dirty melt edges stay separate from broad wind drifts.
+		// (the scan read a second time at another size and angle and swapped in
+		// patches, so its grain doesn't march across a field in rows)
 		vec3 snow_uv = wpos / 2.0;
 		vec4 powder = surface_color(3.0, snow_uv, weights);
 		snow_data = surface_data(3.0, snow_uv, weights, geometric, snow_n);
-		snow_color = min(powder.rgb * 1.8, vec3(0.9)) * mix(vec3(0.82, 0.90, 1.0), vec3(1.0), smoothstep(-0.3, 0.6, lee + macro));
-		float melt = (1.0 - smoothstep(0.0, 0.7, snow_field)) * smoothstep(0.2, 0.8, rock_height);
+		vec2 snow_uv2 = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p / 3.1 + 0.37;
+		float swap = smoothstep(0.35, 0.65, texture(detail_tex, p / 13.0 + 0.61).r) * weights.y;
+		// (its colour only, unbranched: the GI and shadow passes run this shader too,
+		// and a branch with a second normal read there cost several milliseconds)
+		vec4 other = texture(material_colors, vec3(snow_uv2, 3.0));
+		if (OUTPUT_IS_SRGB) {
+			other.rgb = mix(other.rgb / 12.92, pow((other.rgb + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), other.rgb));
+		}
+		powder = mix(powder, other, swap);
+		// (and its dimples softened: pressed into a whole field they read as a pattern)
+		float grain = min(dot(powder.rgb, vec3(0.2126, 0.7152, 0.0722)) * 2.0, 1.0);
+		snow_color = vec3(0.9) * mix(1.0, grain, 0.45) * mix(vec3(0.82, 0.90, 1.0), vec3(1.0), smoothstep(-0.3, 0.6, lee + macro));
+		// (deep, smooth snow in the hollows is the brightest; wind-packed, a shade greyer)
+		snow_color *= mix(0.93, 1.03, smoothstep(0.5, 1.4, lie)) * (1.0 + (sas_h - 0.5) * 0.08 * sas_keep);
+		float melt = (1.0 - smoothstep(0.0, 0.7, snow_field)) * smoothstep(0.2, 0.8, rock_height) * (1.0 - fall);
 		snow_color *= mix(vec3(1.0), vec3(0.64, 0.62, 0.59), melt * 0.55);
 	}
+	// (a road's cover trodden grey, whiter on a track's crown where no wheel runs)
+	vec3 trodden = mix(vec3(0.3, 0.3, 0.31), vec3(0.62, 0.64, 0.67), smoothstep(0.3, 0.8, d2 * 0.6 + d3 * 0.4));
+	snow_color = mix(snow_color, trodden, road_track * (1.0 - road_crown * 0.6) * 0.75 * step(0.0001, snow_cover));
+	// (the ruts' mud soaked dark with the meltwater)
+	col = mix(col, col * 0.45 * vec3(1.0, 0.92, 0.82), road_slush);
 	col = mix(col, snow_color * (0.94 + d3 * 0.06 + snow_ripple * 0.018), snow);
+	// (linear: wet grey slush over the dark of the churned earth)
+	col = mix(col, vec3(0.16, 0.165, 0.17) * (0.8 + 0.4 * d3), slush * 0.65);
+	// (the thawed ground soaked dark, the grass under it flattened and gone to
+	// a dull winter brown: not a summer lawn)
+	col = mix(col, vec3(dot(col, vec3(0.3, 0.5, 0.2))) * vec3(1.05, 0.9, 0.7), thawed * 0.75) * (1.0 - thawed * 0.4);
 	vec2 material_data = mix(moss_data, rock_data, exposed);
 	// Combine photographic crevices with broad shelter; do not bake a second direct-light shadow.
 	float crevice = clamp(rock_data.x * mix(1.0, 0.72, shelter), 0.25, 1.0);
@@ -2990,6 +3369,9 @@ void fragment() {
 	ROUGHNESS = mix(ROUGHNESS, mix(shore_roughness, 0.45, wet_sand), shore_stone);
 	ROUGHNESS = mix(ROUGHNESS, 0.45, max(wm.a * 0.8, wet_sand * 0.6));
 	ROUGHNESS = mix(ROUGHNESS, 0.16, puddle);
+	ROUGHNESS = mix(ROUGHNESS, 0.5, slush);
+	ROUGHNESS = mix(ROUGHNESS, 0.45, road_slush);
+	ROUGHNESS = mix(ROUGHNESS, 0.42, thawed);
 	SPECULAR = mix(0.25, 0.38, wet);
 	float e = 0.12;
 	float hc = hgt(p);
@@ -3008,6 +3390,9 @@ void fragment() {
 	n = surface_relief(n, mineral * 0.28, exposed * clean * (1.0 - snow) * smoothstep(0.3, 1.0, slope));
 	n = normalize(mix(n, normalize(mix(geometric, snow_n, 0.6)), snow * 0.9));
 	n = surface_relief(n, snow_ripple * 0.065 + scree_sample.a * 0.025, snow);
+	// (the sastrugi, some five centimetres deep)
+	n = surface_relief(n, sas_h * 0.05, sas_keep);
+	n = surface_relief(n, road_bank, 1.0);
 	n = normalize(mix(n, shore_normal, shore_stone));
 	n = normalize(mix(n, vec3(0.0, 1.0, 0.0), puddle * 0.9));
 	// The rain rings the standing water and, faintly, wet bare soil. Further
@@ -3021,6 +3406,13 @@ void fragment() {
 	}
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	// CLOUD_FRAGMENT cloud_sun(wpos)
+	// (in snow the crowns are laden and the floor white, so the light under a
+	// wood is grey, not the green the probes' leaves give it in summer)
+	if (snow_cover > 0.0 && wood_floor > 0.0) {
+		float grey_wood = wood_floor * snow_cover * 0.8;
+		ALBEDO = mix(ALBEDO, vec3(dot(ALBEDO, vec3(0.3, 0.5, 0.2))), grey_wood);
+		EMISSION = mix(EMISSION, vec3(dot(EMISSION, vec3(0.3, 0.5, 0.2))), grey_wood);
+	}
 }
 
 void light() {
@@ -3058,6 +3450,7 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, specular_schlick_ggx;
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
 uniform float wet = 0.0;
+global uniform float snow_cover;  // (see the ground shader)
 uniform sampler2D trench_mask : hint_default_black, filter_linear, repeat_disable;
 uniform vec4 town = vec4(0.0);  // min x, min z, max x, max z: streets here are asphalt
 uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
@@ -3065,12 +3458,8 @@ uniform sampler2DArray deform_tex : filter_linear, repeat_disable;
 instance uniform float country = 0.0;
 uniform sampler2D paving_noise : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D street_noise : filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D gravel_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D gravel_surface : filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D roadbed_color : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D roadbed_surface : filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D paving_surface : filter_linear_mipmap_anisotropic, repeat_enable;
-// CLOUD_SHADOW
+""" + SnowMelt.GLSL + """// CLOUD_SHADOW
 // STREET_SURFACE
 // RAIN_DROPS
 varying vec3 wpos;
@@ -3081,6 +3470,16 @@ void vertex() {
 	float unpaved = 1.0 - smoothstep(-0.5, 0.5, min(town_inside.x, town_inside.y)) * country;
 	float camber = 0.045 * (1.0 - smoothstep(0.0, 0.5, abs(UV.x - 0.5))) * unpaved;
 	VERTEX.y += h + camber; wpos.y += h + camber;
+}
+// A height `bank` metres above the road shades it as a low ridge (world normal in and out).
+vec3 bank_relief(vec3 normal, float bank) {
+	vec3 dx = dFdx(wpos); vec3 dy = dFdy(wpos);
+	vec3 face = normalize(cross(dx, dy));
+	face *= sign(dot(face, normal));
+	vec3 r1 = cross(dy, face); vec3 r2 = cross(face, dx);
+	float det = dot(dx, r1);
+	vec3 gradient = sign(det) * (dFdx(bank) * r1 + dFdy(bank) * r2);
+	return normalize(normal - gradient / max(abs(det), 0.000001));
 }
 void fragment() {
 	if (texture(trench_mask, (wpos.xz + __MAP_HALF__) / __MAP_SIZE__).r > 0.5) {
@@ -3099,65 +3498,39 @@ void fragment() {
 	float n = texture(detail_tex, wpos.xz / 3.0).r;
 	float n2 = texture(detail_tex, wpos.xz / 11.0 + 0.5).r;
 	float n3 = texture(detail_tex, wpos.xz / 0.6 + 0.2).r;
-	float across = abs(x - 0.5) * mix(4.8, 5.8, country);
-	float half_width = mix(2.4, 2.9, country);
-	// Two metre scans retain stone-sized detail; the broad variation never replaces it.
-	vec2 road_uv = wpos.xz / 2.0;
-	vec2 gravel_uv = wpos.xz / 2.0;
-	vec3 road = texture(roadbed_color, road_uv).rgb;
-	vec3 gravel = texture(gravel_color, gravel_uv).rgb;
-	if (OUTPUT_IS_SRGB) {
-		road = mix(road / 12.92, pow((road + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), road));
-		gravel = mix(gravel / 12.92, pow((gravel + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), gravel));
-	}
-	// Local limestone fines mute the red soil, but leave the photographed aggregate intact.
-	float road_light = dot(road, vec3(0.2126, 0.7152, 0.0722));
-	road = mix(road, vec3(road_light), 0.72) * vec3(1.05, 1.02, 0.94);
-	road *= mix(vec3(0.72, 0.61, 0.45), vec3(1.0), country);
-	gravel *= vec3(0.30, 0.29, 0.27);
-	float wander = (texture(detail_tex, vec2(UV.y / 19.0, 0.37)).r - 0.5) * 0.22;
-	float inner_wheels = abs(abs((x - 0.5) * half_width * 2.0 - wander) - mix(0.85, 0.72, country));
-	float outer_wheels = abs(abs((x - 0.5) * half_width * 2.0 + wander * 0.7) - 2.05);
-	float wheel_distance = mix(inner_wheels, min(inner_wheels, outer_wheels), country);
-	float ruts = 1.0 - smoothstep(0.14, 0.33, wheel_distance);
-	float shoulder = smoothstep(half_width - 0.25, half_width + 0.3, across + (n2 - 0.5) * 0.35);
-	float grit = smoothstep(0.30, 0.70, n * 0.35 + n3 * 0.65 + shoulder * 0.18 - ruts * 0.22);
-	grit *= mix(0.18, 1.0, country);
-	vec3 col = mix(road, gravel, grit * 0.72);
-	col *= mix(0.86, 1.13, n2);
-	// Tyres compact the fines; the unworn centre and edges keep loose aggregate.
-	col *= 1.0 - ruts * 0.16;
-	float outer = half_width + 0.45 + n2 * 0.8;
-	float edge_noise = (n - 0.5) * 0.38 + (n3 - 0.5) * 0.18;
-	float edge = 1.0 - smoothstep(outer - 0.16, outer + 0.12, across + edge_noise);
-	float soil = smoothstep(half_width - 0.25, outer - 0.18, across + edge_noise);
-	col = mix(col, road * vec3(0.55, 0.48, 0.37), soil * 0.95);
-	// Single-lane supply tracks keep a wider, broken strip of vegetation between the wheels.
-	float mid = (1.0 - smoothstep(mix(0.20, 0.06, country), mix(0.55, 0.28, country), across + (n3 - 0.5) * 0.12)) * smoothstep(mix(0.32, 0.51, country), mix(0.58, 0.69, country), n2);
-	vec3 centre_grass = mix(vec3(0.075, 0.095, 0.025) * (0.65 + n3 * 0.7), road * vec3(0.45, 0.53, 0.24), country);
-	col = mix(col, centre_grass, mid * 0.7);
-	float pud = wet * smoothstep(0.56, 0.75, n2 * 0.65 + ruts * 0.35);
-	col *= 1.0 - wet * 0.28;
-	col = mix(col, col * 0.55, pud);
-	ALBEDO = col;
-	vec4 road_data = texture(roadbed_surface, road_uv);
-	vec4 gravel_data = texture(gravel_surface, gravel_uv);
-	vec3 road_n = road_data.rgb * 2.0 - 1.0;
-	vec3 gravel_n = gravel_data.rgb * 2.0 - 1.0;
-	vec3 surface_n = normalize(mix(road_n, gravel_n, grit * 0.72));
-	surface_n.xy *= mix(0.85, 0.4, ruts) * (1.0 - pud * 0.9);
+	// Outside town the roads are the ground's own (GROUND_SHADER draws them
+	// from the road map the grass job packs into the biome texture); the
+	// ribbon draws only the town's asphalt, which tyres dust with the road's
+	// fines where they come in off the gravel.
+	vec3 col = vec3(0.105, 0.092, 0.072) * (0.8 + 0.4 * n3);
+	float pud = 0.0;
+	ROUGHNESS = 0.9;
+	SPECULAR = 0.3;
 	mat3 ground_basis = ground_surface_basis(wpos);
-	NORMAL = normalize((VIEW_MATRIX * vec4(ground_basis * surface_n, 0.0)).xyz);
-	ROUGHNESS = mix(clamp(mix(road_data.a, gravel_data.a, grit), 0.72, 1.0), 0.12, pud);
-	SPECULAR = mix(0.18, 0.45, pud);
-	ALPHA = edge;
+	NORMAL = normalize((VIEW_MATRIX * vec4(ground_basis[2], 0.0)).xyz);
+	// In snow the town's streets have been ploughed (below): how much has
+	// fallen here, less what a fire or an engine has melted (SnowMelt).
+	float lying = 0.0;
+	float bank = 0.0;
+	if (snow_cover > 0.0) {
+		lying = smoothstep(0.0, 0.35, snow_cover * 1.3 - 0.3 + (n2 - 0.5) * 0.4);
+		float melted = melt_n > 0 ? snow_melted(wpos.xz, (n2 - 0.5) * 0.3 + (n - 0.5) * 0.1) : 0.0;
+		lying *= 1.0 - smoothstep(0.1, 0.6, melted);
+	}
 	// in town: patched asphalt between the curbs, a dashed centre line
 	vec2 inside = min(wpos.xz - town.xy, town.zw - wpos.xz);
 	float distance = min(inside.x, inside.y);
-	float broken_edge = (texture(street_noise, wpos.xz * 0.65).r - 0.5) * 0.6;
-	float paved = smoothstep(-0.3, 0.35, distance + broken_edge) * country * step(1.0, town.z - town.x) * step(0.0, x) * step(x, 1.0);
+	// where the town's paving gives out, its edge has broken up: bays a metre
+	// or two deep where frost and wheels have taken it, chipped at the rim
+	float broken_edge = (texture(street_noise, wpos.xz * 0.06 + 0.4).r - 0.5) * 0.8 + (texture(street_noise, wpos.xz * 0.45).r - 0.5) * 1.6
+		+ (texture(street_noise, wpos.xz * 1.9 + 0.2).r - 0.5) * 0.4;
+	float edge_in = distance + 0.5 + broken_edge;
+	float paved = smoothstep(-0.06, 0.06, edge_in) * country * step(1.0, town.z - town.x) * step(0.0, x) * step(x, 1.0);
 	float pud2 = 0.0;
-	if (paved > 0.001) {
+	if (paved <= 0.001) {
+		discard;
+	}
+	{
 		float tar = 0.0;
 		vec3 asph = street_surface(paving_noise, street_noise, wpos.xz, tar);
 		if (OUTPUT_IS_SRGB) { asph = mix(asph / 12.92, pow((asph + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), asph)); }
@@ -3180,7 +3553,19 @@ void fragment() {
 		// Tyres carry loose fines a few metres onto the paving at the town entrance.
 		float entry_dust = (1.0 - smoothstep(0.0, 3.5, distance + (n2 - 0.5))) * (0.25 + wheel * 0.55) * (0.6 + n3 * 0.4);
 		asph = mix(asph, col, entry_dust * 0.65);
+		// the broken rim: crumbling, its cracks packed with the road's grit
+		asph = mix(asph, mix(asph * 0.8, col, 0.4), (1.0 - smoothstep(0.0, 0.35, edge_in)) * 0.8);
 		asph *= 1.0 - (1.0 - smoothstep(0.02, 0.09, kerb)) * 0.35;
+		// Dead leaves and litter drift into the gutter against the kerb, thick
+		// in some stretches and swept clean in others. (Each leaf is a few
+		// centimetres: they fade to their average once smaller than a pixel.)
+		float leaf_px = clamp(0.05 / max(fwidth(wpos.x) + fwidth(wpos.z), 0.0001), 0.0, 1.0);
+		float drift_bank = smoothstep(0.42, 0.66, texture(street_noise, vec2(along * 0.05, x * 0.5) + 0.9).r);
+		float leaf_bed = (1.0 - smoothstep(0.08, 0.45 + 0.25 * drift_bank, kerb)) * drift_bank;
+		float leaf_shape = texture(street_noise, wpos.xz * 1.6 + 0.47).r;
+		float leaves = leaf_bed * mix(0.3, smoothstep(0.55, 0.62, leaf_shape + leaf_bed * 0.08), leaf_px);
+		vec3 leaf_col = mix(vec3(0.075, 0.05, 0.026), vec3(0.14, 0.095, 0.045), texture(street_noise, wpos.xz * 3.1 + 0.2).r);
+		asph = mix(asph, leaf_col, leaves * 0.75);
 		// a drain grate in the gutter every 32 m, the sides taking turns
 		float stretch = floor(along / 32.0);
 		float from_grate = abs(along - stretch * 32.0 - 16.0);
@@ -3213,20 +3598,41 @@ void fragment() {
 		dash *= (1.0 - paint_wear * 0.85) * smoothstep(0.6, 0.95, paved) * (1.0 - metal_part);
 		asph = mix(asph, vec3(0.74, 0.73, 0.68) * (0.8 + 0.25 * n3), dash);
 		// rain lies in the wheel ruts and the gutters first
-		pud2 = wet * smoothstep(0.55, 0.75, street_puddle(street_noise, wpos.xz) + wheel * 0.12 + gutter * 0.3) * (1.0 - metal_part);
-		asph *= 1.0 - wet * 0.3;
-		ALBEDO = mix(col, mix(asph, asph * 0.4, pud2), paved);
+		// (the wheel paths and gutters only nudge the shared field, so puddles carry
+		// on across junction paving, which has neither)
+		vec2 rain = street_wetness(wet, street_puddle(street_noise, wpos.xz) + wheel * 0.06 + gutter * 0.1);
+		pud2 = rain.y * (1.0 - metal_part);
+		asph *= 1.0 - rain.x * 0.45;
+		// in snow the street has been ploughed: the snow thrown to the kerbs in
+		// a low, rough bank, the wheel paths slush, black and wet, and a thin
+		// grey film scraped flat between them and down the crown
+		float heap = lying * (1.0 - smoothstep(0.2, 0.85 + (n2 - 0.5) * 0.35, kerb)) * (1.0 - metal_part * 0.6);
+		float lane_snow = lying * clamp((1.0 - wheel) * 0.45 - oil * 0.2, 0.0, 1.0) * (1.0 - metal_part * 0.6) * (1.0 - heap);
+		asph = mix(asph, asph * 0.5, lying * wheel);
+		asph = mix(asph, vec3(0.3, 0.31, 0.32) * (0.85 + 0.3 * n3), lane_snow);
+		asph = mix(asph, vec3(0.78, 0.8, 0.84) * (0.9 + 0.12 * n3), smoothstep(0.0, 0.25, heap));
+		bank = mix(bank, heap * 0.24 * (0.7 + 0.6 * n), paved);
+		ALBEDO = mix(asph, asph * 0.4, pud2);
 		vec4 surface = texture(paving_surface, wpos.xz / 2.2);
 		vec3 normal = surface.rgb * 2.0 - 1.0;
-		normal.xy *= 0.18 * (1.0 - metal_part) * (1.0 - dash * 0.5);
+		normal.xy *= 0.18 * (1.0 - metal_part) * (1.0 - dash * 0.5) * (1.0 - pud2);
 		NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(ground_basis * normal, 0.0)).xyz, paved));
-		float asphalt_rough = clamp(surface.a, 0.65, 1.0) - wheel * 0.1 - tar * 0.3 + gutter * 0.05;
+		float asphalt_rough = clamp(surface.a, 0.65, 1.0) - wheel * 0.1 - tar * 0.3 + gutter * 0.05 + leaves * 0.15;
 		asphalt_rough = mix(asphalt_rough, 0.58, dash);
 		asphalt_rough = mix(asphalt_rough, mix(0.5, 0.8, slot), metal_part);
-		ROUGHNESS = mix(ROUGHNESS, mix(asphalt_rough - wet * 0.3, 0.06, pud2), paved);
-		SPECULAR = mix(SPECULAR, mix(0.3, 0.55, pud2), paved);
+		float street_rough = mix(asphalt_rough, 0.3, rain.x);
+		street_rough = mix(street_rough, 0.32, lying * wheel);
+		street_rough = mix(street_rough, 0.85, max(lane_snow, heap));
+		ROUGHNESS = mix(ROUGHNESS, mix(street_rough, 0.03, pud2), paved);
+		SPECULAR = mix(SPECULAR, mix(0.4, 0.5, pud2), paved);
 		METALLIC = metal_part * 0.45 * paved;
-		ALPHA = mix(edge, 1.0, paved);
+		ALPHA = paved;
+	}
+	if (snow_cover > 0.0) {
+		// (the plough's banks: shaded as a low ridge, lit on one side)
+		vec3 bn = bank_relief(normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz), bank);
+		NORMAL = normalize((VIEW_MATRIX * vec4(bn, 0.0)).xyz);
+		ALBEDO = mix(ALBEDO, vec3(0.8, 0.82, 0.86), smoothstep(0.05, 0.12, bank) * (1.0 - paved) * 0.6);
 	}
 	// the rain rings the puddles, and faintly the wet film on the road
 	float ring_on = mix(max(pud, wet * 0.2), max(pud2, wet * 0.25), paved);

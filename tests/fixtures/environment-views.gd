@@ -1,33 +1,53 @@
 extends SceneTree
 ## Native generated-world review: matched views, one map build, simulation held at two seconds.
+## --capture-defer-draw avoids drawing the default camera during map generation.
+## --capture-clip=all (or comma-separated view names) records selected views; --capture-frames sets length.
+## --capture-light-sweep animates the road track-light view, with sky/exposure held.
+## --capture-no-light-shadows isolates material response; label that take as a lighting fixture.
+## Use --fixed-fps to define playback timing. Capture is separate from benchmarking.
 
 func _initialize() -> void:
 	call_deferred("capture")
 
 func capture() -> void:
 	var source_hashes := _source_hashes()
+	var defer_draw := "--capture-defer-draw" in OS.get_cmdline_user_args()
+	if defer_draw:
+		RenderingServer.set_render_loop_enabled(false)
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
 	current_scene = game
+	var loading_frames := 0
 	while game.world == null or game.world.time < 2.0:
 		await process_frame
+		loading_frames += 1
+		if loading_frames % 24 == 0:
+			print("CAPTURE loading frames=", loading_frames, " time=", game.world.time if game.world != null else -1)
 	var world = game.world
-	world.set_physics_process(false)
-	world.cam.set_process(false)
-	world.cam.edge_pan = false
 	if world.director:
 		world.director.active = false
 	var prefix := "build/terrain/environment-views"
 	var clip := ""
+	var clip_frames := 180
+	var light_sweep := "--capture-light-sweep" in OS.get_cmdline_user_args()
 	var capture_views := PackedStringArray()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--capture-views="):
 			capture_views = arg.get_slice("=", 1).split(",")
+		if arg.begins_with("--capture-frames="):
+			clip_frames = maxi(2, int(arg.get_slice("=", 1)))
 		if arg.begins_with("--capture-clip="):
 			clip = arg.get_slice("=", 1)
 		if arg.begins_with("--capture-prefix="):
 			prefix = arg.get_slice("=", 1)
 	assert(DirAccess.make_dir_recursive_absolute(prefix.get_base_dir()) == OK)
+	if "--capture-set=snow-bank" in OS.get_cmdline_user_args():
+		await _snow_bank(world, prefix)
+		quit()
+		return
+	world.set_physics_process(false)
+	world.cam.set_process(false)
+	world.cam.edge_pan = false
 	if "--capture-set=trench-build" in OS.get_cmdline_user_args():
 		await _trench_build(world, prefix)
 		quit()
@@ -37,20 +57,32 @@ func capture() -> void:
 		quit()
 		return
 	var heights: PackedFloat32Array = world.terrain.landform.heights
-	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=woodland" in OS.get_cmdline_user_args() or "--capture-set=trench-fittings" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
+	assert(not heights.is_empty() or "--capture-set=trenches" in OS.get_cmdline_user_args() or "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=woodland" in OS.get_cmdline_user_args() or "--capture-set=stonework" in OS.get_cmdline_user_args() or "--capture-set=trench-fittings" in OS.get_cmdline_user_args(), "The environment stage needs a generated alpine map")
 	var peak_index := 0
 	for i in heights.size():
 		if heights[i] > heights[peak_index]:
 			peak_index = i
 	var n: int = world.terrain.landform.n
 	var half: float = world.terrain.landform.half
-	var peak := Vector3((peak_index % n) * 4.0 - half, 0, floori(float(peak_index) / float(n)) * 4.0 - half)
+	var peak := Vector3.ZERO
+	if n > 0:
+		peak = Vector3((peak_index % n) * 4.0 - half, 0, floori(float(peak_index) / float(n)) * 4.0 - half)
 	var views := [
 		["snow-close", peak, 45.0, -42.0, -0.2],
 		["snow-ridge", peak, 120.0, -30.0, -0.7],
 		["forest", Vector3(-400,0,-450), 350.0, -30.0, -0.2],
 		["panorama", Vector3.ZERO, 900.0, -22.0, 0.7],
 	]
+	if "--capture-set=stonework" in OS.get_cmdline_user_args():
+		var wall = null
+		for candidate in world.structures:
+			if candidate.skind == "house_wall" and int(candidate.size.y) == 4:
+				wall = candidate
+				break
+		assert(wall != null, "This seed must contain a stone house")
+		var focus: Vector3 = wall.position + Vector3.UP * 1.4
+		views = [["stone-close", focus, 12.0, -25.0, wall.rotation.y + 0.35],
+			["stone-command", focus, 50.0, -50.0, wall.rotation.y + 0.35]]
 	if "--capture-set=town" in OS.get_cmdline_user_args():
 		var town: Rect2 = world.town_rect
 		var center := Vector3(town.get_center().x, 0, town.get_center().y)
@@ -71,7 +103,24 @@ func capture() -> void:
 		for piece: Array in world.decor:
 			if piece[0] == "awning" and town.has_point(Vector2(piece[1].x, piece[1].z)):
 				views.append(["shopfront", piece[1], 16.0, -32.0, float(piece[2]) + PI + 0.5])
+				# and from the kerb, a man's eye a little raised: the windows, the
+				# stock in them, the grime on the walls
+				views.append(["shopfront-kerb", piece[1], 16.0, -32.0, float(piece[2])])
 				break
+		# the parish church from the road it stands back from, where there is one
+		for st in world.structures_near(center, 300.0):
+			if st.skind == "church":
+				views.append(["church", st.position, 48.0, -30.0, st.yaw + PI + 0.6])
+		# a rendered house's front at a man's eye, across its garden: what
+		# the years leave on a plain wall
+		# (and a brick house's, and a stone house's)
+		var to_sun: Vector3 = world.atmo.sun.global_basis.z
+		for kerb: Array in [["house-kerb", "plaster"], ["brick-kerb", "brick"], ["stone-kerb", "stone"]]:
+			for st in world.structures_near(center, 90.0):
+				var out: Vector3 = Basis(Vector3.UP, st.yaw) * Vector3(0, 0, 1)
+				if st.skind == "house_wall" and st.variant == 1 and BuildingMaterials.house(int(st.size.y)) == kerb[1] and not st.dark and out.dot(to_sun) > 0.45:
+					views.append([kerb[0], st.position, 16.0, -32.0, st.yaw])
+					break
 		# the central crossroads close up, the square, a car park from the street
 		views.append(["crossroads", center, 24.0, -48.0, 0.7])
 		for piece: Array in world.decor:
@@ -88,6 +137,33 @@ func capture() -> void:
 				views.append(["farm", piece[1], 34.0, -42.0, 0.7])
 				break
 		print("CAPTURE town bounds=", town)
+	if "--capture-set=hq" in OS.get_cmdline_user_args():
+		# each side's HQ as its own commander first sees it (the battle starts
+		# looking out from its lines: the HQ's yaw), closer from that side, from
+		# the enemy's side, and from straight above (its back to the bottom)
+		views = []
+		for st in world.structures:
+			if st.skind == "depot":
+				var hq := "hq%d-" % st.team
+				views.append([hq + "command", st.position, 50.0, -52.0, float(st.yaw)])
+				views.append([hq + "rear", st.position, 26.0, -36.0, float(st.yaw) + 0.55])
+				views.append([hq + "front", st.position, 26.0, -36.0, float(st.yaw) + PI + 0.55])
+				views.append([hq + "plan", st.position, 34.0, -89.0, float(st.yaw)])
+	if "--capture-set=hq-roadside" in OS.get_cmdline_user_args():
+		# The generated HQ's local +x is the roadside; +z is its own rear.
+		# Match both variants in the same generated world without moving them.
+		views = []
+		for st in world.structures:
+			if st.skind == "depot":
+				var frame := Basis(Vector3.UP, float(st.yaw))
+				var name := "coalition" if st.team == 0 else "rebels"
+				views.append([name + "-roadside-command", st.position + frame * Vector3(3, 0, 1), 50.0, -52.0, float(st.yaw) + 0.85])
+				views.append([name + "-roadside-close", st.position + frame * Vector3(7, 0, 1.5), 22.0, -32.0, float(st.yaw) + 1.05])
+	# (FL_ONLY_VIEW="name,x,z,distance,pitch,yaw": just that view, to match a
+	# camera another revision chose)
+	if OS.has_environment("FL_ONLY_VIEW"):
+		var f := OS.get_environment("FL_ONLY_VIEW").split(",")
+		views = [[f[0], Vector3(float(f[1]), 0, float(f[2])), float(f[3]), float(f[4]), float(f[5])]]
 	if "--capture-set=trenches" in OS.get_cmdline_user_args():
 		views = [["trenches", Vector3(0, 0, -28), 24.0, -48.0, 0.5]]
 	if "--capture-set=fortifications" in OS.get_cmdline_user_args():
@@ -160,7 +236,7 @@ func capture() -> void:
 		views = [["earthwork", target, 18.0, -38.0, 0.5], ["cut", target + Vector3(0,-0.6,0), 6.0, -23.0, 0.5],
 			["bunker", bunker_pos, 16.0, -32.0, -0.65], ["position", target, 45.0, -50.0, 0.35]]
 		print("SLOPE_REVIEW ", target, " bunker=", bunker_pos)
-	var settle_frames := 90
+	var settle_frames := 12 if "--capture-set=stonework" in OS.get_cmdline_user_args() else 90
 	if "--capture-set=road-types" in OS.get_cmdline_user_args():
 		world.rules.rebuild_network(0)
 		views = [["gravel", Vector3(3, 0, 257), 12.0, -55.0, -0.8],
@@ -179,6 +255,8 @@ func capture() -> void:
 			quit(1)
 			return
 		views.append(["track", track, 14.0, -60.0, 0.2])
+		views.append(["track-command", track, 50.0, -50.0, 0.2])
+		views.append(["track-light", track, 14.0, -60.0, 0.2])
 		for piece: Array in world.decor:
 			if piece[0] == "drive" and piece[3] is Vector3 and piece[3].x > 2.5 and piece[3].z > 3.0:
 				views.append(["driveway", piece[1], 12.0, -65.0, float(piece[2]) + PI + 0.4])
@@ -302,9 +380,21 @@ func capture() -> void:
 		settle_frames = 120
 	RenderingServer.viewport_set_measure_render_time(root.get_viewport_rid(), true)
 	var records := []
+	var roadside_label: Label
+	if "--capture-set=hq-roadside" in OS.get_cmdline_user_args():
+		var captions := CanvasLayer.new()
+		root.add_child(captions)
+		roadside_label = Label.new()
+		roadside_label.position = Vector2(20, 16)
+		roadside_label.add_theme_font_size_override("font_size", 25)
+		roadside_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+		roadside_label.add_theme_constant_override("shadow_offset_y", 2)
+		captions.add_child(roadside_label)
 	for view in views:
 		if not capture_views.is_empty() and view[0] not in capture_views:
 			continue
+		if roadside_label:
+			roadside_label.text = "CURRENT · " + String(view[0]).replace("-", " ").to_upper()
 		if view.size() > 6:
 			world.atmo.apply_mood(view[6])
 			if "--weather-review" in OS.get_cmdline_user_args():
@@ -313,6 +403,8 @@ func capture() -> void:
 		if view.size() > 5:
 			get_root().get_node("Settings").v.mountain_clouds = view[5]
 			world.atmo.mountain_clouds.apply_settings(world.atmo)
+		if defer_draw:
+			RenderingServer.set_render_loop_enabled(false)
 		world.cam.cam.rotation = Vector3.ZERO
 		world.cam.dist = view[2]
 		world.cam.target_dist = view[2]
@@ -342,6 +434,26 @@ func capture() -> void:
 					world.cam.cam.global_position = eye
 					world.cam.cam.look_at(target)
 					break
+		if view[0] in ["house-kerb", "brick-kerb", "stone-kerb"]:
+			# square on to the wall from 7 m out (its outside is its +z)
+			var wall: Vector3 = view[1]
+			var b := Basis(Vector3.UP, float(view[4]))
+			var target := wall
+			target.y = world.ground_y(target) + 1.5
+			var eye := wall + b * Vector3(1.5, 0, 7.0)
+			eye.y = world.ground_y(eye) + 1.75
+			world.cam.cam.global_position = eye
+			world.cam.cam.look_at(target)
+		if view[0] == "shopfront-kerb":
+			# from the far kerb, at a man's eye, a little along the street
+			var wall: Vector3 = view[1]
+			var b := Basis(Vector3.UP, float(view[4]))
+			var target := wall
+			target.y = world.ground_y(target) + 1.55
+			var eye := wall + b * Vector3(2.2, 0, -7.5)
+			eye.y = world.ground_y(eye) + 1.75
+			world.cam.cam.global_position = eye
+			world.cam.cam.look_at(target)
 		if String(view[0]).begins_with("detail-"):
 			var subject: Vector3 = view[1]
 			subject.y = world.ground_y(subject) + (0.8 if view[0] == "detail-4" else 0.18)
@@ -359,6 +471,15 @@ func capture() -> void:
 		if world.atmo.mood == "rain":
 			world.atmo._bolt_t = 100.0
 			world.atmo._flash = 0.0
+		if defer_draw:
+			# Build every newly visible scenery batch before paying for software-rendered warm-up frames.
+			for frame in 2:
+				await process_frame
+			while world.structure_view != null and world.structure_view.warming():
+				await process_frame
+			RenderingServer.set_render_loop_enabled(true)
+		if "--capture-fast" in OS.get_cmdline_user_args():
+			settle_frames = 12
 		for frame in (60 if String(view[0]).begins_with("detail-") else settle_frames):
 			await process_frame
 		while world.structure_view != null and world.structure_view.warming():
@@ -394,13 +515,20 @@ func capture() -> void:
 		await RenderingServer.frame_post_draw
 		var filename: String = prefix + "-" + view[0] + ".png"
 		assert(root.get_texture().get_image().save_png(filename) == OK)
-		if clip == view[0]:
-			# Launch with --fixed-fps 30; Godot consumes that switch before exposing arguments.
-			var frames := prefix + "-" + clip + "-frames"
+		if String(view[0]) in clip.split(",") or clip == "all":
+			# Launch with an explicit --fixed-fps; Godot consumes it before exposing arguments.
+			var frames := prefix + "-" + String(view[0]) + "-frames"
 			assert(DirAccess.make_dir_recursive_absolute(frames) == OK)
-			for frame in 180:
-				if "--capture-set=fortifications" in OS.get_cmdline_user_args():
-					world.cam.yaw = float(view[4]) + 0.18 * sin(float(frame) * TAU / 180.0)
+			for frame in clip_frames:
+				if light_sweep and String(view[0]).ends_with("-light"):
+					# Hold the sky/exposure while testing the same surface from opposing light directions.
+					world.atmo.set_process(false)
+					if "--capture-no-light-shadows" in OS.get_cmdline_user_args():
+						world.atmo.sun.shadow_enabled = false
+					var phase := (1.0 - cos(TAU * float(frame) / float(clip_frames - 1))) * 0.5
+					world.atmo.sun.rotation_degrees = Vector3(-12.0, lerpf(45.0, 225.0, phase), 0)
+				if "--capture-set=fortifications" in OS.get_cmdline_user_args() or "--capture-set=stonework" in OS.get_cmdline_user_args() or "--capture-orbit" in OS.get_cmdline_user_args():
+					world.cam.yaw = float(view[4]) + 0.18 * sin(float(frame) * TAU / float(clip_frames))
 					world.cam._apply()
 				await process_frame
 				await RenderingServer.frame_post_draw
@@ -410,7 +538,7 @@ func capture() -> void:
 	assert(source_hashes == _source_hashes(), "Capture source changed during rendering; discard this take")
 	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
 	assert(output != null)
-	output.store_string(JSON.stringify({"seed": world.settings.get("seed", 1), "mood": world.atmo.mood, "renderer": RenderingServer.get_current_rendering_method(), "resolution": root.size, "source_sha256": source_hashes, "views": records}, "\t"))
+	output.store_string(JSON.stringify({"light_sweep": light_sweep, "directional_shadows_disabled": "--capture-no-light-shadows" in OS.get_cmdline_user_args(), "seed": world.settings.get("seed", 1), "mood": world.atmo.mood, "renderer": RenderingServer.get_current_rendering_method(), "resolution": root.size, "source_sha256": source_hashes, "views": records}, "\t"))
 	quit()
 
 
@@ -500,3 +628,33 @@ func _source_hashes() -> Dictionary:
 		for path in ["scripts/game/trench_net.gd", "scripts/game/trench_earth.gdshaderinc", "scripts/game/works_models.gd", "scripts/game/structure.gd", "scripts/game/grass.gd", "scripts/game/trench_vegetation.gdshaderinc", "scripts/game/atmosphere.gd", "scripts/game/mapgen.gd", "scripts/game/mats.gd", "tests/fixtures/environment-views.gd"]:
 			hashes[path] = FileAccess.get_sha256("res://" + path)
 	return hashes
+
+
+## Two matched gameplay views with simulation running: bank shape and fire response.
+## Fixed 24 fps, 48 frames per view; capture is separate from performance measurement.
+func _snow_bank(world, prefix: String) -> void:
+	world.cam.set_process(false)
+	world.cam.edge_pan = false
+	var records := []
+	var views := [["normal", 30.0, -35.0], ["low", 18.0, -12.0]]
+	for view in views:
+		world.cam.dist = view[1]
+		world.cam.target_dist = view[1]
+		world.cam.pitch_deg = view[2]
+		world.cam.yaw = 0.0
+		world.cam.focus_pos = Vector3(4, 0, -18)
+		world.cam._apply()
+		for warmup in 12:
+			await process_frame
+			await RenderingServer.frame_post_draw
+		var directory: String = prefix + "-" + view[0]
+		assert(DirAccess.make_dir_recursive_absolute(directory) == OK)
+		var start: float = world.time
+		for frame in 48:
+			await process_frame
+			await RenderingServer.frame_post_draw
+			assert(root.get_texture().get_image().save_png(directory + "/%04d.png" % frame) == OK)
+		records.append({"view": view[0], "zoom": view[1], "pitch": view[2], "camera": str(world.cam.cam.global_transform), "start": start, "end": world.time})
+		print("SNOW_BANK_CAPTURE ", view[0], " ", start, " -> ", world.time)
+	var output := FileAccess.open(prefix + ".json", FileAccess.WRITE)
+	output.store_string(JSON.stringify({"renderer": RenderingServer.get_current_rendering_method(), "seed": world.settings.get("seed", 3), "mood": world.atmo.mood, "fps": 24, "views": records, "drift_sha256": FileAccess.get_sha256("res://scripts/game/snow_drift.gd"), "fixture_sha256": FileAccess.get_sha256("res://tests/fixtures/environment-views.gd")}, "\t"))

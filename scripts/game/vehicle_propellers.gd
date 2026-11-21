@@ -23,6 +23,11 @@ static func disc_material(nb: int, hub: float, tint := Color(0.15, 0.155, 0.16))
 	m.set_shader_parameter("blade_count", float(nb))
 	m.set_shader_parameter("blade_tint", tint)
 	m.set_shader_parameter("hub", hub)
+	# (a propeller's or a fan's blades are broad against the small circle
+	# they sweep, two or three times a rotor's share of it, so its disc is
+	# denser: at the rotors' share a drone's props and a ducted fan all but
+	# vanished from above)
+	m.set_shader_parameter("solidity", 1.4)
 	_discs[key] = m
 	return m
 
@@ -31,8 +36,9 @@ static func disc_material(nb: int, hub: float, tint := Color(0.15, 0.155, 0.16))
 ## z), from radius r0 to r1: `prof` is [span fraction, chord] pairs, root to
 ## tip; twisted from blade angle p0 at the root to p1 at the tip, `th` its
 ## thickness as a fraction of chord. It pulls toward local z = fw and its
-## leading edge leads as the pivot turns about +z.
-static func blade(_key: String, d: Vector3, r0: float, r1: float, prof: Array, p0: float, p1: float, th: float, fw := -1.0) -> ArrayMesh:
+## leading edge leads as the pivot turns about +z. `foil` is the section's
+## thickness profile (VehicleAirfoils.PROFILE; a small prop's can be coarser).
+static func blade(_key: String, d: Vector3, r0: float, r1: float, prof: Array, p0: float, p1: float, th: float, fw := -1.0, foil := VehicleAirfoils.PROFILE) -> ArrayMesh:
 	var f := Vector3(0, 0, fw)
 	var t := Vector3(0, 0, 1).cross(d).normalized()
 	var rings := []
@@ -45,7 +51,7 @@ static func blade(_key: String, d: Vector3, r0: float, r1: float, prof: Array, p
 		if up.dot(f) < 0.0:
 			up = -up
 		var le := d * lerpf(r0, r1, u) - cdir * c * 0.4
-		rings.append(VehicleAirfoils.section(le, c, th * c * lerpf(1.5, 0.7, u), up, 0.0, 1.0, cdir))
+		rings.append(VehicleAirfoils.section(le, c, th * c * lerpf(1.5, 0.7, u), up, 0.0, 1.0, cdir, 0, foil))
 	return VehicleProfiles.loft(rings, 40.0)
 
 

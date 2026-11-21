@@ -349,7 +349,7 @@ static func openings(w: World, house: Structure) -> Array:
 	var out := []
 	var reach := maxf(house.size.x, house.size.z) * 0.5 + 1.5
 	for st in w.structures_near(house.position, reach):
-		if st.skind != "house_wall" or st.gone or st.wrecked or not (st.variant in [1, 2]):
+		if st.skind != "house_wall" or st.gone or st.wrecked or not (st.variant in [1, 2, 3]):
 			continue
 		var l: Vector3 = Basis(Vector3.UP, -house.yaw) * (st.position - house.position)
 		if absf(l.x) > house.size.x * 0.5 + 0.6 or absf(l.z) > house.size.z * 0.5 + 0.6:

@@ -222,7 +222,7 @@ func _ready() -> void:
 	if _curtains:
 		_intro()
 	Net.game_start.connect(_on_game_start)
-	Net.net_error.connect(func(m): return_to_menu(m))
+	Net.net_error.connect(_on_net_error)
 	if args.has("name"):
 		Net.my_name = args.name
 	if args.has("mood"):
@@ -828,6 +828,31 @@ func _warm_up(cur: Curtain) -> void:
 		cur.finish(2.2)
 
 
+func _on_net_error(msg: String) -> void:
+	# a test client whose host ends the battle first (its own --quit-after,
+	# counted from the start, runs out before the client's, counted from when
+	# the world reached it) reports what it had and quits, rather than waiting
+	# at the menu for a world that won't come back
+	if _quit_at > 0.0 and world and not world.srv and world.has_meta("world_at"):
+		_quit_at = -1.0
+		_client_summary(" host_left=1")
+		TestRun.quit(get_tree())
+		return
+	return_to_menu(msg)
+
+
+## The CLIENT line a test client prints when it quits (docs/DEVELOPMENT.md, "Host / client").
+func _client_summary(extra: String) -> void:
+	var counts := {}
+	var enemy := 0
+	for e in world.entities.values():
+		counts[e.ekind()] = int(counts.get(e.ekind(), 0)) + 1
+		if e.team >= 0 and e.team != world.local_team:
+			enemy += 1
+	counts["ENEMY_KNOWN"] = enemy
+	print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d%s" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine(), extra])
+
+
 func return_to_menu(msg: String) -> void:
 	if is_instance_valid(replay_viewer):
 		replay_viewer.queue_free()
@@ -1219,6 +1244,23 @@ func _process(_dt: float) -> void:
 						bp = Vector3(v.position.x + float(ba[1]), 0.3, v.position.z)
 						break
 			world.combat.explode(bp, {"dmg": 160.0 * bsz, "radius": 4.0 + bsz * 3.0, "fling": 8.0 + bsz * 4.0, "at": 300.0, "top": true, "src": null, "team": -1, "size": bsz})
+	# --destroy-near=x,z,kind,time: the structure of that kind nearest x,z
+	# destroyed at that time, the way enough damage destroys it (a single wall
+	# knocked down, for the light probes' before-and-after)
+	if args.has("destroy-near") and world.srv and not has_meta("destroyed_near"):
+		var dn := String(args["destroy-near"]).split(",")
+		if world.time >= float(dn[3]):
+			set_meta("destroyed_near", true)
+			var at := Vector3(float(dn[0]), 0, float(dn[1]))
+			var best = null  # (untyped: the launch doesn't compile game classes)
+			var best_d := INF
+			for st in world.structures_near(at, 30.0):
+				var d: float = Vector2(st.position.x - at.x, st.position.z - at.z).length()
+				if not st.gone and st.skind == dn[2] and d < best_d:
+					best = st
+					best_d = d
+			if best:
+				best.take_damage(best.hp + 1.0)
 	# --focus-town[=dx,dz]: the camera on the middle of town (offset in metres)
 	if args.has("focus-town") and world.cam and world.time > 1.0 and not world.has_meta("town_focused") and world.town_rect.size.x > 0.0:
 		var off := Vector3.ZERO
@@ -1522,14 +1564,7 @@ func _process(_dt: float) -> void:
 			print("FINAL ", world.debug_stats())
 			print("REPORT ", world.battle.summary())
 		else:
-			var counts := {}
-			var enemy := 0
-			for e in world.entities.values():
-				counts[e.ekind()] = int(counts.get(e.ekind(), 0)) + 1
-				if e.team >= 0 and e.team != world.local_team:
-					enemy += 1
-			counts["ENEMY_KNOWN"] = enemy
-			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine()])
+			_client_summary("")
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
 		TestRun.quit(get_tree())

@@ -1,0 +1,173 @@
+{
+  "before_ref": "a29264e81695919bef4ebf749b35784cb6536e7d",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    9900
+  ],
+  "composition": "Each row: the same studio render of before_ref and of this change, cropped alike to the model (or to `crop`, in source pixels, widened to 16:9) and resized to 800x450, before left, after right, short labels. JPEG quality 80. Both columns rendered in one roster pass each from checkouts of before_ref and of this change. The rebels' pickups lost their sandbags, and crews their camouflage nets, before merge: the technical's row was rendered again from both refs with the sandbags taken off.",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<every roster kind> [--surface-flight] --surface-seed=3 --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "offroad",
+      "flight": true,
+      "label": "Pickup from above: a dark matt vinyl tonneau, not a grey slab"
+    },
+    {
+      "model": "mb4wd",
+      "label": "MB 4WD: a dark vinyl top, no hot spot on the bonnet"
+    },
+    {
+      "model": "suv",
+      "flight": true,
+      "crop": [
+        600,
+        240,
+        1000,
+        465
+      ],
+      "label": "SUV: the windscreen shows the dash again"
+    },
+    {
+      "model": "ifrit",
+      "flight": true,
+      "label": "Ifrit from above: a faded slate-blue roof chevron"
+    },
+    {
+      "model": "gryphon",
+      "flight": true,
+      "label": "Gryphon from above: narrower, duller wingtip bands"
+    },
+    {
+      "model": "sochor",
+      "flight": true,
+      "label": "Sochor from above: a dull mark, a coiled cable"
+    },
+    {
+      "model": "truck",
+      "flight": true,
+      "crop": [
+        840,
+        480,
+        1240,
+        705
+      ],
+      "label": "HEMTT cab from above: no orange panel on the roof"
+    },
+    {
+      "model": "m35",
+      "label": "M35: the bed in shade under its tilt"
+    },
+    {
+      "model": "hemtt_ammo",
+      "flight": true,
+      "label": "HEMTT ammunition: many stencilled boxes again"
+    },
+    {
+      "model": "old_tank",
+      "flight": true,
+      "label": "T-55 from above: no bare drum brackets"
+    },
+    {
+      "model": "rhino",
+      "flight": true,
+      "crop": [
+        560,
+        80,
+        880,
+        260
+      ],
+      "label": "Centauro roof: a coiled cable, not a floating ring"
+    },
+    {
+      "model": "utility_drone",
+      "flight": true,
+      "label": "Drone from above: spinning discs you can see"
+    },
+    {
+      "model": "hummingbird",
+      "flight": true,
+      "label": "Little Bird from above: a rotor disc, glass with sky on it"
+    },
+    {
+      "model": "xian",
+      "crop": [
+        800,
+        400,
+        1120,
+        580
+      ],
+      "label": "Xi'an: canopies that read as glass"
+    },
+    {
+      "model": "mohawk",
+      "crop": [
+        860,
+        440,
+        1180,
+        620
+      ],
+      "label": "Mohawk: nose glass that matches the cabin windows"
+    },
+    {
+      "model": "hunter",
+      "flight": true,
+      "label": "Hunter from above: armoured glass, not black holes"
+    },
+    {
+      "model": "orca",
+      "crop": [
+        720,
+        380,
+        1000,
+        537
+      ],
+      "label": "Orca: a shaded cabin behind the open door"
+    },
+    {
+      "model": "technical",
+      "label": "Technical: a mill-scale steel plate on the rear door"
+    },
+    {
+      "model": "zamak",
+      "crop": [
+        780,
+        540,
+        1140,
+        742
+      ],
+      "label": "Zamak: bold grille slats again"
+    },
+    {
+      "model": "scorcher",
+      "crop": [
+        500,
+        190,
+        820,
+        370
+      ],
+      "label": "Scorcher: roof kit held in rails"
+    },
+    {
+      "model": "tractor",
+      "label": "Tractor: glazed cab doors"
+    },
+    {
+      "model": "panther",
+      "crop": [
+        420,
+        170,
+        740,
+        350
+      ],
+      "label": "Panther: strapped kit bags on the roof"
+    }
+  ]
+}

@@ -170,7 +170,11 @@ func _run(req: Dictionary) -> bool:
 func _answer(cmd: String, req: Dictionary) -> Variant:
 	match cmd:
 		"hello":
-			return {"version": Updater.version, "net": Net.NET_VERSION, "tps": TPS, "headless": DisplayServer.get_name() == "headless"}
+			# native: the numeric extension (tools/build_native.py) is loaded. Without
+			# it the game falls back on GDScript perception and AStar3D routes, as it
+			# does on macOS and in a browser: a fight goes another way than in CI.
+			var native := ClassDB.class_exists("PerceptionSearch") and ClassDB.class_exists("RouteGraph") and ClassDB.class_exists("FormationGround")
+			return {"version": Updater.version, "net": Net.NET_VERSION, "tps": TPS, "headless": DisplayServer.get_name() == "headless", "native": native}
 		"errors":
 			return {"count": TestRun.script_errors, "recent": TestRun.recent}
 		"console":
@@ -324,7 +328,8 @@ func _query(w: World, req: Dictionary) -> Dictionary:
 			for st in w.structures:
 				if (team == -9 or st.team == team) and (st.skind == kind if kind != "" else not st.skind in SCENERY) and (ids.is_empty() or ids.has(st.eid)):
 					out.append({"id": st.eid, "kind": st.skind, "team": st.team, "built": st.built, "progress": snappedf(st.progress, 0.01),
-						"wrecked": st.wrecked, "hp": snappedf(st.hp, 0.1), "pos": _xz(st.position), "yaw": snappedf(st.yaw, 0.01)})
+						"wrecked": st.wrecked, "hp": snappedf(st.hp, 0.1), "pos": _xz(st.position), "yaw": snappedf(st.yaw, 0.01),
+						"variant": st.variant, "size": [snappedf(st.size.x, 0.01), snappedf(st.size.y, 0.01), snappedf(st.size.z, 0.01)]})
 		_:
 			return {"ok": false, "error": "query what? world, squads, soldiers, vehicles or structures"}
 	return {"t": w.time, what: out}

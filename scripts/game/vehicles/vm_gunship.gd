@@ -397,8 +397,8 @@ static func _ac130(k: VehicleModels, team: int) -> void:
 		k._add(m, Res.sphere(0.1, 10), "glass", null, Vector3(s * 1.6, 3.05, -13.2), Vector3.ZERO, Vector3(0.6, 1, 1), false)
 	# the anti-collision beacons, low flattened domes on the roof and the belly;
 	# the antennas, the SATCOM dome
-	VehicleFittings.dome_light(k, m, Vector3(0, 4.78, -8.4), 0.13, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3))
-	VehicleFittings.dome_light(k, m, Vector3(0, 0.63, -3.6), 0.13, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3), Vector3.DOWN)
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.78, -8.4), 0.13, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3))
+	VehicleFittings.dome_light(k, m, Vector3(0, 0.63, -3.6), 0.13, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3), Vector3.DOWN)
 	k._add(m, Res.sphere(0.42, 16), AIR, c.lightened(0.05), Vector3(0, 4.62, 5.2), Vector3.ZERO, Vector3(1, 0.42, 1.25))
 	for z: float in [-7.5, -6.6, 6.5]:
 		VmPlane.antenna(k, m, Vector3(0, 4.75, z), 0.38)
@@ -497,25 +497,44 @@ static func _t56(k: VehicleModels, m: Node3D, key: String, nx: float, le: Vector
 	var z0 := le.z
 	var yt := le.y - 0.62
 	# a tall oval behind the spinner (the intake under it), the top running
-	# back into the wing's leading edge, the deep belly, the tail fairing
+	# back into the wing's leading edge, the deep belly slab-sided and much
+	# deeper than wide, and behind the wing a short fairing that tapers down
+	# and aft under the trailing edge (one that ran on two metres and rose
+	# over the flap read as a torpedo laid on the wing)
 	var nst := [
-		[z0 - 3.62, yt - 0.2, 0.56, 0.78, 0.86, 2.0, 2.2, nx],
-		[z0 - 3.0, yt - 0.2, 0.6, 0.84, 0.92, 2.1, 2.4, nx],
-		[z0 - 1.8, yt - 0.16, 0.62, 0.86, 0.96, 2.2, 2.6, nx],
-		[z0 - 0.4, yt - 0.1, 0.62, 0.8, 0.98, 2.2, 2.6, nx],
-		[z0 + 1.4, yt - 0.02, 0.6, 0.7, 0.98, 2.2, 2.6, nx],
-		[z0 + cw * 0.92, yt + 0.15, 0.5, 0.5, 0.8, 2.2, 2.4, nx],
-		[z0 + cw + 0.9, yt + 0.3, 0.3, 0.3, 0.45, 2.1, 2.2, nx],
-		[z0 + cw + 2.0, yt + 0.4, 0.05, 0.06, 0.06, 2.0, 2.0, nx],
+		[z0 - 3.62, yt - 0.22, 0.54, 0.78, 0.9, 2.0, 2.4, nx],
+		[z0 - 3.0, yt - 0.22, 0.57, 0.84, 0.98, 2.1, 2.6, nx],
+		[z0 - 1.8, yt - 0.18, 0.58, 0.86, 1.04, 2.2, 2.8, nx],
+		[z0 - 0.4, yt - 0.12, 0.58, 0.8, 1.06, 2.2, 2.8, nx],
+		[z0 + 1.4, yt - 0.04, 0.56, 0.7, 1.04, 2.2, 2.8, nx],
+		[z0 + cw * 0.92, yt + 0.1, 0.46, 0.46, 0.8, 2.2, 2.5, nx],
+		[z0 + cw + 0.65, yt + 0.16, 0.27, 0.26, 0.45, 2.1, 2.2, nx],
+		[z0 + cw + 1.45, yt + 0.2, 0.05, 0.05, 0.06, 2.0, 2.0, nx],
 	]
+	var jc := c.darkened(0.14)
+	if k.wreck:
+		# (a wreck keeps the old nacelle: wrecks are drawn as they were)
+		nst = [
+			[z0 - 3.62, yt - 0.2, 0.56, 0.78, 0.86, 2.0, 2.2, nx],
+			[z0 - 3.0, yt - 0.2, 0.6, 0.84, 0.92, 2.1, 2.4, nx],
+			[z0 - 1.8, yt - 0.16, 0.62, 0.86, 0.96, 2.2, 2.6, nx],
+			[z0 - 0.4, yt - 0.1, 0.62, 0.8, 0.98, 2.2, 2.6, nx],
+			[z0 + 1.4, yt - 0.02, 0.6, 0.7, 0.98, 2.2, 2.6, nx],
+			[z0 + cw * 0.92, yt + 0.15, 0.5, 0.5, 0.8, 2.2, 2.4, nx],
+			[z0 + cw + 0.9, yt + 0.3, 0.3, 0.3, 0.45, 2.1, 2.2, nx],
+			[z0 + cw + 2.0, yt + 0.4, 0.05, 0.06, 0.06, 2.0, 2.0, nx],
+		]
+		jc = cj
+		key += "_w"
 	VmPlane.body2(k, m, key, nst, AIR, c, 22)
 	for s: float in [-1.0, 1.0]:
 		var x: float = s * nx
 		var sfx := "L" if s < 0.0 else ""
-		# the cowl's panel joints
+		# the cowl's panel joints (fine lines in a shade of the paint: in the
+		# joints' dark grey they striped the nacelle like a torpedo's sections)
 		for z: float in [z0 - 3.1, z0 - 1.3]:
 			k._add(m, VmPlane.skin([VmPlane.sec(_shift(VmPlane.st_at(nst, z - 0.02), x), 22, 0.006), VmPlane.sec(_shift(VmPlane.st_at(nst, z + 0.02), x), 22, 0.006)],
-				"gs_%s_j%.2f%s" % [key, z, sfx], 50.0), AIR, cj, Vector3.ZERO)
+				"gs_%s_j%.2f%s" % [key, z, sfx], 50.0), AIR, jc, Vector3.ZERO)
 		# the engine and oil-cooler intake under the spinner: a lip standing
 		# proud of the cowl's face, dark inside
 		var ist := [[z0 - 3.78, yt - 0.72, 0.42, 0.26, 0.24, 2.4, 2.4, x], [z0 - 3.55, yt - 0.74, 0.47, 0.31, 0.3, 2.4, 2.4, x], [z0 - 3.0, yt - 0.74, 0.47, 0.3, 0.3, 2.4, 2.4, x]]
@@ -529,7 +548,8 @@ static func _t56(k: VehicleModels, m: Node3D, key: String, nx: float, le: Vector
 		var side: Array = []
 		for q: Array in nst:
 			side.append(_shift(q, x))
-		_soot(k, m, Vector3(x + s * 0.5, yt - 0.38, z0 + cw + 0.02), Vector3(s, 0, 0), VmPlane.side_skin(side, s), 2.0, 0.6, c)
+		# (no longer than the fairing it streaks)
+		_soot(k, m, Vector3(x + s * 0.5, yt - 0.38, z0 + cw + 0.02), Vector3(s, 0, 0), VmPlane.side_skin(side, s), 2.0 if k.wreck else 1.35, 0.6, c)
 
 
 ## Station s moved out to x.
@@ -558,20 +578,22 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 	# the 40 mm L/60 Bofors
 	_patch(k, m, "gs_ac_p40", st, 1.45, 2.3, 1.15, 2.2, true, "plain_dark", null, 0.008)
 	var g40 := Vector3(-_half_w(VmPlane.st_at(st, 1.88), 1.66), 1.66, 1.88)
-	# (the mount's shield in the port, the cooling jacket, the barrel, the
-	# conical flash hider)
-	k._box(m, Vector3(0.3, 0.6, 0.62), g40 + Vector3(-0.06, 0, 0), "gunmetal_w", c.darkened(0.3))
+	# (the port's plug, the rubber boot round the gun where it leaves the
+	# fuselage, the cooling jacket, the barrel, the conical flash hider)
+	_port_plug(k, m, g40, Vector2(0.62, 0.58), c)
+	_boot(k, m, g40 + dn * 0.02, dn, 0.25, 0.16, 0.3)
 	VmPlane.rod(k, m, g40, g40 + dn * 0.8, 0.12, "gunmetal_w", null, 12)
 	VmPlane.rod(k, m, g40, g40 + dn * 1.9, 0.065, "gunmetal_w", null, 10)
-	VmPlane.rod(k, m, g40 + dn * 1.75, g40 + dn * 2.45, 0.08, "gunmetal_w", null, 12, 0.15)
-	k._add(m, Res.cyl(0.13, 0.13, 0.02, 12), "plain_dark", null, g40 + dn * 2.455, Vector3(0, 0, PI / 2 + dep), Vector3.ONE, false)
+	_bofors_hider(k, m, g40, dn, 2.465, 0.065, 0.15, 0.7)
 	k.weapon_tips["ac40"] = k._tip(m, g40 + dn * 2.465)
 	# the 105 mm M102 howitzer
 	_patch(k, m, "gs_ac_p105", st, 2.4, 3.6, 0.95, 2.85, true, "plain_dark", null, 0.008)
 	var g105 := Vector3(-_half_w(VmPlane.st_at(st, 3.0), 1.92), 1.92, 3.0)
-	# (the cradle in the port, the recoil sleeve, the barrel, the double-baffle
-	# muzzle brake with its side ports)
-	k._box(m, Vector3(0.5, 0.8, 0.9), g105 + Vector3(-0.1, 0, 0), "gunmetal_w", c.darkened(0.35))
+	# (the door plug in the port, the big rubber boot round the gun's cradle
+	# where it comes out through the plug, the recoil sleeve, the barrel, the
+	# double-baffle muzzle brake with its side ports)
+	_port_plug(k, m, g105, Vector2(0.95, 0.95), c)
+	_boot(k, m, g105 + dn * 0.02, dn, 0.4, 0.26, 0.42, 4)
 	VmPlane.rod(k, m, g105, g105 + dn * 1.2, 0.2, "gunmetal_w", null, 14)
 	VmPlane.rod(k, m, g105 + dn * 1.15, g105 + dn * 1.3, 0.22, "gunmetal_w", null, 14)
 	VmPlane.rod(k, m, g105, g105 + dn * 2.8, 0.1, "gunmetal_w", null, 12)
@@ -592,6 +614,41 @@ static func _ac130_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> voi
 		var tc: Vector3 = tp[0]
 		var tr: float = tp[1]
 		VehicleEquipment.sensor(k, m, tc, Vector3.ONE * tr * 2.0, "paint", Color(0.42, 0.43, 0.44), "ball", Vector3(tr * 0.85, tr * 0.8, tr * 0.55 + 0.08), 2, Vector3(-0.57, PI / 2, 0))
+
+
+## The 40 mm Bofors' long conical flash hider on the barrel from `at` along
+## `dn`, its open mouth `tip` metres out (where the shell leaves it): the
+## cone flaring from the barrel's `radius` to `mouth` over `length`, the lip,
+## the dark bore inside.
+static func _bofors_hider(k: VehicleModels, m: Node3D, at: Vector3, dn: Vector3, tip: float, radius: float, mouth: float, length: float) -> void:
+	var g := VehicleWeapons._aimed(k, m, at, at + dn)
+	VehicleWeapons.cone_hider(k, g, Vector3(0, 0, -(tip - length * 0.12)), radius, mouth, length)
+	k._fold(g)
+
+
+## A gun's rubber blast boot where it leaves the airframe: a bellows of
+## `folds` rolled pleats from `r0` across at `at` (on the skin or the
+## blister) stepping down to `r1` along the gun's line `dn` over `length`,
+## the clamp band that grips it round the gun at its mouth.
+static func _boot(k: VehicleModels, m: Node3D, at: Vector3, dn: Vector3, r0: float, r1: float, length: float, folds := 3) -> void:
+	var step := length / folds
+	for i in folds:
+		var r := lerpf(r0, r1, float(i) / maxf(1.0, folds - 1.0))
+		var a := at + dn * step * i
+		# each pleat swells out and folds back in: a short cone either side
+		VmPlane.rod(k, m, a, a + dn * step * 0.5, r * 0.9, "rubber", null, 16, r, i == 0)
+		VmPlane.rod(k, m, a + dn * step * 0.5, a + dn * step, r, "rubber", null, 16, r * 0.88, false)
+	VmPlane.rod(k, m, at + dn * (length - 0.01), at + dn * (length + 0.035), r1 * 0.82, "metal_dark", null, 14, -1.0, false)
+
+
+## The armoured plug that fills a gun's port in the fuselage, round the boot:
+## a plate `size` (along the fuselage, up it) a little proud of the skin at
+## the gun's root `at` (on the port side), its bolts round the edge.
+static func _port_plug(k: VehicleModels, m: Node3D, at: Vector3, size: Vector2, c: Color) -> void:
+	k._box(m, Vector3(0.03, size.y, size.x), at + Vector3(-0.01, 0, 0), "gunmetal_w", c.darkened(0.3))
+	for y: float in [-0.42, 0.42]:
+		for z: float in [-0.42, 0.0, 0.42]:
+			VehicleBody.fastener(k, m, at + Vector3(-0.026, size.y * y, size.x * z), Vector3.LEFT, 0.012)
 
 
 ## The landing gear, down (the "Gear" node): twin nose wheels under the
@@ -709,8 +766,8 @@ static func _blackfish(k: VehicleModels, team: int, armed: bool) -> void:
 		VmPlane.antenna(k, m, Vector3(0, 4.3, z), 0.36)
 	for z: float in [-7.4, -3.4]:
 		VmPlane.antenna(k, m, Vector3(0, 0.61, z), 0.3, true)
-	VehicleFittings.dome_light(k, m, Vector3(0, 4.29, -7.0), 0.12, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3))
-	VehicleFittings.dome_light(k, m, Vector3(0, 0.59, -4.6), 0.12, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3), Vector3.DOWN)
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.29, -7.0), 0.12, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3))
+	VehicleFittings.dome_light(k, m, Vector3(0, 0.59, -4.6), 0.12, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3), Vector3.DOWN)
 	k.gun_tip = k._tip(m, Vector3(0, 0.5, -10.8))
 	if armed:
 		_bf_guns(k, m, st, c)
@@ -805,7 +862,7 @@ static func _bf_nacelle(k: VehicleModels, tl: Node3D, s: float, c: Color, cj: Co
 			k._box(tl, Vector3(0.03, 0.42, 0.07), Vector3(sd * 0.98, 0.1, -1.1 + i * 0.16), "plain_dark", null, Vector3.ZERO, false)
 	VehicleAircraft.turbine_exhaust(k, tl, Vector3(0, 0, 2.55), Vector3(0, 0, 2.95), 0.46, 0.4, "gunmetal_w", c.darkened(0.5))
 	# the navigation light, green on the right, red on the left
-	VehicleFittings.nav_light(k, tl, Vector3(s * 1.0, 0.0, -0.4), Vector3(0.06, 0.12, 0.22), s)
+	VmPlane.nav_light(k, tl, Vector3(s * 1.0, 0.0, -0.4), Vector3(0.06, 0.12, 0.22), s)
 
 
 ## The Blackfish's H tail: the stabiliser on top of the tail boom with its
@@ -835,10 +892,11 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	var x40 := _half_w(VmPlane.st_at(st, z40), y40)
 	k._add(m, Res.sphere(0.62, 18), AIR, cb, Vector3(-x40 + 0.1, y40, z40), Vector3.ZERO, Vector3(0.62, 0.95, 1.1))
 	var g40 := Vector3(-x40 - 0.36, y40, z40)
-	k._box(m, Vector3(0.32, 0.34, 0.4), g40, "gunmetal_w", c.darkened(0.4), Vector3(0, 0, dep))
+	# (the gun comes out of the blister through a rubber boot)
+	_boot(k, m, g40 + Vector3(0.24, 0, 0), dn, 0.23, 0.15, 0.32)
 	VmPlane.rod(k, m, g40, g40 + dn * 0.95, 0.11, "gunmetal_w", null, 12)
 	VmPlane.rod(k, m, g40, g40 + dn * 2.35, 0.065, "gunmetal_w", null, 10)
-	VmPlane.rod(k, m, g40 + dn * 2.2, g40 + dn * 2.65, 0.09, "gunmetal_w", null, 12, 0.1)
+	_bofors_hider(k, m, g40, dn, 2.66, 0.065, 0.14, 0.6)
 	k.weapon_tips["ac40"] = k._tip(m, g40 + dn * 2.66)
 	# the 105 mm and the 20 mm in the aft mount
 	var zg := 3.75
@@ -847,7 +905,7 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	k._add(m, Res.sphere(0.95, 20), AIR, cb, Vector3(-xg + 0.12, yg, zg), Vector3.ZERO, Vector3(0.6, 1.0, 1.12))
 	k._box(m, Vector3(0.1, 1.2, 0.9), Vector3(-xg - 0.42, yg, zg), "plain_dark", null, Vector3(0, 0, dep), false)
 	var g105 := Vector3(-xg - 0.45, yg + 0.22, zg)
-	k._box(m, Vector3(0.5, 0.56, 0.62), g105, "gunmetal_w", c.darkened(0.4), Vector3(0, 0, dep))
+	_boot(k, m, g105 + Vector3(0.3, 0, 0), dn, 0.4, 0.27, 0.4, 4)
 	VmPlane.rod(k, m, g105, g105 + dn * 1.35, 0.21, "gunmetal_w", null, 14)
 	VmPlane.rod(k, m, g105 + dn * 1.3, g105 + dn * 1.45, 0.23, "gunmetal_w", null, 14)
 	VmPlane.rod(k, m, g105, g105 + dn * 3.3, 0.11, "gunmetal_w", null, 12)
@@ -856,7 +914,7 @@ static func _bf_guns(k: VehicleModels, m: Node3D, st: Array, c: Color) -> void:
 	k.gun_tip = k._tip(m, mb + dn * 0.28)
 	k.weapon_tips["ac105"] = k.gun_tip
 	var g20 := Vector3(-xg - 0.42, yg - 0.38, zg)
-	k._box(m, Vector3(0.46, 0.3, 0.32), g20, "gunmetal_w", c.darkened(0.4), Vector3(0, 0, dep))
+	_boot(k, m, g20 + Vector3(0.26, 0, 0), dn, 0.2, 0.15, 0.26)
 	# the Gatling's six barrels out of its drive housing, clamped twice
 	VehicleWeapons.rotary(k, m, g20, g20 + dn * 1.55, 6, 0.075, 0.02, [0.6 / 1.55, 1.4 / 1.55], "gunmetal_w", PI / 2)
 	k.mg_tip = k._tip(m, g20 + dn * 1.6)

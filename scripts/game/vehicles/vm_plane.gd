@@ -200,6 +200,186 @@ static func joints(k: VehicleModels, p: Node3D, key: String, st: Array, zs: Arra
 		band(k, p, "%s_pj%.2f" % [key, z], st, z, 0.025, 0.004, mat, col.darkened(0.22), 16)
 
 
+## A canopy's frame round its glazing (the body `cst`, from z0 to z1): the
+## sill rail along each lower edge where the transparency sits in the
+## fuselage, and an arch at each z in `arches` (between a two-seater's front
+## and rear transparencies). A real canopy is a framed part, and from above
+## its sills are what outline it; without them the glass reads as one blob
+## poured onto the nose.
+static func canopy_frame(k: VehicleModels, p: Node3D, key: String, cst: Array, z0: float, z1: float, mat: String, col: Color, arches := []) -> void:
+	stripe(k, p, key + "_sillr", cst, z0, z1, 0.06, 0.3, mat, col, 0.014, 3)
+	stripe(k, p, key + "_silll", cst, z0, z1, PI - 0.3, PI - 0.06, mat, col, 0.014, 3)
+	for z: float in arches:
+		band(k, p, "%s_arch%.2f" % [key, z], cst, z, 0.06, 0.018, mat, col, 18)
+
+
+## Canopy glass you can see into, as the Black Wasp's gold canopy is: smoked,
+## clearest looking straight down through it, the sky's sheen (`sheen`, a
+## stealthy canopy's gold or plain grey-blue) taking over toward its edges.
+## Glass reads as glass by the sky in it: where the view, mirrored off the
+## pane, looks up into the sky, a pale sheen in the tint's own hue lies over
+## it (faint where the eye looks straight in, so the crew still shows, full
+## toward the edges), and its reflection leans up toward the sky, as the
+## opaque glass's does (Mats' surface_glaze), so the sun puts a highlight
+## on it from the battle camera, softened a little by the acrylic's scuffs
+## (a mirror-sharp one filled a whole flat pane with white). A pane seen from
+## the side mirrors the ground and stays dark and clear, as a real side
+## window does. (Dark glass alone, clear over a dark cockpit, read from above
+## as an open frame round the crew.)
+## One material per tint, shared by every aircraft wearing it.
+const CLEAR_CANOPY := "shader_type spatial;
+render_mode depth_prepass_alpha;
+uniform vec3 deep : source_color;
+uniform vec3 sheen : source_color;
+void fragment() {
+	vec3 n = normalize(NORMAL);
+	vec3 v = normalize(VIEW);
+	float rim = pow(1.0 - max(dot(n, v), 0.0), 2.2);
+	vec3 wr = (INV_VIEW_MATRIX * vec4(reflect(-v, n), 0.0)).xyz;
+	float sky = smoothstep(-0.2, 0.8, wr.y);
+	float g = rim * mix(0.5, 1.0, sky) + 0.22 * sky * (1.0 - rim);
+	vec3 lift = sheen * (0.34 / max(max(sheen.r, sheen.g), max(sheen.b, 0.002)));
+	ALBEDO = mix(deep, lift, g);
+	METALLIC = 0.14;
+	ROUGHNESS = 0.17;
+	SPECULAR = 0.6;
+	ALPHA = mix(0.42, 0.9, g);
+	NORMAL = normalize(n + (VIEW_MATRIX * vec4(0.0, 0.3, 0.0, 0.0)).xyz);
+}
+"
+static var _clear_shader: Shader
+static var _clear := {}
+
+static func clear_glass(sheen: Color) -> ShaderMaterial:
+	var key := sheen.to_html(false)
+	if not _clear.has(key):
+		if _clear_shader == null:
+			_clear_shader = Shader.new()
+			_clear_shader.code = CLEAR_CANOPY
+		var g := ShaderMaterial.new()
+		g.shader = _clear_shader
+		g.set_shader_parameter("deep", sheen.darkened(0.78))
+		g.set_shader_parameter("sheen", sheen)
+		_clear[key] = g
+	return _clear[key]
+
+
+## The cockpit under a jet's canopy (the body `cst`), and the canopy part
+## (`canopy`, body()'s return) cleared to `sheen` glass so it shows: a real
+## cockpit is what a player sees through the glass from above, the pilot's
+## helmet over a dark tub, where opaque glass read as a blue blob. The tub,
+## cockpit grey, fills the canopy's lower `floor` over the fuselage top; for
+## each seat at z in `seats` (front first) an ejection seat raked back with its
+## cushion, guide rails, headbox and the yellow firing handle over it, the
+## pilot's shoulders in his nylon flying suit under his harness's webbing, his
+## helmet with the visor down and his oxygen mask, and the side consoles by his
+## elbows with the throttle; ahead of each seat the black glareshield over the
+## instrument panel, the front one carrying the HUD's combiner glass. A
+## helicopter's cockpit passes `hud` and `ejection` false: its crew sit in
+## armoured crashworthy seats, with no catapult rails, headbox or firing
+## handle, wear no oxygen masks, and read their sights off the helmet, not a
+## combiner glass. Wrecks
+## and burnt hulks keep their old glass and no cockpit.
+static func cockpit(k: VehicleModels, p: Node3D, key: String, cst: Array, canopy: Variant, seats: Array, sheen := Color(0.33, 0.37, 0.41), floor := 0.3, helmet := Color(0.3, 0.31, 0.28), suit := Color(0.4, 0.42, 0.33), hud := true, ejection := true) -> void:
+	if k.wreck or k.burnt or canopy == null:
+		return
+	k._restyle(canopy, clear_glass(sheen))
+	# (clear glass throws next to no shadow, and the cockpit would sit dark in
+	# a solid one; a surface of its own shader casting would also cost the
+	# model its one shadow proxy)
+	k._unshadow(canopy)
+	# Everything under the glass sits in the fuselage's own shadow and is seen
+	# only through the canopy, close up: none of it casts a shadow (each part
+	# cast into the shadow maps is drawn a second time there), and it is made
+	# of as few faces as still read through the glass: small fittings as
+	# plain blocks, the pilot's rounded kit in a few smooth facets.
+	var tub := []
+	for s: Array in cst:
+		var q := _sp(s)
+		tub.append([q[0], q[1], float(q[2]) * 0.9, float(q[3]) * floor, q[4], q[5], q[6], q[7]])
+	# (the tub's floor and walls are dark under the glass: eight sides round)
+	k._unshadow(body(k, p, key + "_tub", tub, "plain_dark", Color(0.2, 0.21, 0.22), 8, 50.0))
+	var z_first := float(_sp(cst[0])[0])
+	# (the seat's cushions olive drab, the harness's webbing a darker olive)
+	var cushion := Color(0.26, 0.27, 0.2)
+	var harness := Color(0.17, 0.18, 0.14)
+	for i in seats.size():
+		var z: float = seats[i]
+		var q := st_at(cst, z)
+		var x := float(q[7])
+		var hc := float(q[1]) + float(q[3]) - 0.2
+		# The ejection seat (an ACES II or a Martin-Baker), its back raked 17
+		# degrees: a pressed bucket wider than the pilot's shoulders, its back
+		# cushion in olive nylon showing round them, the catapult's guide rails
+		# standing up its sides, the headbox (the parachute container) behind
+		# his head, and the yellow firing handle over it.
+		# (One black box read as a crate behind the helmet.)
+		var sp := k._pivot(p, Vector3(x, hc - 0.2, z + 0.25))
+		sp.rotation = Vector3(0.3, 0, 0)
+		# (the bucket and headbox rolled along their top and bottom edges, the
+		# ones the light runs along from above; the thin cushion in it a slab)
+		k._add(sp, VehicleCab._rolled(Vector3(0.48, 0.6, 0.1), 0.025), "plain_dark", Color(0.11, 0.115, 0.12), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+		k._add(sp, VehicleEquipment._plate(Vector3(0.4, 0.5, 0.05)), "fabric", cushion, Vector3(0, -0.03, -0.07), Vector3.ZERO, Vector3.ONE, false)
+		if ejection:
+			for s: float in [-1.0, 1.0]:
+				# (they stop under the headbox's top: the canopy curves down low
+				# over the seat's back corners)
+				k._add(sp, VehicleEquipment._plate(Vector3(0.035, 0.5, 0.06)), "steel", null, Vector3(s * 0.225, -0.03, 0.0), Vector3.ZERO, Vector3.ONE, false)
+			k._add(sp, VehicleCab._rolled(Vector3(0.32, 0.17, 0.14), 0.035), "plain_dark", Color(0.19, 0.2, 0.17), Vector3(0, 0.219, -0.03), Vector3.ZERO, Vector3.ONE, false)
+		else:
+			# (a helicopter's armoured seat: its back's headrest pad, padded in
+			# the cushion's nylon, where the ejection seat carries its headbox)
+			k._add(sp, VehicleEquipment._plate(Vector3(0.26, 0.12, 0.05)), "fabric", cushion, Vector3(0, 0.21, -0.085), Vector3.ZERO, Vector3.ONE, false)
+		k._fold(sp)
+		if ejection:
+			k._add(p, VehicleEquipment._plate(Vector3(0.12, 0.03, 0.035)), "plain", Color(0.72, 0.58, 0.1), Vector3(x, hc + 0.12, z + 0.25), Vector3(0.3, 0, 0), Vector3.ONE, false)
+		# The pilot: his shoulders in a sage nylon flying suit, the harness's
+		# two olive webbing straps coming off the seat back over them and down
+		# his chest; his helmet, its visor down, and the dark rubber oxygen
+		# mask over his face, its hose down to the chest connector.
+		k._add(p, Res.sphere(0.22, 6), "fabric", suit, Vector3(x, hc - 0.3, z + 0.02), Vector3.ZERO, Vector3(1.0, 0.85, 0.72), false)
+		# (his shoulders square across the seat, so the suit shows round his
+		# helmet above the cockpit's sill, where the torso alone sank into it)
+		k._add(p, Res.sphere(0.2, 6), "fabric", suit, Vector3(x, hc - 0.2, z + 0.03), Vector3.ZERO, Vector3(1.15, 0.38, 0.4), false)
+		for s: float in [-1.0, 1.0]:
+			var xs := x + s * 0.09
+			# (off the seat back, over the top of his shoulder and down his
+			# chest, lying on the suit)
+			VehicleCloth.strap(k, p, [Vector3(xs, hc - 0.1, z + 0.2), Vector3(x + s * 0.083, hc - 0.118, z - 0.01), Vector3(x + s * 0.07, hc - 0.183, z - 0.12)], 0.045, harness, Vector3.RIGHT, 0.005)
+		# (the helmet's shell in a matte finish, as flying helmets are, and off
+		# the hull's own paint: a part on a casting surface is drawn into the
+		# shadow maps with the rest of that surface)
+		k._add(p, Res.sphere(0.135, 8), "plain", helmet, Vector3(x, hc, z - 0.03), Vector3.ZERO, Vector3.ONE, false)
+		k._add(p, Res.sphere(0.128, 6), "glass", null, Vector3(x, hc - 0.015, z - 0.08), Vector3.ZERO, Vector3(0.98, 0.6, 0.8), false)
+		# (a helicopter's crew fly too low to need oxygen: no mask or hose
+		# under the visor, as rotary crews fly)
+		if ejection:
+			k._add(p, Res.sphere(0.05, 4), "rubber", Color(0.2, 0.21, 0.19), Vector3(x, hc - 0.1, z - 0.15), Vector3(-0.4, 0, 0), Vector3(0.95, 1.1, 0.9), false)
+			# (the hose's ends are buried in the mask and the connector)
+			VehicleFrames.tube(k, p, Vector3(x + 0.02, hc - 0.13, z - 0.16), Vector3(x + 0.07, hc - 0.23, z - 0.13), 0.016, "rubber", Color(0.2, 0.21, 0.19), 4, false, -1.0, 0)
+		# The side consoles either side of his seat, from his hips to the
+		# panel, under his elbows, in a lighter grey than the tub, the
+		# throttle's grip on the left one.
+		var qs := st_at(cst, z - 0.2)
+		var w := float(qs[2]) * 0.9
+		var y_t := float(qs[1]) + float(qs[3]) * floor
+		for s: float in [-1.0, 1.0]:
+			k._add(p, VehicleEquipment._plate(Vector3(w * 0.3, 0.1, 0.5).snappedf(0.005)), "plain_dark", Color(0.17, 0.175, 0.18), Vector3(x + s * w * 0.6, y_t - 0.03, z - 0.22), Vector3.ZERO, Vector3.ONE, false)
+		k._add(p, VehicleEquipment._plate(Vector3(0.05, 0.09, 0.07)), "plain_dark", Color(0.09, 0.095, 0.1), Vector3(x - w * 0.6, y_t + 0.065, z - 0.3), Vector3(-0.25, 0, 0), Vector3.ONE, false)
+		# the coaming over the panel, low under the glass ahead of the seat
+		var zc := maxf(z - 0.62, z_first + 0.22)
+		var qc := st_at(cst, zc)
+		var hh := float(qc[3])
+		var yt := float(qc[1]) + clampf(hh * 0.55, hh * floor + 0.04, hh - 0.1)
+		# (the glareshield is a matte black moulding, its rear lip rolled
+		# toward the pilot: in ribbed gunmetal it read as a radiator grille)
+		k._add(p, VehicleCab._rolled(Vector3(float(qc[2]) * 1.1, 0.09, 0.28), 0.03), "plain_dark", Color(0.06, 0.065, 0.07), Vector3(x, yt - 0.045, zc), Vector3.ZERO, Vector3.ONE, false)
+		if i == 0 and hud:
+			# the HUD: its glass combiner on a dark frame, leaning toward the pilot
+			k._add(p, VehicleEquipment._plate(Vector3(0.15, 0.04, 0.08)), "plain_dark", Color(0.1, 0.1, 0.11), Vector3(x, yt + 0.02, zc + 0.06), Vector3.ZERO, Vector3.ONE, false)
+			k._box(p, Vector3(0.13, 0.12, 0.008), Vector3(x, yt + 0.09, zc + 0.08), "glass", null, Vector3(0.45, 0, 0), false)
+
+
 ## A strip of paint (a livery stripe, a radome, a walkway) laid over a body
 ## from z0 to z1, between section angles a0 and a1 (radians: 0 the right side's
 ## widest point, PI/2 the top, PI the left side), standing `grow` proud. Each
@@ -283,14 +463,20 @@ static func rod(k: VehicleModels, p: Node3D, a: Vector3, b: Vector3, r: float, m
 
 ## The jet exhaust glow (the "Afterburner" node, as on the old jet): a soft
 ## additive billboard behind each nozzle. Several nozzles share one node.
+## It is the hot core of the plume, about the jet pipe's own width: a glow
+## `size` across (what the callers ask, from when it stood for a lit
+## afterburner) drew a lamp-like orange ball over the whole tail from the
+## battle camera, and a jet cruising over a battlefield runs in military
+## power, its burner out.
 static func glow(k: VehicleModels, p: Node3D, pts: Array, size: float, col := Color(1.0, 0.55, 0.25)) -> void:
 	if k.burnt:
 		return
+	size *= 0.58
 	var gm := StandardMaterial3D.new()
 	gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	gm.albedo_color = col
+	gm.albedo_color = col * 0.85
 	gm.albedo_texture = Res.puff_mat(true).albedo_texture
 	# (the texture's alpha makes it a soft round glow, not a lit square)
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -320,7 +506,9 @@ static func glow(k: VehicleModels, p: Node3D, pts: Array, size: float, col := Co
 
 
 ## A round jet nozzle at pos facing aft: the outer can, the darker petals ring,
-## the black pipe inside.
+## the black pipe inside. The can is bare metal, as a jet's nozzle is (no
+## paint lasts on it), its heat tint a bronze grey, so it reads apart from the
+## painted fuselage it ends; wrecks keep their old darkened paint.
 static func nozzle(k: VehicleModels, p: Node3D, pos: Vector3, r: float, len: float, col: Color, taper := 0.9) -> void:
 	var lip := PackedVector3Array()
 	var back := PackedVector3Array()
@@ -328,7 +516,10 @@ static func nozzle(k: VehicleModels, p: Node3D, pos: Vector3, r: float, len: flo
 		var angle := TAU * float(i) / 20.0
 		lip.append(pos + Vector3(cos(angle) * r * taper, sin(angle) * r * taper, len * 0.5))
 		back.append(pos + Vector3(cos(angle) * r, sin(angle) * r, -len * 0.5))
-	VehicleAircraft.duct(k, p, lip, back, r * 0.07, "gunmetal_w", col.darkened(0.45), Color(0.09, 0.10, 0.10), 1.0)
+	if k.wreck or k.burnt:
+		VehicleAircraft.duct(k, p, lip, back, r * 0.07, "gunmetal_w", col.darkened(0.45), Color(0.09, 0.10, 0.10), 1.0)
+	else:
+		VehicleAircraft.duct(k, p, lip, back, r * 0.07, "steel", Color(0.36, 0.32, 0.27), Color(0.09, 0.10, 0.10), 1.0)
 
 
 ## One propeller blade along `d` (unit, in the disc plane), twisted from
@@ -467,17 +658,106 @@ static func antenna(k: VehicleModels, p: Node3D, pos: Vector3, h: float, down :=
 ## Green on the right wingtip, red on the left, as on every aircraft and ship.
 static func nav_lights(k: VehicleModels, p: Node3D, right: Vector3, sz := 0.08) -> void:
 	var size := Vector3(sz, sz * 0.6, sz * 1.6)
-	VehicleFittings.nav_light(k, p, right, size, 1.0)
-	VehicleFittings.nav_light(k, p, right * Vector3(-1, 1, 1), size, -1.0)
+	nav_light(k, p, right, size, 1.0)
+	nav_light(k, p, right * Vector3(-1, 1, 1), size, -1.0)
 
 
-## A team panel flat on a wing's upper surface at span x, both wings.
-static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, x: float, s: float) -> void:
-	var w := surf_at(secs, x)
-	var le: Vector3 = w[0]
-	var y := le.y + float(w[2]) * 0.5 + 0.008
-	for sd in [-1.0, 1.0]:
-		k._team_mark(p, team, Vector3(sd * x, y, le.z + float(w[1]) * 0.38), Vector3(s, 0.015, s))
+## The red anti-collision beacon on a fin's tip at `tip` (the tip's top
+## surface): a flattened dome on its seat, stretched along the tip, the
+## light a strike's jets show from above as the helicopters' roof beacons
+## do. Not on wrecks.
+static func beacon(k: VehicleModels, p: Node3D, tip: Vector3, r := 0.04) -> void:
+	if k.wreck or k.burnt:
+		return
+	VehicleFittings.dome_light(k, p, tip + Vector3(0, r * 0.5, 0), r, Color(0.82, 0.1, 0.07), Vector3(1, 0.7, 1.4))
+
+
+## An aircraft's position light at `center` (the old lamp box's centre and
+## `size`, X outward), green on the right (`side` > 0) and red on the left: a
+## teardrop lens standing out of the tip or flank on a dark seat, its colour
+## showing from above and ahead as well as abeam, where the road vehicle's
+## sidelight it used to be faced only sideways under a visor and read from
+## the battle camera as a dark speck. Wrecks keep the old lamp.
+static func nav_light(k: VehicleModels, p: Node3D, center: Vector3, size: Vector3, side: float) -> void:
+	if k.wreck or k.burnt:
+		VehicleFittings.nav_light(k, p, center, size, side)
+		return
+	var s := 1.0 if side >= 0.0 else -1.0
+	var r := snappedf(clampf(size.z * 0.55, 0.045, 0.08), 0.005)
+	k._box(p, Vector3(r * 0.9, r * 0.9, r * 2.4), center, "metal_dark", null, Vector3.ZERO, false)
+	var col := Color(0.12, 0.74, 0.36) if s > 0.0 else Color(0.86, 0.1, 0.07)
+	k._add(p, Res.sphere(r, 10), "signal_lens", col, center + Vector3(s * r * 0.45, r * 0.12, 0), Vector3.ZERO, Vector3(0.85, 0.7, 1.45), false)
+
+
+## The side's mark painted across both wings' upper skins as a tip band, in
+## the side's mark colour (VehicleModels._mark_col) and the airframe's own
+## paint, so it weathers with the wing. Gone with the paint on a wreck.
+## No air force paints a side's chevron a metre from its own roundel or star
+## (two badges on one wing), but crews in a coalition war paint
+## identification bands across the wing tips, where they frame the
+## silhouette from above. The band runs the tip's whole chord just inboard
+## of the navigation light, `s` x 0.5 wide (at least 0.22 m: wider, it read
+## from the battle camera as a painted wingtip rather than a band), wherever the
+## caller's span `_x` (the old mark's) lay. The blue side's band is notched
+## into a chevron on its inboard edge, the red side's straight, so the sides
+## differ in shape as well as colour. It is laid in strips down the chord,
+## so it follows the airfoil's curve and takes the skin's light, where one
+## flat polygon over the crest showed a crease of its own.
+static func wing_marks(k: VehicleModels, p: Node3D, team: int, secs: Array, _x: float, s: float) -> void:
+	if k.wreck or team < 0:
+		return
+	var tip: float = (secs[secs.size() - 1][0] as Vector3).x
+	var bw := maxf(s * 0.5, 0.22)
+	var x1 := tip - clampf(tip * 0.035, 0.1, 0.3)
+	var x0 := x1 - bw
+	var w0 := surf_at(secs, x0)
+	var w1 := surf_at(secs, x1)
+	var le0: Vector3 = w0[0]
+	var le1: Vector3 = w1[0]
+	var notch := 0.45 if team == 0 else 0.0
+	# rows down the chord, each a quad from the inboard edge (notched at mid
+	# chord for the chevron) to the outboard one
+	var rows := 8
+	# (`e` grows the outline by that much all round: the edge line under it,
+	# in `n` rows)
+	var edge := func(i: int, e: float, n: int) -> Array:
+		var t := float(i) / float(n)
+		var u := notch * (1.0 - absf(t * 2.0 - 1.0))
+		var xa := lerpf(x0, x1, u) - e
+		var wa := surf_at(secs, xa)
+		var wb := w1 if e == 0.0 else surf_at(secs, x1 + e)
+		var fa := lerpf(0.06 - e / float(wa[1]), 0.9 + e / float(wa[1]), t)
+		var fb := lerpf(0.06 - e / float(wb[1]), 0.9 + e / float(wb[1]), t)
+		var a := Vector3(xa, 0.0, (wa[0] as Vector3).z + float(wa[1]) * fa)
+		var b := Vector3(x1 + e, 0.0, (wb[0] as Vector3).z + float(wb[1]) * fb)
+		return [a, b]
+	var at := Vector3(x0, le0.y, le0.z)
+	# Identification bands are masked and sprayed: where the band meets the
+	# camouflage the overspray and the masking tape's line leave a thin dark
+	# edge, which frames the band from above as a painted mark and keeps a
+	# light band from reading as a lit strip on the wing: a line 2.5 cm wide
+	# all round it in the band's colour darkened, under the band (in half the
+	# rows: only its rim shows, and the paint's subdivision keeps it on the
+	# skin's curve).
+	var col := VehicleModels._mark_col(team, true)
+	var line := col.darkened(0.55)
+	for sd: float in [-1.0, 1.0]:
+		var layers := []
+		for e: float in [0.025, 0.0]:
+			var n := rows >> 1 if e > 0.0 else rows
+			var tris := PackedVector2Array()
+			var prev: Array = edge.call(0, e, n)
+			for i in range(1, n + 1):
+				var cur: Array = edge.call(i, e, n)
+				var q := []
+				for v: Vector3 in [prev[0], prev[1], cur[1], cur[0]]:
+					# (the face's x runs to the right and its y forward: the left
+					# wing's band is the right's mirrored)
+					q.append(Vector2((v.x - at.x) * sd, at.z - v.z))
+				tris.append_array([q[0], q[1], q[2], q[0], q[2], q[3]])
+				prev = cur
+			layers.append([tris, line if e > 0.0 else col])
+		VehicleAircraft.paint(k, p, VehicleAircraft.face(Vector3(sd * at.x, at.y, at.z), Vector3.UP, Vector3.RIGHT, wing_skin(secs, 1.0)), layers, "aircraft", 1)
 
 
 # --- paint: insignia, numbers, panel lines, soot ------------------------------------
@@ -525,6 +805,19 @@ static func wing_insignia(k: VehicleModels, p: Node3D, secs: Array, x: float, f:
 				continue
 			var at := Vector3(sd * x, le.y, le.z + float(w[1]) * f)
 			VehicleAircraft.paint(k, p, VehicleAircraft.face(at, Vector3.UP * face, Vector3.RIGHT * face, wing_skin(secs, face)), layers, "aircraft", 1 if style == VehicleAircraft.INSIGNIA_STAR else 0)
+
+
+## A bort number, modex or serial's figures for this airframe: `fixed` for
+## scenery and wrecks (one look per kind), otherwise `digits` figures drawn
+## from the kit seed (`salt` keeps a type's numbers apart), from `lo` up: a
+## strike's jets are different airframes and never carry one number, as two
+## neighbours stamped from one mould did.
+static func number(k: VehicleModels, fixed: String, digits: int, lo := 1, salt := 0) -> String:
+	if k.kit_seed < 0:
+		return fixed
+	var span := maxi(1, int(pow(10.0, float(digits))) - lo)
+	var n := lo + absi((k.kit_seed + salt) * 7919 + 4099) % span
+	return str(n).pad_zeros(digits)
 
 
 ## Painted lettering (a serial, a bort number, a registration) `h` tall on
@@ -651,9 +944,12 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	# the canopy: windscreen and bubble, its bows
 	var cst := [[-3.45, 1.45, 0.3, 0.08, 0.08], [-3.0, 1.45, 0.43, 0.36, 0.08], [-2.4, 1.46, 0.47, 0.54, 0.08], [-1.7, 1.47, 0.46, 0.57, 0.08],
 		[-1.0, 1.48, 0.4, 0.46, 0.08], [-0.5, 1.48, 0.27, 0.28, 0.08]]
-	body(k, m, "buz_can", cst, "glass", null, 18, 60.0)
+	# (the tub's floor low, so the pilot sits up in the bubble with his
+	# shoulders over the sill, as an L-159's does)
+	cockpit(k, m, "buz", cst, body(k, m, "buz_can", cst, "glass", null, 18, 60.0), [-1.98], Color(0.33, 0.37, 0.41), 0.19)
 	band(k, m, "buz_bow0", cst, -2.92, 0.07, 0.02, A, c.darkened(0.2), 18)
 	band(k, m, "buz_bow1", cst, -1.05, 0.08, 0.02, A, c.darkened(0.2), 18)
+	canopy_frame(k, m, "buz_cf", cst, -2.95, -0.75, A, c.darkened(0.2))
 	# the intakes: D-shaped mouths standing off the fuselage on splitter plates
 	var ist := [[-2.3, 1.06, 0.24, 0.33, 0.33, 2.4, 2.4, 0.84], [-1.9, 1.05, 0.27, 0.36, 0.36, 2.4, 2.4, 0.83], [-1.2, 1.03, 0.24, 0.35, 0.36, 2.4, 2.4, 0.78],
 		[-0.2, 1.01, 0.16, 0.32, 0.34, 2.3, 2.3, 0.68], [1.2, 1.0, 0.06, 0.24, 0.26, 2.0, 2.0, 0.6]]
@@ -674,6 +970,7 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	# tailplane and fin (rudder, elevators), the dorsal fillet
 	surf(k, m, "buz_tail", [[Vector3(0.25, 1.3, 4.35), 1.5, 0.14], [Vector3(2.3, 1.42, 5.0), 0.8, 0.08]], A, c, [0.66])
 	surf(k, m, "buz_fin", [[Vector3(0, 1.45, 3.2), 2.5, 0.2], [Vector3(0, 3.6, 5.3), 1.05, 0.1]], A, c, [0.66], false)
+	beacon(k, m, Vector3(0, 3.6, 5.62))
 	surf(k, m, "buz_fillet", [[Vector3(0, 1.55, 2.0), 1.6, 0.12], [Vector3(0, 1.95, 3.4), 0.5, 0.08]], A, c, [], false)
 	k._box(m, Vector3(0.12, 0.08, 0.3), Vector3(0, 3.62, 6.05), A, c.darkened(0.3))
 	# the jet pipe
@@ -704,13 +1001,19 @@ static func _buzzard(k: VehicleModels, team: int) -> void:
 	# national markings
 	wing_marks(k, m, team, ws, 3.3, 0.6)
 	for s in [-1.0, 1.0]:
-		k._team_mark(m, team, Vector3(s * 0.47, 1.1, 3.6), Vector3(0.02, 0.34, 0.34))
+		# (on the tail cone's upper flank, laid on the skin 6 mm proud: a flat
+		# mark at mid-flank stood off the narrowing cone and lay on its shaded
+		# lower half, which from above merged with the ground beside the
+		# fuselage and left the mark floating outside its outline)
+		var fl := side_skin(st, s)
+		var sd: float = s
+		k._team_mark(m, team, Vector3(s * 0.47, 1.28, 3.35), Vector3(0.02, 0.3, 0.3), func(q: Vector3) -> Vector3: return (fl.call(q) as Vector3) + Vector3(sd * 0.006, 0, 0))
 	# the AAF's paint: roundels above and below the wings and on the fin, the
 	# serial on the nose, panel joints over the wings, the tail cone sooted
 	# ahead of the jet pipe
 	wing_insignia(k, m, ws, 2.0, 0.45, 0.42, VehicleAircraft.INSIGNIA_ROUNDEL, AAF_DARK, AAF_LIGHT)
 	fin_paint(k, m, [[Vector3(0, 1.45, 3.2), 2.5, 0.2], [Vector3(0, 3.6, 5.3), 1.05, 0.1]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_ROUNDEL, 0.3, AAF_DARK, AAF_LIGHT), 5.05, 2.75)
-	side_text(k, m, st, "6064", -4.3, 0.98, 0.24, AAF_DARK)
+	side_text(k, m, st, "60" + number(k, "64", 2, 10, 1), -4.3, 0.98, 0.24, AAF_DARK)
 	wing_lines(k, m, ws, [1.35, 2.55, 3.6], [0.14, 0.6], 0.62, 4.3, 0.72, c.darkened(0.24), 0.02)
 	pipe_soot(k, m, "buz", st, 6.36, 1.3, A, c)
 
@@ -749,9 +1052,12 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 	body(k, m, "gry_spine", [[-2.3, 1.42, 0.36, 0.36, 0.1], [-1.0, 1.44, 0.34, 0.34, 0.1], [1.5, 1.44, 0.28, 0.3, 0.1], [3.5, 1.44, 0.18, 0.22, 0.1], [5.2, 1.42, 0.08, 0.1, 0.1]], A, c, 16)
 	var cst := [[-4.55, 1.42, 0.28, 0.06, 0.06], [-4.0, 1.42, 0.4, 0.33, 0.06], [-3.4, 1.43, 0.44, 0.49, 0.06], [-2.7, 1.44, 0.42, 0.47, 0.06],
 		[-2.1, 1.45, 0.34, 0.33, 0.06], [-1.7, 1.45, 0.2, 0.17, 0.06]]
-	body(k, m, "gry_can", cst, "glass", null, 18, 60.0)
+	# (the tub's floor low, so the pilot's shoulders show in the bubble, as a
+	# Gripen's do)
+	cockpit(k, m, "gry", cst, body(k, m, "gry_can", cst, "glass", null, 18, 60.0), [-2.95], Color(0.33, 0.37, 0.41), 0.19)
 	band(k, m, "gry_bow0", cst, -3.95, 0.07, 0.018, A, c.darkened(0.2), 18)
 	band(k, m, "gry_bow1", cst, -2.15, 0.07, 0.018, A, c.darkened(0.2), 18)
+	canopy_frame(k, m, "gry_cf", cst, -3.95, -1.85, A, c.darkened(0.2))
 	# D-shaped intakes on splitter plates, the canards on their shoulders
 	var ist := [[-3.65, 0.95, 0.23, 0.4, 0.38, 2.5, 2.5, 0.78], [-3.2, 0.95, 0.27, 0.42, 0.4, 2.5, 2.5, 0.78], [-2.0, 0.97, 0.25, 0.42, 0.42, 2.5, 2.5, 0.73],
 		[-0.6, 1.0, 0.14, 0.36, 0.38, 2.4, 2.4, 0.68], [0.6, 1.0, 0.05, 0.3, 0.3, 2.2, 2.2, 0.66]]
@@ -775,6 +1081,7 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 	nav_lights(k, m, Vector3(4.1, 0.98, 2.0), 0.06)
 	# the fin with its rudder, a fairing at the tip
 	surf(k, m, "gry_fin", [[Vector3(0, 1.4, 2.1), 3.6, 0.22], [Vector3(0, 3.9, 5.0), 1.3, 0.1]], A, c, [0.72], false)
+	beacon(k, m, Vector3(0, 3.9, 5.42))
 	k._box(m, Vector3(0.1, 0.1, 0.5), Vector3(0, 3.9, 5.6), A, c.darkened(0.25))
 	# the afterburner nozzle, airbrakes on the tail cone
 	nozzle(k, m, Vector3(0, 1.05, 6.8), 0.45, 0.4, c, 0.9)
@@ -806,7 +1113,7 @@ static func _gryphon(k: VehicleModels, team: int) -> void:
 	# number on the nose a Gripen wears, panel joints, the tail cone sooted
 	wing_insignia(k, m, ws, 1.75, 0.6, 0.4, VehicleAircraft.INSIGNIA_ROUNDEL, AAF_DARK, AAF_LIGHT)
 	fin_paint(k, m, [[Vector3(0, 1.4, 2.1), 3.6, 0.22], [Vector3(0, 3.9, 5.0), 1.3, 0.1]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_ROUNDEL, 0.27, AAF_DARK, AAF_LIGHT), 5.05, 3.25)
-	side_text(k, m, st, "28", -4.9, 0.97, 0.36, AAF_DARK)
+	side_text(k, m, st, number(k, "28", 2, 1, 2), -4.9, 0.97, 0.36, AAF_DARK)
 	wing_lines(k, m, ws, [1.6, 2.4, 3.3], [0.12, 0.55], 0.85, 3.9, 0.8, c.darkened(0.24), 0.02)
 	pipe_soot(k, m, "gry", st, 6.6, 1.2, A, c)
 
@@ -929,9 +1236,11 @@ static func _shikra(k: VehicleModels, team: int) -> void:
 	body(k, m, "shk_spine", [[-4.6, 1.85, 0.42, 0.38, 0.1], [-2.5, 1.86, 0.6, 0.26, 0.1, 2.8], [1.0, 1.86, 0.65, 0.2, 0.1, 3.2], [4.0, 1.82, 0.5, 0.14, 0.1, 3.2], [6.0, 1.75, 0.25, 0.08, 0.1]], A, c, 18)
 	var cst := [[-7.6, 1.8, 0.3, 0.05, 0.05], [-7.1, 1.82, 0.44, 0.34, 0.05], [-6.3, 1.84, 0.5, 0.55, 0.05], [-5.4, 1.86, 0.48, 0.55, 0.05],
 		[-4.6, 1.88, 0.38, 0.38, 0.05], [-4.1, 1.88, 0.22, 0.18, 0.05]]
-	body(k, m, "shk_can", cst, "glass", null, 18, 60.0)
+	# (the Su-57's canopy carries a faint gold coating, as stealthy ones do)
+	cockpit(k, m, "shk", cst, body(k, m, "shk_can", cst, "glass", null, 18, 60.0), [-5.7], Color(0.36, 0.3, 0.18), 0.3, Color(0.52, 0.53, 0.5))
 	band(k, m, "shk_bow0", cst, -7.05, 0.08, 0.02, A, c2, 18)
 	band(k, m, "shk_bow1", cst, -4.75, 0.08, 0.02, A, c2, 18)
+	canopy_frame(k, m, "shk_cf", cst, -7.05, -4.35, A, c2)
 	k._add(m, Res.sphere(0.14, 12), "glass", null, Vector3(0.22, 1.76, -7.85))
 	# the nacelles, raked intakes under the LEVCONs, round Su-35 nozzles
 	var nst := [[-3.7, 1.0, 0.5, 0.45, 0.45, 3.0, 3.0, 1.38, 0.5, 0.0], [-3.0, 1.02, 0.54, 0.48, 0.48, 3.0, 3.0, 1.38], [0.0, 1.05, 0.56, 0.5, 0.5, 2.8, 2.8, 1.38],
@@ -980,7 +1289,7 @@ static func _shikra(k: VehicleModels, team: int) -> void:
 	# the wings, the nacelles sooted ahead of the nozzles
 	wing_insignia(k, m, ws, 4.3, 0.42, 0.68, VehicleAircraft.INSIGNIA_STAR)
 	fin_paint(k, m, [[Vector3(1.42, 1.6, 3.9), 2.9, 0.16], [Vector3(2.42, 3.67, 6.0), 1.2, 0.07]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_STAR, 0.4), 5.6, 2.85, true)
-	side_text(k, m, st, "51", -6.6, 1.3, 0.48, VehicleAircraft.STAR_RED, 0.03, VehicleAircraft.STAR_WHITE)
+	side_text(k, m, st, number(k, "51", 2, 1, 3), -6.6, 1.3, 0.48, VehicleAircraft.STAR_RED, 0.03, VehicleAircraft.STAR_WHITE)
 	wing_lines(k, m, ws, [2.4, 3.8, 5.3], [0.14, 0.56], 1.45, 6.9, 0.78, c.darkened(0.24))
 	pipe_soot(k, m, "shk_nr", nst, 8.2, 1.7, A, c)
 	var nst_l: Array = []
@@ -1022,9 +1331,12 @@ static func _neophron(k: VehicleModels, team: int) -> void:
 	body(k, m, "neo_spine", [[-1.4, 1.6, 0.3, 0.32, 0.1], [0.0, 1.6, 0.3, 0.28, 0.1], [2.0, 1.6, 0.2, 0.18, 0.1], [3.2, 1.58, 0.1, 0.1, 0.1]], A, c, 14)
 	var cst := [[-3.75, 1.6, 0.26, 0.05, 0.05], [-3.3, 1.6, 0.38, 0.32, 0.05], [-2.6, 1.62, 0.42, 0.5, 0.05], [-1.9, 1.63, 0.4, 0.48, 0.05],
 		[-1.3, 1.64, 0.32, 0.32, 0.05], [-0.9, 1.64, 0.18, 0.15, 0.05]]
-	body(k, m, "neo_can", cst, "glass", null, 18, 60.0)
+	cockpit(k, m, "neo", cst, body(k, m, "neo_can", cst, "glass", null, 18, 60.0), [-2.55, -1.6], Color(0.33, 0.37, 0.41), 0.3, Color(0.52, 0.53, 0.5))
 	band(k, m, "neo_bow0", cst, -3.25, 0.07, 0.018, A, c.darkened(0.2), 18)
 	band(k, m, "neo_bow1", cst, -1.35, 0.07, 0.018, A, c.darkened(0.2), 18)
+	# (the Yak-130's two cockpits under separate transparencies, a fixed
+	# arch between them)
+	canopy_frame(k, m, "neo_cf", cst, -3.25, -1.05, A, c.darkened(0.2), [-2.25])
 	# engine nacelles under the wing-root extensions, intakes raked back
 	var nst := [[-1.7, 0.74, 0.32, 0.35, 0.35, 2.8, 2.8, 0.7, -0.4, 0.0], [-1.2, 0.74, 0.36, 0.38, 0.38, 2.8, 2.8, 0.7], [1.0, 0.74, 0.37, 0.4, 0.4, 2.6, 2.6, 0.68],
 		[3.0, 0.76, 0.34, 0.36, 0.36, 2.4, 2.4, 0.64], [3.95, 0.78, 0.3, 0.3, 0.3, 2.2, 2.2, 0.62]]
@@ -1039,6 +1351,7 @@ static func _neophron(k: VehicleModels, team: int) -> void:
 	var ws := [[Vector3(0.4, 1.5, -0.35), 2.75, 0.3], [Vector3(2.6, 1.44, 0.45), 1.95, 0.2], [Vector3(4.92, 1.36, 1.3), 1.15, 0.12]]
 	surf(k, m, "neo_wing", ws, A, c, [0.75, 0.75])
 	surf(k, m, "neo_fin", [[Vector3(0, 1.55, 1.9), 2.8, 0.2], [Vector3(0, 3.55, 4.1), 1.05, 0.09]], A, c, [0.7], false)
+	beacon(k, m, Vector3(0, 3.55, 4.42))
 	surf(k, m, "neo_stab", [[Vector3(0.3, 1.2, 3.55), 1.6, 0.12], [Vector3(2.25, 1.15, 4.35), 0.75, 0.06]], A, c, [])
 	# tip rails with R-73s, lights, probes, antennas
 	for s in [-1.0, 1.0]:
@@ -1071,7 +1384,7 @@ static func _neophron(k: VehicleModels, team: int) -> void:
 	# the bort number under the cockpit, panel joints, the nacelles sooted
 	wing_insignia(k, m, ws, 2.2, 0.45, 0.4, VehicleAircraft.INSIGNIA_STAR)
 	fin_paint(k, m, [[Vector3(0, 1.55, 1.9), 2.8, 0.2], [Vector3(0, 3.55, 4.1), 1.05, 0.09]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_STAR, 0.3), 3.55, 2.3)
-	side_text(k, m, st, "12", -3.55, 1.1, 0.34, VehicleAircraft.STAR_RED, 0.025, VehicleAircraft.STAR_WHITE)
+	side_text(k, m, st, number(k, "12", 2, 1, 4), -3.55, 1.1, 0.34, VehicleAircraft.STAR_RED, 0.025, VehicleAircraft.STAR_WHITE)
 	wing_lines(k, m, ws, [1.3, 2.6, 3.8], [0.15, 0.6], 0.5, 4.7, 0.75, c.darkened(0.24), 0.02)
 	var nst_l: Array = []
 	for q: Array in nst:
@@ -1115,6 +1428,9 @@ static func _greyhawk(k: VehicleModels, team: int) -> void:
 	surf(k, m, "gh_canard", [[Vector3(0.36, 0.95, -3.4), 0.5, 0.06], [Vector3(1.25, 0.97, -3.2), 0.28, 0.03]], A, c, [0.65])
 	var ws := [[Vector3(0.35, 1.28, -0.75), 1.35, 0.2], [Vector3(4.6, 1.38, -0.55), 0.95, 0.12], [Vector3(10.0, 1.52, -0.3), 0.5, 0.06]]
 	surf(k, m, "gh_wing", ws, A, c, [0.72, 0.72])
+	# its joints from above: the spar line, the hinge of the flaps and
+	# ailerons, and the breaks between them and between the wing's panels
+	wing_lines(k, m, ws, [2.2, 4.6, 7.4], [0.14, 0.7], 0.5, 9.8, 0.97, c.darkened(0.26), 0.02)
 	nav_lights(k, m, Vector3(10.0, 1.52, -0.1), 0.05)
 	# the Y tail: ruddervators up, the ventral fin down
 	surf(k, m, "gh_vtail", [[Vector3(0.12, 1.25, 3.2), 1.05, 0.09], [Vector3(1.8, 2.75, 3.8), 0.55, 0.04]], A, c, [0.68])
@@ -1142,7 +1458,7 @@ static func _greyhawk(k: VehicleModels, team: int) -> void:
 	# an MQ-9's few markings: the wing's tail code on the V-tail, the serial
 	# small on the rear fuselage, the turboprop's exhaust sooting the flanks
 	fin_paint(k, m, [[Vector3(0.12, 1.25, 3.2), 1.05, 0.09], [Vector3(1.8, 2.75, 3.8), 0.55, 0.04]], [[VehicleAircraft.lettering("CH", 0.2, "tail"), c.darkened(0.55)]], 3.62, 1.95, true)
-	side_text(k, m, st, "4011", 2.6, 1.0, 0.12, c.darkened(0.55))
+	side_text(k, m, st, "40" + number(k, "11", 2, 1, 5), 2.6, 1.0, 0.12, c.darkened(0.55))
 	for s in [-1.0, 1.0]:
 		VehicleAircraft.paint(k, m, VehicleAircraft.face(Vector3(s * 0.3, 1.0, 3.95), Vector3(s, 0, 0), Vector3.BACK, side_skin(st, s)), VehicleAircraft.soot(0.9, 0.16, A, c), A)
 
@@ -1183,6 +1499,8 @@ static func _sentinel(k: VehicleModels, team: int) -> void:
 	# the cranked outer wings: elevons, the fold line
 	var ws := [[Vector3(2.6, yc, 0.0), 2.75, 0.2], [Vector3(6.0, yc + 0.06, 1.72), 1.9, 0.12], [Vector3(9.46, yc + 0.12, 3.4), 1.0, 0.07]]
 	surf(k, m, "sen_wing", ws, A, c, [0.78, 0.74])
+	# the outer panels' joints, the elevons' hinge and their split
+	wing_lines(k, m, ws, [4.4, 7.4], [0.12, 0.76], 2.75, 9.3, 0.97, c.darkened(0.3), 0.02)
 	nav_lights(k, m, Vector3(9.47, yc + 0.12, 3.8), 0.05)
 	# body elevons along the inner trailing edges
 	for s in [-1.0, 1.0]:
@@ -1237,6 +1555,7 @@ static func _fenghuang(k: VehicleModels, team: int) -> void:
 	surf(k, m, "fen_canard", [[Vector3(0.2, 0.93, -2.15), 0.56, 0.07], [Vector3(1.3, 0.96, -2.0), 0.36, 0.04]], A, c, [0.65])
 	var ws := [[Vector3(0.2, 1.05, 0.55), 0.95, 0.12], [Vector3(4.0, 1.15, 0.85), 0.55, 0.06]]
 	surf(k, m, "fen_wing", ws, A, c, [0.72])
+	wing_lines(k, m, ws, [1.5, 2.8], [0.15, 0.7], 0.35, 3.9, 0.97, c.darkened(0.26), 0.016)
 	surf(k, m, "fen_tipfin", [[Vector3(4.03, 0.8, 0.95), 0.48, 0.05], [Vector3(4.03, 1.15, 0.8), 0.62, 0.06], [Vector3(4.03, 1.62, 1.08), 0.4, 0.04]], A, c, [0.0, 0.62])
 	# the engine's air scoop on top, the exhaust, the pusher propeller
 	var sst := [[1.0, 1.13, 0.08, 0.06, 0.06, 2.5, 2.5, 0.0, -0.4], [1.4, 1.15, 0.1, 0.07, 0.07], [2.1, 1.1, 0.04, 0.03, 0.04]]
@@ -1267,7 +1586,7 @@ static func _fenghuang(k: VehicleModels, team: int) -> void:
 	# red stars above and below the wings between the pylons, the airframe
 	# number on the nose
 	wing_insignia(k, m, ws, 1.8, 0.42, 0.26, VehicleAircraft.INSIGNIA_STAR)
-	side_text(k, m, st, "03", -1.6, 0.86, 0.2, c.darkened(0.6))
+	side_text(k, m, st, number(k, "03", 2, 1, 6), -1.6, 0.86, 0.2, c.darkened(0.6))
 
 
 # --- Y-32 Xi'an ---------------------------------------------------------------------
@@ -1335,12 +1654,27 @@ static func _xian(k: VehicleModels, team: int) -> void:
 	# the stepped cockpit: the gunner's bubble low in front, the pilot's above
 	var g := [[-7.75, 2.0, 0.3, 0.05, 0.05, 2.6], [-7.3, 2.02, 0.48, 0.32, 0.05, 2.6], [-6.6, 2.06, 0.55, 0.48, 0.05, 2.6], [-6.0, 2.1, 0.52, 0.42, 0.05, 2.6], [-5.6, 2.12, 0.35, 0.2, 0.05, 2.6]]
 	var p := [[-5.6, 2.62, 0.35, 0.05, 0.05, 2.6], [-5.1, 2.64, 0.55, 0.36, 0.05, 2.6], [-4.4, 2.68, 0.6, 0.52, 0.05, 2.6], [-3.7, 2.72, 0.56, 0.45, 0.05, 2.6], [-3.2, 2.74, 0.36, 0.22, 0.05, 2.6]]
-	for cp in [[g, "g", -7.25, -6.0], [p, "p", -5.05, -3.75]]:
+	# A Hind's two crew sit high in their bubbles, helmet and shoulders above
+	# the fuselage's shoulder line, and from above a player looks down through
+	# the glass at them: the bubbles stand half a metre clear of the skin, as
+	# the real ones do (sunk to a hand's breadth they read as two dark
+	# blisters, nobody aboard), and are clear over the gunner and the pilot.
+	# Wrecks keep the low opaque bubbles.
+	var crew := not (k.wreck or k.burnt)
+	var ck := "_c" if crew else ""
+	if crew:
+		g = [[-7.75, 2.0, 0.3, 0.12, 0.05, 2.6], [-7.3, 2.02, 0.48, 0.5, 0.05, 2.6], [-6.6, 2.06, 0.55, 0.82, 0.05, 2.6], [-6.0, 2.1, 0.52, 0.78, 0.05, 2.6], [-5.6, 2.12, 0.35, 0.6, 0.05, 2.6]]
+		p = [[-5.6, 2.62, 0.35, 0.3, 0.05, 2.6], [-5.1, 2.64, 0.55, 0.72, 0.05, 2.6], [-4.4, 2.68, 0.6, 0.82, 0.05, 2.6], [-3.7, 2.72, 0.56, 0.7, 0.05, 2.6], [-3.2, 2.74, 0.36, 0.5, 0.05, 2.6]]
+	for cp in [[g, "g", -7.25, -6.0, -6.6], [p, "p", -5.05, -3.75, -4.4]]:
 		var cs: Array = cp[0]
-		body(k, m, "xi_can" + String(cp[1]), cs, "glass", null, 18, 30.0)
-		band(k, m, "xi_bow0" + String(cp[1]), cs, float(cp[2]), 0.08, 0.02, A, c2, 18)
-		band(k, m, "xi_bow1" + String(cp[1]), cs, float(cp[3]), 0.08, 0.02, A, c2, 18)
-		stripe(k, m, "xi_rail" + String(cp[1]), cs, float(cs[0][0]), float(cs[cs.size() - 1][0]), PI / 2 - 0.04, PI / 2 + 0.04, A, c2, 0.02, 3)
+		var glass: Variant = body(k, m, "xi_can" + String(cp[1]) + ck, cs, "glass", null, 18, 30.0)
+		band(k, m, "xi_bow0" + String(cp[1]) + ck, cs, float(cp[2]), 0.08, 0.02, A, c2, 18)
+		band(k, m, "xi_bow1" + String(cp[1]) + ck, cs, float(cp[3]), 0.08, 0.02, A, c2, 18)
+		stripe(k, m, "xi_rail" + String(cp[1]) + ck, cs, float(cs[0][0]), float(cs[cs.size() - 1][0]), PI / 2 - 0.04, PI / 2 + 0.04, A, c2, 0.02, 3)
+		# (each in an armoured seat, as a Hind's crew sit, no ejection seat;
+		# the gunner's sight and the pilot's collimator on their coamings;
+		# CSAT's grey helmets, as the Kajman's)
+		cockpit(k, m, "xi_pit" + String(cp[1]), cs, glass, [float(cp[4])], Color(0.33, 0.37, 0.41), 0.45, Color(0.52, 0.53, 0.5), Color(0.4, 0.42, 0.33), true, false)
 	# the chin turret: a twin 23 mm that traverses
 	k.turret = k._pivot(m, Vector3(0, 1.05, -7.2))
 	VehicleAircraft.chin_turret(k, k.turret, Vector3(0, -0.05, 0), Vector2(0.36, 0.36), 0.54, Vector3(0, -0.15, -0.3), Vector3(0.36, 0.3, 0.5), A, c2, 0.0, Vector3.ZERO, true, 14)
@@ -1361,6 +1695,9 @@ static func _xian(k: VehicleModels, team: int) -> void:
 	# the wings, a lift fan in each, ailerons outboard
 	var ws := [[Vector3(1.2, 2.95, -1.6), 5.0, 0.55], [Vector3(5.6, 3.0, -0.2), 3.4, 0.42], [Vector3(8.0, 3.05, 0.5), 2.6, 0.26]]
 	surf(k, m, "xi_wing", ws, A, c, [0.0, 0.74])
+	# the wing's joints from above: the front spar ahead of the fan, the
+	# crank, the aileron's split (none across the fan's ring)
+	wing_lines(k, m, ws, [2.6, 5.6, 7.0], [0.12], 1.3, 7.9, 0.97, c.darkened(0.42), 0.024)
 	for s in [-1.0, 1.0]:
 		var w := surf_at(ws, 4.0)
 		var le: Vector3 = w[0]
@@ -1420,4 +1757,4 @@ static func _xian(k: VehicleModels, team: int) -> void:
 	side_insignia(k, m, st, 4.7, 2.25, 0.45, VehicleAircraft.INSIGNIA_STAR)
 	wing_insignia(k, m, ws, 2.25, 0.22, 0.4, VehicleAircraft.INSIGNIA_STAR)
 	fin_paint(k, m, [[Vector3(1.5, 3.5, 4.6), 3.4, 0.24], [Vector3(2.29, 5.66, 6.9), 1.6, 0.12]], VehicleAircraft.insignia(VehicleAircraft.INSIGNIA_STAR, 0.4), 6.62, 4.6, true)
-	side_text(k, m, st, "35", -6.9, 1.62, 0.42, VehicleAircraft.STAR_RED, 0.03, VehicleAircraft.STAR_WHITE)
+	side_text(k, m, st, number(k, "35", 2, 1, 7), -6.9, 1.62, 0.42, VehicleAircraft.STAR_RED, 0.03, VehicleAircraft.STAR_WHITE)

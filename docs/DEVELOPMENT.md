@@ -141,6 +141,7 @@ game/fires.gd           what burns, catching alight, spreading downwind, burning
 game/cover.gd           fighting positions on everything solid, what each material stops, stances by height
 game/rules.gd           supply network, trucks, cap, placement, capture, prisoners/intel, fog, victory
 game/vision.gd          every eye a side has (men, vehicles, towers, drones, aircraft) as circles of sight
+game/flight_model.gd    a fixed-wing aircraft on stick and throttle (roll, g, thrust, drag, stall) and its autopilot; flies the support aircraft
 game/fog_view.gd        the fog of war drawn on the battlefield and the minimap (a sight map + a full-screen pass)
 game/nav.gd             two compact NavRaster layers (infantry: vaultable/slow cells; vehicles: smashable cells)
 game/hnav.gd            hierarchical A* (clusters, entrances, danger-weighted abstract graphs)
@@ -270,7 +271,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       client to join
 --test-port=N                                         (with --fixed-fps 30) take orders over a local socket: see
                                                       "The test port"; 0 takes any free port
---scenario=cover|lean|grenade|tank|drone|tunnel|heli|defense|air|support|showroom|trenches|poses|attack|solo
+--scenario=cover|lean|alley|grenade|tank|drone|tunnel|heli|defense|air|support|showroom|trenches|poses|attack|solo
                                                       (attack: two squads and a gun team attack a walled yard;
                                                       solo: one squad against a stronger position)
 --play --select-first --tactical --nohud              command a scenario's Coalition side / select a squad /
@@ -324,6 +325,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
 --focus-vehicle=kind[,n]                              camera on the nth vehicle of a kind (zero-based, first by default)
 --focus-vehicle-at=SECONDS                            switch to that vehicle at this simulation time (default 1 second)
 --blast-at=X,Z,SIZE,TIME                              a real explosion at that spot and time (physics tests);
+--destroy-near=X,Z,KIND,TIME                          the structure of that kind nearest X,Z destroyed at that time (a single house_wall, say)
                                                       X,Z of "f,DX" is DX metres beside the camera's focus (or "v:KIND,DX"
                                                       beside the first vehicle of that kind)
 --pitch=-14 --cam-yaw=-0.84                           fixed camera pitch (degrees) and heading (model close-ups)
@@ -363,11 +365,13 @@ FL_DEBUG_WORKS=1 (env)                                with --scenario=cache: who
 --scenario=roster                                     every vehicle both sides can field, facing off across the map
 --scenario=sling                                      a Mohawk carries a Humvee and a Taru a BTR on their slings
 --scenario=mounted                                    two halted IFVs drop only some of their men (Vehicle.dismount's n and squad)
+--scenario=convoy                                     a column of four drives down a dirt road: its dust trail by day, headlights in the air at night
 --scenario=naval                                      boats on the sea: an RHIB lands a squad under a patrol ship's guns, Rebel boats come out to fight
 FL_DEBUG_BOAT=1 (env)                                 every 2 s, each boat under way: where, heading, speed, how far down its route; and each grounding
 --scenario=tactics                                    a rifle squad and an MG team sent 120 m up to hold a hamlet with the
                                                       enemy about: they bound there by teams and clear the houses
 --scenario=breach                                     a fighter cell holed up in a house; two rifle squads and a gun team clear it
+--scenario=church                                     the parish church held by a fighter cell; two squads clear it by its west door and south porch
 --scenario=storeys                                    a house on two floors with a wing; a charge blows in a front wall
                                                       and the floor above comes down with its roof (storey_fell)
 --scenario=gdrill                                     grenade drill: frags with all sorts of fuses land among a squad round its wounded
@@ -456,7 +460,11 @@ main menu (nothing a test drives needs it, and leaving it out saves a second or 
 
 The tests live in `tests/` (Node, no dependencies): `tests/lib/game.mjs` starts a headless game, connects and
 wraps the commands, and each `*.test.mjs` is a `node:test` file. Run them with `npm test` in `tests/`, with
-`GODOT` set to your Godot executable (`FL_TEST_VERBOSE=1` echoes the games' output). A test looks like this:
+`GODOT` set to your Godot executable (`FL_TEST_VERBOSE=1` echoes the games' output). On Windows or Linux, build
+the native extension first, as CI does (`python tools/build_native.py`, then `--import`): without it the game runs
+its GDScript fallbacks (as on macOS and in a browser), which keep the rules but can tip a close fight the other way,
+so a scenario's counters can fall short of what CI saw. The first game each file starts warns when it isn't loaded.
+A test looks like this:
 
 ```js
 const game = await Game.start();
@@ -485,11 +493,11 @@ run side by side too (determinism.test.mjs: the full-map battle, the longest tes
 
 | command | fields | answers |
 | --- | --- | --- |
-| `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless` |
+| `hello` | | `version`, `net` (NET_VERSION), `tps`, `headless`, `native` (the native extension is loaded) |
 | `load` | one of `scenario`, `mission`, `battle: true` (AI vs AI); `seed`, `play`, `ai_allies` (with `play`: an AI commander on your side too), `autoplay`, `static`, `verbose` | `t` (0), `seed`, and how many `soldiers`, `vehicles`, `structures`, `squads`; a fresh battle each time |
 | `step` | `seconds`, or `ticks` | `t`, `ticks` run, `winner` (-1 while it goes on) |
 | `order` | `team` (0 or 1: that side's AI, which owns a scenario's squads too) or `peer` (1: you, loaded with `play`); `t` and the order's fields as `World.execute_cmd` takes them, positions as `{"v3": [x, z]}` | `squads`, `vehicles`: how many of those listed the order reached |
-| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind` |
+| `query` | `what`: `world`, `squads`, `soldiers`, `vehicles`, `structures`; `team`, `kind`, `ids` | the list (positions as `[x, z]`; a vehicle's `yaw`, `speed` along its heading and `vel` over the ground too); structures leave out trees and floors unless asked for by `kind`, and carry their `variant` and `size` |
 | `ping` | `peer` (1: you), `kind` (`attack`, `defend`, `help`...), `pos` | a co-commander's ping as the host receives it (an AI ally answers some) |
 | `stats` | | `counters` (every `world.stat`), `report` (the after-action summary) |
 | `hash` | | `hash`: a fingerprint of the whole simulation; two runs from one seed agree on it tick for tick |
@@ -549,7 +557,8 @@ The client prints a `CLIENT entities=...` summary when it quits. Check both outp
 `--quit-after` counts from when the host's world has reached it and been built (`World.loaded`): the host answers
 only once it has laid out the map and, with a window, drawn its first frame, which takes a minute or more off-screen.
 `waited=` in the summary is how long the client took to get there (-1: nothing came, and it gave up 5 minutes past
-`--quit-after`). With `FL_DEBUG_NET=1` the host prints what it sent a joiner (`JOIN sent peer ... entities in N kB`)
+`--quit-after`). A client whose host quits first (the host's `--quit-after` counts from the battle's start, so it
+usually does) prints the summary then, ending `host_left=1`, and quits. With `FL_DEBUG_NET=1` the host prints what it sent a joiner (`JOIN sent peer ... entities in N kB`)
 and the client when its world was laid out, built and covered (`JOIN loaded ...`).
 
 The host's lobby takes `--battle-name=NAME`, `--coop` (everyone on `--team`'s side), `--max-players=N` and

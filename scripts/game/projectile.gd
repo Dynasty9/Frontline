@@ -108,7 +108,15 @@ func on_spawned() -> void:
 	net_pos = position
 	net_init = true
 	if ptype == "jet" or ptype == "a10":
+		# launched on the line: start out on its track instead, heading along it
 		_run = Defs.flat(vel).normalized()
+		# (so each flies its bends at about 55 degrees of bank)
+		_bend = 250.0 * clampf(vel.length_squared() / (70.0 * 70.0), 0.5, 2.0)
+		var along := Defs.flat(position - target).dot(_run)
+		var on := _track_point(along)
+		position = Vector3(on.x, position.y, on.z)
+		vel = _track_dir(along) * vel.length()
+		net_pos = position
 	if srv and ptype in ["rocket", "atgm", "recoilless"]:
 		_warn_target()
 	if world.has_view:
@@ -141,57 +149,56 @@ func sim(dt: float) -> void:
 
 
 # --- Flight ----------------------------------------------------------------------------
-# Support aircraft fly as aeroplanes do. The speed holds; to turn, the pilot
-# rolls (at a roll rate, up to a bank limit) and the turn follows from the bank,
-# g tan(bank) / V; to climb or dive he pulls or pushes, and the flight path bends
-# only as fast as the g he pulls. He holds his height over the ground ahead of
-# him rather than the ground underneath, so a ridge is one smooth climb.
+# Support aircraft fly as aeroplanes do (FlightModel): a pilot on the stick and
+# throttle, rolling to turn, pulling g to climb or turn, the speed his throttle
+# and the flight path leave him. These pilots fly by autopilot, toward a heading
+# and a climb; they hold their height over the ground ahead of them rather than
+# the ground underneath, so a ridge is one smooth climb.
 
 const G := 9.81
 const AOA := 0.045  # rad: the nose rides about 2.5 degrees above the flight path at 1 g
 
 var bank := 0.0  # roll, + left wing down (a turn to the left)
-var _spd := 0.0  # (server) the speed it holds
-var _run := Vector3.ZERO  # the run-in heading (the heading it was launched on)
+var _fm: FlightModel  # (server) the aircraft as it flies
+var _spd := 0.0  # (server) the speed it was launched at, which it keeps to
+var _run := Vector3.ZERO  # the run's axis (the heading it was launched on)
 var _alt := 0.0  # (server) run-in height over the ground
 var _side := 1.0  # (server) which way it breaks off: + left
 var _phase := 0  # (server) where it is in its attack
 var _vbank := 0.0  # (view) the bank drawn, eased toward the replicated one
+var _bend := 250.0  # how long the track's bends are: longer the faster it flies
 
 
-## Fixes the run on the first tick: its heading, its height over the target's
+## Fixes the run on the first tick: its airframe, its height over the target's
 ## ground and (from its id, so a seed repeats it) which way it will break.
 func _start_run() -> void:
-	if _spd > 0.0:
+	if _fm:
 		return
 	if _run == Vector3.ZERO:
 		_run = Defs.flat(vel).normalized()
 	_spd = maxf(vel.length(), 1.0)
+	# a fighter rolls and pulls harder than an A-10 or a light plane
+	var fast := ptype == "jet" and _spd >= 80.0
+	_fm = FlightModel.new().setup(_spd, 7.0 if fast else 5.0, 3.0 if fast else 1.8, 0.13 if fast else 0.095)
+	_fm.place(position, vel, _spd)
 	# (launched that high over the target or over its own start, whichever is higher)
 	_alt = position.y - maxf(world.terrain.landform.height(target), world.terrain.landform.height(position))
 	_side = 1.0 if eid % 2 == 0 else -1.0
 
 
 ## One tick of flight toward the ground heading `want`, the flight path climbing
-## toward `gamma_want` (rad, + up). `max_bank` caps the roll, `g_pull` the pull-up.
+## toward `gamma_want` (rad, + up). `max_bank` caps the roll, `g_pull` the pull,
+## `roll_rate` (rad/s) how briskly he rolls.
 func _fly(dt: float, want: Vector3, gamma_want: float, max_bank: float, g_pull: float, roll_rate := 1.6) -> void:
-	var fw := Defs.flat(vel).normalized()
-	if fw.length() < 0.5:
-		fw = _run
-	var gamma := asin(clampf(vel.y / maxf(vel.length(), 0.01), -1.0, 1.0))
-	var err := fw.signed_angle_to(Defs.flat(want), Vector3.UP) if Defs.flat(want).length() > 0.01 else 0.0
-	bank = move_toward(bank, clampf(err * 3.0, -max_bank, max_bank), roll_rate * dt)
-	fw = fw.rotated(Vector3.UP, G * tan(bank) / _spd * dt)
-	# pulling up he can load g_pull; pushing over, he eases toward a fraction of 1 g
-	var rate := (g_pull - 1.0) * G / _spd if gamma_want > gamma else 0.8 * G / _spd
-	gamma = move_toward(gamma, gamma_want, rate * dt)
-	vel = fw * (_spd * cos(gamma)) + Vector3.UP * (_spd * sin(gamma))
-	position += vel * dt
+	_fm.autopilot(want, gamma_want, _spd, max_bank, 0.2, g_pull, minf(1.0, roll_rate / _fm.roll_rate))
+	_fm.step(dt)
 	# (never through the ground, whatever he was told)
-	var floor_y := world.terrain.landform.height(position) + 6.0
-	if position.y < floor_y:
-		position.y = floor_y
-		vel.y = maxf(vel.y, 0.0)
+	var floor_y := world.terrain.landform.height(_fm.pos) + 6.0
+	if _fm.pos.y < floor_y:
+		_fm.pos.y = floor_y
+	position = _fm.pos
+	vel = _fm.velocity()
+	bank = _fm.bank()
 
 
 ## The flight path angle that brings it to height `want_y` in about `secs` seconds.
@@ -210,6 +217,33 @@ func _clear_gamma(dir: Vector3, clear: float, secs := 4.0) -> float:
 	return g
 
 
+## The run's track: straight for 110 m either side of the target, bending off
+## to one side beyond that, so the aircraft swings in onto the line rather
+## than appearing on it, and (a recon pass) swings away again. The bend
+## eases in, so the heading and the bank change smoothly at both joins.
+static func _pass_offset(along: float, straight := 110.0, bend := 250.0) -> float:
+	var leg := maxf(absf(along) - straight, 0.0)
+	var u := minf(leg / bend, 1.0)
+	return signf(along) * 0.48 * (bend * u * u * u * (1.0 - 0.5 * u) + maxf(leg - bend, 0.0))
+
+
+## The point on the track `along` metres past the target (flat).
+func _track_point(along: float) -> Vector3:
+	return target + _run * along + _run.cross(Vector3.UP) * _pass_offset(along, _straight(), _bend)
+
+
+## Which way the track runs `along` metres past the target (flat, unit).
+func _track_dir(along: float) -> Vector3:
+	var u := clampf((absf(along) - _straight()) / _bend, 0.0, 1.0)
+	return (_run + _run.cross(Vector3.UP) * (0.48 * smoothstep(0.0, 1.0, u))).normalized()
+
+
+## How far either side of the target the track runs straight: a gun run
+## lines up before it rolls in, so its straight stretch holds the whole dive.
+func _straight() -> float:
+	return 280.0 if ptype == "a10" else 110.0
+
+
 ## The aircraft's attitude: its nose along the flight path, rolled by its bank
 ## and raised by the angle of attack its wings need, more of it in a hard turn.
 static func flight_basis(fw: Vector3, roll: float) -> Basis:
@@ -218,8 +252,12 @@ static func flight_basis(fw: Vector3, roll: float) -> Basis:
 	return Basis.looking_at(fw, up) * Basis(Vector3.BACK, roll) * Basis(Vector3.RIGHT, aoa)
 
 
-## (view) Draws a flying aircraft along its flight path at its bank.
+## (view) Draws a flying aircraft: on the host its own attitude, nose raised by
+## the g its wing carries; on a client, along its flight path at its bank.
 func _pose_model(dt: float, fw: Vector3, roll: float) -> void:
+	if _fm:
+		model.global_basis = _fm.basis * Basis(Vector3.RIGHT, AOA * _fm.n)
+		return
 	_vbank = lerpf(_vbank, roll, 1.0 - exp(-dt * 8.0))
 	if fw.length() > 0.01:
 		model.global_basis = flight_basis(fw, _vbank)
@@ -239,11 +277,11 @@ func _jet(dt: float) -> void:
 		_phase = 1
 		var out := _run.rotated(Vector3.UP, _side * JET_BREAK)
 		var climb := minf(0.42, maxf(_hold_y(run_y + 150.0, 2.0, 0.3, 0.42), _clear_gamma(Defs.flat(vel).normalized(), 60.0)))
-		_fly(dt, out, climb, deg_to_rad(75.0), 5.0, 2.2)
+		_fly(dt, out, climb, deg_to_rad(65.0), 5.0, 2.2)
 	else:
-		# hold the line through the target, level at the run-in height
-		var ahead := target + _run * (along + 250.0)
-		_fly(dt, ahead - position, minf(0.45, maxf(_hold_y(run_y), _clear_gamma(_run, 35.0))), 0.6, 3.0)
+		# swing in along the track onto the line through the target, level at the run-in height
+		var ahead := _track_point(along + _spd * 0.9)
+		_fly(dt, ahead - position, minf(0.45, maxf(_hold_y(run_y), _clear_gamma(_run, 35.0))), 1.2, 3.0)
 	if fuse > 0.0:
 		# a stick 10 m apart, centred on the target
 		var i := _bombs0 - fuse
@@ -807,15 +845,18 @@ func _a10(dt: float) -> void:
 	var los := atan2(to.y, Defs.flat(to).length())
 	match _phase:
 		0:
-			# the run-in, level along the line
-			var ahead := target + _run * (Defs.flat(position - target).dot(_run) + 250.0)
-			_fly(dt, ahead - position, minf(0.45, maxf(_hold_y(world.terrain.landform.height(target) + _alt), _clear_gamma(_run, 30.0))), 0.5, 3.0, 1.2)
+			# the run-in, level, swinging in along the track onto the line
+			var ahead := _track_point(Defs.flat(position - target).dot(_run) + _spd * 0.9)
+			_fly(dt, ahead - position, minf(0.45, maxf(_hold_y(world.terrain.landform.height(target) + _alt), _clear_gamma(_run, 30.0))), 1.2, 3.0, 1.2)
 			if -los >= A10_ROLL_IN:
 				_phase = 1
 		1, 2:
-			# in the dive, the flight path on the pipper, unless the ground
-			# coming up in front would have him into it first
-			_fly(dt, to, maxf(los, _clear_gamma(Defs.flat(vel).normalized(), 12.0, 2.0)), 0.5, 3.5, 1.2)
+			# in the dive, the flight path on the pipper (steering onto the
+			# strafing line as he goes), unless the ground coming up in front
+			# would have him into it first
+			var line := target + _run * (Defs.flat(position - target).dot(_run) + _spd * 1.5)
+			var steer := Defs.flat(line - position) if Defs.flat(to).length() > _spd * 1.5 else to
+			_fly(dt, steer, maxf(los, _clear_gamma(Defs.flat(vel).normalized(), 12.0, 2.0)), 0.9, 3.5, 1.2)
 			if _phase == 1 and to.length() <= A10_RANGE:
 				_phase = 2
 				_fire_el = 0.0

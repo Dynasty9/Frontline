@@ -38,23 +38,123 @@ static func mantlet(k: VehicleModels, parent: Node3D, size: Vector3, center: Vec
 
 ## Proofed canvas, near black olive (a dust cover, a mantlet boot).
 const BOOT := Color(0.2, 0.21, 0.16)
+## A boot in service: proofed olive duck weathered toward the crews' khaki kit.
+const BOOT_DUCK := Color(0.31, 0.31, 0.23)
+## How a boot's folds have settled, each a share of its length per fold (from
+## the casting forward), with BOOT_CRESTS how proud each one stands: a few
+## shapes, so the meshes they make stay few (see gun_boot).
+const BOOT_FOLDS: Array = [[1.25, 0.8, 1.1, 0.85, 1.0, 0.95], [0.85, 1.2, 0.9, 1.15, 0.8, 1.1], [1.1, 1.0, 0.75, 1.3, 0.9, 0.95]]
+const BOOT_CRESTS: Array = [[1.24, 1.13, 1.2, 1.12, 1.18, 1.15], [1.15, 1.26, 1.12, 1.22, 1.16, 1.2], [1.2, 1.17, 1.11, 1.27, 1.14, 1.17]]
 
 ## The mantlet's canvas dust cover (see mantlet): from the casting's face at
 ## `face` (z, in the mount's space) forward along -Z, `length` long, gathered
-## from `radius` at the face down onto the barrel (`barrel` its radius) in
-## three pleats, each fold puffed out where it starts and drawn in where the
-## next laps over it, and a strap cinched round the barrel at its front.
+## from `radius` at the face down onto the barrel (`barrel` its radius). Kept
+## for the families that call it by this name; see gun_boot.
 static func _gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float, barrel: float, length: float) -> void:
+	gun_boot(k, mount, face, radius, barrel, length)
+
+
+## A main gun's canvas dust cover, on `mount` (the mantlet, or a pivot that
+## elevates with the gun: a gun on a slide pivot hangs it there, so it lays
+## with the barrel): from the casting's face at `face` (z, in the mount's
+## space) forward along -Z, `length` long, gathered from `radius` at the face
+## down onto the barrel (`barrel` its radius). A real boot is a bellows of
+## proofed canvas, five or six folds that open and close as the gun recoils
+## and elevates, strapped round the casting at the back and cinched round the
+## barrel at the front; the cloth between hangs a little under its own weight.
+## So: `folds` pleats, each puffed out where it starts and drawn in where the
+## next laps over it, every one but the last dropped a little (the slack of
+## the cloth, never so far that the barrel shows through its top), the strap
+## round the casting's end and the one round the barrel. A crew's boot has
+## faded or been replaced on its own (a shade from the kit seed), so two
+## tanks side by side don't wear one canvas.
+static func gun_boot(k: VehicleModels, mount: Node3D, face: float, radius: float, barrel: float, length: float, folds := 5) -> void:
 	var tied := barrel + minf(0.02, barrel * 0.2)
 	if radius <= tied:
 		radius = tied * 1.3
-	var step := length / 3.0
-	for i in 3:
-		var r0 := lerpf(radius, tied, i / 3.0) * (1.0 if i == 0 else 1.06)
-		var r1 := lerpf(radius, tied, (i + 1) / 3.0)
-		# (the first fold's back end a centimetre into the casting's face)
-		k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, 0, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), "canvas", BOOT, 12)
-	k._cyl(mount, tied + 0.008, tied + 0.008, minf(0.035, length * 0.2), Vector3(0, 0, face - length + minf(0.035, length * 0.2) * 0.5), Vector3(PI / 2, 0, 0), "canvas", BOOT.darkened(0.25), 12, false)
+	var cloth := BOOT
+	var rng := VehicleCargo.kit(k, mount, Vector3(0, 0, face), 23)
+	if not k.wreck:
+		# A boot in service is proofed duck that the sun and the dust the gun
+		# pumps through it have faded paler than the paint it's strapped to (a
+		# near-black cover read as a plastic cone): weathered olive, faded
+		# further toward a pale khaki, or a newer, darker issue cover.
+		cloth = BOOT_DUCK
+		if rng != null:
+			cloth = BOOT_DUCK.lerp(Color(0.42, 0.40, 0.30), rng.randf_range(0.0, 0.8)) if rng.randf() < 0.7 else BOOT_DUCK.darkened(0.14)
+	# (a wreck's boot stays the three plain folds it has always been)
+	var n := 3 if k.wreck else maxi(1, folds)
+	# The boot is matte cotton duck, proofed with wax rather than rubberised,
+	# so it reads as cloth where a glossy coat read as moulded plastic. Its
+	# ties are webbing straps buckled round the casting and the barrel, a
+	# tighter weave with a sheen of its own. (A wreck's stays the duck that
+	# burns away.)
+	var cloth_kind := "canvas"
+	var tie_kind := "canvas" if k.wreck else "webbing"
+	var step := length / n
+	# Canvas never pleats evenly: one fold is let out wider and stands
+	# prouder, the next is drawn tight and shallow, and the cloth between the
+	# ties slumps, its belly a centimetre or two under the barrel (even rings of
+	# one depth read as flexible ducting). One of a few ways a boot has settled,
+	# from the kit seed (the builders' one on scenery).
+	var pattern := 0 if rng == null else rng.randi_range(0, BOOT_FOLDS.size() - 1)
+	var widths: Array = BOOT_FOLDS[pattern]
+	var crests: Array = BOOT_CRESTS[pattern]
+	var total := 0.0
+	for i in n:
+		total += float(widths[posmod(i, widths.size())])
+	var f0 := 0.0
+	for i in n:
+		var share: float = float(widths[posmod(i, widths.size())]) / total
+		var f1 := f0 + share
+		if k.wreck:
+			f0 = float(i) / n
+			f1 = (i + 1.0) / n
+			share = 1.0 / n
+		var fold := length * share
+		var r0 := lerpf(radius, tied, f0) * (1.0 if i == 0 else 1.06)
+		var r1 := lerpf(radius, tied, f1)
+		# The slack: a fold hangs by a third of what it stands off its tie, so
+		# its top still clears the barrel; the last, tied round it, not at all.
+		var drop := 0.0 if k.wreck else (r1 - tied) * 0.35
+		if k.wreck:
+			k._cyl(mount, r0, r1, step + (0.01 if i == 0 else 0.004), Vector3(0, 0, face - step * (i + 0.5) + (0.005 if i == 0 else 0.0)), Vector3(PI / 2, 0, 0), cloth_kind, cloth, 12)
+			f0 = f1
+			continue
+		# Each pleat is a ridge: the cloth rises from the crease the last one
+		# lapped into up to a crest a fifth proud, then falls to the next
+		# crease, so its back slope and its front slope take the light
+		# differently from any side (stepped cones read as one smooth cone
+		# from in front, with their steps facing the turret). The two slopes
+		# meet inside each other, so neither needs a cap.
+		var crest := lerpf(radius, tied, f0 + share * 0.38) * float(crests[posmod(i, crests.size())])
+		var back := fold * 0.38 + (0.01 if i == 0 else 0.002)
+		var zb := face - length * f0 + (0.01 if i == 0 else 0.002)
+		# The slump: each fold's section drawn down into an oval, its top where
+		# it was and its belly lower, most in the middle of the boot and not at
+		# all at the ties (a stretch of the section's height, from the top).
+		var sag := 0.018 * sin(PI * (f0 + share * 0.5))
+		var stretch := sag / (2.0 * crest)
+		# (and a fold rucks a few millimetres to one side or the other, so the
+		# rings don't stand dead concentric round the barrel)
+		var ruck := sag * (0.3 if posmod(i, 2) == 0 else -0.22)
+		var lower := Vector3(ruck, -drop - crest * stretch, 0)
+		var oval := Vector3(1, 1, 1.0 + stretch)
+		# (sixteen sides: the folds' outline is what the camera reads; the
+		# first fold's back end a centimetre into the casting's face)
+		# (the slope rising out of a crease is the shaded side of the fold, and
+		# alternate folds take the light a shade differently, as pleated cloth
+		# does where it's drawn tighter on one than the next)
+		k._add(mount, VehicleFrames.rod_mesh(lerpf(radius, tied, f0), crest, back, 16, 0), cloth_kind, cloth.darkened(0.28), lower + Vector3(0, 0, zb - back * 0.5), Vector3(PI / 2, 0, 0), oval)
+		var front := fold * 0.62 + 0.004
+		k._add(mount, VehicleFrames.rod_mesh(crest, r1, front, 16, 0), cloth_kind, cloth.lightened(0.06) if posmod(i, 2) == 0 else cloth.darkened(0.06), lower + Vector3(0, 0, face - length * (f0 + share * 0.38) - front * 0.5 + 0.002), Vector3(PI / 2, 0, 0), oval)
+		f0 = f1
+	var band := minf(0.035, length * 0.2)
+	k._cyl(mount, tied + 0.008, tied + 0.008, band, Vector3(0, 0, face - length + band * 0.5), Vector3(PI / 2, 0, 0), tie_kind, cloth.darkened(0.25), 12, false)
+	if k.wreck:
+		return
+	# the strap round the casting's end, over the first fold's back edge
+	k._cyl(mount, radius + 0.006, radius + 0.006, band, Vector3(0, 0, face - band * 0.5 - 0.004), Vector3(PI / 2, 0, 0), tie_kind, cloth.darkened(0.25), 16, false)
 
 
 ## Width is X. End caps stay within the authored envelope; front and back receive
@@ -167,14 +267,79 @@ static func boom_box(k: VehicleModels, parent: Node3D, size: Vector3, center: Ve
 
 ## A panel of cage armour with actual open gaps. Endpoints describe its bottom
 ## edge; direction of the bars and spacing are explicit styles, not inferred.
-static func slats(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, height: float, spacing: float, vertical := false, mat := "gunmetal_w", col = null) -> void:
+## `frame_mat` / `frame_col` finish the posts and rails: a cage bolted on in
+## the field is painted with the tank, frame and all, so a family passes its
+## paint there too (the default is the bare dark steel it has always been).
+static func slats(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, height: float, spacing: float, vertical := false, mat := "gunmetal_w", col = null, frame_mat := "gunmetal_w", frame_col = null) -> void:
+	# (a wreck's cage keeps the bare frame it has always had: wrecks are drawn
+	# on their own)
+	if k.wreck:
+		_wreck_slats(k, parent, a, b, height, spacing, vertical, mat, col)
+		return
+	# Bar armour is flat steel bar, about 75 by 12 mm, set on edge so its
+	# depth faces the threat, with gaps a little narrower than a warhead's nose
+	# (about 9 cm): from above or a quarter it reads as a dense dark grille,
+	# where round bars a hand's breadth apart on a heavy frame stood off the hull
+	# like a cattle pen. Its frame is flat bar too, as deep as the bars: 35 mm
+	# posts and bottom rail, and a channel capping the bars' top ends.
+	spacing = minf(spacing, 0.09)
 	var along := (b - a).normalized()
 	var normal := along.cross(Vector3.UP).normalized()
 	for end: Vector3 in [a, b]:
-		VehicleFrames.beam(k, parent, end, end + Vector3.UP * height, 0.045, 0.045, "gunmetal_w")
+		_flat_bar(k, parent, end, end + Vector3.UP * height, 0.035, 0.075, normal, frame_mat, frame_col, true)
+		VehicleBody.fastener(k, parent, end + Vector3.UP * (height - 0.05) + normal * 0.038, normal, 0.009)
+	_flat_bar(k, parent, a - along * 0.0175, b + along * 0.0175, 0.035, 0.075, normal, frame_mat, frame_col, true)
+	var length := a.distance_to(b) + 0.035
+	var level := Basis(along, Vector3.UP, along.cross(Vector3.UP)).get_euler()
+	var top := (a + b) * 0.5 + Vector3.UP * height
+	k._box(parent, Vector3(length, 0.006, 0.087), top + Vector3.UP * 0.003, frame_mat, frame_col, Basis(along, normal.cross(along), normal).get_euler())
+	for side: float in [-1.0, 1.0]:
+		k._box(parent, Vector3(length, 0.04, 0.006), top - Vector3.UP * 0.014 + normal * side * 0.0405, frame_mat, frame_col, level, false)
+	if not vertical:
+		var panels := ceili(a.distance_to(b) / 1.6)
+		for i in range(1, panels):
+			var foot := a.lerp(b, float(i) / panels)
+			_flat_bar(k, parent, foot, foot + Vector3.UP * height, 0.03, 0.075, normal, frame_mat, frame_col, true)
+	var count := maxi(2, ceili((a.distance_to(b) if vertical else height) / spacing))
+	# The bars a shade darker than the paint they came in: their flame-cut
+	# edges rust bare and they hold the road's grime, where the frame's flat
+	# faces stay as clean as the hull. Their lit top edges in the hull's own
+	# value read from above as a pale picket fence round the hull.
+	var bar_col: Color = col if col is Color else Mats._preset(VehicleMaterials.key(mat, k.surface_family)).get("col_a", Color(0.3, 0.3, 0.28))
+	bar_col = bar_col.darkened(0.15)
+	for i in range(1, count):
+		var t := float(i) / count
+		var from := a.lerp(b, t) if vertical else a + Vector3.UP * height * t
+		var to := from + Vector3.UP * height if vertical else b + Vector3.UP * height * t
+		_flat_bar(k, parent, from, to, 0.012, 0.075, normal, mat, bar_col, false)
+
+
+## A flat bar from `from` to `to`, `thick` across and `deep` along `normal`.
+static func _flat_bar(k: VehicleModels, parent: Node3D, from: Vector3, to: Vector3, thick: float, deep: float, normal: Vector3, mat: String, col, shadow: bool) -> void:
+	var y := (to - from).normalized()
+	var z := (normal - y * normal.dot(y)).normalized()
+	k._box(parent, Vector3(thick, from.distance_to(to), deep), (from + to) * 0.5, mat, col, Basis(y.cross(z), y, z).get_euler(), shadow)
+
+
+## A wreck's slat cage, as it has always been drawn (see slats).
+static func _wreck_slats(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, height: float, spacing: float, vertical: bool, mat: String, col) -> void:
+	var frame_mat := "gunmetal_w"
+	var frame_col = null
+	var along := (b - a).normalized()
+	var normal := along.cross(Vector3.UP).normalized()
+	for end: Vector3 in [a, b]:
+		VehicleFrames.beam(k, parent, end, end + Vector3.UP * height, 0.045, 0.045, frame_mat, frame_col)
 		VehicleBody.fastener(k, parent, end + Vector3.UP * height + normal * 0.026, normal, 0.010)
 	for h: float in [0.0, height]:
-		VehicleFrames.beam(k, parent, a + Vector3.UP * h, b + Vector3.UP * h, 0.045, 0.045, "gunmetal_w")
+		VehicleFrames.beam(k, parent, a + Vector3.UP * h, b + Vector3.UP * h, 0.045, 0.045, frame_mat, frame_col)
+	# Horizontal bars can't span a whole hull side on their own: a real cage
+	# is a row of bolted panels, each about a metre and a half wide, with an
+	# upright between them. (A cage of upright bars is its own stiffening.)
+	if not vertical and not k.wreck:
+		var panels := ceili(a.distance_to(b) / 1.6)
+		for i in range(1, panels):
+			var foot := a.lerp(b, float(i) / panels)
+			VehicleFrames.beam(k, parent, foot, foot + Vector3.UP * height, 0.035, 0.035, frame_mat, frame_col)
 	var count := maxi(2, ceili((a.distance_to(b) if vertical else height) / spacing))
 	for i in range(1, count):
 		var t := float(i) / count
@@ -195,12 +360,19 @@ static func mast_segment(k: VehicleModels, parent: Node3D, center: Vector3, heig
 		var p := center + half * side - axis * side * radius * 0.3
 		VehicleEquipment._rod(k, parent, p - axis * radius * 0.3, p + axis * radius * 0.3, radius * 1.18, "metal_dark", null, 10, false, 3)
 
+## A gun's feed cover: plain dark metal taken down to the gun's blackened
+## steel (VehicleWeapons.STEEL's tone).
+const COVER := Color(0.07, 0.072, 0.068)
+
 ## Receiver body with a feed-cover seam and charging handle. Barrel, feed box,
 ## grips and muzzle socket remain with the weapon builder.
 static func receiver(k: VehicleModels, parent: Node3D, size: Vector3, center: Vector3, mat := "gunmetal_w", col = null, rotation := Vector3.ZERO) -> void:
 	var mount := _mount(k, parent, center, rotation)
 	k._add(mount, BevelMesh.make(size, minf(size.x, size.y) * 0.08), mat, col, Vector3.ZERO)
-	k._box(mount, Vector3(size.x * 0.9, size.y * 0.025, size.z * 0.62), Vector3(0, size.y * 0.51, size.z * 0.08), "metal_dark", null, Vector3.ZERO, false)
+	# The feed cover is the receiver's own blackened steel: a shade darker
+	# than the plain dark metal, which from above read as a pale grey plate
+	# on every gun's back.
+	k._box(mount, Vector3(size.x * 0.9, size.y * 0.025, size.z * 0.62), Vector3(0, size.y * 0.51, size.z * 0.08), "metal_dark", COVER, Vector3.ZERO, false)
 	var p := Vector3(size.x * 0.50, size.y * 0.12, size.z * 0.17)
 	VehicleFrames.tube(k, mount, p, p + Vector3.RIGHT * size.x * 0.3, size.x * 0.055, "steel", null, 6, false)
 	for z: float in [-0.33, 0.33]:
@@ -243,6 +415,20 @@ static func turret_ring(k: VehicleModels, parent: Node3D, center: Vector3, top_r
 		var normal := Vector3(cos(a), 0, sin(a))
 		VehicleBody.fastener(k, parent, center + normal * radius + Vector3(0, height * 0.12, 0), normal, minf(0.013, height * 0.15))
 
+## A sight's window: coated optics, darker than a cab's glass and warm in
+## their coating's cast (the anti-reflection film on a gunner's or thermal
+## sight's objective reads amber to violet), so a sight head reads as a lens
+## from the battle camera, not a pale blue pane like a windscreen. (Within
+## the glass tint's range: a paler colour clamps to the cab glass's own pale
+## blue-grey, which is how both used to glow sky-blue.)
+## (At 0.17 the window went as black as the slot round it and the sight read
+## as a hole: a shade lighter keeps it a dark lens.)
+const OPTIC := Color(0.24, 0.21, 0.19)
+## A cupola's vision block: 10 cm of laminated armour glass seen end on, so
+## its green goes dark from outside, the sky's sheen lying on it. (At 0.11 the
+## blocks vanished into the cupola wall: a dark green-grey keeps them glass.)
+const BLOCK := Color(0.2, 0.27, 0.25)
+
 ## Armoured sight head (gunner's box, commander's panoramic head) with its
 ## window on the local -Z face. `windows` holds Rect2s: position is the window
 ## centre on that face (x right, y up), size its width and height; empty gives
@@ -269,7 +455,7 @@ static func sight(k: VehicleModels, parent: Node3D, center: Vector3, size: Vecto
 			k._add(mount, VehicleEquipment._plate(Vector3(bar, h, 0.028)), "gunmetal_w", null, c + Vector3(side * (w + bar) * 0.5, 0, -0.012), Vector3.ZERO, Vector3.ONE, false)
 		k._add(mount, VehicleEquipment._plate(Vector3(w + 0.004, h + 0.004, 0.012)), "rubber", null, c + Vector3(0, 0, -0.004), Vector3.ZERO, Vector3.ONE, false)
 		if not k.burnt:
-			k._add(mount, VehicleEquipment._plate(Vector3(w, h, 0.02)), "glass", null, c + Vector3(0, 0, -0.01), Vector3.ZERO, Vector3.ONE, false)
+			k._add(mount, VehicleEquipment._plate(Vector3(w, h, 0.02)), "glass" if k.wreck else "armor_glass", null if k.wreck else OPTIC, c + Vector3(0, 0, -0.01), Vector3.ZERO, Vector3.ONE, false)
 		# The armoured visor shades the window from above.
 		var depth := minf(0.07, size.z * 0.3)
 		k._add(mount, VehicleEquipment._plate(Vector3(w + bar * 3, 0.016, depth)), mat, col, c + Vector3(0, h * 0.5 + bar + 0.008, -depth * 0.5 + 0.004), Vector3(0.12, 0, 0))
@@ -315,7 +501,7 @@ static func cupola(k: VehicleModels, parent: Node3D, center: Vector3, top_radius
 		k._add(mount, VehicleEquipment._plate(Vector3(block.x + 0.05, 0.012, 0.036)), mat, col, Vector3(0, block.y * 0.5 + 0.018, -block.z * 0.5 - 0.012), Vector3(0.1, 0, 0))
 		k._box(mount, Vector3(block.x + 0.006, block.y + 0.006, 0.008), Vector3(0, 0, -block.z * 0.5 - 0.002), "rubber", null, Vector3.ZERO, false)
 		if not k.burnt:
-			k._add(mount, VehicleEquipment._plate(Vector3(block.x, block.y, 0.012)), "glass", null, Vector3(0, 0, -block.z * 0.5 - 0.005), Vector3.ZERO, Vector3.ONE, false)
+			k._add(mount, VehicleEquipment._plate(Vector3(block.x, block.y, 0.012)), "glass" if k.wreck else "armor_glass", null if k.wreck else BLOCK, Vector3(0, 0, -block.z * 0.5 - 0.005), Vector3.ZERO, Vector3.ONE, false)
 		k._fold(mount)
 
 ## Crew-served weapon pedestal (a pickup technical's pintle post). The static
@@ -395,6 +581,13 @@ static func gun_shield(k: VehicleModels, head: Node3D, center: Vector3, size: Ve
 	var m := _mount(k, head, center, Vector3(tilt, 0, 0))
 	k._add(m, BevelMesh.make(Vector3(size.x, size.y, thickness), minf(0.006, thickness * 0.3)), mat, col, Vector3.ZERO)
 	var face := -thickness * 0.5 - 0.003
+	# a doubler plate welded round its edge on the outside, stiffening it
+	# (standing no prouder than the slot's dark lining)
+	var rim := 0.03
+	for y: float in [-1.0, 1.0]:
+		k._box(m, Vector3(size.x - 0.01, rim, 0.005), Vector3(0, y * (size.y * 0.5 - rim * 0.5 - 0.005), -thickness * 0.5 - 0.0025), mat, col, Vector3.ZERO, false)
+	for x: float in [-1.0, 1.0]:
+		k._box(m, Vector3(rim, size.y - rim * 2.0 - 0.01, 0.005), Vector3(x * (size.x * 0.5 - rim * 0.5 - 0.005), 0, -thickness * 0.5 - 0.0025), mat, col, Vector3.ZERO, false)
 	k._box(m, Vector3(slot.x, slot.y, 0.006), Vector3(0, -size.y * 0.06, face), "plain_dark", null, Vector3.ZERO, false)
 	k._box(m, Vector3(size.x * 0.3, 0.025, 0.006), Vector3(size.x * 0.22, size.y * 0.32, face), "plain_dark", null, Vector3.ZERO, false)
 	VehicleFrames.tube(k, m, Vector3(-size.x * 0.5 + 0.01, size.y * 0.5, 0), Vector3(size.x * 0.5 - 0.01, size.y * 0.5, 0), thickness * 0.55, mat, col, 6, false)
@@ -485,11 +678,16 @@ static func applique(k: VehicleModels, parent: Node3D, center: Vector3, size: Ve
 	if bolts.x > 0 and bolts.y > 0:
 		var head := clampf(minf(size.x, size.y) * 0.03, 0.01, 0.024)
 		var inset := Vector2(minf(0.08, size.x * 0.14), minf(0.08, size.y * 0.16)) + Vector2(bevel, bevel)
+		# A module is painted after it's bolted on, so its heads wear its own
+		# paint (bare steel heads read from above as a scatter of bright
+		# specks over the armour); they show by their shape and shading.
+		var bolt := VehicleBody._head(head)
+		var face_out := VehicleFrames.aim(Vector3.BACK).get_euler()
 		for i in bolts.x:
 			for j in bolts.y:
 				var u := 0.0 if bolts.x == 1 else lerpf(-size.x * 0.5 + inset.x, size.x * 0.5 - inset.x, float(i) / (bolts.x - 1))
 				var v := 0.0 if bolts.y == 1 else lerpf(-size.y * 0.5 + inset.y, size.y * 0.5 - inset.y, float(j) / (bolts.y - 1))
-				VehicleBody.fastener(k, mount, Vector3(u, v, face + 0.002), Vector3.BACK, head)
+				k._add(mount, bolt, mat, col, Vector3(u, v, face + 0.002), face_out, Vector3.ONE, false)
 	for i in lugs:
 		# a welded plate lug, its eye across the module's top edge
 		var u := lerpf(-size.x * 0.3, size.x * 0.3, (i + 0.5) / lugs) if lugs > 1 else 0.0
@@ -549,7 +747,11 @@ static func crane(k: VehicleModels, parent: Node3D, base: Vector3, heel: Vector3
 		var foot: Vector3 = ram[0]
 		var end: Vector3 = ram[1]
 		var radius: float = ram[2]
-		VehicleFrames.ram(k, parent, foot, end, radius, "gunmetal_w", null, 0.4, across)
+		# The luffing ram's cylinder comes painted with the boom; only its
+		# rod is bare, hard-chromed where it slides through the gland. A
+		# cylinder of bare gunmetal read as one long chrome tube. (A wreck's
+		# stays as it was.)
+		VehicleFrames.ram(k, parent, foot, end, radius, "gunmetal_w" if k.wreck else mat, null if k.wreck else col, 0.4, across)
 	if not hook.is_finite():
 		return
 	var s := sheave if sheave.is_finite() else tip

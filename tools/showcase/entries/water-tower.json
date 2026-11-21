@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/water-tower.md",
+  "summary": "The town's water tower rebuilt: braced legs, catwalk, banded tank, caged ladders.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd (FL_ONLY_VIEW); tools/showcase/building-surfaces.tscn (water_tower)",
+  "rationale": "Appearance change: the tower in the map from the same camera, and up close in the studio.",
+  "source_ref": "cdc259b2318a6abdfd672d091193d6b603c7b736",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/water-tower/comparison.jpg",
+      "sha256": "f30e8d5d7f774fde550e46f789a13419451a7147749ec9cc9ca977fefb4dfa84"
+    },
+    {
+      "file": "changelog/unreleased/water-tower/tower.jpg",
+      "sha256": "174d17089057d49bc0edb05cac613ef7994f10dab233579e3a1aba8f79c3bbb1"
+    },
+    {
+      "file": "changelog/unreleased/water-tower/capture.json",
+      "sha256": "3339b215cdec43d13f20bd51b334fae2d62807d0efa9da7b2220237acd67307c"
+    }
+  ],
+  "output": null
+}
