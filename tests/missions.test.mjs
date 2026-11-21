@@ -23,6 +23,7 @@ const JOBS = Number(process.env.FL_TEST_JOBS) || Math.max(1, Math.floor(os.avail
 // side: who plays it (Missions.LIST); cap: game seconds to give it, well past
 // how long it takes (in brackets, as measured)
 const MISSIONS = [
+  { key: "bootcamp", side: 0, cap: 400 }, // (145 s: the autopilot does each step as soon as it's set)
   { key: "bridgehead", side: 0, cap: 600 }, // (220 s)
   { key: "beachhead", side: 0, cap: 600 }, // (180 s)
   { key: "skyhook", side: 0, cap: 600 }, // (230 s)

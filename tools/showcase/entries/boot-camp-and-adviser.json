@@ -1,0 +1,64 @@
+{
+  "entry": "changelog/unreleased/boot-camp-and-adviser.md",
+  "summary": "Boot Camp teaches command a step at a time; Play vs AI's adviser suggests the nearest towns and nudges when supply or squads sit idle.",
+  "medium": "motion",
+  "stage": "game capture, off-screen 1600x900, --perf=0: --mission=bootcamp --play --shot-at=10; --mission=bootcamp --play --autoplay --bind=support:V --shot-at=30 --shots=5 --shot-every=8 (frame 3); --host --team=0 --seed=4 --timescale=3 --shot-at=170 and --shot-at=93 --shots=4 --shot-every=4 (frame 1); --menu-shot --set=boot_camp_offer:true --shot-at=18 (cropped to the top right)",
+  "rationale": "Matched gameplay captures show tutorial banners following the active objective instead of queuing stale instructions. Existing stills retain adviser and rebinding coverage. A separate matched inert UI clip verifies Adviser ownership reversal and completion feedback at the suggestion cutoff, with the panel and minimap together; it is not gameplay footage.",
+  "source_ref": "a6286684 + working tree",
+  "sources": [
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/adviser-suggestions.jpg",
+      "sha256": "a01b424d830b506179f3f6d3588a2581064ce37759e39bdff0e8632c1c4fa257"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/adviser-word.jpg",
+      "sha256": "997119fafc03bb1ec55c4543f2d33d1b35234a62ca1a0fbf978b82d9c7d18157"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/boot-camp-first-step.jpg",
+      "sha256": "140672ea1fef947555ae86f3d57bc43b81de4571e1edd32f915ce3837d3103cc"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/boot-camp-offer.jpg",
+      "sha256": "8cd88424f8e554e227f5e5b8d29c87db7bea08a6039d174e757d039c25c6a924"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/boot-camp-rebound-key.jpg",
+      "sha256": "9c898fe557013810058c0e181c2ade4ef9c82b76759e99481eb9786e2be383a6"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/tutorial-transitions.webm",
+      "sha256": "1f32d2adf44a189a79dfa4e82add474fc70f222272a08d8a484dc8b18340ba41"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/tutorial-transitions.jpg",
+      "sha256": "ef962629f14f246a4f95088a7a8e4981b128a154131c5c556f7d5a3045251505"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/tutorial-before-after.jpg",
+      "sha256": "cd977ccc0c9ade5a0311abd38d71207db475bd46e81da8c0ea309aef21e44ded"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/adviser-state.webm",
+      "sha256": "7a977e4d046bd27fc6bab3895e34bb49adc430f8826c0729dada80b13dca94cf"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/adviser-state.jpg",
+      "sha256": "04311975a0301af2023212e8c8d6e70350485f1d743ed27d7a92b699a60dcf79"
+    },
+    {
+      "file": "changelog/unreleased/boot-camp-and-adviser/adviser-state-capture.json",
+      "sha256": "fe6b3dfd2b2372e903c3f34ca7c1759e8ba014745c75b80f09e277ffc6c8f63b"
+    }
+  ],
+  "output": null,
+  "capture": {
+    "before_ref": "16c0e04620a64e67a0cc463e38a6ccf299e96c4d",
+    "after_ref": "cbfded4c78ff343631d2386f483713724de2b65a",
+    "engine": "Godot 4.7.2",
+    "renderer": "gl_compatibility (Mesa llvmpipe)",
+    "command": "godot --path . --rendering-method gl_compatibility --resolution 1280x720 --fixed-fps 15 --write-movie /tmp/capture.avi -- --mission=bootcamp --play --autoplay --seed=3 --quit-after=18 --set=perf:0 --preset=low --no-stun",
+    "edit": "Each take trimmed from 5.8 to 13.8 seconds, scaled from movie output 1600x900 to 1280x720, labelled before/after and concatenated. Silent, 15 fps; no simulation speed change.",
+    "inspection": "Encoded beginning/action/result frames inspected; complete decode checked. Small 960x540 banner fixture reviewed with reduced motion at age zero."
+  }
+}

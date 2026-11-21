@@ -485,8 +485,8 @@ func _draw_content(phase := -1) -> void:
 				_ink.draw_texture_rect_region(w.fog.dark_tex, Rect2(Vector2.ZERO, size), w.fog.map_region(), Color(1, 1, 1, 0.55))
 			_ink.draw_set_transform_matrix(Transform2D.IDENTITY)
 		_draw_grid()
-		_draw_objectives(w)
 		_draw_structures(w, sc)
+		_draw_objectives(w)  # (over the towns' flags: a suggested town is one)
 		if hud.map_layer("intel"):
 			_draw_intel(w, sc)
 	if phase == -1 or phase == 1:
@@ -527,9 +527,8 @@ func _label(c: Vector2, s: String, fs: int, col: Color) -> void:
 
 ## A mission's objectives, by their letters.
 func _draw_objectives(w: World) -> void:
-	if w.mission_info.is_empty():
-		return
-	for o in w.mission_info.get("objs", []):
+	# (or, in Play vs AI, the adviser's suggestions)
+	for o in HudObjectives.shown(w).get("objs", []):
 		if int(o[2]) != MissionDirector.ACTIVE or o[4] == null:
 			continue
 		var op := _pt(o[4])
