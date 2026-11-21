@@ -19,13 +19,25 @@ const CORNER_R := 1.6  # the kerb's radius round a crossroads corner (the sidewa
 
 ## Where a post stands on a crossroads corner (from the crossing's middle,
 ## toward the sx, sz corner): on the rounded paving, 0.55 m back from its kerb.
-static func corner_post(sx: float, sz: float) -> Vector3:
-	return Vector3(sx, 0, sz) * (CURB + CORNER_R - (CORNER_R - 0.55) * sqrt(0.5))
+## (`wide_x`, `wide_z`: how much wider than a side street the streets running
+## along x and along z are there, PARK_LANE for a main street.)
+static func corner_post(sx: float, sz: float, wide_x := 0.0, wide_z := 0.0) -> Vector3:
+	var back := CURB + CORNER_R - (CORNER_R - 0.55) * sqrt(0.5)
+	return Vector3(sx * (back + wide_z), 0, sz * (back + wide_x))
 
 const FRONT := 5.2  # lot frontage line
 const S := 40.0  # between parallel streets
 const REACH := 56.0  # the main streets run this far each way from the middle
 const LOT_D := 14.5  # lot depth
+## The main streets are wider than the side streets by a parking lane down
+## each side, outside the two traffic lanes, marked off from them by a solid
+## line: the kerbs, pavements and lots along them stand that much further
+## back. Cars park there and the traffic gets by; the side streets have no
+## room for it.
+const PARK_LANE := 2.2
+const BAY_L := 5.8  # a parking bay marked out in a parking lane: its length along it (room to pull in and out)
+const BAY_W := PARK_LANE  # and its width: the lane's
+const PARK_OUT := CURB + PARK_LANE - BAY_W * 0.5  # a car parked in one: its middle from the middle of the road
 
 var mg  # MapGen
 var world
@@ -54,6 +66,7 @@ var church_at := Vector3.INF  # where the parish church stands (none: INF)
 var _church_decor: Array = []  # its churchyard's dressing (decor, after everything else)
 var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; see _shop_wares)
 var _street_decor: Array = []  # the streets' furniture (decor, after the shops'; see _street_furniture)
+var _lane_decor: Array = []  # the main streets' lane lines (decor, after everything else; see _lane_lines)
 var _vacant: Array = []  # [front, n, d, W] of each car park and bombed-out lot, for the hoardings
 var farmsteads: Array = []  # {"base", "t", "n"} of each farm (its gate, along the road, away from it), for farmyards()
 
@@ -106,6 +119,19 @@ static func _dkey(d: Vector3) -> Vector2i:
 
 func _has_dir(node: Vector3, d: Vector3) -> bool:
 	return (node_dirs.get(_key(node), {}) as Dictionary).has(_dkey(d))
+
+
+## How much wider than a side street piece `pc` is (its parking lanes).
+static func _wide(pc: Array) -> float:
+	return PARK_LANE if pc[2] else 0.0
+
+
+## How much wider than a side street the street running off `node` along `d`
+## is: the main streets are the two through the middle of the town.
+func _arm(node: Vector3, d: Vector3) -> float:
+	var along_x := absf(d.x) > 0.5 and absf(node.z - center.z) < 0.5
+	var along_z := absf(d.z) > 0.5 and absf(node.x - center.x) < 0.5
+	return PARK_LANE if along_x or along_z else 0.0
 
 
 func _straight(a: Vector3, b: Vector3) -> PackedVector3Array:
@@ -237,28 +263,35 @@ func build_roads(hq0: Vector3, hq1: Vector3) -> Array:
 
 func streetscape() -> void:
 	# sidewalks and curbs along both sides of every piece of street
+	# (the main streets' kerbs and pavements a parking lane further out: see PARK_LANE)
 	for pc in pieces:
 		var a: Vector3 = pc[0]
 		var b: Vector3 = pc[1]
 		var d := (b - a).normalized()
 		var L := a.distance_to(b)
 		var yaw := yaw_along(d)
+		var ex := _wide(pc)
 		for s: float in [-1.0, 1.0]:
 			var n := _perp(d) * s
-			var t0 := WALK if _has_dir(a, n) else 0.0
-			var t1 := L - WALK if _has_dir(b, n) else L
+			var t0 := WALK + _arm(a, n) if _has_dir(a, n) else 0.0
+			var t1 := L - WALK - _arm(b, n) if _has_dir(b, n) else L
 			var mid := a + d * (t0 + t1) * 0.5
 			var ws := Vector3(t1 - t0, 0.12, WALK - CURB)
-			var wp := mid + n * (CURB + WALK) * 0.5
+			var wp := mid + n * ((CURB + WALK) * 0.5 + ex)
 			_d("walk", wp, yaw, ws)
 			_pave(wp, yaw, ws)
-			_d("curb", mid + n * (CURB + 0.09), yaw, Vector3(t1 - t0, 0.17, 0.18))
+			_d("curb", mid + n * (CURB + ex + 0.09), yaw, Vector3(t1 - t0, 0.17, 0.18))
+			if ex > 0.0:
+				_pave(a + d * L * 0.5 + n * (CURB + ex * 0.5), yaw, Vector3(L, 0.0, ex))
 	# corners and junctions
 	for key in node_dirs:
 		var dirs: Dictionary = node_dirs[key]
 		var p := Vector3(key.x, 0, key.y)
 		if dirs.size() >= 2 and not (dirs.size() == 2 and (dirs.has(Vector2i(1, 0)) and dirs.has(Vector2i(-1, 0)) or dirs.has(Vector2i(0, 1)) and dirs.has(Vector2i(0, -1)))):
-			_d("junction", p, 0.0, Vector3(ROAD_HW * 2.0 + 0.1, 0.02, ROAD_HW * 2.0 + 0.1))
+			# (as wide across x as the street running along z, and the other way)
+			var jx := maxf(_arm(p, Vector3.BACK) if dirs.has(Vector2i(0, 1)) else 0.0, _arm(p, Vector3.FORWARD) if dirs.has(Vector2i(0, -1)) else 0.0)
+			var jz := maxf(_arm(p, Vector3.RIGHT) if dirs.has(Vector2i(1, 0)) else 0.0, _arm(p, Vector3.LEFT) if dirs.has(Vector2i(-1, 0)) else 0.0)
+			_d("junction", p, 0.0, Vector3((ROAD_HW + jx) * 2.0 + 0.1, 0.02, (ROAD_HW + jz) * 2.0 + 0.1))
 		for sx: int in [-1, 1]:
 			for sz: int in [-1, 1]:
 				var hx: bool = dirs.has(Vector2i(sx, 0))
@@ -267,7 +300,9 @@ func streetscape() -> void:
 				var w := WALK - CURB
 				if hx and hz:
 					# the kerb turns the corner on a radius, as lorries need it to
-					var cp := p + Vector3(sx * m, 0, sz * m)
+					# (back from each street's kerb: the one along x sets how far
+					# out along z it is, and the other way round)
+					var cp := p + Vector3(sx * (m + _arm(p, Vector3(0, 0, sz))), 0, sz * (m + _arm(p, Vector3(sx, 0, 0))))
 					_d("walk_corner", cp, 0.0, Vector3(sx * w, CORNER_R, sz * w))
 					_pave(cp, 0.0, Vector3(w, 0.12, w))
 				elif not hx and not hz and dirs.has(Vector2i(-sx, 0)) and dirs.has(Vector2i(0, -sz)):
@@ -279,12 +314,60 @@ func streetscape() -> void:
 					_pave(r1, 0.0, Vector3(WALK, 0.12, w))
 					_d("curb", p + Vector3(sx * CURB * 0.5, 0, sz * (CURB + 0.09)), 0.0, Vector3(CURB, 0.17, 0.18))
 					_d("curb", p + Vector3(sx * (CURB + 0.09), 0, sz * CURB * 0.5), PI * 0.5, Vector3(CURB, 0.17, 0.18))
-	# zebra crossings round the central crossroads
+	# zebra crossings round the central crossroads (across the parking lanes too)
+	var zebras: Array[Vector3] = []
 	for d4: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK]:
-		_d("zebra", center + d4 * 7.0, yaw_along(d4), ROAD_HW * 2.0 - 0.4)
+		zebras.append(center + d4 * (7.0 + PARK_LANE))
+		_d("zebra", zebras.back(), yaw_along(d4), (ROAD_HW + PARK_LANE) * 2.0 - 0.4)
+	_lane_lines(zebras)
 	_street_lights()
 	_town_poles()
 	_street_bits()
+
+
+## The main streets' lanes: down both sides of both of them, the solid line
+## that marks the parking lane off from the traffic, from one side street's
+## corner to the next and stopped short of the zebras; and, for the road's own
+## surface (Atmosphere.make_road_mesh), how wide each main street is. Put after
+## the rest of the decor, so every older piece keeps its look.
+func _lane_lines(zebras: Array[Vector3]) -> void:
+	var main_decor := decor
+	decor = _lane_decor
+	for ax: Vector3 in [Vector3.RIGHT, Vector3.BACK]:
+		_d("street_wide", center, yaw_along(ax), Vector3(REACH * 2.0, 0.0, (ROAD_HW + PARK_LANE) * 2.0))
+	for pc in pieces:
+		if not pc[2]:
+			continue
+		var a: Vector3 = pc[0]
+		var b: Vector3 = pc[1]
+		var d := (b - a).normalized()
+		var L := a.distance_to(b)
+		for s: float in [-1.0, 1.0]:
+			var n := _perp(d) * s
+			# where it doesn't run: round a side street's corner, the last metre
+			# before the street leaves town, either side of a zebra
+			var gaps: Array[Vector2] = []
+			for e: Array in [[a, 0.0], [b, L]]:
+				var node: Vector3 = e[0]
+				var r := 0.0
+				if _has_dir(node, n):
+					r = CURB + _arm(node, n) + CORNER_R + 0.6
+				elif (node_dirs.get(_key(node), {}) as Dictionary).size() <= 1:
+					r = 1.0
+				gaps.append(Vector2(float(e[1]) - r, float(e[1]) + r))
+			for z in zebras:
+				if absf((z - a).dot(n)) < 1.0:
+					gaps.append(Vector2((z - a).dot(d) - 2.4, (z - a).dot(d) + 2.4))
+			gaps.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.x < q.x)
+			gaps.append(Vector2(L, L))
+			var t := 0.0
+			for g: Vector2 in gaps:
+				var end := clampf(g.x, 0.0, L)
+				if end - t > 1.0:
+					_d("lane_edge", a + d * (t + end) * 0.5 + n * (CURB + 0.06), yaw_along(d), end - t)
+				t = maxf(t, g.y)
+	_lane_decor = decor
+	decor = main_decor
 
 
 func _street_lights() -> void:
@@ -298,10 +381,10 @@ func _street_lights() -> void:
 		while t < L - 3.0:
 			var n := _perp(d) * flip
 			flip = -flip
-			if (t < 7.0 and _has_dir(a, n)) or (L - t < 7.0 and _has_dir(b, n)):
+			if (t < 7.0 + _arm(a, n) and _has_dir(a, n)) or (L - t < 7.0 + _arm(b, n) and _has_dir(b, n)):
 				t += 17.0
 				continue
-			var p := a + d * t + n * 4.3
+			var p := a + d * t + n * (4.3 + _wide(pc))
 			_d("lamp", p, yaw_along(-n))
 			_reserve(p, Vector2(0.3, 0.3), 0.0)
 			t += 17.0
@@ -321,7 +404,7 @@ func _town_poles() -> void:
 		var prev = null
 		var t := 3.5
 		while t < L - 2.0:
-			var p := a + d * t + n * 4.55
+			var p := a + d * t + n * (4.55 + _wide(pc))
 			var clash := false
 			for e in decor:
 				if e[0] == "lamp" and (e[1] as Vector3).distance_to(p) < 2.5:
@@ -329,7 +412,7 @@ func _town_poles() -> void:
 					break
 			if clash:
 				p += d * 3.0
-			if _has_dir(a, n) and t < 6.0 or _has_dir(b, n) and L - t < 6.0:
+			if _has_dir(a, n) and t < 6.0 + _arm(a, n) or _has_dir(b, n) and L - t < 6.0 + _arm(b, n):
 				t += 26.0
 				continue
 			var pole := [p, yaw_along(d), n]
@@ -351,7 +434,7 @@ func _street_bits() -> void:
 		# a fire hydrant on some sidewalks
 		if rng.randf() < 0.6:
 			var n := _perp(d) * (1.0 if rng.randf() < 0.5 else -1.0)
-			_d("hydrant", a + d * (L * 0.5 + rng.randf_range(-4, 4)) + n * 4.3, yaw_along(d))
+			_d("hydrant", a + d * (L * 0.5 + rng.randf_range(-4, 4)) + n * (4.3 + _wide(pc)), yaw_along(d))
 		# side streets stop at the main street
 		if not pc[2]:
 			for e in [[b, d], [a, -d]]:
@@ -359,12 +442,12 @@ func _street_bits() -> void:
 				var dir: Vector3 = e[1]
 				if (node_dirs.get(_key(node), {}) as Dictionary).size() >= 3:
 					var right := dir.cross(Vector3.UP)
-					_d("sign_stop", node - dir * 6.0 + right * 4.2, Defs.yaw_of(-dir))
+					_d("sign_stop", node - dir * (6.0 + _arm(node, right)) + right * 4.2, Defs.yaw_of(-dir))
 	# the town's name on the way in
 	for d4: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK]:
 		var end := center + d4 * (REACH + 3.0)
 		var right2 := (-d4).cross(Vector3.UP)
-		_d("sign_town", end + right2 * 5.0, Defs.yaw_of(d4))
+		_d("sign_town", end + right2 * (5.0 + PARK_LANE), Defs.yaw_of(d4))
 	# a bus stop on one of the main street's outer stretches
 	var outer := []
 	for pc in pieces:
@@ -374,7 +457,7 @@ func _street_bits() -> void:
 		var pc2: Array = outer[rng.randi() % outer.size()]
 		var d2: Vector3 = ((pc2[1] as Vector3) - (pc2[0] as Vector3)).normalized()
 		var n2 := _perp(d2) * (1.0 if rng.randf() < 0.5 else -1.0)
-		var bp: Vector3 = (pc2[0] as Vector3).lerp(pc2[1], 0.5) + n2 * 5.6
+		var bp: Vector3 = (pc2[0] as Vector3).lerp(pc2[1], 0.5) + n2 * (5.6 + PARK_LANE)
 		_d("bus_stop", bp, yaw_along(d2) + (PI if n2.dot(_perp(d2)) < 0 else 0.0))
 		_reserve(bp, Vector2(1.9, 1.2), yaw_along(d2))
 		_d("bin", bp + d2 * 2.4 - n2 * 0.9, 0.0)
@@ -385,7 +468,7 @@ func _street_bits() -> void:
 func lots() -> void:
 	# the square: a corner of the central crossroads
 	var q := Vector3(1.0 if rng.randf() < 0.5 else -1.0, 0, 1.0 if rng.randf() < 0.5 else -1.0)
-	var pc_ := center + Vector3(q.x * (WALK + 10.0), 0, q.z * (WALK + 10.0))
+	var pc_ := center + Vector3(q.x * (WALK + PARK_LANE + 10.0), 0, q.z * (WALK + PARK_LANE + 10.0))
 	_reserve(pc_, Vector2(10.3, 10.3), 0.0)
 	_square(pc_, q)
 	# then every street's lots, main streets first so the corner houses face them
@@ -405,15 +488,15 @@ func lots() -> void:
 		var L := a.distance_to(b)
 		for s: float in [-1.0, 1.0]:
 			var n := _perp(d) * s
-			var t0 := FRONT + 0.6 if _has_dir(a, n) else 0.5
-			var t1 := L - FRONT - 0.6 if _has_dir(b, n) else L - 0.5
+			var t0 := FRONT + 0.6 + _arm(a, n) if _has_dir(a, n) else 0.5
+			var t1 := L - FRONT - 0.6 - _arm(b, n) if _has_dir(b, n) else L - 0.5
 			var t := t0
 			while t1 - t >= 9.0:
 				var W := minf(rng.randf_range(11.0, 15.0), t1 - t)
 				if t1 - t - W < 9.0:
 					W = t1 - t
 				W = minf(W, 17.0)
-				var front := a + d * (t + W * 0.5) + n * FRONT
+				var front := a + d * (t + W * 0.5) + n * (FRONT + _wide(pc))
 				var near := front.distance_to(center) < 36.0
 				_depth = LOT_D
 				for dep_try in [LOT_D, 11.0, 9.4]:
@@ -955,7 +1038,7 @@ func _street_furniture() -> void:
 	if (node_dirs.get(_key(center), {}) as Dictionary).size() >= 4:
 		for sx: float in [-1.0, 1.0]:
 			for sz: float in [-1.0, 1.0]:
-				var tp := center + corner_post(sx, sz)
+				var tp := center + corner_post(sx, sz, PARK_LANE, PARK_LANE)
 				var yaw := Defs.yaw_of(Vector3(sx, 0, 0))
 				var side := signf((Basis(Vector3.UP, yaw) * Vector3.RIGHT).dot(Vector3(0, 0, sz)))
 				put.call("traffic_light", tp, yaw, side, 0.4)
@@ -974,7 +1057,7 @@ func _street_furniture() -> void:
 			var dd := (b - a).normalized()
 			var n := _perp(dd) * (1.0 if sr.randf() < 0.5 else -1.0)
 			var L := a.distance_to(b)
-			var pp := a + dd * sr.randf_range(WALK + 1.5, L - WALK - 1.5) + n * (4.15 if item[0] == "phone_box" else 4.3)
+			var pp := a + dd * sr.randf_range(WALK + PARK_LANE + 1.5, L - WALK - PARK_LANE - 1.5) + n * ((4.15 if item[0] == "phone_box" else 4.3) + PARK_LANE)
 			if put.call(item[0], pp, Defs.yaw_of(-n), sr.randi() % 3, item[1]):
 				break
 	# an advertising column on the square
@@ -1004,7 +1087,8 @@ func _street_furniture() -> void:
 		var first := sr.randi() % maxi(1, corners.size())
 		for i in corners.size():
 			var c: Vector3 = corners[(first + i) % corners.size()]
-			if put.call("street_name", p + c * (CURB + 0.45), Defs.yaw_of(Vector3(0, 0, -c.z)), null, 0.3):
+			var at := p + Vector3(c.x * (CURB + 0.45 + _arm(p, Vector3(0, 0, c.z))), 0, c.z * (CURB + 0.45 + _arm(p, Vector3(c.x, 0, 0))))
+			if put.call("street_name", at, Defs.yaw_of(Vector3(0, 0, -c.z)), null, 0.3):
 				break
 	# what people running from the fighting dropped on the pavements
 	for i in sr.randi_range(4, 7):
@@ -1014,10 +1098,10 @@ func _street_furniture() -> void:
 			var b: Vector3 = pc[1]
 			var dd := (b - a).normalized()
 			var L := a.distance_to(b)
-			if L < WALK * 2.0 + 3.0:
+			if L < (WALK + PARK_LANE) * 2.0 + 3.0:
 				break
 			var n := _perp(dd) * (1.0 if sr.randf() < 0.5 else -1.0)
-			var bp := a + dd * sr.randf_range(WALK + 1.0, L - WALK - 1.0) + n * sr.randf_range(3.5, 4.2)
+			var bp := a + dd * sr.randf_range(WALK + PARK_LANE + 1.0, L - WALK - PARK_LANE - 1.0) + n * (sr.randf_range(3.5, 4.2) + _wide(pc))
 			if put.call("belongings", bp, sr.randf() * TAU, null, 1.2):
 				break
 	_street_decor = decor
@@ -1429,7 +1513,7 @@ static func _scenery_points(e: Array) -> Array:
 		"tractor":
 			var ax := Basis(Vector3.UP, float(e[2])).z * 1.3
 			return [[p, 1.1], [p + ax, 1.1], [p - ax, 1.1]]
-		"yard", "walk", "curb", "walk_crossing", "curb_crossing", "junction", "zebra", "drive", "path", "pave", "lot_pave", "wire", "drop", "garden", "soft":
+		"yard", "walk", "curb", "walk_crossing", "curb_crossing", "junction", "zebra", "bays", "lane_edge", "street_wide", "drive", "path", "pave", "lot_pave", "wire", "drop", "garden", "soft":
 			return []
 	if Decor.BREAKABLE.has(kind):
 		var sz: Vector3 = Decor.BREAKABLE[kind][0]
@@ -1523,6 +1607,138 @@ func roadside(cars: int, wrecks: int) -> void:
 				wrecks -= 1
 
 
+## Parking bays marked out in the main streets' parking lanes by the shops,
+## where people left their cars to shop the morning the fighting came: short
+## runs of bays, a car in about half of them, facing the way the traffic ran
+## on its side (the odd one the other way), now and then one burnt out where
+## it stood. Anywhere else a car stands in its driveway or a car park (Lots),
+## not in the street, and the side streets have no parking lane. No bay is
+## painted in a junction's mouth, on a zebra, across a driveway's dropped kerb
+## or by a hydrant. Both traffic lanes stay open past them: a lorry or a tank
+## still gets down the street (a car is rough going to a driver, who can shove
+## through it but would rather not; to a rifleman it's cover). Battles only (a
+## mission dresses its own streets), from a stream of their own and after the
+## rest of the scenery, so the map is otherwise as it was.
+func kerbside() -> void:
+	var kr := RandomNumberGenerator.new()
+	kr.seed = int(absf(center.x) * 11.0) * 7919 + int(absf(center.z) * 11.0) * 31 + 113
+	# where nobody parks: [point, how far along the kerb either way, and
+	# whether across the road too]
+	var keep_off: Array = []
+	for e: Array in decor:
+		match String(e[0]):
+			"curb_crossing", "walk_crossing":
+				keep_off.append([e[1], ((e[3] as Array)[0] as Vector3).x * 0.5 + 0.8, false])
+			"zebra":
+				keep_off.append([e[1], 6.0, true])
+			"hydrant":
+				keep_off.append([e[1], 2.5, false])
+			"bus_stop":
+				keep_off.append([e[1], 7.0, false])
+	# every kerb of the main streets near the middle, where the shops are,
+	# tried in turn (shuffled from this stream: Array.shuffle draws on the
+	# global generator) until the town has its two to four runs
+	var kerbs: Array = []
+	for pc: Array in pieces:
+		var a: Vector3 = pc[0]
+		var b: Vector3 = pc[1]
+		if pc[2] and a.lerp(b, 0.5).distance_to(center) <= 44.0:
+			kerbs.append([pc, 0])
+			kerbs.append([pc, 1])
+	for i in range(kerbs.size() - 1, 0, -1):
+		var j := kr.randi_range(0, i)
+		var swap: Array = kerbs[i]
+		kerbs[i] = kerbs[j]
+		kerbs[j] = swap
+	var want := kr.randi_range(2, 4)
+	var runs := 0
+	for kerb: Array in kerbs:
+		if runs >= want:
+			break
+		var pc: Array = kerb[0]
+		var si: int = kerb[1]
+		var a: Vector3 = pc[0]
+		var b: Vector3 = pc[1]
+		var d := (b - a).normalized()
+		var L := a.distance_to(b)
+		var s := -1.0 if si == 0 else 1.0
+		var n := _perp(d) * s  # (s = 1: the right-hand side going along d)
+		var t0 := _mouth(a, d, n) + kr.randf_range(0.0, 1.5)
+		var t1 := L - _mouth(b, -d, n)
+		# the longest run (of three or four bays, two at a pinch) that fits
+		# between the no-parking spots, as near the junction as it can be
+		var count := kr.randi_range(3, 4)
+		var at := -1.0
+		while at < 0.0 and count >= 2:
+			var t := t0
+			while t + count * BAY_L <= t1:
+				if _kerb_free(a, d, n, t, t + count * BAY_L, keep_off):
+					at = t
+					break
+				t += 1.0
+			if at < 0.0:
+				count -= 1
+		if at < 0.0:
+			continue
+		runs += 1
+		# which of its bays are taken: about half, never none or all of them
+		var cars: Array[bool] = []
+		for i in count:
+			cars.append(kr.randf() < 0.5)
+		if not true in cars:
+			cars[kr.randi() % count] = true
+		elif not false in cars:
+			cars[kr.randi() % count] = false
+		var yaw_d := yaw_along(d)
+		# (which way across the bay, in its own frame, the traffic lane lies:
+		# its marks run from the lane's line toward the kerb)
+		var out := signf(Basis(Vector3.UP, yaw_d).z.dot(-n))
+		for i in count:
+			var bp := a + d * (at + (i + 0.5) * BAY_L) + n * PARK_OUT
+			_d("bays", bp, yaw_d, Vector3(BAY_L, out, 1.0 if i == count - 1 else 0.0))
+			world.stat("parking_bay")
+			if not cars[i]:
+				continue
+			var p := bp + d * kr.randf_range(-0.15, 0.15)
+			var facing := d * s if kr.randf() < 0.85 else -d * s
+			var yaw := Defs.yaw_of(facing) + kr.randf_range(-0.02, 0.02)
+			var v := kr.randi() % 5
+			var extra := {"variant": v + 6, "burnt": true} if kr.randf() < 0.12 else {"variant": v}
+			if mg._is_free(p, Vector2(1.0, 2.3), yaw, 0.15, false):
+				mg._spawn("car", p, yaw, -1, extra)
+				world.stat("kerb_car")
+
+
+## How far from a street's end node to keep parking bays clear on side `n`
+## of the street running off it along `d`: the mouth of a junction or a bend
+## (and as far again as the street crossing it is wider than a side street),
+## a little short of where the street runs out of town, nothing where it
+## carries straight on.
+func _mouth(node: Vector3, d: Vector3, n: Vector3) -> float:
+	var dirs: Dictionary = node_dirs.get(_key(node), {})
+	if dirs.size() >= 3 or (dirs.size() == 2 and not dirs.has(_dkey(-d))):
+		return WALK + _arm(node, n) + (6.0 if _has_dir(node, n) or dirs.size() >= 3 else 2.0)
+	if dirs.size() <= 1:
+		return 5.0
+	return 0.5
+
+
+## Whether bays may be painted on side `n` between `from` and `to` along the
+## main street from `a` (along `d`): clear of every no-parking spot on this
+## side (or either side, for a zebra).
+func _kerb_free(a: Vector3, d: Vector3, n: Vector3, from: float, to: float, keep_off: Array) -> bool:
+	var reach := WALK + PARK_LANE + 2.0
+	for k: Array in keep_off:
+		var r: Vector3 = (k[0] as Vector3) - a
+		var across := Defs.flat(r).dot(n)
+		if (across < -1.0 and not k[2]) or absf(across) > reach:
+			continue
+		var along := Defs.flat(r).dot(d)
+		if along > from - float(k[1]) and along < to + float(k[1]):
+			return false
+	return true
+
+
 ## Keep the scattered scenery out of town and off the roads; hand the street
 ## furniture to the world.
 ## The military's own fences: a security fence across the back of each HQ (the
@@ -1598,10 +1814,12 @@ func finish(build_view := true) -> void:
 	decor.append_array(_shop_decor)
 	decor.append_array(_street_decor)
 	decor.append_array(_church_decor)
+	decor.append_array(_lane_decor)
 	_yard_decor = []
 	_shop_decor = []
 	_street_decor = []
 	_church_decor = []
+	_lane_decor = []
 	if build_view:
 		world.set_decor(decor, rect)
 

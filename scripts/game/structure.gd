@@ -398,6 +398,13 @@ func on_despawn() -> void:
 
 # --- parts ---------------------------------------------------------------------
 
+## Which of the five cars a parked car is (its body and paint): `variant`,
+## less the 6 it gains when it burns out, so a burnt-out hatchback is still a
+## hatchback's shell. (Variant 5, a farm's tractor, takes the first car's paint.)
+func _car_kind() -> int:
+	return (variant - 6 if variant >= 6 else variant) % 5
+
+
 func _part(p: Vector3, s: Vector3, nav: int, veh: int, cover := true, col := true, color := C_STONE, r := 0.0) -> Dictionary:
 	return {"p": p, "s": s, "nav": nav, "veh": veh, "cover": cover, "col": col, "color": color, "r": r}
 
@@ -511,7 +518,7 @@ func _define_parts() -> void:
 					_part(Vector3(-0.6, 1.8, 0), Vector3(1.2, 1.2, 1.2), Nav.FREE, Nav.FREE, false, true, C_WOOD.darkened(0.1), 0.15),
 				]
 		"car":
-			var c: Color = CAR_COLORS[variant % CAR_COLORS.size()]
+			var c: Color = CAR_COLORS[_car_kind()]
 			parts = [
 				_part(Vector3(0, 0.55, 0), Vector3(1.8, 0.8, 4.2), Nav.SOLID, Nav.LOW, true, true, c),
 				_part(Vector3(0, 1.18, 0.25), Vector3(1.6, 0.5, 2.1), Nav.FREE, Nav.FREE, false, true, c.darkened(0.15)),
@@ -3984,11 +3991,11 @@ func _build_model() -> void:
 		"car":
 			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
 			# (variant 5: a farm's tractor, parked in its yard; 6 on, burnt out)
-			var civ_key: String = "tractor" if variant % 6 == 5 else ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
+			var civ_key: String = "tractor" if variant % 6 == 5 else ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][_car_kind()]
 			if civ_key in VmCiv.KEYS:
 				_vehicle_model(civ_key, -1, eid, variant >= 6)
 			else:
-				var ck := VehicleModels.build_car(variant % 5, parts[0].color, variant >= 6)
+				var ck := VehicleModels.build_car(_car_kind(), parts[0].color, variant >= 6)
 				model.add_child(ck.root)
 		"wreck":
 			var kind := vk if vk != "" else ("tank" if variant % 2 == 0 else "old_tank")

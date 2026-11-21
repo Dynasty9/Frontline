@@ -1,0 +1,39 @@
+{
+  "entry": "changelog/unreleased/parked-cars.md",
+  "summary": "The town's main streets are wider, with a parking lane down each side marked off from the two traffic lanes, and bays in them by the shops where some cars were left when the fighting came. Every car is cover.",
+  "medium": "motion",
+  "stage": "tests/fixtures/environment-views.gd (town); main.gd off-screen screenshot",
+  "rationale": "Appearance change: matched seed-3 cameras show the town from the battle camera, the square and the wider main streets off it, and a closer view of a parking lane with its bays by the square. Matched main-versus-head native motion establishes occupied and empty bays and the visible opposite lane, at a command camera with the full bay run in frame.",
+  "source_ref": "fc3c27314e171bc255f2edd36e34d260ae9fb08c",
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+  "sources": [
+    {
+      "file": "changelog/unreleased/parked-cars/comparison.jpg",
+      "sha256": "a51c50d9a21b09e919795a3c9f21534c88c3cd18dd294694714105a2ac5580a0"
+    },
+    {
+      "file": "changelog/unreleased/parked-cars/capture.json",
+      "sha256": "58781fce10e82270a6091eedfd2d590f4d3a1a8e5ec6add791e3c73a1717a369"
+    },
+    {
+      "file": "changelog/unreleased/parked-cars/parking-motion.webm",
+      "sha256": "aa74ab746627d4352de4dd7de91b19df257af561f3ab15b63fa213548772cb8c"
+    },
+    {
+      "file": "changelog/unreleased/parked-cars/parking-motion.jpg",
+      "sha256": "37edcdef0bdb96a7f85e362c7eafeb081c35f6a346ab1abdbf9e2d731c3d850c"
+    },
+    {
+      "file": "changelog/unreleased/parked-cars/motion-capture.json",
+      "sha256": "f5c8ea44f98a30949c26b24a0fc02a52664f04608d363d5be985ed2c6a852db5"
+    }
+  ],
+  "output": null,
+  "motion_review": {
+    "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+    "source_ref": "fc3c27314e171bc255f2edd36e34d260ae9fb08c",
+    "harness_sha256": "3fdaf78ca26d96ad93f9ab7842e919a0ff734e91b259673d0a6cf7d3402255cd",
+    "stage": "tools/showcase/environment-motion.gd --motion-stage=parking",
+    "capture": "changelog/unreleased/parked-cars/motion-capture.json"
+  }
+}

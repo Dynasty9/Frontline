@@ -740,6 +740,17 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   telephone box, post boxes, an advertising column on the square, hoardings over car parks and bombed-out lots,
   street names at the junctions, and belongings dropped on the pavements by people fleeing the fighting. Power
   lines also run along the country roads.
+- The two main streets are wider than the side streets by a parking lane down each side (`TownGen.PARK_LANE`,
+  2.2 m), outside the two traffic lanes and marked off from them by a solid line (`TownGen._lane_lines`), the
+  dashed centre line down the middle; their kerbs, pavements, lamps and lots stand that much further back, and the
+  road surface is drawn as wide (`Atmosphere.make_road_mesh`, from the `street_wide` decor), narrowing back to the
+  country road past the edge of town. Side streets have no room to park. Parking bays are marked out in the
+  parking lanes by the shops (`TownGen.kerbside`, battles only: a mission dresses its own streets): a few short
+  runs of two to four bays, a car in about half of them, each facing the way the traffic ran on its side (a few
+  the other way), now and then one burnt out where it stood. Anywhere else a car stands in its driveway or a car
+  park, not in the street. No bay is painted in a junction's mouth, on a zebra, across a driveway's dropped kerb
+  or by a hydrant. Both traffic lanes stay open past them, so a lorry or a tank still gets down the street. To
+  infantry the cars are cover, and they burn like the cars in the drives.
 - **1 x 1 km** (`map_dims.gd`: every size, grid, mask and texture derives from one constant). The HQs sit
   at the north and south edges, their starting FOBs some 940 m apart, so a battle has room to move: fights for
   the villages, farms, woods and river line on the way in, then the town.

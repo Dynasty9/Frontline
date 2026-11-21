@@ -541,7 +541,7 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			_m(Res.box(Vector3(s.x, 0.002, s.z)), "asphalt", Vector3(0, 0.04, 0), null, Vector3.ZERO, false, true)
 		"zebra":
 			var wd := float(ex)
-			var n := 6
+			var n := maxi(6, roundi(wd / 0.9))  # (stripes about as wide as the gaps between them, however wide the street)
 			# The centre line stops short of a crossing: the same asphalt as the
 			# road (it's laid in world space, so it joins without a seam) over it.
 			# (2 mm thick: its sides mustn't show as lines on the road)
@@ -549,6 +549,22 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			for i in n:
 				var z := -wd * 0.5 + (i + 0.5) * wd / n
 				_m(Res.box(Vector3(2.6, 0.01, wd / n * 0.5)), "road_paint", Vector3(0, 0.044, z), Color(0.95, 0.95, 0.93), Vector3.ZERO, false, true)
+		"bays":
+			# A parking bay in a main street's parking lane (TownGen.kerbside),
+			# the lane's width: the line across its near end, and its far end too
+			# when it's the last of its run, from the lane's own line (`ex.y` says
+			# which side that is) to a hand short of the kerb. (The paint is older
+			# than the zebras'.)
+			var bay: Vector3 = ex
+			var paint := Color(0.86, 0.86, 0.82)
+			for x: float in ([-0.5, 0.5] if bay.z > 0.5 else [-0.5]):
+				_m(Res.box(Vector3(0.1, 0.01, TownGen.BAY_W - 0.25)), "road_paint", Vector3(bay.x * x, 0.044, bay.y * 0.125), paint, Vector3.ZERO, false, true)
+		"lane_edge":
+			# the solid line down a main street marking its parking lane off from
+			# the traffic (TownGen._lane_lines), as worn as the bays' paint
+			_m(Res.box(Vector3(float(ex), 0.01, 0.12)), "road_paint", Vector3(0, 0.044, 0), Color(0.86, 0.86, 0.82), Vector3.ZERO, false, true)
+		"street_wide":
+			pass  # (how wide a main street is: the road itself is drawn that wide, Atmosphere.make_road_mesh)
 		"lamp":
 			# a street lamp (BuildingKerbside): a village's on a wooden pole, or a
 			# town's steel column; its lens glows where its head hangs

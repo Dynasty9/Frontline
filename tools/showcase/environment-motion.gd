@@ -36,6 +36,9 @@ func capture() -> void:
 		world.director.active = false
 	var views := []
 	match mode:
+		"parking":
+			views = [["Seed 3: occupied and empty bays", Vector3(-6.8,0,20.3), 19.0, -36.0, -1.0],
+				["Street clearance at command height", Vector3(-6.8,0,20.3), 38.0, -50.0, -1.0]]
 		"utility":
 			var poles := []
 			var wires := []
