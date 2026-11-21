@@ -333,3 +333,20 @@ frames; the current harness prevents that extra callback. Current mainline
 harness controls also retain the newer zoom/probe options. These historical
 clips isolate the surface-history fix and do not validate later renderer edits.
 Do not grade the comparison or use software capture time as GPU performance.
+
+
+## Research-post cosmetic review
+
+`building-surfaces.tscn -- --building-single --building-kinds=research:0
+--building-seed=7 --building-review --building-out=OUTPUT` records three native
+perspective views at 50, 23 and 21 metres, with a 35-degree field of view. Use
+engine flags `--fixed-fps 12 --resolution 1600x900`; each view lasts three seconds.
+The appearance seed is the preview entity ID (7 gives model RNG seed 55433).
+The final view includes a small matched grazing-light sweep.
+
+Use the same capture script on both source revisions and set `FL_CAPTURE_REF`.
+The fixed cameras do not depend on model bounds. `review-capture.json` records
+every camera and light transform, exposure, renderer and seed; each view also
+saves an early checkpoint. This preview fixture uses the game's model code, without a world or
+simulation. Label it as a fixture, preserve existing
+stills, and keep raw frames outside Git.

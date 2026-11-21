@@ -463,6 +463,16 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## The research post
+
+A research post (Structure `research`) dresses its precast block (`Structure._research_dress`):
+- **The roof:** a parapet with its coping, a hatch and vents, and a cable tray on posts from the mast and the dish to
+  the hatch.
+- **The walls:** a conduit down the side wall to the generator, with a junction box on it, and a dish on a bracket
+  on the back wall.
+- **At the door:** a precast blast wall, and the post's plate beside it.
+- **The generator:** in its canopy on skids, with louvres and its exhaust.
+
 ## Utility poles
 
 The overhead line's poles (Decor `pole`) are `BuildingUtility.pole`. The wires Decor strings at 7.66 m still meet

@@ -1,0 +1,40 @@
+{
+  "entry": "changelog/unreleased/research-post.md",
+  "summary": "The research post dressed with its parapet, cable tray, conduit, blast wall and generator.",
+  "medium": "motion",
+  "stage": "tools/showcase/building-surfaces.tscn (research:0, research:1)",
+  "rationale": "Appearance change: the post from the front and the back in the studio, from the same cameras. Native research-post fixture: matched main/PR views at command distance and close angles, followed by the original-PR/cosmetic-fix conduit detail. Fixed appearance seed and 35-degree cameras; Forward+ software rendering. The decorative conduit now clears the ribbon window. This is not gameplay or performance footage.",
+  "source_ref": "73748f0e9d852dfb7761f66d609081d30fde4a85",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/research-post/comparison.jpg",
+      "sha256": "46d6e71e1fe58c0f26fc5ed4bb4c9f64364b1ee714901f468c9f359fd9f17166"
+    },
+    {
+      "file": "changelog/unreleased/research-post/capture.json",
+      "sha256": "a3d1e3fccbe9bf5873094c21b5752edd2b7d5ff068063fd390c235bbc1a61d16"
+    },
+    {
+      "file": "changelog/unreleased/research-post/research-motion.webm",
+      "sha256": "714e43c680898adc5c34b28758e04e2bcecabb023bb857ec3843017e657ad91f"
+    },
+    {
+      "file": "changelog/unreleased/research-post/research-motion.jpg",
+      "sha256": "3e5781fc1d84eac4bd74675a70e990e8fc7ccc1ff4942bc9eb0782a03ad77598"
+    },
+    {
+      "file": "changelog/unreleased/research-post/motion-capture.json",
+      "sha256": "f6f007ec0d7fccc64d53a1133a191aa4489069eb4ab4392257d1b3a3119f76c8"
+    }
+  ],
+  "output": null,
+  "motion_review": {
+    "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
+    "original_pr_ref": "a4f5defa2c19a74b047a8824c57b29c371c6f9f3",
+    "source_ref": "246080ba6c04ffda0e3100740f5345dd86ea3519",
+    "harness_sha256": "e8d6ffabfae3acfedd7a276eb7f6ad72ba293ae950db93914e5d6b6dae8f681b",
+    "stage": "tools/showcase/building-surfaces.tscn --building-review --building-seed=7",
+    "capture": "changelog/unreleased/research-post/motion-capture.json"
+  }
+}

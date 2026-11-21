@@ -526,6 +526,12 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# A research post's dress keeps to its block and the ground beside it: the
+	# parapet on its roof, the generator and blast wall by its walls.
+	var rp := Structure.preview_model("research", 0)
+	var rpb := _bounds(rp, Transform3D.IDENTITY)
+	check(rp.get_child_count() > 0 and rpb.size.x <= 10.5 and rpb.size.z <= 9.5 and rpb.position.y >= -0.05 and rpb.end.y < 9.5, "a research post keeps to its plot (%s)" % rpb)
+	rp.free()
 	# What stands at the kerb keeps to its spot: a lamp's head out over the
 	# road no further than its arm, a sign, a hydrant, a mailbox, a cabinet
 	# (the bounds of a turned lantern or sign are a turned square's;

@@ -1,0 +1,43 @@
+{
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "source_ref": "73748f0e9d852dfb7761f66d609081d30fde4a85",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "research:0"
+      ],
+      "flags": [
+        "--building-kinds=research:0,research:1"
+      ],
+      "crop": [
+        200,
+        100,
+        1450,
+        860
+      ]
+    },
+    {
+      "subjects": [
+        "research:1"
+      ],
+      "flags": [
+        "--building-rear",
+        "--building-kinds=research:1"
+      ],
+      "before_flags": [
+        "--building-match=AFTER/capture.json"
+      ],
+      "crop": [
+        200,
+        100,
+        1450,
+        860
+      ]
+    }
+  ],
+  "notes": "Front views from the same studio camera on both; rear views from the after run's camera.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

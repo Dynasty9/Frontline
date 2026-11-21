@@ -26,6 +26,8 @@ var components := false
 var view_direction := Vector3(1.0, 0.7, -1.35)
 var night := false  # --building-night: the lamps on, the sun down
 var motion := false
+var review := false
+var appearance_seed := 0
 var orbit_review := false
 var motion_cells := []
 var cameras := {}  # subject -> [centre x, y, z, size, distance] as framed (in capture.json)
@@ -50,6 +52,10 @@ func _ready() -> void:
 			motion = true
 		elif arg == "--building-motion":
 			motion = true
+		elif arg == "--building-review":
+			review = true
+		elif arg.begins_with("--building-seed="):
+			appearance_seed = int(arg.trim_prefix("--building-seed="))
 		elif arg == "--building-single":
 			single = true
 		elif arg == "--building-rear":
@@ -86,7 +92,9 @@ func _ready() -> void:
 		var name := kinds[start] if single else "%s-%02d" % ["components" if components else "buildings", start / per_page]
 		get_viewport().get_texture().get_image().save_png(output.path_join(name + ".png"))
 		print("BUILDING_CAPTURE " + name)
-		if motion:
+		if review:
+			await _review(name)
+		elif motion:
 			await _motion(name)
 		motion_cells.clear()
 		grid.free()
@@ -187,9 +195,9 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		camera.position = center + Vector3(1.7, 0.65, -3.5)
 		camera.look_at(center)
 	cameras[kind] = [center.x, center.y, center.z, camera.size, camera.position.distance_to(center)]
-	motion_cells.append({"camera": camera, "sun": sun, "center": center, "size": camera.size})
+	motion_cells.append({"camera": camera, "sun": sun, "environment": env, "center": center, "size": camera.size})
 	var label := Label.new()
-	label.text = kind.replace("_", " ").to_upper()
+	label.text = "RESEARCH POST - NATIVE FIXTURE" if review else kind.replace("_", " ").to_upper()
 	label.position = Vector2(14, 12)
 	label.add_theme_font_size_override("font_size", 24 if single else 16)
 	cell.add_child(label)
@@ -481,7 +489,7 @@ func _subject(kind: String) -> Node3D:
 		"factory":
 			return Structure.preview_model("factory", 0)
 		"research":
-			return Structure.preview_model("research", 0)
+			return Structure.preview_model("research", 0, 0, Vector3.ZERO, false, appearance_seed)
 		"medic_tent":
 			return Structure.preview_model("medic_tent", 0)
 		"bunker":
@@ -507,7 +515,7 @@ func _subject(kind: String) -> Node3D:
 	if ":" in kind:
 		# any structure kind, for a side: "barricade:1", "ammo_cache:0"
 		var spec := kind.split(":")
-		return Structure.preview_model(spec[0], int(spec[1]), int(spec[2]) if spec.size() > 2 else 0)
+		return Structure.preview_model(spec[0], int(spec[1]), int(spec[2]) if spec.size() > 2 else 0, Vector3.ZERO, false, appearance_seed)
 	var holder := Node3D.new()
 	var builder := "res://tools/showcase/building-components.gd"
 	if components and ResourceLoader.exists(builder):
@@ -762,3 +770,52 @@ func _motion(kind: String) -> void:
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		assert(get_viewport().get_texture().get_image().save_png(folder.path_join("%04d.png" % frame)) == OK)
+
+
+## Fixed research-post inspection cameras, independent of changing model bounds.
+## Native preview geometry only: no simulation, site layout or equipment behavior.
+func _review(kind: String) -> void:
+	assert(single and motion_cells.size() == 1 and kind.get_slice(":", 0) == "research", "Review requires one research post")
+	var cell: Dictionary = motion_cells[0]
+	var camera: Camera3D = cell.camera
+	var sun: DirectionalLight3D = cell.sun
+	var env: Environment = cell.environment
+	camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+	camera.fov = 35.0
+	var views := [
+		["Command-distance silhouette", Vector3(0, 3.2, 0), 50.0, Vector3(1, 0.9, -1.35), Vector3(-32, -38, 0)],
+		["Front close: surface joins", Vector3(0.5, 3.4, 0), 23.0, Vector3(1, 0.8, -1.35), Vector3(-32, -38, 0)],
+		["Rear close: materials and contact", Vector3(0.8, 2.8, 0.4), 21.0, Vector3(1.15, 0.85, 1.35), Vector3(-22, 135, 0)],
+	]
+	var records := []
+	for index in views.size():
+		var spec: Array = views[index]
+		var center: Vector3 = spec[1]
+		var distance := float(spec[2])
+		camera.position = center + (spec[3] as Vector3).normalized() * distance
+		camera.look_at(center)
+		sun.rotation_degrees = spec[4]
+		for warmup in 12: await get_tree().process_frame
+		var folder := output.path_join("view-%d" % index)
+		assert(DirAccess.make_dir_recursive_absolute(folder) == OK)
+		var frames := []
+		for frame in 36:
+			var orbit := sin(TAU * float(frame) / 35.0) * 0.065
+			camera.position = center + (spec[3] as Vector3).rotated(Vector3.UP, orbit).normalized() * distance
+			camera.look_at(center)
+			if index == 2: sun.rotation_degrees.y = 135.0 + sin(TAU * float(frame) / 35.0) * 12.0
+			await get_tree().process_frame
+			await RenderingServer.frame_post_draw
+			var shot := get_viewport().get_texture().get_image()
+			assert(shot.save_png(folder.path_join("%04d.png" % frame)) == OK)
+			if frame == 0: assert(shot.save_png(folder.path_join("checkpoint.png")) == OK)
+			frames.append({"camera": str(camera.global_transform), "distance": distance, "fov": camera.fov, "sun": str(sun.global_transform)})
+		records.append({"label": spec[0], "frames": frames})
+		FileAccess.open(output.path_join("review-views.json"), FileAccess.WRITE).store_string(JSON.stringify(records, "\t"))
+		print("BUILDING_REVIEW view=", index)
+	var manifest := {"source_ref": OS.get_environment("FL_CAPTURE_REF"), "subject": kind, "appearance_entity_id": appearance_seed,
+		"renderer": RenderingServer.get_current_rendering_method(), "resolution": str(get_viewport().size), "fps": 12,
+		"exposure": env.tonemap_exposure, "tonemap": env.tonemap_mode, "msaa": "4x", "views": records,
+		"stage": "Native perspective research-post fixture; fixed command-distance and close inspection, no gameplay simulation",
+		"arguments": OS.get_cmdline_user_args()}
+	FileAccess.open(output.path_join("review-capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
