@@ -1,9 +1,9 @@
 {
   "entry": "changelog/unreleased/stop-sign-lettering.md",
   "summary": "Stop signs lettered in road-sign type on clean red sheeting, without the dark smudge.",
-  "medium": "still",
+  "medium": "motion",
   "stage": "tools/showcase/building-surfaces.tscn (stop_sign_face, kerbside_stop); tests/fixtures/environment-views.gd (FL_ONLY_VIEW)",
-  "rationale": "Appearance change of one small piece: a matched studio close-up shows the letter shapes, the white and the smudge gone, in the sun and in the sign's own shade; matched crops from the game's camera at 20 m and at the default 55 m zoom show what a player actually sees. Compatibility renders were reviewed but not committed: they match Forward+.",
+  "rationale": "Appearance change of one small piece: a matched studio close-up shows the letter shapes, the white and the smudge gone, in the sun and in the sign's own shade; matched crops from the game's camera at 20 m and at the default 55 m zoom show what a player actually sees. Compatibility renders were reviewed but not committed: they match Forward+. The additional matched native pullback checks temporal stability and the loss of letter detail at default distance; original stills remain available.",
   "source_ref": "60b7f2c251f688b2d3042a4b58de2128e9167785",
   "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
   "sources": [
@@ -18,7 +18,24 @@
     {
       "file": "changelog/unreleased/stop-sign-lettering/capture.json",
       "sha256": "3013791feeb8c6fac7e5d6fa4a8aef217a7a8e4e3a94b60eb39c545f2dd95a81"
+    },
+    {
+      "file": "changelog/unreleased/stop-sign-lettering/stop-motion.webm",
+      "sha256": "dd8b71164f8897d0e8e7c03d575ce7f24c4ecd6bc367f212924bbc022a2b7d1b"
+    },
+    {
+      "file": "changelog/unreleased/stop-sign-lettering/stop-motion.jpg",
+      "sha256": "5121ae8aafdf9146047a43e3b6175b45faa1bc6c3c7cce2658dcabe1a7cdc795"
+    },
+    {
+      "file": "changelog/unreleased/stop-sign-lettering/motion-capture.json",
+      "sha256": "5e2e9ae200ba2f7d59c7db4f53b15e309fcbd6e174d33b5be019c6505c0faa61"
     }
   ],
-  "output": null
+  "output": null,
+  "motion_review": {
+    "source_ref": "f90ff0c9a12f57b51496b82c5a8e49d60077467c",
+    "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+    "capture": "changelog/unreleased/stop-sign-lettering/motion-capture.json"
+  }
 }

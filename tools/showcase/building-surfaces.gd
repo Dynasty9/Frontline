@@ -26,6 +26,7 @@ var components := false
 var view_direction := Vector3(1.0, 0.7, -1.35)
 var night := false  # --building-night: the lamps on, the sun down
 var motion := false
+var stop_review := false
 var orbit_review := false
 var motion_cells := []
 var cameras := {}  # subject -> [centre x, y, z, size, distance] as framed (in capture.json)
@@ -45,6 +46,9 @@ func _ready() -> void:
 			output = arg.trim_prefix("--building-out=")
 		elif arg.begins_with("--building-kinds="):
 			kinds.assign(arg.trim_prefix("--building-kinds=").split(","))
+		elif arg == "--building-stop-review":
+			stop_review = true
+			motion = true
 		elif arg == "--building-orbit-review":
 			orbit_review = true
 			motion = true
@@ -69,7 +73,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(output)
 	var manifest := {"renderer": RenderingServer.get_current_rendering_method(), "subjects": kinds, "single": single,
 		"components": components, "view_direction": str(view_direction), "motion": motion, "orbit_review": orbit_review,
-		"motion_frames": 48 if motion else 0, "motion_stage": ("Orthographic native component fixture; fixed exposure and lighting, camera orbit" if orbit_review else "Orthographic native component fixture; fixed exposure, grazing directional light") if motion else ""}
+		"motion_frames": (144 if stop_review else 48) if motion else 0, "stop_review": stop_review, "motion_stage": ("Perspective native stop-sign fixture; matched pullback and approach" if stop_review else "Orthographic native component fixture; fixed exposure and lighting, camera orbit" if orbit_review else "Orthographic native component fixture; fixed exposure, grazing directional light") if motion else ""}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (6 if components else 6)
 	for start in range(0, kinds.size(), per_page):
@@ -737,6 +741,9 @@ func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 ## Actual building materials under grazing light; orthographic fixture, not gameplay.
 ## --building-motion writes 48 frames for playback at --fixed-fps 12.
 func _motion(kind: String) -> void:
+	if stop_review:
+		await _stop_motion(kind)
+		return
 	var folder := output.path_join(kind + "-frames")
 	assert(DirAccess.make_dir_recursive_absolute(folder) == OK)
 	for frame in 48:
@@ -754,3 +761,35 @@ func _motion(kind: String) -> void:
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		assert(get_viewport().get_texture().get_image().save_png(folder.path_join("%04d.png" % frame)) == OK)
+
+
+## Matched native stop-sign pullback. No simulation or model modifications.
+func _stop_motion(kind: String) -> void:
+	assert(single and kind == "stop_sign_face")
+	var folder := output.path_join("stop-motion")
+	assert(DirAccess.make_dir_recursive_absolute(folder) == OK)
+	var records: Array = []
+	for frame in 144:
+		var t := float(frame) / 12.0
+		var pull := smoothstep(2.0, 6.0, t) * (1.0 - smoothstep(8.0, 11.5, t))
+		var distance := exp(lerpf(log(2.2), log(55.0), pull))
+		var pitch := lerpf(5.0, 44.0, pull)
+		var yaw := 0.25 + sin(t * TAU / 12.0) * 0.08
+		for cell: Dictionary in motion_cells:
+			var camera: Camera3D = cell.camera
+			camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+			camera.fov = 48.0
+			var direction := Vector3(sin(yaw) * cos(deg_to_rad(pitch)), sin(deg_to_rad(pitch)), -cos(yaw) * cos(deg_to_rad(pitch)))
+			camera.position = cell.center + direction * distance
+			camera.look_at(cell.center)
+			records.append({"frame": frame, "distance": distance, "pitch": pitch, "yaw": yaw, "camera": str(camera.transform), "sun": str(cell.sun.transform)})
+		if frame == 0:
+			for warmup in 12:
+				await get_tree().process_frame
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		assert(get_viewport().get_texture().get_image().save_png(folder.path_join("%04d.png" % frame)) == OK)
+		if frame == 0:
+			print("STOP_CHECKPOINT ", output)
+	var record := {"source_ref": OS.get_environment("FL_CAPTURE_REF"), "renderer": RenderingServer.get_current_rendering_method(), "seed": 5, "fps": 12, "fov": 48, "resolution": [1600, 900], "frames": records, "stage": "Native scenery fixture; sign center targeted, default-distance 55m / pitch 44 degrees / FOV 48; no world simulation", "exposure": 1, "msaa": "4x"}
+	FileAccess.open(output.path_join("motion-capture.json"), FileAccess.WRITE).store_string(JSON.stringify(record, "  "))
