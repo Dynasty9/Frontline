@@ -28,9 +28,11 @@ var panel: PanelContainer
 var loading_backdrop: TopoBackdrop
 
 func _supports_replay_protocol(protocol: Variant) -> bool:
-	# v2.0.0 recordings predate the six-byte vehicle aim. This is a replay-only
-	# adapter, not permission for old clients to join a current multiplayer game.
-	return (protocol is int or protocol is float) and (protocol == Net.NET_VERSION or (Net.NET_VERSION == 14 and protocol == 13))
+	# v2.0.0 recordings (13) predate the six-byte vehicle aim. 14 and 15 record
+	# the same entities (15 only added the flare effect and the rules of night),
+	# so a 14 recording plays as it was. This is a replay-only adapter, not
+	# permission for old clients to join a current multiplayer game.
+	return (protocol is int or protocol is float) and (protocol == Net.NET_VERSION or (Net.NET_VERSION == 15 and (protocol == 13 or protocol == 14)))
 
 func _ready() -> void:
 	layer = 30
