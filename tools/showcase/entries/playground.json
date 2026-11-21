@@ -1,0 +1,36 @@
+{
+  "entry": "changelog/unreleased/playground.md",
+  "summary": "A town playground built like the real thing.",
+  "medium": "still",
+  "stage": "build/play_views.gd on the generated town (seed 3), quoted in capture.json; tools/showcase/building-surfaces.tscn (playground); the scenery fixture quoted in playground-orbit-capture.json",
+  "rationale": "The change is in how the equipment looks, so matched stills lead: the town's own playground on the same map and seed, close up and as a 1:1 crop of the default battle camera (the owner's concern), then the equipment in the studio. A short matched orbit of the scenery fixture shows the models turning in the real world's light.",
+  "source_ref": "430e48ed2546192403d5004ee87370009338c82f",
+  "before_ref": "f48b0f43d6c68f4b58a69fd540b7db514ce56795",
+  "sources": [
+    {
+      "file": "changelog/unreleased/playground/comparison.jpg",
+      "sha256": "984db8dd3cd0d0445e142db120b6ebe729d4318e4192c0bc72dcd40805cc7c47"
+    },
+    {
+      "file": "changelog/unreleased/playground/equipment.jpg",
+      "sha256": "668da28edb727a855da0b3308454bf5b32a692ee1cb030f3585a71fedec1aafd"
+    },
+    {
+      "file": "changelog/unreleased/playground/capture.json",
+      "sha256": "08e407fd1c2f7087b665bbeba5594f9238a29072be7457f04930afa2884eb100"
+    },
+    {
+      "file": "changelog/unreleased/playground/playground-orbit.webm",
+      "sha256": "9f2f9d19989b7d194447090b7306d644aac9163efb2411e737aeb3786c9d888d"
+    },
+    {
+      "file": "changelog/unreleased/playground/playground-orbit.jpg",
+      "sha256": "3376f334efdf524d6cb8cfaa0ceaea6876625ad06364e6d0b58aa929741a4cae"
+    },
+    {
+      "file": "changelog/unreleased/playground/playground-orbit-capture.json",
+      "sha256": "3f4d018c69aa256196317cdb23496df7935754edd1a736585386299657ff62d6"
+    }
+  ],
+  "output": null
+}

@@ -56,6 +56,7 @@ var _shop_decor: Array = []  # what the shops put out (decor, after the yards'; 
 var _street_decor: Array = []  # the streets' furniture (decor, after the shops'; see _street_furniture)
 var _vacant: Array = []  # [front, n, d, W] of each car park and bombed-out lot, for the hoardings
 var farmsteads: Array = []  # {"base", "t", "n"} of each farm (its gate, along the road, away from it), for farmyards()
+var _playgrounds: Array = []  # [middle, n, d, W, depth] of each playground, for playground_riders()
 
 
 func _init(m) -> void:
@@ -832,17 +833,72 @@ func _playground(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:
 	for e: float in [-1.0, 1.0]:
 		_d("fence", front + d * (W * 0.5 - 0.3) * e + n * _depth * 0.5, yaw_along(n), Vector3(_depth - 0.6, 1.0, bow))
 	var lx := W * 0.5 - 3.2
-	_d("swing", c + d * (-lx + 0.8) + n * 3.5, yaw)
-	_d("slide", c + d * (lx - 1.2) + n * 3.2, yaw_along(n) + PI)
-	_d("climber", c + d * (lx - 1.5) - n * 2.4, yaw)
-	_d("sandbox", c + d * (-lx + 1.5) - n * 2.6, yaw)
-	_d("seesaw", c + n * 0.4, yaw_along(n))
-	_d("roundabout", c - n * 3.8 + d * 0.5)
+	for piece: Array in playground_layout(W, _depth):
+		if piece[0] != "spring_rider":
+			_d(piece[0], c + d * (piece[1] as Vector2).x + n * (piece[1] as Vector2).y, _play_yaw(piece[2], d, n))
+	_playgrounds.append([c, n, d, W, _depth])
 	_d("bench", front + n * 1.4 + d * (W * 0.25), Defs.yaw_of(n))
 	_d("bench", front + n * 1.4 - d * (W * 0.25), Defs.yaw_of(n))
 	_d("bin", front + n * 1.2)
 	mg._try("tree", c + d * (lx + 1.6) + n * (_depth * 0.5 - 1.6), 0.0, -1)
 	mg._try("tree", c - d * (lx + 1.6) + n * (_depth * 0.5 - 1.6), 0.0, -1)
+
+
+## Where a playground's equipment stands on a lot `W` wide and `depth` deep:
+## [kind, Vector2(along the street, into the lot from its middle), how it's
+## turned (see _play_yaw)]. The swings and the slide at the back, the
+## sandpit, the climbing dome and the roundabout at the front behind the
+## benches, the seesaw between, spring riders where there's room. On a
+## narrow or shallow lot the rows close up and the dome stands off along the
+## street rather than in the roundabout.
+static func playground_layout(W: float, depth: float) -> Array:
+	var lx := W * 0.5 - 3.2
+	var front := -depth * 0.5 + 2.1  # clear of the benches inside the gate
+	var back := depth * 0.5 - 0.55  # clear of the back railing
+	var swing := Vector2(-lx + 0.8, minf(3.5, back - 0.9))
+	var slide := Vector2(lx - 1.2, minf(3.2, back - 1.6))
+	var round := Vector2(0.5, maxf(-3.8, front + 0.97))
+	var sand := Vector2(minf(-lx + 1.5, -2.05), maxf(-2.6, front + 1.4))
+	# (the dome's and the roundabout's radii and a gap between them)
+	var dome_z := maxf(-2.4, front + 1.16)
+	var dz := absf(dome_z - round.y)
+	var dome := Vector2(maxf(maxf(lx - 1.5, 2.25), round.x + sqrt(maxf(0.0, 2.25 * 2.25 - dz * dz))), dome_z)
+	# the seesaw's low end clear of the roundabout
+	var seesaw := Vector2(0.0, maxf(0.4, round.y + 2.8))
+	# two riders at the back between the swings and the tower, out of the
+	# swings' way and behind the seesaw, and one past the slide's run-out
+	var rider_z := minf(maxf(seesaw.y + 2.5, back - 2.4), back - 0.55)
+	return [["swing", swing, "d"], ["slide", slide, "n_back"], ["climber", dome, "d"], ["sandbox", sand, "d"],
+		["seesaw", seesaw, "n"], ["roundabout", round, ""],
+		["spring_rider", Vector2(-0.125, rider_z), "n_back"], ["spring_rider", Vector2(0.875, rider_z - 0.3), "n_back"],
+		["spring_rider", Vector2(lx + 0.6, slide.y - 1.4), "n_back"]]
+
+
+## A playground piece's yaw: "d" along the street, "n" into the lot,
+## "n_back" out of it, "" as it comes (the roundabout: round anyway).
+static func _play_yaw(mode: String, d: Vector3, n: Vector3) -> float:
+	match mode:
+		"d":
+			return yaw_along(d)
+		"n":
+			return yaw_along(n)
+		"n_back":
+			return yaw_along(n) + PI
+	return 0.0
+
+
+## The playgrounds' spring riders, put last of all so every older piece of
+## the town keeps its place in the decor list and so its look.
+func playground_riders() -> void:
+	for pg: Array in _playgrounds:
+		var c: Vector3 = pg[0]
+		var n: Vector3 = pg[1]
+		var d: Vector3 = pg[2]
+		var i := 0
+		for piece: Array in playground_layout(pg[3], pg[4]):
+			if piece[0] == "spring_rider":
+				_d("spring_rider", c + d * (piece[1] as Vector2).x + n * (piece[1] as Vector2).y, _play_yaw(piece[2], d, n), i)
+				i += 1
 
 
 func _park(front: Vector3, n: Vector3, d: Vector3, W: float) -> void:

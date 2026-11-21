@@ -33,6 +33,7 @@ const BREAKABLE := {
 	"swing": [Vector3(3.5, 2.5, 1.6), 150.0], "slide": [Vector3(3.2, 1.9, 0.8), 120.0],
 	"climber": [Vector3(2.0, 1.9, 2.0), 120.0], "seesaw": [Vector3(3.4, 0.7, 0.4), 60.0],
 	"roundabout": [Vector3(2.2, 1.0, 2.2), 150.0], "statue": [Vector3(1.8, 4.5, 1.8), 2000.0],
+	"spring_rider": [Vector3(1.1, 1.1, 0.35), 40.0],
 	"traffic_light": [Vector3(0.5, 3.4, 0.5), 120.0], "phone_box": [Vector3(1.0, 2.6, 1.0), 300.0],
 	"post_box": [Vector3(0.55, 1.4, 0.55), 200.0], "ad_column": [Vector3(1.4, 2.9, 1.4), 600.0],
 	"hoarding": [Vector3(5.0, 3.8, 0.6), 150.0], "street_name": [Vector3(0.9, 2.6, 0.9), 20.0],
@@ -710,57 +711,30 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			var pour: Color = [Color(0.4, 0.19, 0.14), Color(0.4, 0.19, 0.14), Color(0.19, 0.27, 0.18), Color(0.17, 0.23, 0.3)][absi(roundi(s2.x * 10.0 + s2.z * 7.0)) & 3]
 			_m(Res.box(Vector3(s2.x, 0.04, s2.z)), "rubber_crumb", Vector3(0, 0.02, 0), pour, Vector3.ZERO, false)
 		"swing":
-			var c1: Color = PAINT[rng.randi() % PAINT.size()]
-			for x in [-1.7, 1.7]:
-				for z in [-0.75, 0.75]:
-					_beam(Vector3(x, 0, z), Vector3(x, 2.5, 0), 0.08, "paint", c1)
-			_beam(Vector3(-1.75, 2.5, 0), Vector3(1.75, 2.5, 0), 0.09, "paint", c1)
-			for x in [-0.75, 0.75]:
-				for dx in [-0.22, 0.22]:
-					_beam(Vector3(x + dx, 2.48, 0), Vector3(x + dx, 0.58, 0), 0.02, "metal_dark", null, false)
-				_m(Res.box(Vector3(0.5, 0.05, 0.22)), "rubber", Vector3(x, 0.56, 0))
+			# (BuildingPlay)
+			BuildingPlay.swings(BuildingKit.baked(_bake, rng, _at), PAINT[rng.randi() % PAINT.size()], rng.randf() < 0.6)
 		"slide":
-			var c2: Color = PAINT[rng.randi() % PAINT.size()]
-			for z in [-0.28, 0.28]:
-				_beam(Vector3(-1.6, 0, z), Vector3(-1.3, 1.9, z), 0.06, "metal_dark", Color(0.6, 0.6, 0.6))
-			for i in 5:
-				var y := 0.3 + i * 0.32
-				_m(Res.box(Vector3(0.05, 0.04, 0.56)), "metal_dark", Vector3(-1.6 + y * 0.16, y, 0), Color(0.6, 0.6, 0.6), Vector3.ZERO, false)
-			_m(Res.box(Vector3(0.8, 0.07, 0.8)), "paint", Vector3(-1.0, 1.55, 0), c2)
-			for z in [-0.4, 0.4]:
-				_m(Res.box(Vector3(0.8, 0.4, 0.04)), "paint", Vector3(-1.0, 1.8, z), c2)
-			_m(Res.box(Vector3(2.85, 0.05, 0.62)), "paint", Vector3(0.65, 0.9, 0), Color(0.85, 0.25, 0.15), Vector3(0, 0, -0.48))
-			for z in [-0.31, 0.31]:
-				_m(Res.box(Vector3(2.85, 0.14, 0.04)), "paint", Vector3(0.65, 0.97, z), Color(0.85, 0.25, 0.15), Vector3(0, 0, -0.48))
-			for z in [-0.3, 0.3]:
-				_beam(Vector3(-0.6, 0, z), Vector3(-0.6, 1.55, z), 0.06, "metal_dark", Color(0.6, 0.6, 0.6))
+			# (BuildingPlay)
+			# (its panels never the frame's colour)
+			var frame := rng.randi() % PAINT.size()
+			BuildingPlay.slide(BuildingKit.baked(_bake, rng, _at), PAINT[frame], PAINT[(frame + 1 + rng.randi() % (PAINT.size() - 1)) % PAINT.size()])
 		"climber":
-			var c3: Color = PAINT[rng.randi() % PAINT.size()]
-			for i in 3:
-				for j in 3:
-					_beam(Vector3(-1.0 + i, 0, -1.0 + j), Vector3(-1.0 + i, 1.9, -1.0 + j), 0.05, "paint", c3)
-			for y in [0.65, 1.3, 1.9]:
-				for j in 3:
-					_beam(Vector3(-1.0, y, -1.0 + j), Vector3(1.0, y, -1.0 + j), 0.05, "paint", c3)
-					_beam(Vector3(-1.0 + j, y, -1.0), Vector3(-1.0 + j, y, 1.0), 0.05, "paint", c3)
+			# (BuildingPlay)
+			BuildingPlay.climber(BuildingKit.baked(_bake, rng, _at), PAINT[rng.randi() % PAINT.size()])
 		"seesaw":
-			_m(Res.box(Vector3(0.25, 0.45, 0.35)), "metal_dark", Vector3(0, 0.22, 0))
-			_m(Res.box(Vector3(3.4, 0.07, 0.32)), "paint", Vector3(0, 0.52, 0), PAINT[2], Vector3(0, 0, 0.14))
-			for x in [-1.3, 1.3]:
-				_beam(Vector3(x, 0.52 + x * 0.14, -0.14), Vector3(x, 0.82 + x * 0.14, -0.14), 0.04, "metal_dark", null, false)
+			# (BuildingPlay)
+			BuildingPlay.seesaw(BuildingKit.baked(_bake, rng, _at), PAINT[rng.randi() % PAINT.size()])
 		"sandbox":
-			for z in [-1.32, 1.32]:
-				_m(Res.box(Vector3(2.8, 0.28, 0.16)), "wood", Vector3(0, 0.14, z))
-				_m(Res.box(Vector3(0.16, 0.28, 2.5)), "wood", Vector3(z, 0.14, 0))
-			_m(Res.box(Vector3(2.5, 0.06, 2.5)), "earth", Vector3(0, 0.05, 0), Color(0.82, 0.74, 0.55), Vector3.ZERO, false)
-			_m(Res.cyl(0.12, 0.09, 0.16, 8), "paint", Vector3(0.6, 0.16, 0.4), PAINT[1], Vector3.ZERO, false)
+			# (BuildingPlay)
+			BuildingPlay.sandpit(BuildingKit.baked(_bake, rng, _at), rng)
 		"roundabout":
-			_m(Res.cyl(0.15, 0.2, 0.3, 8), "metal_dark", Vector3(0, 0.15, 0))
-			_m(Res.cyl(1.1, 1.1, 0.08, 18), "paint", Vector3(0, 0.34, 0), PAINT[0])
-			_m(Res.cyl(0.05, 0.05, 0.9, 6), "metal_dark", Vector3(0, 0.8, 0))
-			for i in 4:
-				var a2 := TAU * i / 4.0
-				_beam(Vector3(cos(a2) * 0.9, 0.38, sin(a2) * 0.9), Vector3(cos(a2) * 0.2, 1.0, sin(a2) * 0.2), 0.04, "metal_dark", Color(0.6, 0.6, 0.6), false)
+			# (BuildingPlay)
+			# (its deck in two of the colours, a different pair from town to town)
+			var deck := rng.randi() % PAINT.size()
+			BuildingPlay.roundabout(BuildingKit.baked(_bake, rng, _at), [PAINT[deck], PAINT[(deck + 1 + rng.randi() % (PAINT.size() - 1)) % PAINT.size()]])
+		"spring_rider":
+			# (BuildingPlay)
+			BuildingPlay.spring_rider(BuildingKit.baked(_bake, rng, _at), int(ex) if ex != null else 0, rng)
 		"water_tower":
 			# the town's water tower (BuildingLandmarks)
 			BuildingLandmarks.water_tower(BuildingKit.baked(_bake, rng, _at), rng)

@@ -308,6 +308,28 @@ func _subject(kind: String) -> Node3D:
 				street.call("belongings", k.at_point(Vector3(-4.6, 0, -1.4)), rng)
 				street.call("belongings", k.at_point(Vector3(-1.2, 0, -1.6)), rng)
 			return kit_root
+		"playground":
+			# a playground's equipment on its soft surfacing (BuildingPlay, where it exists)
+			var play := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_play.gd"):
+				var bp: GDScript = load("res://scripts/game/building_play.gd")
+				var pr := RandomNumberGenerator.new()
+				pr.seed = 2
+				var pk := BuildingKit.nodes(play, pr)
+				pk.box(Vector3(14.0, 0.04, 10.0), Vector3(0, -0.02, 0), "rubber", Color(0.32, 0.36, 0.3))
+				var cols := [Color(0.78, 0.2, 0.14), Color(0.2, 0.42, 0.75), Color(0.92, 0.72, 0.18), Color(0.25, 0.6, 0.3)]
+				bp.call("swings", pk.at_point(Vector3(-4.0, 0, 2.8)), cols[1], true)
+				bp.call("slide", pk.at_point(Vector3(3.2, 0, 2.6), Vector3(0, PI, 0)), cols[0], cols[2])
+				bp.call("climber", pk.at_point(Vector3(3.6, 0, -2.4)), cols[3])
+				bp.call("sandpit", pk.at_point(Vector3(-3.8, 0, -2.4)), pr)
+				bp.call("seesaw", pk.at_point(Vector3(0, 0, 0.2), Vector3(0, PI * 0.5, 0)), cols[2])
+				bp.call("roundabout", pk.at_point(Vector3(0.2, 0, -3.4)), cols)
+				if bp.get_script_method_list().any(func(m: Dictionary) -> bool: return m["name"] == "spring_rider"):
+					# (and its spring riders, where it has them)
+					bp.call("spring_rider", pk.at_point(Vector3(-1.3, 0, 3.6), Vector3(0, PI * 0.5, 0)), 0, pr)
+					bp.call("spring_rider", pk.at_point(Vector3(-0.1, 0, 3.3), Vector3(0, PI * 0.5, 0)), 1, pr)
+					bp.call("spring_rider", pk.at_point(Vector3(5.8, 0, -0.4), Vector3(0, PI * 0.5, 0)), 2, pr)
+			return play
 		"poles":
 			# the overhead line along a verge: a plain pole, one carrying the
 			# street's transformer, another plain, the wires strung between
