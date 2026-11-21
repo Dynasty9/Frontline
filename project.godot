@@ -69,6 +69,42 @@ rain_wet={
 "type": "float",
 "value": 0.0
 }
+snow_cover={
+"type": "float",
+"value": 0.0
+}
+snow_thaw_0={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+snow_thaw_1={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+snow_thaw_2={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+snow_thaw_3={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+snow_thaw_4={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+snow_thaw_5={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+snow_thaw_6={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+snow_thaw_7={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
 rain_fx={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)

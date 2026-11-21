@@ -397,8 +397,8 @@ static func _ac130(k: VehicleModels, team: int) -> void:
 		k._add(m, Res.sphere(0.1, 10), "glass", null, Vector3(s * 1.6, 3.05, -13.2), Vector3.ZERO, Vector3(0.6, 1, 1), false)
 	# the anti-collision beacons, low flattened domes on the roof and the belly;
 	# the antennas, the SATCOM dome
-	VehicleFittings.dome_light(k, m, Vector3(0, 4.78, -8.4), 0.13, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3))
-	VehicleFittings.dome_light(k, m, Vector3(0, 0.63, -3.6), 0.13, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3), Vector3.DOWN)
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.78, -8.4), 0.13, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3))
+	VehicleFittings.dome_light(k, m, Vector3(0, 0.63, -3.6), 0.13, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3), Vector3.DOWN)
 	k._add(m, Res.sphere(0.42, 16), AIR, c.lightened(0.05), Vector3(0, 4.62, 5.2), Vector3.ZERO, Vector3(1, 0.42, 1.25))
 	for z: float in [-7.5, -6.6, 6.5]:
 		VmPlane.antenna(k, m, Vector3(0, 4.75, z), 0.38)
@@ -497,25 +497,44 @@ static func _t56(k: VehicleModels, m: Node3D, key: String, nx: float, le: Vector
 	var z0 := le.z
 	var yt := le.y - 0.62
 	# a tall oval behind the spinner (the intake under it), the top running
-	# back into the wing's leading edge, the deep belly, the tail fairing
+	# back into the wing's leading edge, the deep belly slab-sided and much
+	# deeper than wide, and behind the wing a short fairing that tapers down
+	# and aft under the trailing edge (one that ran on two metres and rose
+	# over the flap read as a torpedo laid on the wing)
 	var nst := [
-		[z0 - 3.62, yt - 0.2, 0.56, 0.78, 0.86, 2.0, 2.2, nx],
-		[z0 - 3.0, yt - 0.2, 0.6, 0.84, 0.92, 2.1, 2.4, nx],
-		[z0 - 1.8, yt - 0.16, 0.62, 0.86, 0.96, 2.2, 2.6, nx],
-		[z0 - 0.4, yt - 0.1, 0.62, 0.8, 0.98, 2.2, 2.6, nx],
-		[z0 + 1.4, yt - 0.02, 0.6, 0.7, 0.98, 2.2, 2.6, nx],
-		[z0 + cw * 0.92, yt + 0.15, 0.5, 0.5, 0.8, 2.2, 2.4, nx],
-		[z0 + cw + 0.9, yt + 0.3, 0.3, 0.3, 0.45, 2.1, 2.2, nx],
-		[z0 + cw + 2.0, yt + 0.4, 0.05, 0.06, 0.06, 2.0, 2.0, nx],
+		[z0 - 3.62, yt - 0.22, 0.54, 0.78, 0.9, 2.0, 2.4, nx],
+		[z0 - 3.0, yt - 0.22, 0.57, 0.84, 0.98, 2.1, 2.6, nx],
+		[z0 - 1.8, yt - 0.18, 0.58, 0.86, 1.04, 2.2, 2.8, nx],
+		[z0 - 0.4, yt - 0.12, 0.58, 0.8, 1.06, 2.2, 2.8, nx],
+		[z0 + 1.4, yt - 0.04, 0.56, 0.7, 1.04, 2.2, 2.8, nx],
+		[z0 + cw * 0.92, yt + 0.1, 0.46, 0.46, 0.8, 2.2, 2.5, nx],
+		[z0 + cw + 0.65, yt + 0.16, 0.27, 0.26, 0.45, 2.1, 2.2, nx],
+		[z0 + cw + 1.45, yt + 0.2, 0.05, 0.05, 0.06, 2.0, 2.0, nx],
 	]
+	var jc := c.darkened(0.14)
+	if k.wreck:
+		# (a wreck keeps the old nacelle: wrecks are drawn as they were)
+		nst = [
+			[z0 - 3.62, yt - 0.2, 0.56, 0.78, 0.86, 2.0, 2.2, nx],
+			[z0 - 3.0, yt - 0.2, 0.6, 0.84, 0.92, 2.1, 2.4, nx],
+			[z0 - 1.8, yt - 0.16, 0.62, 0.86, 0.96, 2.2, 2.6, nx],
+			[z0 - 0.4, yt - 0.1, 0.62, 0.8, 0.98, 2.2, 2.6, nx],
+			[z0 + 1.4, yt - 0.02, 0.6, 0.7, 0.98, 2.2, 2.6, nx],
+			[z0 + cw * 0.92, yt + 0.15, 0.5, 0.5, 0.8, 2.2, 2.4, nx],
+			[z0 + cw + 0.9, yt + 0.3, 0.3, 0.3, 0.45, 2.1, 2.2, nx],
+			[z0 + cw + 2.0, yt + 0.4, 0.05, 0.06, 0.06, 2.0, 2.0, nx],
+		]
+		jc = cj
+		key += "_w"
 	VmPlane.body2(k, m, key, nst, AIR, c, 22)
 	for s: float in [-1.0, 1.0]:
 		var x: float = s * nx
 		var sfx := "L" if s < 0.0 else ""
-		# the cowl's panel joints
+		# the cowl's panel joints (fine lines in a shade of the paint: in the
+		# joints' dark grey they striped the nacelle like a torpedo's sections)
 		for z: float in [z0 - 3.1, z0 - 1.3]:
 			k._add(m, VmPlane.skin([VmPlane.sec(_shift(VmPlane.st_at(nst, z - 0.02), x), 22, 0.006), VmPlane.sec(_shift(VmPlane.st_at(nst, z + 0.02), x), 22, 0.006)],
-				"gs_%s_j%.2f%s" % [key, z, sfx], 50.0), AIR, cj, Vector3.ZERO)
+				"gs_%s_j%.2f%s" % [key, z, sfx], 50.0), AIR, jc, Vector3.ZERO)
 		# the engine and oil-cooler intake under the spinner: a lip standing
 		# proud of the cowl's face, dark inside
 		var ist := [[z0 - 3.78, yt - 0.72, 0.42, 0.26, 0.24, 2.4, 2.4, x], [z0 - 3.55, yt - 0.74, 0.47, 0.31, 0.3, 2.4, 2.4, x], [z0 - 3.0, yt - 0.74, 0.47, 0.3, 0.3, 2.4, 2.4, x]]
@@ -529,7 +548,8 @@ static func _t56(k: VehicleModels, m: Node3D, key: String, nx: float, le: Vector
 		var side: Array = []
 		for q: Array in nst:
 			side.append(_shift(q, x))
-		_soot(k, m, Vector3(x + s * 0.5, yt - 0.38, z0 + cw + 0.02), Vector3(s, 0, 0), VmPlane.side_skin(side, s), 2.0, 0.6, c)
+		# (no longer than the fairing it streaks)
+		_soot(k, m, Vector3(x + s * 0.5, yt - 0.38, z0 + cw + 0.02), Vector3(s, 0, 0), VmPlane.side_skin(side, s), 2.0 if k.wreck else 1.35, 0.6, c)
 
 
 ## Station s moved out to x.
@@ -746,8 +766,8 @@ static func _blackfish(k: VehicleModels, team: int, armed: bool) -> void:
 		VmPlane.antenna(k, m, Vector3(0, 4.3, z), 0.36)
 	for z: float in [-7.4, -3.4]:
 		VmPlane.antenna(k, m, Vector3(0, 0.61, z), 0.3, true)
-	VehicleFittings.dome_light(k, m, Vector3(0, 4.29, -7.0), 0.12, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3))
-	VehicleFittings.dome_light(k, m, Vector3(0, 0.59, -4.6), 0.12, Color(0.5, 0.06, 0.05), Vector3(1, 0.7, 1.3), Vector3.DOWN)
+	VehicleFittings.dome_light(k, m, Vector3(0, 4.29, -7.0), 0.12, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3))
+	VehicleFittings.dome_light(k, m, Vector3(0, 0.59, -4.6), 0.12, (Color(0.5, 0.06, 0.05) if k.wreck else Color(0.82, 0.1, 0.07)), Vector3(1, 0.7, 1.3), Vector3.DOWN)
 	k.gun_tip = k._tip(m, Vector3(0, 0.5, -10.8))
 	if armed:
 		_bf_guns(k, m, st, c)
@@ -842,7 +862,7 @@ static func _bf_nacelle(k: VehicleModels, tl: Node3D, s: float, c: Color, cj: Co
 			k._box(tl, Vector3(0.03, 0.42, 0.07), Vector3(sd * 0.98, 0.1, -1.1 + i * 0.16), "plain_dark", null, Vector3.ZERO, false)
 	VehicleAircraft.turbine_exhaust(k, tl, Vector3(0, 0, 2.55), Vector3(0, 0, 2.95), 0.46, 0.4, "gunmetal_w", c.darkened(0.5))
 	# the navigation light, green on the right, red on the left
-	VehicleFittings.nav_light(k, tl, Vector3(s * 1.0, 0.0, -0.4), Vector3(0.06, 0.12, 0.22), s)
+	VmPlane.nav_light(k, tl, Vector3(s * 1.0, 0.0, -0.4), Vector3(0.06, 0.12, 0.22), s)
 
 
 ## The Blackfish's H tail: the stabiliser on top of the tail boom with its

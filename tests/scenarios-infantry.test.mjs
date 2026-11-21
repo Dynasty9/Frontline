@@ -50,6 +50,22 @@ scenarioTests([
     },
   },
   {
+    scenario: "church",
+    seed: 5,
+    secs: 60,
+    does: "two squads and a gun team clear the fighter cell out of the parish church by its west door and its south porch",
+    check: async (f) => {
+      f.atLeast("church", 1, "the church was built");
+      f.atLeast("breach", 2, "they stacked up on its doors");
+      f.atLeast(/^(door_kicked|breach_door_kick)$/, 2, "and kicked both in");
+      f.atLeast("room_entry", 2, "and went in");
+      f.atLeast("house_cleared", 1, "and called the church clear");
+      f.atLeast("t1_shots", 20, "the cell fought back from its windows");
+      const cell = await f.soldiers({ team: 1 });
+      assert.equal(cell.filter(fighting).length, 0, "nobody in the church is still fighting");
+    },
+  },
+  {
     scenario: "tactics",
     seed: 1,
     secs: 75,

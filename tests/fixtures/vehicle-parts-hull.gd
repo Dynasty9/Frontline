@@ -121,7 +121,7 @@ func old_sensor(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3
 		var at := Vector3(size.x * (-0.19 if i == 0 else 0.19), 0, -size.z * 0.49)
 		k._cyl(mount, radius * 1.25, radius * 1.25, radius * 0.35, at, Vector3(PI / 2, 0, 0), "rubber", null, 12, false)
 		if not k.burnt:
-			k._cyl(mount, radius, radius, radius * 0.08, at + Vector3(0, 0, -radius * 0.2), Vector3(PI / 2, 0, 0), "glass", Color(0.13, 0.20, 0.23), 12, false)
+			k._cyl(mount, radius, radius, radius * 0.08, at + Vector3(0, 0, -radius * 0.2), Vector3(PI / 2, 0, 0), "glass" if k.wreck else "armor_glass", Color(0.13, 0.20, 0.23) if k.wreck else VehicleMounts.OPTIC, 12, false)
 		var rim := VehicleFittings._ring(radius, radius * 1.2)
 		k._add(mount, rim, "metal_dark", null, at + Vector3(0, 0, -radius * 0.28), Vector3(PI / 2, 0, 0), Vector3(1, 0.45, 1))
 	for side: float in [-1.0, 1.0]:
@@ -238,15 +238,15 @@ func _ready() -> void:
 		k = kit(burnt)
 		VehicleFittings.lamp_unit(k, k.root, Vector3(1.36, 1.24, -3.56), Vector3(0.065 * 2.6, 0.065 * 2.3, 0.12), -1.0, [0.065], Rect2(), "cage")
 		var lenses := count_material(k, "headlamp")
-		assert(lenses == (0 if burnt else 15), "a sealed beam keeps its reflector and ribs only while intact: %d" % lenses)
+		assert(lenses == (0 if burnt else 2), "a sealed beam keeps its lens and its moulded ribs (one mesh) only while intact: %d" % lenses)
 		check(k, AABB(Vector3(1.255, 1.14, -3.695), Vector3(0.21, 0.195, 0.215)), "lamp_unit")
 		k = kit(burnt)
 		VehicleFittings.lamp_unit(k, k.root, Vector3(0.66, 1.0, -3.2), Vector3(0.26, 0.15, 0.1), -1.0, [Rect2(Vector2(-0.06, 0), Vector2(0.1, 0.09)), Rect2(Vector2(0.07, 0), Vector2(0.08, 0.07))], Rect2(), "cage", Vector3(0.28, 0.18, 0.09))
-		assert(count_material(k, "headlamp") == (0 if burnt else 2 * 8), "rectangular inserts lose their lenses on wrecks")
+		assert(count_material(k, "headlamp") == (0 if burnt else 2), "rectangular inserts (one fluted lens each) lose their lenses on wrecks")
 		check(k, AABB(Vector3(0.505, 0.895, -3.305), Vector3(0.31, 0.21, 0.175)), "twin lamp_unit")
 		k = kit(burnt)
 		VehicleFittings.lamp_unit(k, k.root, Vector3(0.84, 0.98, -2.47), Vector3(0.28, 0.2, 0.06), -1.0, [Vector3(0.04, 0, 0.075)], Rect2(Vector2(-0.1, 0), Vector2(0.06, 0.06)), "bar", Vector3(0.28, 0.24, 0.07))
-		assert(count_material(k, "signal_lens") == (0 if burnt else 6), "the indicator lens goes with the wreck")
+		assert(count_material(k, "signal_lens") == (0 if burnt else 1), "the indicator lens (one fluted mesh) goes with the wreck")
 		check(k, AABB(Vector3(0.695, 0.855, -2.56), Vector3(0.29, 0.25, 0.14)), "humvee lamp_unit")
 		k = kit(burnt)
 		VehicleFittings.lamp_unit(k, k.root, Vector3(1.16, 1.22, -3.08), Vector3(0.26, 0.24, 0.16), -1.0, [0.1], Rect2(), "cross", Vector3(0.23, 0.23, 0.13), "round")
@@ -276,7 +276,7 @@ func _ready() -> void:
 		k = kit(burnt)
 		k.surface_family = "aircraft"
 		VehicleEquipment.sensor(k, k.root, Vector3(0, 0.3, -4.3), Vector3.ONE * 0.54, "paint", olive, "ball", Vector3(0.14, 0.12, 0.36), 1)
-		assert(count_material(k, "glass") == (0 if burnt else 1), "one window, glazed while intact")
+		assert(count_material(k, "armor_glass") == (0 if burnt else 1), "one window, glazed while intact")
 		check(k, AABB(Vector3(-0.295, 0.025, -4.6), Vector3(0.59, 0.64, 0.59)), "necked sensor")
 		k = kit(burnt)
 		k.surface_family = "aircraft"
@@ -289,7 +289,7 @@ func _ready() -> void:
 		k = kit(burnt)
 		k.surface_family = "aircraft"
 		VehicleEquipment.sensor(k, k.root, Vector3(-1.25, 0.95, -7.6), Vector3.ONE * 0.6, "paint", olive, "ball", Vector3.ZERO, 3)
-		assert(count_material(k, "glass") == (0 if burnt else 3), "three windows, glazed while intact")
+		assert(count_material(k, "armor_glass") == (0 if burnt else 3), "three windows, glazed while intact")
 		check(k, AABB(Vector3(-1.6, 0.64, -7.92), Vector3(0.7, 0.62, 0.64)), "three-window sensor")
 		# Wheel tubs: a civilian well block between a pair of wheels, and one
 		# wheel's tub open to the right.

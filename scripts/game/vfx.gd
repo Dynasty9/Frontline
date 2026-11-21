@@ -87,6 +87,8 @@ func prewarm(at: Vector3) -> void:
 	plume(p, 1.0)
 	plume(p + Vector3(20, 0, 0), 2.4)
 	var b := make_burner(1.0)
+	# Shader warm-up is not a battlefield heat source: it must not thaw snow.
+	_burners.erase(b)
 	add_child(b)
 	b.global_position = p
 	burn_for(b, 1.0, 1.0)
@@ -340,7 +342,7 @@ func _shader_mat(code: String) -> ShaderMaterial:
 ## its surroundings, by mood (far more at night).
 const SMOKE_SUN := {"night": 0.45}
 const SMOKE_SKY := {"night": 0.6}
-const FIRE_LIGHT := {"night": 2.6, "dusk": 1.5, "dawn": 1.5, "rain": 1.5, "overcast": 1.5}
+const FIRE_LIGHT := {"night": 2.6, "dusk": 1.5, "dawn": 1.5, "rain": 1.5, "overcast": 1.5, "snow": 1.5}
 
 
 ## Copies the scene's sun / sky light into the smoke shader.
@@ -1040,6 +1042,25 @@ func heat_sources(hh: HeatHaze) -> void:
 			hh.add_fire(h.global_position, h.get_meta("ext", Vector3(0.5, 0.4, 0.5)), f)
 
 
+## The fires (each holder with its strength, "fire", and size, "ext"), for
+## the snow melting round them (SnowMelt).
+func burning() -> Array:
+	return _burners
+
+
+## (view) Every fire that's alight, seen or not, as [where, how hard (0..1),
+## how big (make_fire's k, 0.45 a small one to 2.6 a house)]: the smoke it
+## pours into the air (WeatherGrid, SmokePlumes).
+func fire_sources() -> Array:
+	var out := []
+	for b in _burners:
+		if is_instance_valid(b) and (b as Node3D).is_inside_tree():
+			var f := float(b.get_meta("fire", 0.0))
+			if f > 0.02:
+				out.append([(b as Node3D).global_position, f, float(b.get_meta("k", 1.0))])
+	return out
+
+
 ## A fire made by make_fire at strength f (0..1): its smoke goes on thinly
 ## even as it dies down.
 func set_fire(h: Node3D, f: float) -> void:
@@ -1233,6 +1254,36 @@ func make_trail() -> GeometryInstance3D:
 	return part(t)
 
 
+## How much the flames light their own smoke (1; FL_DEBUG_AIR_FLIP_GLOW
+## turns it off and on for comparisons).
+var fire_glow_k := 1.0
+## The flames' light on the smoke rising off them (sRGB-ish multiplier on the
+## smoke's own colour): a dull orange-red, at most what the flames give.
+const FIRE_SMOKE_GLOW := Vector3(0.95, 0.28, 0.06)
+
+
+## The fire's light on its own smoke: each puff is lit dull orange as it
+## leaves the flames and goes dark grey as it climbs away from them (the smoke
+## shader fades it with the puff's age), so the undersides of the billows near
+## the fire glow, mottled as the smoke is, and only where there's smoke.
+func _smoke_glow(h: Node3D, fire: float) -> void:
+	var s := h.get_node_or_null("Smoke") as GeometryInstance3D
+	if s == null:
+		return
+	# (a fuel fire's smoke is lit from its vent alone; a burning house or wood
+	# puts a whole roof of flame under its darker smoke)
+	var k := 1.0 if s.has_meta(&"fuel_smoke") else 2.6 * clampf(fire * 1.2, 0.0, 1.0)
+	Mats.set_inst(s, &"local_light", FIRE_SMOKE_GLOW * k * fire_glow_k)
+
+
+## Every fire's light on its smoke at once (for the off/on comparison).
+func set_fire_glow(k: float) -> void:
+	fire_glow_k = k
+	for b in _burners:
+		if is_instance_valid(b):
+			_smoke_glow(b, float(b.get_meta("fire", 0.0)))
+
+
 func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 	if h == null or not is_instance_valid(h):
 		return
@@ -1269,6 +1320,7 @@ func set_burning(h: Node3D, fire: float, smoke: float) -> void:
 		elif fire <= 0.02 and snd.playing:
 			snd.stop()
 	h.set_meta("fire", fire)
+	_smoke_glow(h, fire)
 	if is_emitting(f) or is_emitting(s):
 		f.visible = true
 		e.visible = true
@@ -1659,6 +1711,10 @@ func _view_process(dt: float) -> void:
 			tb[0].queue_free()
 			_timed.remove_at(i)
 	var t := Time.get_ticks_msec() / 1000.0
+	# FL_DEBUG_STEADY_FIRE: fires hold one brightness, so pictures taken one
+	# after another compare like with like
+	if OS.has_environment("FL_DEBUG_STEADY_FIRE"):
+		t = 0.0
 	for i in range(_burners.size() - 1, -1, -1):
 		if not is_instance_valid(_burners[i]):
 			_burners.remove_at(i)

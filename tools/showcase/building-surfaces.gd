@@ -26,6 +26,7 @@ var components := false
 var view_direction := Vector3(1.0, 0.7, -1.35)
 var night := false  # --building-night: the lamps on, the sun down
 var motion := false
+var orbit_review := false
 var motion_cells := []
 var cameras := {}  # subject -> [centre x, y, z, size, distance] as framed (in capture.json)
 var framing := {}  # the same, read from an earlier run's capture.json (--building-match)
@@ -44,6 +45,9 @@ func _ready() -> void:
 			output = arg.trim_prefix("--building-out=")
 		elif arg.begins_with("--building-kinds="):
 			kinds.assign(arg.trim_prefix("--building-kinds=").split(","))
+		elif arg == "--building-orbit-review":
+			orbit_review = true
+			motion = true
 		elif arg == "--building-motion":
 			motion = true
 		elif arg == "--building-single":
@@ -64,8 +68,8 @@ func _ready() -> void:
 	RenderingServer.global_shader_parameter_set("window_glow", 1.0 if night else 0.0)
 	DirAccess.make_dir_recursive_absolute(output)
 	var manifest := {"renderer": RenderingServer.get_current_rendering_method(), "subjects": kinds, "single": single,
-		"components": components, "view_direction": str(view_direction), "motion": motion,
-		"motion_frames": 48 if motion else 0, "motion_stage": "Orthographic native component fixture; fixed exposure, grazing directional light" if motion else ""}
+		"components": components, "view_direction": str(view_direction), "motion": motion, "orbit_review": orbit_review,
+		"motion_frames": 48 if motion else 0, "motion_stage": ("Orthographic native component fixture; fixed exposure and lighting, camera orbit" if orbit_review else "Orthographic native component fixture; fixed exposure, grazing directional light") if motion else ""}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (6 if components else 6)
 	for start in range(0, kinds.size(), per_page):
@@ -177,6 +181,11 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		camera.size = float(m[3])
 		camera.position = center + view_direction.normalized() * float(m[4])
 		camera.look_at(center)
+	if kind in ["kerbside_stop", "kerbside_lamp_joint"]:
+		center = Vector3(0, 2.15, 0) if kind == "kerbside_stop" else Vector3(0.9, 6.24, 0)
+		camera.size = 1.25 if kind == "kerbside_stop" else 1.8
+		camera.position = center + Vector3(1.7, 0.65, -3.5)
+		camera.look_at(center)
 	cameras[kind] = [center.x, center.y, center.z, camera.size, camera.position.distance_to(center)]
 	motion_cells.append({"camera": camera, "sun": sun, "center": center, "size": camera.size})
 	var label := Label.new()
@@ -201,6 +210,25 @@ func _subject(kind: String) -> Node3D:
 			if kind == "house_yard" and ClassDB.class_exists("Node") and ResourceLoader.exists("res://scripts/game/building_yards.gd"):
 				_yard(yard, 9.0, 7.6)
 			return yard
+		"memorial", "memorial_obelisk":
+			# the town square's war memorial (BuildingSquare), where it exists
+			var mem := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_square.gd"):
+				var mr := RandomNumberGenerator.new()
+				mr.seed = 7
+				var sq: GDScript = load("res://scripts/game/building_square.gd")
+				sq.call("memorial", BuildingKit.nodes(mem, mr), kind == "memorial_obelisk", mr)
+				if kind == "memorial" and sq.get_script_method_list().any(func(m: Dictionary) -> bool: return m["name"] == "stall"):
+					# (and the market's stalls along one side)
+					for i in 3:
+						sq.call("stall", BuildingKit.nodes(mem, mr).at_point(Vector3(-3.2 + i * 3.2, 0, -4.2)), i, mr)
+			return mem
+		"church", "church_open":
+			# the parish church as the town builds it (where Structure has one);
+			# open, its roofs off, as when men are inside
+			if (load("res://scripts/game/structure.gd") as Script).get_script_method_list().any(func(m: Dictionary) -> bool: return m.name == "church_walls"):
+				return _church(kind == "church")
+			return Node3D.new()
 		"roofscape":
 			# four houses' roofs as the town draws them (their ids pick the
 			# form and wear): a hipped roof mended with a tarp and with a
@@ -238,7 +266,7 @@ func _subject(kind: String) -> Node3D:
 		"barn":
 			# a farm's barn as the farmsteads build it (weatherboarded, where
 			# the material exists; before it, a house of the colour it drew)
-			return _house(13.0, 10.0, 5 if BuildingMaterials.HOUSE.size() > 5 else 0, false)
+			return _house(13.0, 10.0, maxi(0, BuildingMaterials.HOUSE.find("timber")), false)
 		"rubble":
 			# rubble as a fallen wall leaves it, and a heap inside a ruin
 			var heaps := Node3D.new()
@@ -364,6 +392,41 @@ func _subject(kind: String) -> Node3D:
 					br.seed = 3 + i
 					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
 			return row
+		"kerbside_stop", "kerbside_lamp_joint":
+			var detail := Node3D.new()
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 5
+			var kit := BuildingKit.nodes(detail, rng)
+			if kind == "kerbside_stop": BuildingKerbside.stop_sign(kit, rng)
+			else: BuildingKerbside.column(kit)
+			return detail
+		"kerbside":
+			# street lamps, a lantern, a hydrant, a stop sign, a mailbox and the
+			# electricity cabinet, where BuildingKerbside has them
+			var kerb := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_kerbside.gd"):
+				var kb: GDScript = load("res://scripts/game/building_kerbside.gd")
+				var kr := RandomNumberGenerator.new()
+				kr.seed = 5
+				var kk := BuildingKit.nodes(kerb, kr)
+				kk.box(Vector3(14.0, 0.12, 5.0), Vector3(0, -0.06, 0), "pavement", Color(0.62, 0.6, 0.56))
+				kb.call("column", kk.at_point(Vector3(-6.0, 0, 1.2)))
+				kb.call("pole_lamp", kk.at_point(Vector3(-3.4, 0, 1.6)))
+				kb.call("lantern_post", kk.at_point(Vector3(-0.8, 0, 1.0)))
+				kb.call("hydrant", kk.at_point(Vector3(1.0, 0, -0.6)))
+				kb.call("stop_sign", kk.at_point(Vector3(2.6, 0, -0.8), Vector3(0, -0.6, 0)), kr)
+				kb.call("mailbox", kk.at_point(Vector3(4.2, 0, -0.6)), Color(0.15, 0.25, 0.45), true)
+				kb.call("cabinet", kk.at_point(Vector3(6.0, 0, 0.6)))
+			return kerb
+		"water_tower":
+			# the town's water tower (BuildingLandmarks, where it exists)
+			var wt := Node3D.new()
+			if ResourceLoader.exists("res://scripts/game/building_landmarks.gd"):
+				var wr := RandomNumberGenerator.new()
+				wr.seed = 9
+				var lm: GDScript = load("res://scripts/game/building_landmarks.gd")
+				lm.call("water_tower", BuildingKit.nodes(wt, wr), wr)
+			return wt
 		"house_rooms":
 			# three houses with their roofs off, as when men are inside, their
 			# back and left walls (the ones seen from inside) without windows:
@@ -602,6 +665,51 @@ func _yard(root: Node3D, w: float, d: float) -> void:
 	Mats.merge_static(root)
 
 
+## The parish church as MapGen._church lays it out (its tower to -z): the
+## tower, then the nave and the chancel, each a floor, its walls and its roof,
+## and the south porch's dwarf walls.
+func _church(roofed := true) -> Node3D:
+	var root := Node3D.new()
+	var script: Script = load("res://scripts/game/structure.gd")
+	var consts := script.get_script_constant_map()
+	var tw: float = consts["CHURCH_TOWER"]
+	var cl: float = consts["CHURCH_CHANCEL"]
+	var ci := BuildingMaterials.HOUSE.find("church")
+	var size := Vector3(8.0, 6.5, 23.0)
+	var z0 := -size.z * 0.5
+	var nl := size.z - tw - cl
+	var tower := Structure.preview_model("church", -1, ci, Vector3(tw, consts["CHURCH_TOWER_H"], tw), false, 1)
+	tower.position.z = z0 + tw * 0.5
+	root.add_child(tower)
+	var id := 400
+	for body: Array in [[z0 + tw + nl * 0.5, size.x, nl, size.y - 0.3, false], [size.z * 0.5 - cl * 0.5, size.x - 2.4, cl, size.y - 1.5, true]]:
+		var bc := Vector3(0, 0, body[0])
+		var fl := Structure.preview_model("floor", -1, 3, Vector3(body[1], 0.06, body[2]), false, id)
+		fl.position = bc
+		root.add_child(fl)
+		for e: Array in script.call("church_walls", body[1], body[2], body[4]):
+			id += 1
+			var p: Vector2 = e[0]
+			var wall := Structure.preview_model("house_wall", -1, e[3], Vector3(e[2], float(ci), 0.4), int(e[3]) == 2, id)
+			wall.position = bc + Vector3(p.x, 0, p.y)
+			wall.rotation.y = e[1]
+			root.add_child(wall)
+			var porch: Array = script.call("church_porch", e)
+			if not porch.is_empty():
+				var pd: Vector2 = consts["CHURCH_PORCH"]
+				for sx: float in [-1.0, 1.0]:
+					var q: Vector2 = porch[0]
+					var dwarf := Structure.preview_model("low_wall", -1, 0, Vector3(pd.y, 0.9, 0.5), false, id + 90 + int(sx))
+					dwarf.position = bc + Vector3(q.x, 0, q.y) + Basis(Vector3.UP, float(porch[1])) * Vector3(sx * (pd.x * 0.5 - 0.25), 0, 0)
+					dwarf.rotation.y = float(porch[1]) + PI * 0.5
+					root.add_child(dwarf)
+		if roofed:
+			var roof := Structure.preview_model("roof", -1, ci * 2, Vector3(body[1], body[3], body[2]), false, id + 50)
+			roof.position = bc
+			root.add_child(roof)
+	return root
+
+
 func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 	var xf := parent * node.transform
 	var box := AABB()
@@ -627,8 +735,13 @@ func _motion(kind: String) -> void:
 		for cell: Dictionary in motion_cells:
 			var camera: Camera3D = cell.camera
 			var sun: DirectionalLight3D = cell.sun
-			camera.size = float(cell.size) * lerpf(1.0, 3.5, phase)
-			sun.rotation_degrees = Vector3(-12.0, lerpf(-38.0, 142.0, phase), 0)
+			if orbit_review:
+				var angle := lerpf(-0.65, 0.65, phase)
+				camera.position = cell.center + Vector3(sin(angle) * 4.0, 0.65, -cos(angle) * 4.0)
+				camera.look_at(cell.center)
+			else:
+				camera.size = float(cell.size) * lerpf(1.0, 3.5, phase)
+				sun.rotation_degrees = Vector3(-12.0, lerpf(-38.0, 142.0, phase), 0)
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		assert(get_viewport().get_texture().get_image().save_png(folder.path_join("%04d.png" % frame)) == OK)

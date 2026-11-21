@@ -213,29 +213,23 @@ func next_fob_name(team: int) -> String:
 	return n
 
 
-## The vehicle tier a side has unlocked: 1 to start with, then each tier
-## research raises it.
-func tier(team: int) -> int:
-	var t := 1
-	for k in Defs.UPGRADES:
-		var u: Dictionary = Defs.UPGRADES[k]
-		if u.has("tier") and has_upgrade(team, k):
-			t = maxi(t, int(u.tier))
-	return t
-
-
-## "" if the side may build `item` now, else the name of the research it needs.
+## "" if the side may build `item` now, else the name of the step of the
+## doctrine tree that unlocks it (Defs.UPGRADES).
 func tier_needed(team: int, item: String) -> String:
-	if not Defs.VEHICLES.has(item):
+	if team < 0 or team > 1:
 		return ""
-	var want := int(Defs.VEHICLES[item].get("tier", 1))
-	if want <= tier(team):
-		return ""
-	for k in Defs.UPGRADES:
-		var u: Dictionary = Defs.UPGRADES[k]
-		if int(u.get("tier", 0)) == want and team in u.teams:
-			return String(u.name)
-	return "tier %d" % want
+	return Defs.locked_by(team, item, upgrades[team].keys())
+
+
+## May the side start researching `key` now: its own side's, not had yet,
+## and everything it needs before it done.
+func can_research(team: int, key: String) -> bool:
+	if not Defs.UPGRADES.has(key) or has_upgrade(team, key) or not team in Defs.UPGRADES[key].teams:
+		return false
+	for r in Defs.requires_of(key):
+		if not has_upgrade(team, String(r)):
+			return false
+	return true
 
 
 func has_upgrade(team: int, key: String) -> bool:
@@ -253,7 +247,15 @@ func apply_upgrade(team: int, key: String) -> void:
 			s.hp *= 1.2
 		elif key == "grenades" and not s.is_bearer():
 			s.frags += 1
-	world.send_msg(team, "info", "Research complete: %s." % Defs.UPGRADES[key].name)
+	var u: Dictionary = Defs.UPGRADES[key]
+	var got := ""
+	if u.has("unlocks"):
+		var names := []
+		for it in u.unlocks:
+			if Defs.VEHICLES.has(it):
+				names.append(String(Defs.VEHICLES[it].name))
+		got = " Now available: %s." % ", ".join(names)
+	world.send_msg(team, "info", "Research complete: %s.%s" % [u.name, got])
 
 
 ## Warnings go only to the human who caused them (AI commanders get none).

@@ -82,10 +82,12 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, `KILLS` and `LOST` (men,
   then vehicles once there are any), and the clock. A line under it for each FOB says what its trucks are doing.
   **Moments** sit centred under it (see below).
-- **Left**: the ORBAT (one ruled line per squad and vehicle), then `IDLE 02 [.]` when squads of yours stand about
-  with nothing to do (the key or a click selects the next), then FIRES: at most three ready missions, the first
-  carrying its key, and one line for the rest (`+9 MORE · 6 RDY`) that opens them all. The minimap and its tool
-  column at the bottom.
+- **Left**: the ORBAT (one ruled line per squad and vehicle, by domain: infantry, support, land, air, sea), then
+  `IDLE 02 [.]` when squads of yours stand about with nothing to do (the key or a click selects the next), then
+  FIRES: at most three ready missions, the first carrying its key, and one line for the rest (`+9 MORE · 6 RDY`)
+  that opens them all. The minimap and its tool column at the bottom. The column steps back to half strength
+  while the cursor is out on the battlefield (`Hud.calm`) and comes up as it goes to it.
+- **Lower middle**: the command net (`HudRadio`), one transmission at a time, centred just above the selection.
 - **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
   The bottom scrim only darkens while there's something selected.
 - **Right**: the **Log** and the mission's objectives; in co-op the command net.
@@ -151,7 +153,22 @@ says in prose. They come in three levels:
 - a **caution** (`▲ CAUTION`) is ruled off above and below in `WARN` and flickers on once;
 - a **warning** (`▲ WARNING`) is ruled off in `BAD` and flickers on twice.
 
-The message history (L by default) opens in their place on a lighter ink.
+Three lines at most: the same news again updates its line with a count (`×3`) rather than adding one, routine
+news (trained, built) is faintest and shortest, and radio traffic goes to the command net instead. The message
+history (L by default) opens in their place on a lighter ink.
+
+## Command net
+
+Radio traffic is a subtitle, not a log line: a live dot and the sender in accent capitals, the words centred under
+it in prose, typed on, held while they're read and cut. One at a time; a squad answering an order replaces
+another answer but never talks over real traffic (`HudRadio.ack`).
+
+## Quiet by default
+
+Say a thing when it's new or when it needs the commander, then get out of the way. An order is drawn for a moment
+as it's given and again only while its unit is selected or under the hand (`HudOverlay.order_alpha`); a row of the
+ORBAT says what its unit is doing only under the hand and otherwise only its alarms; finished objectives fold away.
+Detail is one hover away, not on the screen all the time.
 
 A squad of yours under fire somewhere you aren't looking comes in as a caution, once, with a ping on the map.
 
@@ -171,7 +188,9 @@ full words are the cell's tooltip.
 ## Marks on the battlefield
 
 Names over bases and towns are capitals with the world-text outline and a small square in the owner's colour, no
-box; a selected vehicle wears accent corner ticks; hover cards are ink with ticks and counted health and ammunition;
+box; a selected vehicle wears accent corner ticks; hover cards are ink with ticks and counted health and ammunition (a squad's: callsign and type,
+pips, nerve, ammunition, its order code and the man under the cursor; placed beside the ORBAT when the hand is on
+a row there);
 order tags, grid letters and how long ago an enemy was seen are mono; a cursor hint says what the click will do in
 capitals and its cost or square in mono (`MORTAR HE D4`, `3 × SANDBAGS 90 SUP`).
 

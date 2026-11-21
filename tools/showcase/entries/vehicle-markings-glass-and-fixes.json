@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-markings-glass-and-fixes.md",
+  "summary": "A review of every vehicle against the morning's: faded side markings, no orange cab panels, glass and vision blocks that read as glass, visible rotor discs, and fixes to tonneaus, tops, windscreens, beds, brackets, coils, grilles and kit.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Colour, glass and small fit fixes across many families: one matched studio sheet shows each regression and its fix, cropped close where the change is small.",
+  "source_ref": "a29264e81695919bef4ebf749b35784cb6536e7d",
+  "before_ref": "a29264e81695919bef4ebf749b35784cb6536e7d",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-markings-glass-and-fixes/comparison.jpg",
+      "sha256": "770383305e75da1b7e13423be702fa2112f5c2e83eab694fa6df49be5c179cb4"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-markings-glass-and-fixes/capture.json",
+      "sha256": "2f1569a80567a2bedec63d1326b6b3adf81d1e4c41c35e306f9e9e04d54d00c8"
+    }
+  ],
+  "output": null
+}

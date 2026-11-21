@@ -112,6 +112,7 @@ const ACTIONS := [
 	["coop_next", "Look at the next co-commander's view", "Co-commanders", "cmd", NONE, NONE, "Each press glides to the next commander on your side."],
 	["tactical", "Tactical map", "Interface", "ui", KEY_TAB, NONE, ""],
 	["orbat", "Order of battle", "Interface", "ui", KEY_O, NONE, ""],
+	["doctrine", "Doctrine tree", "Interface", "ui", KEY_Y, NONE, "Research: what each step of the land, air, sea and infantry branches costs, needs and unlocks."],
 	["log", "Message history", "Interface", "ui", KEY_L, NONE, ""],
 	["chat", "Chat to everyone", "Interface", "ui", KEY_ENTER, KEY_KP_ENTER, ""],
 	["chat_team", "Chat to your side", "Interface", "ui", KEY_ENTER | KEY_MASK_SHIFT, NONE, ""],

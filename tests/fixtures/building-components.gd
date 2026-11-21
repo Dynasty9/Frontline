@@ -18,15 +18,31 @@ func check(ok: bool, what: String) -> void:
 ## (A cached shape is several solids in one mesh, so its bounding box says
 ## nothing: count the faces a ray from the point crosses.)
 func occupied(root: Node3D, point: Vector3) -> bool:
+	return _inside(_solids(root, AABB(point, Vector3.ZERO)), point)
+
+
+## The parts built as nodes under `root` that reach into `near` (in the
+## root's space), for _inside(): [their inverse transforms, boxes, faces].
+func _solids(root: Node3D, near: AABB) -> Array:
+	var out := []
 	for child in root.get_children():
 		var mi := child as MeshInstance3D
 		if mi == null or mi.mesh == null:
 			continue
-		var local := mi.transform.affine_inverse() * point
-		if not mi.mesh.get_aabb().grow(0.001).has_point(local):
+		var box := mi.mesh.get_aabb().grow(0.001)
+		if (mi.transform * box).intersects(near) or (mi.transform * box).has_point(near.position):
+			out.append([mi.transform.affine_inverse(), box, mi.mesh.get_faces()])
+	return out
+
+
+## Is `point` inside one of `solids` (see occupied())?
+func _inside(solids: Array, point: Vector3) -> bool:
+	var dir := Vector3(0.137, 0.913, 0.384).normalized()
+	for s: Array in solids:
+		var local: Vector3 = (s[0] as Transform3D) * point
+		if not (s[1] as AABB).has_point(local):
 			continue
-		var faces := mi.mesh.get_faces()
-		var dir := Vector3(0.137, 0.913, 0.384).normalized()
+		var faces: PackedVector3Array = s[2]
 		var hits := 0
 		for i in range(0, faces.size(), 3):
 			if Geometry3D.ray_intersects_triangle(local, dir, faces[i], faces[i + 1], faces[i + 2]) != null:
@@ -34,6 +50,18 @@ func occupied(root: Node3D, point: Vector3) -> bool:
 		if hits % 2 == 1:
 			return true
 	return false
+
+
+## Every corner of the parts built as nodes under `root`, in its space, once
+## each.
+func _points(root: Node3D) -> PackedVector3Array:
+	var seen := {}
+	for child in root.get_children():
+		var mi := child as MeshInstance3D
+		if mi != null and mi.mesh != null:
+			for p in mi.transform * mi.mesh.get_faces():
+				seen[p] = true
+	return PackedVector3Array(seen.keys())
 
 
 func valid(root: Node3D, what: String) -> void:
@@ -92,6 +120,16 @@ func _part_boxes(node: Node3D, parent: Transform3D, out: Array[AABB]) -> void:
 			_part_boxes(child, xf, out)
 
 
+## How high the triangles `tris` stand over (p.x, p.z), from p.y (or -1).
+func _top_at(tris: PackedVector3Array, p: Vector3) -> float:
+	var top := -1.0
+	for i in range(0, tris.size(), 3):
+		var hit = Geometry3D.ray_intersects_triangle(p, Vector3.DOWN, tris[i], tris[i + 1], tris[i + 2])
+		if hit != null:
+			top = maxf(top, (hit as Vector3).y)
+	return top
+
+
 func kit() -> BuildingKit:
 	var root := Node3D.new()
 	add_child(root)
@@ -116,7 +154,7 @@ func _ready() -> void:
 		"face_sheet": func(k: BuildingKit): BuildingWalls.face(k, 4.0, 4.0, "corrugated", Color(0.45, 0.46, 0.44)),
 		"face_precast": func(k: BuildingKit): BuildingWalls.face(k, 6.0, 3.0, "precast", Color(0.5, 0.5, 0.5)),
 		"coping": func(k: BuildingKit):
-			for m in ["plaster", "brick", "stone", "concrete"]:
+			for m in ["plaster", "brick", "stone", "concrete", "fieldstone"]:
 				BuildingWalls.coping(k, 3.0, 0.4, 1.0, m, BuildingMaterials.color(m)),
 		"window": func(k: BuildingKit): BuildingOpenings.window(k, Vector3(0, 1.5, 0), Vector2(1.3, 1.0), {"shutters": Color(0.3, 0.4, 0.3), "shutter": "louvred"}),
 		"doorway": func(k: BuildingKit): BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(1.9, 2.2), {"hood": true}),
@@ -140,6 +178,7 @@ func _ready() -> void:
 			BuildingFittings.hopper(k, Vector3(0, 3, 0))
 			BuildingFittings.chimney(k, Vector3.ZERO, Vector2(0.6, 0.6), 1.5)
 			BuildingFittings.stack(k, Vector3.ZERO, 0.5, 0.4, 5.0)
+			BuildingFittings.steel_stack(k, Vector3.ZERO, 0.28, 4.6, [Vector3(3, 0, 0), Vector3(-1.5, 0, 2.6), Vector3(-1.5, 0, -2.6)], k.rng)
 			BuildingFittings.flue(k, Vector3.ZERO, 0.1, 1.0)
 			BuildingFittings.ac_unit(k, Vector3.ZERO)
 			BuildingFittings.water_tank(k, Vector3.ZERO)
@@ -291,7 +330,8 @@ func _ready() -> void:
 			BuildingYards.bicycle(k.at_point(Vector3(0, 0, -3)), BuildingYards.BIKE_COLS[0])
 			BuildingYards.pots(k.at_point(Vector3(3, 0, 3)), 3, k.rng)
 			BuildingYards.shed(k.at_point(Vector3(-4, 0, 3)), BuildingYards.SHEDS[0], k.rng)
-			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0]),
+			BuildingYards.trampoline(k.at_point(Vector3(5, 0, -4)), BuildingYards.PADS[0])
+			BuildingYards.graves(k.at_point(Vector3(-6, 0, -4)), 5, k.rng),
 		"storey": func(k: BuildingKit):
 			BuildingStoreys.upper(k, 9.0, 7.6, 3.0, 5.8, "brick", BuildingMaterials.color("brick"), Color(0.86, 0.85, 0.8), k.rng),
 		"fixtures": func(k: BuildingKit):
@@ -372,6 +412,95 @@ func _ready() -> void:
 						check(false, "a room's dressing stands at %s (seed %d)" % [Vector3(x, y, z), s])
 		rk.sink.root.free()
 
+	# A side's HQ stands its containers and command post where its parts are,
+	# turned the way the battle puts it: its wall out in front (-z, towards
+	# the enemy), its gate on the road's side (+x), its drive in running out
+	# to the road's edge (11.6 m: TownGen.build_roads lays the road 14 m out)
+	# and nothing past it, nor past the security fence along its back (8.5 m:
+	# TownGen.military_fences). The masts, the long-range aerial and the flag
+	# are the top of it, its guys' pickets driven in the bottom. Either side.
+	for side in 2:
+		var hq := Structure.preview_model("depot", side, 0)
+		var hqb := _bounds(hq, Transform3D.IDENTITY)
+		check(hq.get_child_count() > 0 and hqb.position.x >= -10.5 and hqb.end.x <= 11.65 and hqb.position.z >= -7.0 and hqb.end.z <= 8.5
+			and hqb.position.y >= -0.2 and hqb.end.y < 12.0, "a side's HQ keeps to its compound (%d: %s)" % [side, hqb])
+		check(hqb.position.z <= BuildingDepot.FRONT_Z - 0.4, "its wall stands out in front of it, towards the enemy (%d: %s)" % [side, hqb])
+		hq.free()
+
+	# The town square's war memorial stands within its steps, the soldier (or
+	# the obelisk) on top of it; a market stall keeps to its pitch, its
+	# canopy over a man's head.
+	for obelisk in [false, true]:
+		var mk := kit()
+		BuildingSquare.memorial(mk, obelisk, mk.rng)
+		var mb := _bounds(mk.sink.root, Transform3D.IDENTITY)
+		check(mb.size.x <= 3.05 and mb.size.z <= 3.05 and mb.position.y >= -0.01 and mb.end.y > 4.0 and mb.end.y < 6.0, "the war memorial stands on its steps (%s)" % mb)
+		mk.sink.root.free()
+	# Its soldier is one cast figure, larger than life (a man of 1.8 m cast
+	# 2.1 m tall, on his base), no wider than the top of his pedestal.
+	var mwsk := kit()
+	BuildingSquare.soldier(mwsk)
+	var mwsb := _bounds(mwsk.sink.root, Transform3D.IDENTITY)
+	check(mwsk.sink.parts == 1 and mwsb.position.y > -0.005 and mwsb.end.y > 2.0 and mwsb.end.y < 2.3 and mwsb.size.x < 0.9 and mwsb.size.z < 0.9,
+		"the memorial's soldier is one figure 2.1 m tall on his base (%d parts, %s)" % [mwsk.sink.parts, mwsb])
+	mwsk.sink.root.free()
+	# Its wreaths are laid at its foot, in front: none in its stone, the statue
+	# or another wreath, and each stands on the top step leaning back on the
+	# plinth (moved 3 cm down, or back, it would be in the stone).
+	for mwobelisk in [false, true]:
+		for mwseed in 3:
+			var mwk := kit()
+			mwk.rng.seed = mwseed
+			BuildingSquare.monument(mwk, mwobelisk, mwk.rng)
+			var mwspots := BuildingSquare.wreath_spots(mwk.rng)
+			check(mwspots.size() >= 2, "wreaths are laid at the memorial (%d)" % mwspots.size())
+			var mwstone := _points(mwk.sink.root)
+			var mwroots: Array[Node3D] = []
+			for mwspot in mwspots:
+				var mwwk := kit()
+				BuildingSquare.wreath(mwwk.moved(mwspot))
+				mwroots.append(mwwk.sink.root)
+			for mwi in mwroots.size():
+				var mwat := mwspots[mwi].origin
+				var mwpts := _points(mwroots[mwi])
+				var mwbox := _bounds(mwroots[mwi], Transform3D.IDENTITY)
+				var mwsolids := _solids(mwk.sink.root, mwbox.grow(0.04))
+				var mwin_stone := mwpts.size() == 0
+				var mwon_step := false
+				var mwon_plinth := false
+				for mwp in mwpts:
+					mwin_stone = mwin_stone or _inside(mwsolids, mwp)
+					mwon_step = mwon_step or _inside(mwsolids, mwp + Vector3(0, -0.03, 0))
+					mwon_plinth = mwon_plinth or _inside(mwsolids, mwp + Vector3(0, 0, 0.03))
+				var mwwsolid := _solids(mwroots[mwi], mwbox)
+				for mwq in mwstone:
+					mwin_stone = mwin_stone or (mwbox.has_point(mwq) and _inside(mwwsolid, mwq))
+				var mwin_wreath := false
+				for mwj in mwroots.size():
+					if mwj != mwi:
+						for mwo in _points(mwroots[mwj]):
+							mwin_wreath = mwin_wreath or (mwbox.has_point(mwo) and _inside(mwwsolid, mwo))
+				var mwwhat := "(%s, seed %d, at %s)" % ["obelisk" if mwobelisk else "soldier", mwseed, mwat]
+				check(not mwin_stone, "a wreath at the memorial is in its stone " + mwwhat)
+				check(not mwin_wreath, "a wreath at the memorial is in another " + mwwhat)
+				check(mwon_step and mwon_plinth, "a wreath at the memorial stands on its step leaning on the plinth " + mwwhat)
+				check(mwat.z < -BuildingSquare.PLINTH * 0.5 and absf(mwat.x) < BuildingSquare.PLINTH * 0.5, "a wreath at the memorial is laid in front of it " + mwwhat)
+			for mwr in mwroots:
+				mwr.free()
+			mwk.sink.root.free()
+	for ci in 5:
+		var stk := kit()
+		BuildingSquare.stall(stk, ci, stk.rng)
+		var stb := _bounds(stk.sink.root, Transform3D.IDENTITY)
+		check(stb.size.x <= 2.7 and stb.size.z <= 1.7 and stb.end.y <= 2.5 and stb.position.y >= -0.01, "a market stall keeps to its pitch (%s)" % stb)
+		stk.sink.root.free()
+	# A field hospital (the medic tent) stands its tent where its part is, the
+	# stretchers and stores by its door and the flag beside it, under 4.3 m.
+	for side in 2:
+		var mt := Structure.preview_model("medic_tent", side)
+		var mtb := _bounds(mt, Transform3D.IDENTITY)
+		check(mt.get_child_count() > 0 and mtb.size.x <= 12.5 and mtb.size.z <= 7.8 and mtb.position.y >= -0.15 and mtb.end.y <= 4.4, "a field hospital keeps to its pitch (%d: %s)" % [side, mtb])
+		mt.free()
 	# The street pieces keep to their footprints: the fountain within its
 	# basin, the bus shelter over its pavement (its stop's flag the top of it),
 	# a planter (its trough a square turned on its corner: its bounds are the
@@ -397,6 +526,31 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# What stands at the kerb keeps to its spot: a lamp's head out over the
+	# road no further than its arm, a sign, a hydrant, a mailbox, a cabinet
+	# (the bounds of a turned lantern or sign are a turned square's;
+	# the sign now turns in its face plane, making that box wider, not deeper).
+	var kerbs := [[func(k: BuildingKit): BuildingKerbside.column(k), Vector3(2.0, 6.45, 0.45)],
+		[func(k: BuildingKit): BuildingKerbside.pole_lamp(k), Vector3(1.45, 6.05, 0.65)],
+		[func(k: BuildingKit): BuildingKerbside.lantern_post(k), Vector3(0.75, 4.95, 0.75)],
+		[func(k: BuildingKit): BuildingKerbside.hydrant(k), Vector3(0.55, 0.8, 0.36)],
+		[func(k: BuildingKit): BuildingKerbside.stop_sign(k, k.rng), Vector3(1.03, 2.67, 0.12)],
+		[func(k: BuildingKit): BuildingKerbside.mailbox(k, Color.BLUE, true), Vector3(0.3, 1.42, 0.5)],
+		[func(k: BuildingKit): BuildingKerbside.cabinet(k), Vector3(1.25, 1.5, 0.75)]]
+	for kb: Array in kerbs:
+		var kbk := kit()
+		(kb[0] as Callable).call(kbk)
+		var kbb := _bounds(kbk.sink.root, Transform3D.IDENTITY)
+		var kbl: Vector3 = kb[1]
+		check(kbb.size.x <= kbl.x and kbb.size.z <= kbl.z and kbb.end.y <= kbl.y and kbb.position.y >= -0.01, "a kerbside piece keeps to its spot (%s, %s)" % [kbb, kbl])
+		kbk.sink.root.free()
+	# The water tower stands on its piers within its footprint, its finial at
+	# 13.5 m or so.
+	var towk := kit()
+	BuildingLandmarks.water_tower(towk, towk.rng)
+	var towb := _bounds(towk.sink.root, Transform3D.IDENTITY)
+	check(towb.size.x <= 6.5 and towb.size.z <= 6.4 and towb.position.y >= -0.01 and towb.end.y > 13.0 and towb.end.y < 14.0, "the water tower keeps to its footprint (%s)" % towb)
+	towk.sink.root.free()
 	# A tunnel's mouth keeps to its 3 m plot, its shaft going down below it.
 	var tn := Structure.preview_model("tunnel", 1)
 	var tnb := _bounds(tn, Transform3D.IDENTITY)
@@ -516,6 +670,83 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# The vehicle works: its walls' dressing keeps close to the shed (the
+	# bollards and drums an arm's length out), under the eaves, and the brick
+	# dado stops either side of the shutter, so a vehicle drives out clear.
+	var fk2 := kit()
+	var shed := Vector3(11.0, 5.0, 10.0)
+	BuildingFactory.walls(fk2, shed, Color(0.45, 0.46, 0.44), fk2.rng)
+	var wb := _bounds(fk2.sink.root, Transform3D.IDENTITY)
+	check(wb.position.x >= -6.4 and wb.end.x <= 6.4 and wb.position.z >= -5.8 and wb.end.z <= 5.8 and wb.end.y <= 5.2 and wb.position.y >= -0.01, "a factory's walls keep to the shed (%s)" % wb)
+	for x: float in [-2.0, 0.0, 2.0]:
+		check(not occupied(fk2.sink.root, Vector3(x, 0.6, -5.07)), "the factory's dado leaves the shutter clear at x %.1f" % x)
+	check(occupied(fk2.sink.root, Vector3(4.0, 0.6, -5.07)), "the factory's dado runs along its front")
+	fk2.sink.root.free()
+	# Its chimney stands on the roof slab in the strip beside the north
+	# lights, out of them and inside the eaves, its kerb and its guys'
+	# blocks bedded on the slab, its mouth where the smoke is put.
+	var fck := kit()
+	var fcm := BuildingFactory.chimney(fck, shed, fck.rng)
+	var fcb := _bounds(fck.sink.root, Transform3D.IDENTITY)
+	check(fcb.position.y >= BuildingFactory.SLAB - 0.05 and fcb.end.y <= BuildingFactory.FLUE_TOP + 0.6 and absf(fcb.end.x) <= shed.x * 0.5 + 0.2
+		and fcb.position.z >= -shed.z * 0.5 and fcb.end.z <= shed.z * 0.5 + 0.2, "the factory's chimney keeps to its roof slab (%s)" % fcb)
+	check(is_equal_approx(fcm.y, BuildingFactory.FLUE_TOP) and occupied(fck.sink.root, Vector3(fcm.x, BuildingFactory.SLAB + 0.05, fcm.z)), "the chimney stands on its kerb on the slab under its mouth (%s)" % fcm)
+	check(occupied(fck.sink.root, Vector3(fcm.x, BuildingFactory.FLUE_TOP - 1.0, fcm.z)), "the chimney's stack rises to its mouth")
+	for x: float in [2.0, 3.0, 4.0]:
+		for z: float in [1.5, 3.0, 3.8]:
+			var under := BuildingFactory.SLAB + BuildingRoofs.sawtooth_rise(shed.x * 0.9, 3, 0.9, x) - 0.1
+			check(not occupied(fck.sink.root, Vector3(x, under, z)), "the chimney keeps out of the north lights at (%.1f, %.1f)" % [x, z])
+	fck.sink.root.free()
+	# The pillbox: its walls, drawn from the bunker's parts, fill every part
+	# that stops a bullet, short of them only at the corners' chamfer; its
+	# embrasure stands out of the wall no further than its frame, round the
+	# slit and under the eave; its roof slab covers the parts' roof and reaches
+	# no further than its overhang, the cupola's periscope the highest thing on it.
+	var pbst := Structure.new()
+	pbst.skind = "bunker"
+	pbst.team = 0
+	pbst._define_parts()
+	var pbwk := kit()
+	BuildingPillbox.walls(pbwk, pbst.parts, BuildingPillbox.CONCRETE)
+	var pbwb := _bounds(pbwk.sink.root, Transform3D.IDENTITY)
+	check(pbwb.position.is_equal_approx(Vector3(-BuildingPillbox.HALF, 0, -BuildingPillbox.HALF)) and pbwb.end.is_equal_approx(Vector3(BuildingPillbox.HALF, 2.2, BuildingPillbox.HALF)), "a pillbox's walls stand on their parts (%s)" % pbwb)
+	for p: Dictionary in pbst.parts:
+		var pc: Vector3 = p.p
+		var ps: Vector3 = p.s
+		if pc.y - ps.y * 0.5 >= BuildingPillbox.EAVE - 0.1:
+			continue
+		for corner: Vector3 in [Vector3(-0.45, -0.45, -0.45), Vector3(0.45, 0.45, 0.45), Vector3(-0.45, 0.45, 0.45), Vector3(0.45, -0.45, -0.45), Vector3.ZERO]:
+			var at := pc + ps * corner
+			var chamfered := absf(at.x) + absf(at.z) > BuildingPillbox.HALF * 2.0 - BuildingPillbox.CHAMFER
+			check(chamfered or occupied(pbwk.sink.root, at), "a pillbox's walls fill the part at %s (%s)" % [pc, at])
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			check(not occupied(pbwk.sink.root, Vector3(sx * 2.74, 1.0, sz * 2.74)), "a pillbox's corner is chamfered (%d, %d)" % [sx, sz])
+	pbwk.sink.root.free()
+	pbst.free()
+	var pbek := kit()
+	BuildingPillbox.embrasure(pbek, 2.6, Color(0.5, 0.5, 0.48))
+	var pbeb := _bounds(pbek.sink.root, Transform3D.IDENTITY)
+	check(pbeb.position.z >= -0.1 and pbeb.end.z <= BuildingPillbox.EMBRASURE + 0.01 and pbeb.position.y >= 0.6 and pbeb.end.y < BuildingPillbox.EAVE and pbeb.size.x <= 2.6 + 1.0, "a pillbox's embrasure keeps round its slit (%s)" % pbeb)
+	pbek.sink.root.free()
+	var pbpk := kit()
+	BuildingPillbox.roof(pbpk, Color(0.5, 0.5, 0.48), pbpk.rng)
+	var pbpb := _bounds(pbpk.sink.root, Transform3D.IDENTITY)
+	check(pbpb.position.y <= 2.2 and pbpb.position.x >= -BuildingPillbox.SLAB_HALF - 0.01 and pbpb.end.x <= BuildingPillbox.SLAB_HALF + 0.01 and pbpb.position.z >= -BuildingPillbox.SLAB_HALF - 0.01 and pbpb.end.z <= BuildingPillbox.SLAB_HALF + 0.01 and pbpb.end.y <= BuildingPillbox.SLAB_TOP + 0.8, "a pillbox's roof keeps to its slab (%s)" % pbpb)
+	pbpk.sink.root.free()
+	# The FOB's command post: its HESCO square keeps to the post's footprint
+	# (the baffle of bags a step outside its way in) and under the net, and
+	# its roof carries a burst layer of bags.
+	var cp_root := Node3D.new()
+	add_child(cp_root)
+	var cp_rng := RandomNumberGenerator.new()
+	cp_rng.seed = 11
+	var cp_bags: Array = []
+	WorksModels.command_post(cp_root, cp_rng, cp_bags)
+	var cpb := _bounds(cp_root, Transform3D.IDENTITY)
+	check(cpb.position.x >= -2.6 and cpb.end.x <= 2.6 and cpb.position.z >= -2.6 and cpb.end.z <= 2.6 and cpb.end.y <= 2.45, "a FOB's command post keeps to its footprint (%s)" % cpb)
+	check(cp_bags.size() == 8, "a FOB's command post has its roof of bags and its baffle (%d rows)" % cp_bags.size())
+	cp_root.free()
 	# Cover crates: the stores stand on the ground inside the boxes their parts
 	# give for cover, and one stack is loaded differently from the next.
 	var loads := {}
@@ -564,8 +795,10 @@ func _ready() -> void:
 
 	# A farm's barn: weatherboarded walls, a steeper sheet roof with no
 	# chimney, straw on a bare floor, in each of its three colours.
-	check(BuildingMaterials.house(5) == "timber" and BuildingMaterials.house(11) == "timber", "a barn is weatherboarded")
-	for ci in [5, 11, 17]:
+	var timber := BuildingMaterials.HOUSE.find("timber")
+	var n_mat := BuildingMaterials.HOUSE.size()
+	check(BuildingMaterials.house(timber) == "timber" and BuildingMaterials.house(timber + n_mat) == "timber", "a barn is weatherboarded")
+	for ci in [timber, timber + n_mat, timber + n_mat * 2]:
 		for v in 3:
 			var bw := Structure.preview_model("house_wall", -1, v, Vector3(2.8, float(ci), 0.4), v == 2, 50 + v)
 			check(bw.get_child_count() > 0, "a barn's wall builds (%d/%d)" % [ci, v])
@@ -683,6 +916,70 @@ func _ready() -> void:
 		ds.free()
 	check(dark_storeys >= 5, "some floors above have a lamp on (%d of 40)" % dark_storeys)
 
+	# The parish church: its tower, the cross on its spire the top of it, its
+	# ground stage open to the west (a doorway men pass, solid above); its nave
+	# and chancel house walls (the west and south doors, lancets), floors (pews,
+	# the pulpit, the altar) and roofs that build, the roof's gable no higher
+	# than its pitch; the south porch in front of the south door.
+	var church := Structure.preview_model("church", -1, BuildingMaterials.HOUSE.find("church"), Vector3(Structure.CHURCH_TOWER, Structure.CHURCH_TOWER_H, Structure.CHURCH_TOWER), false, 1)
+	var chb := _bounds(church, Transform3D.IDENTITY)
+	check(church.get_child_count() > 0 and chb.end.y > 24.0 and chb.end.y < 27.5 and chb.size.x < 6.0 and chb.size.z < 6.0 and chb.position.y > -1.2, "the church tower builds, its spire the top of it (%s)" % chb)
+	church.free()
+	var tower_parts: Array = Structure.preview_parts("church", Vector3(Structure.CHURCH_TOWER, Structure.CHURCH_TOWER_H, Structure.CHURCH_TOWER))
+	var solid_low := 0
+	var doorway_free := true
+	for tp: Dictionary in tower_parts:
+		var lo: float = tp.p.y - tp.s.y * 0.5
+		if int(tp.nav) == Nav.SOLID:
+			solid_low += 1
+			# nothing solid across the doorway's line through the west wall
+			if absf(tp.p.x) < Structure.CHURCH_WEST_DOOR * 0.5 + tp.s.x * 0.5 - 0.01 and tp.p.z < 0.0 and lo < 2.0:
+				doorway_free = false
+		elif lo < 2.0:
+			doorway_free = false
+	check(solid_low >= 4 and doorway_free, "the tower's ground stage has walls round it and a doorway through its west wall (%d)" % solid_low)
+	var cci := BuildingMaterials.HOUSE.find("church")
+	check(BuildingMaterials.house(cci) == "church" and BuildingMaterials.house(cci + BuildingMaterials.HOUSE.size()) == "church", "a church is rendered in its own limewash")
+	for body: Array in [[8.0, 14.0, 6.2, false], [5.6, 4.4, 5.0, true]]:
+		var plan := Structure.church_walls(body[0], body[1], body[3])
+		var doors := 0
+		for e: Array in plan:
+			var cw := Structure.preview_model("house_wall", -1, e[3], Vector3(e[2], float(cci), 0.4), int(e[3]) == 2, 60 + doors)
+			check(cw.get_child_count() > 0, "a church wall builds (%s)" % [e])
+			cw.free()
+			if int(e[3]) == 2:
+				doors += 1
+		check(doors == (0 if body[3] else 2), "a church's nave has its west and south doors, its chancel none (%d)" % doors)
+		var porches := 0
+		for e: Array in plan:
+			if not Structure.church_porch(e).is_empty():
+				porches += 1
+		check(porches == (0 if body[3] else 1), "the south door has its porch (%d)" % porches)
+		var cr2 := Structure.preview_model("roof", -1, cci * 2, Vector3(body[0], body[2], body[1]), false, 5)
+		var crb := _bounds(cr2, Transform3D.IDENTITY)
+		check(cr2.get_child_count() > 0 and crb.end.y < body[2] + body[0] * 0.5 * tan(deg_to_rad(50.0)) + 1.4 and crb.position.y > -0.1, "a church roof builds over its walls (%s)" % crb)
+		cr2.free()
+		var cf := Structure.preview_model("floor", -1, 3, Vector3(body[0], 0.06, body[1]), false, 5)
+		var cfb := _bounds(cf, Transform3D.IDENTITY)
+		check(cf.get_child_count() > 0 and cfb.end.y < 3.05 and cfb.size.x <= body[0] + 0.5, "a church floor builds: its fittings, and its corners' quoins no higher than the ground floor's walls (%s)" % cfb)
+		cf.free()
+
+	# What a ruined or shelled house sheds lies flat on the ground in front of
+	# the wall it came off, within its length and a metre and a half of it;
+	# and a dark wall carries it while a lit one doesn't.
+	for s in 10:
+		var spk := kit()
+		spk.rng.seed = s
+		BuildingWeathering.spill(spk, 2.8, Color(0.8, 0.75, 0.7), spk.rng)
+		BuildingWeathering.shards(spk, 0.0, 1.3, spk.rng)
+		var spb := _bounds(spk.sink.root, Transform3D.IDENTITY)
+		check(spb.position.y >= -0.04 and spb.end.y <= 0.2 and spb.position.x >= -1.55 and spb.end.x <= 1.55 and spb.position.z >= 0.0 and spb.end.z <= 1.85, "debris lies flat by its wall (%s)" % spb)
+		spk.sink.root.free()
+	var lit_wall := Structure.preview_model("house_wall", -1, 0, Vector3(2.8, 1.0, 0.4), false, 31)
+	var dark_wall := Structure.preview_model("house_wall", -1, 0, Vector3(2.8, 1.0, 0.4), false, 31, true)
+	check(_bounds(dark_wall, Transform3D.IDENTITY).end.z > _bounds(lit_wall, Transform3D.IDENTITY).end.z + 0.5, "a dark house's wall has its debris in front of it")
+	lit_wall.free()
+	dark_wall.free()
 	# What stands against a wall keeps its reach out from it and in from its
 	# ends (so two walls meeting in a corner never put things in each other's
 	# way), on the floor and under the ceiling; the table and chairs keep to
@@ -783,13 +1080,13 @@ func _ready() -> void:
 		bnk.sink.root.free()
 	for s7 in 30:
 		var L7: float = [2.6, 3.2, 2.33][s7 % 3]
-		var wtk := kit()
-		wtk.rng.seed = s7
-		BuildingFarm.wall_tools(wtk, L7, wtk.rng)
-		var wtb := _bounds(wtk.sink.root, Transform3D.IDENTITY)
-		check(wtb.position.y >= BuildingFarm.TOOLS - 0.01 and wtb.end.y <= 2.6 and wtb.position.z >= -0.01 and wtb.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, wtb])
-		check(wtb.position.x >= -L7 * 0.5 + 0.63 and wtb.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, wtb])
-		wtk.sink.root.free()
+		var wall_tk := kit()
+		wall_tk.rng.seed = s7
+		BuildingFarm.wall_tools(wall_tk, L7, wall_tk.rng)
+		var wall_tb := _bounds(wall_tk.sink.root, Transform3D.IDENTITY)
+		check(wall_tb.position.y >= BuildingFarm.TOOLS - 0.01 and wall_tb.end.y <= 2.6 and wall_tb.position.z >= -0.01 and wall_tb.end.z <= 0.25, "a barn's tools hang on its wall above what stands against it (%.2f: %s)" % [L7, wall_tb])
+		check(wall_tb.position.x >= -L7 * 0.5 + 0.63 and wall_tb.end.x <= L7 * 0.5 - 0.63, "they keep in from the wall's ends (%.2f: %s)" % [L7, wall_tb])
+		wall_tk.sink.root.free()
 	# The farmyard's kit stands on the ground inside the box a vehicle or a
 	# blast knocks it down as.
 	var farm_kits := {
@@ -810,6 +1107,68 @@ func _ready() -> void:
 			check(fb.position.y >= -0.02 and fb.end.y <= fsize.y + 0.2, "a %s stands on the ground, no taller than it falls (%s)" % [kind, fb])
 			check(maxf(absf(fb.position.x), absf(fb.end.x)) <= fsize.x * 0.5 + 0.3 and maxf(absf(fb.position.z), absf(fb.end.z)) <= fsize.z * 0.5 + 0.3, "a %s keeps inside its own box (%s)" % [kind, fb])
 			fyk.sink.root.free()
+
+	# A field-stone wall's top is stones on edge, not a lid laid over it: one
+	# cached part a wall, drawn in field stone (the face's own stone, without
+	# its joints), kept to the wall's length and about its width, tall and
+	# short stones in turn down to the joints between them, so its skyline is
+	# ragged; and cheap, since a map has a hundred and more of these walls.
+	var fsc_k := kit()
+	var fsc_top := BuildingWalls.coping(fsc_k, 4.0, 0.5, 1.0, "fieldstone", BuildingMaterials.color("fieldstone"))
+	check(fsc_k.sink.parts == 1 and fsc_top > 1.15 and fsc_top < 1.35, "a field-stone wall's top is one part (%d) standing up to %.2f" % [fsc_k.sink.parts, fsc_top])
+	var fsc_mi := fsc_k.sink.root.get_child(0) as MeshInstance3D
+	var fsc_mat := Mats.base_of(fsc_mi.material_override) as ShaderMaterial
+	check(int(fsc_mat.get_shader_parameter("pattern")) == Mats.FIELDSTONE and float(fsc_mat.get_shader_parameter("seams")) == 0.0 and fsc_mat.get_shader_parameter("use_vcolor") == true,
+		"its stones are field stone, each a stone of its own, shaded by its vertex colours")
+	var fsc_box := fsc_mi.transform * fsc_mi.mesh.get_aabb()
+	check(fsc_box.position.x >= -2.01 and fsc_box.end.x <= 2.01 and fsc_box.size.z <= 0.62 and fsc_box.position.y >= 0.95, "they keep to the wall's length and about its width (%s)" % fsc_box)
+	var fsc_v: PackedVector3Array = fsc_mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	check(fsc_v.size() <= 1500, "a 4 m top costs %d vertices" % fsc_v.size())
+	# (the skyline: how high it stands every 4 cm along the wall's middle)
+	var fsc_sky := PackedFloat32Array()
+	for fsc_i in 100:
+		fsc_sky.append(_top_at(fsc_v, Vector3(-1.98 + fsc_i * 0.04, 1.0, 0.0)))
+	var fsc_turns := 0
+	for fsc_i in range(1, 99):
+		if (fsc_sky[fsc_i] - fsc_sky[fsc_i - 1]) * (fsc_sky[fsc_i + 1] - fsc_sky[fsc_i]) < 0.0:
+			fsc_turns += 1
+	var fsc_joints := 0
+	for fsc_h in fsc_sky:
+		if fsc_h < 0.07:
+			fsc_joints += 1  # (down in a joint, on the mortar)
+	var fsc_sorted := fsc_sky.duplicate()
+	fsc_sorted.sort()
+	var fsc_short: float = fsc_sorted[20]
+	var fsc_tall: float = fsc_sorted[90]
+	check(fsc_joints <= 15 and fsc_short > 0.07 and fsc_tall - fsc_short > 0.06 and fsc_tall < BuildingWalls.CROWN_H + 0.01 and fsc_turns >= 20,
+		"its skyline is ragged, stones all along (%d in joints, short %.2f, tall %.2f, %d turns)" % [fsc_joints, fsc_short, fsc_tall, fsc_turns])
+	# the same wall's top again is the same mesh; other walls take other layouts
+	var fsc_meshes := {}
+	for fsc_s in 24:
+		var fsc_k2 := kit()
+		fsc_k2.rng.seed = fsc_s
+		BuildingWalls.coping(fsc_k2, 4.0, 0.5, 1.0, "fieldstone", BuildingMaterials.color("fieldstone"))
+		fsc_meshes[(fsc_k2.sink.root.get_child(0) as MeshInstance3D).mesh] = true
+		fsc_k2.sink.root.free()
+	check(fsc_meshes.size() >= 3 and fsc_meshes.size() <= BuildingWalls.CROWN_LAYOUTS, "walls share a few cached tops (%d)" % fsc_meshes.size())
+	fsc_k.sink.root.free()
+	# a stone garden wall is built so
+	var fsc_wall := Structure.preview_model("low_wall", -1, 0, Vector3(4.0, 1.0, 0.5))
+	var fsc_found := false
+	var fsc_stack: Array = [fsc_wall]
+	while not fsc_stack.is_empty():
+		var fsc_child: Node = fsc_stack.pop_back()
+		fsc_stack.append_array(fsc_child.get_children())
+		var fsc_wm := fsc_child as MeshInstance3D
+		if fsc_wm != null and fsc_wm.mesh != null:
+			for fsc_si in fsc_wm.mesh.get_surface_count():
+				var fsc_sm := fsc_wm.mesh.surface_get_material(fsc_si) as ShaderMaterial
+				if fsc_wm.material_override is ShaderMaterial:
+					fsc_sm = fsc_wm.material_override
+				if fsc_sm != null and fsc_sm.get_shader_parameter("seams") == 0.0 and fsc_sm.get_shader_parameter("pattern") == Mats.FIELDSTONE:
+					fsc_found = true
+	check(fsc_found, "a stone garden wall is topped with field stones on edge")
+	fsc_wall.free()
 
 	# Every building and every kind of scenery still builds a model.
 	var kinds: Array = Defs.BUILDINGS.keys()

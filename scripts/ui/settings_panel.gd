@@ -8,8 +8,8 @@ extends PanelContainer
 
 signal closed
 
-const MOODS := ["random", "day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
-const MOOD_NAMES := ["Random each battle", "Midday", "Golden hour", "Dawn", "Dusk", "Overcast", "Hazy", "Night", "Rain & thunder"]
+const MOODS := ["random", "day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain", "snow"]
+const MOOD_NAMES := ["Random each battle", "Midday", "Golden hour", "Dawn", "Dusk", "Overcast", "Hazy", "Night", "Rain & thunder", "Snow"]
 const RES_NAMES := ["1280 x 720", "1600 x 900", "1920 x 1080", "2560 x 1440", "3840 x 2160"]
 
 var _rows := {}  # key -> control
@@ -154,6 +154,7 @@ func _ready() -> void:
 		["note", "ui_note", "", null, ""],
 		["check", "labels", "Unit activity labels", null, "Close up: each soldier's name and what he's doing. Further out: a status icon per man."],
 		["check", "bubbles", "Speech bubbles", null, "Shouts, radio calls and the men's banter."],
+		["check", "hud_calm", "Quiet side panels", null, "The order of battle and the fire missions step back while you look at the battle, and come up as the cursor goes to them."],
 		["check", "cover_preview", "Cover preview", null, "Pips under the cursor showing the cover each man will take (green heavy, yellow light, red exposed)."],
 		["check", "coop_show", "Co-commanders' views and cursors", null, "In co-op: where the other commanders on your side are looking, their cursors, what they've selected and what they're lining up, in their colours. (Pings and the Command Net show either way.)"],
 		["check", "reduce_motion", "Reduce motion", null, "Panels cut straight in instead of typing or counting on, and warnings don't flicker."],

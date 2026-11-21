@@ -963,16 +963,21 @@ func _production(sqs: Array) -> void:
 		if want != "" and sup >= int(Defs.VEHICLES[want].cost) + 80 + saving:
 			_cmd({"t": "train", "building": hp.eid, "item": want})
 			sup -= int(Defs.VEHICLES[want].cost)
+	# the doctrine tree: the infantry's kit and the land branch as they come
+	# due; the air and the sea only once there is a Helipad or a Dock to use them
+	var has_pad := not _my_structs("helipad", true).is_empty()
+	var has_dock := not _my_structs("dock", true).is_empty()
 	for rs in _my_structs("research", true):
 		if not rs.queue.is_empty():
 			continue
 		for k in Defs.UPGRADES:
 			var u: Dictionary = Defs.UPGRADES[k]
-			if not team in u.teams or r.has_upgrade(team, k):
+			if not r.can_research(team, k):
 				continue
-			if u.has("requires") and not r.has_upgrade(team, String(u.requires)):
+			var br := String(u.get("branch", "inf"))
+			if (br == "air" and not has_pad) or (br == "sea" and not has_dock):
 				continue
-			if u.has("tier") and world.time < 300.0 * float(u.tier):
+			if u.has("tier") and world.time < 300.0 * float(u.tier) + (60.0 if br != "land" else 0.0):
 				continue
 			if sup > int(u.cost) + 200:
 				_cmd({"t": "research", "building": rs.eid, "item": k})

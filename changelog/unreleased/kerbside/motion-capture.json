@@ -1,0 +1,54 @@
+{
+  "before_ref": "a7739f7104173d6ab6e2f84599e85926246c6ad0",
+  "source_ref": "fcd95ba8eb6769fa2d2daeb2bcd3bf3a4eb61035",
+  "engine": "Godot 4.7.2 stable Linux, Forward+, Mesa llvmpipe LLVM 19.1.7 (software)",
+  "stage": "Native BuildingKerbside component fixture, not a battlefield or performance benchmark",
+  "capture_command": "godot --path <worktree> --rendering-method forward_plus --fixed-fps 12 --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-single --building-kinds=kerbside_stop,kerbside_lamp_joint --building-orbit-review --building-out=<output>",
+  "frames_per_subject": 48,
+  "fps": 12,
+  "duration_seconds": 8,
+  "encoded_size": [
+    1600,
+    490
+  ],
+  "matching": {
+    "seed": 5,
+    "orthographic_sizes": [
+      1.25,
+      1.8
+    ],
+    "centres": [
+      [
+        0,
+        2.15,
+        0
+      ],
+      [
+        0.9,
+        6.24,
+        0
+      ]
+    ],
+    "camera_orbit": "angle = lerp(-0.65,0.65,(1-cos(TAU*frame/47))/2); offset=(sin(angle)*4,0.65,-cos(angle)*4)",
+    "sun_rotation_degrees": [
+      -42,
+      -38,
+      0
+    ],
+    "sun_energy": 1.25,
+    "exposure": 1,
+    "tonemap": "filmic",
+    "msaa": "4x"
+  },
+  "notes": [
+    "Before uses the same orbit harness with the PR geometry at a7739f7. Its initial manifest incorrectly described a grazing-light sweep; orbit_review=true and the harness camera formula establish the actual fixed-light orbit.",
+    "Only the stop face orientation and lamp socket change. Decor light/lens placements are unchanged. Existing historical main-versus-PR stills remain separate.",
+    "Original bounds check failed because the new face-plane rotation enlarges the conservative rotated mesh AABB. The updated test allows that width while tightening sign depth from 0.35m to 0.12m."
+  ],
+  "tests": [
+    "native extension built from identical native source",
+    "Godot import exit 0",
+    "building-components test passed",
+    "Compatibility fixture inspection (recorded separately)"
+  ]
+}
