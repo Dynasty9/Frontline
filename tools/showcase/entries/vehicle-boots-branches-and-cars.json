@@ -1,0 +1,20 @@
+{
+  "entry": "changelog/unreleased/vehicle-boots-branches-and-cars.md",
+  "summary": "Canvas gun boots, no crew foliage or heaped nets on the vehicles, helicopter fairings seated on the hull, the Merkava's arrowhead turret, matte dark steel and ID panels, rounded truck cab roofs, moulded boat motors and graded rust.",
+  "medium": "still",
+  "stage": "tools/showcase/vehicle-surfaces.tscn",
+  "rationale": "Geometry, surface and colour changes across many families: one matched studio sheet shows a representative of each area. Three shots use a seed whose crew camouflaged its vehicle before this change, to show the branches and nets gone.",
+  "source_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/vehicle-boots-branches-and-cars/comparison.jpg",
+      "sha256": "69ebe3eb94089e4d0b8f3f9ef583270cc910e9aeac2cad0ec344d39afb8f56a2"
+    },
+    {
+      "file": "changelog/unreleased/vehicle-boots-branches-and-cars/capture.json",
+      "sha256": "c6cfb21e43bc081022f60fd2a74f8adce85953658be4bfbf673583710b3fa244"
+    }
+  ],
+  "output": null
+}

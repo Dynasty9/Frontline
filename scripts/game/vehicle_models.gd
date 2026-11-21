@@ -50,6 +50,13 @@ var rotors: Array = []
 ## as numbers, not nodes, so a fitting still folds away into its parent; the
 ## pipes sit on parts that never move against the model.
 var exhausts: Array[Transform3D] = []
+## The seed the crew's own load is drawn from (VehicleCargo.kit): the vehicle's
+## seed, so a seed lays its stowage out exactly and two of a kind differ (and a
+## battle wreck, built from its vehicle's seed, keeps what of the load didn't
+## burn); -1 (scenery and burnt hulks, which look() shares by kind) the
+## builders' one load.
+var kit_seed := -1
+
 ## The cradles the machine gun (or autocannon, or twin guns) is laid in, each
 ## at its gun's trunnion with the gun's parts on it: they elevate to the target
 ## and run back when the gun fires (Vehicle._lay_guns). A mount on no turret
@@ -59,6 +66,23 @@ var mg_mounts: Array[Node3D] = []
 var mg_rests: Array[Transform3D] = []  # each mount's rest pose on its parent
 var mg_free := false
 var mg_arc := 1.2
+## Where a gunner's hands go on each mount, in its own space: [right, left],
+## or empty for a gun worked from inside or by remote control.
+var mg_hands: Array = []
+## Each mount's traverse at rest: a door gun is left pointing out of its door
+## (its gunner inside behind it), everything else straight ahead.
+var mg_stow: Array[float] = []
+## Where the man on the first crew-served gun stands, as its builder sets it
+## (empty: behind the grips at arm's length, wherever they are). "on" is the
+## node his floor belongs to - the hull for a pickup's bed, the turret for a
+## hatch that turns with the gun - "y" his feet's height in its space and
+## "area" (x, z in its space) the floor he may stand on: he keeps behind the
+## grips as the gun turns but never steps off it. An area of no size is one
+## spot he stands on, turning with "on" (a gunner in a hatch).
+var gunner_floor: Dictionary = {}
+## The gun is worked from a seat (a passenger's swing-arm gun): no gunner is
+## drawn on it, as there's no seated pose for him.
+var gunner_seated := false
 ## Every gun assembly a shared builder made (VehicleWeapons): {parent, origin,
 ## muzzle (both in the parent's space), parts, nodes}, so build() can put the
 ## machine gun's on a mount of its own once the model is done.
@@ -101,6 +125,7 @@ static func start(kind: String, team: int, seed: int, is_burnt := false, is_wrec
 	k.root = Node3D.new()
 	k.burnt = is_burnt
 	k.wreck = is_wreck or is_burnt
+	k.kit_seed = seed if team >= 0 and not is_burnt else -1
 	k._baking = true
 	return Build.new(k, _assemble.bind(k, kind, team, seed))
 
@@ -158,6 +183,9 @@ func copy() -> VehicleModels:
 	c.engine_vent = engine_vent
 	c.turret = _same_in(c.root, turret)
 	c.gun_mount = _same_in(c.root, gun_mount)
+	c.gun_tip = _same_in(c.root, gun_tip)
+	for whip: Node3D in antennas:
+		c.antennas.append(_same_in(c.root, whip))
 	c.rotor = _same_in(c.root, rotor)
 	return c
 
@@ -489,12 +517,37 @@ static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, inside: Ve
 
 
 ## Lofts between successive convex rings (same point count) and caps both ends.
-static func solid(rings: Array, key: String, smooth := false) -> ArrayMesh:
+## `bevel` chamfers the edge round the last ring (a hull's roof, a turret's
+## top, a box's lid) by about that many metres, `bevel_bottom` the first
+## ring's: armour plate is flame-cut and welded or cast, and its broken edge
+## is a narrow facet that catches the light along the hull from the RTS
+## camera, where a two-ring loft meets its cap at a dead-sharp CG edge. The
+## cap keeps its plane, so whatever stands on it stays where it was; the side
+## and cap keep their flat normals and the chamfer gets its own. Without
+## either the mesh is exactly what it always was.
+static func solid(rings: Array, key: String, smooth := false, bevel := 0.0, bevel_bottom := 0.0) -> ArrayMesh:
+	key = _bevel_key(key, bevel, bevel_bottom)
 	if _cache.has(key):
 		return _cache[key]
+	# the chamfers are rings of their own (see _chamfered); n0/n1 count the
+	# strips that are chamfers at each end
+	var n0 := 0
+	var n1 := 0
+	if bevel > 0.0:
+		var c: Array = _chamfered(rings, bevel, true)
+		n1 = c.size() - rings.size()
+		rings = c
+	if bevel_bottom > 0.0:
+		var c: Array = _chamfered(rings, bevel_bottom, false)
+		n0 = c.size() - rings.size()
+		rings = c
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for k in rings.size() - 1:
+		if smooth and n0 + n1 > 0:
+			# a rolled edge on a rounded solid: smooth round the ring, but a
+			# crease where it meets the side
+			st.set_smooth_group(2 if (k < n0 or k >= rings.size() - 1 - n1) else 0)
 		var r0: PackedVector3Array = rings[k]
 		var r1: PackedVector3Array = rings[k + 1]
 		var cen := (_centroid(r0) + _centroid(r1)) * 0.5
@@ -523,17 +576,218 @@ static func solid(rings: Array, key: String, smooth := false) -> ArrayMesh:
 	return m
 
 
-static func loft(key: String, bottom: Array, top: Array, y0: float, y1: float) -> ArrayMesh:
-	if _cache.has(key):
-		return _cache[key]
-	return solid([ring_y(_v2(bottom), y0), ring_y(_v2(top), y1)], key)
+## Two level outlines (x, z pairs, convex, same count) lofted from y0 to y1;
+## `bevel` / `bevel_bottom` chamfer the top / bottom edge as in solid.
+## `smooth` rolls the top edge over in a quarter round about `bevel` wide
+## instead (up to 70% of the top's half-width): a pressed or moulded cowling
+## is rounded over its shoulders, and a single chamfer facet only suggests
+## that. The light slides round the roll from above; the outline's gentle
+## corners (under 50 degrees) shade round too, its sharp ones stay creased,
+## and the flat top keeps its plane and its height.
+static func loft(key: String, bottom: Array, top: Array, y0: float, y1: float, bevel := 0.0, bevel_bottom := 0.0, smooth := false) -> ArrayMesh:
+	if not smooth or bevel <= 0.0:
+		if _cache.has(_bevel_key(key, bevel, bevel_bottom)):
+			return _cache[_bevel_key(key, bevel, bevel_bottom)]
+		return solid([ring_y(_v2(bottom), y0), ring_y(_v2(top), y1)], key, false, bevel, bevel_bottom)
+	var skey := "%s|roll%.3f,%.3f" % [key, bevel, bevel_bottom]
+	if _cache.has(skey):
+		return _cache[skey]
+	var base := ring_y(_v2(bottom), y0)
+	var edge := ring_y(_v2(top), y1)
+	var c := _centroid(edge)
+	var reach := INF
+	for i in edge.size():
+		var q := edge[(i + 1) % edge.size()]
+		if edge[i].distance_squared_to(q) > 1e-10:
+			reach = minf(reach, absf((c - edge[i]).dot(Vector3.UP.cross(q - edge[i]).normalized())))
+	var b := minf(bevel, minf((y1 - y0) * 0.6, reach * 0.7))
+	var cut := _inset_ring(edge, Vector3.UP, c, b)
+	while cut.is_empty() and b > 0.01:
+		b *= 0.6
+		cut = _inset_ring(edge, Vector3.UP, c, b)
+	if cut.is_empty():
+		return solid([base, edge], key, false, 0.0, bevel_bottom)
+	# the roll: from b down the side, over the old edge, to b in on the top
+	var side := PackedVector3Array()
+	for i in edge.size():
+		side.append(edge[i].lerp(base[i], b / (y1 - y0)))
+	var rings: Array = [base, side]
+	for s in range(1, 5):
+		var t := s / 4.0
+		var r := PackedVector3Array()
+		for i in edge.size():
+			r.append(side[i] * (1.0 - t) * (1.0 - t) + edge[i] * 2.0 * t * (1.0 - t) + cut[i] * t * t)
+		rings.append(r)
+	var n0 := 0
+	if bevel_bottom > 0.0:
+		var lowered: Array = _chamfered(rings, bevel_bottom, false)
+		n0 = lowered.size() - rings.size()
+		rings = lowered
+	# each side face of the outline its own smoothing group, shared across a
+	# gentle corner, so the long flat flanks stay flat
+	var m := edge.size()
+	var turn := PackedFloat32Array()
+	turn.resize(m)
+	var start := -1
+	for i in m:
+		var d0 := edge[i] - edge[(i - 1 + m) % m]
+		var d1 := edge[(i + 1) % m] - edge[i]
+		turn[i] = 0.0 if d0.length_squared() < 1e-10 or d1.length_squared() < 1e-10 else rad_to_deg(d0.angle_to(d1))
+		if start < 0 and turn[i] > 50.0:
+			start = i
+	var group := PackedInt32Array()
+	group.resize(m)
+	var g := 0
+	for j in m:
+		var i := (maxi(start, 0) + j) % m
+		if j > 0 and turn[i] > 50.0:
+			g += 1
+		group[i] = g + 2
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in rings.size() - 1:
+		var r0: PackedVector3Array = rings[k]
+		var r1: PackedVector3Array = rings[k + 1]
+		var cen := (_centroid(r0) + _centroid(r1)) * 0.5
+		for i in m:
+			var j := (i + 1) % m
+			# (a bottom chamfer is a crease of its own, as in solid)
+			st.set_smooth_group(1 if k < n0 else group[i])
+			_tri(st, r0[i], r0[j], r1[j], cen)
+			_tri(st, r0[i], r1[j], r1[i], cen)
+	for e in [0, rings.size() - 1]:
+		st.set_smooth_group(0xFFFF0 + e)
+		var r: PackedVector3Array = rings[e]
+		var inside := _centroid(rings[1 if e == 0 else rings.size() - 2])
+		for i in range(1, r.size() - 1):
+			_tri(st, r[0], r[i], r[i + 1], inside)
+	st.generate_normals()
+	var arrays := st.commit_to_arrays()
+	var mesh := ArrayMesh.new()
+	if arrays.size() == Mesh.ARRAY_MAX and arrays[Mesh.ARRAY_VERTEX] != null and not (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).is_empty():
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		Mats.keep_arrays(mesh, arrays)
+	_cache[skey] = mesh
+	return mesh
 
 
-static func extrude_x(key: String, profile: Array, x0: float, x1: float) -> ArrayMesh:
-	if _cache.has(key):
-		return _cache[key]
+## A side profile ((z, y) pairs, convex) extruded across x0..x1; `bevel`
+## chamfers both side faces' edges all round, the roof's and glacis's edges
+## among them, as in solid.
+static func extrude_x(key: String, profile: Array, x0: float, x1: float, bevel := 0.0) -> ArrayMesh:
+	if _cache.has(_bevel_key(key, bevel, bevel)):
+		return _cache[_bevel_key(key, bevel, bevel)]
 	var p := _v2(profile)
-	return solid([ring_x(p, x0), ring_x(p, x1)], key)
+	return solid([ring_x(p, x0), ring_x(p, x1)], key, false, bevel, bevel)
+
+
+## A chamfered mesh is another mesh: it is cached under its own key.
+static func _bevel_key(key: String, top: float, bottom: float) -> String:
+	if top <= 0.0 and bottom <= 0.0:
+		return key
+	return "%s|bevel%.3f,%.3f" % [key, top, bottom]
+
+
+## `rings` with the edge round one end ring (the last if `top`) cut back by
+## about b along both faces: a new ring b in from the end on the way to it,
+## and the end ring moved in by b within its own plane, each edge parallel to
+## its old self. b is kept under 40% of the end segment's length and 30% of
+## the ring's half-width, so a thin plate or a narrow rail gets a smaller
+## chamfer rather than a folded one; the rings come back unchanged if the
+## end is degenerate (a point, a line) or no chamfer fits.
+static func _chamfered(rings: Array, b: float, top: bool) -> Array:
+	var n := rings.size()
+	if n < 2:
+		return rings
+	var e: PackedVector3Array = rings[n - 1] if top else rings[0]
+	var nb: PackedVector3Array = rings[n - 2] if top else rings[1]
+	var nrm := _ring_normal(e)
+	if nrm == Vector3.ZERO or nb.size() != e.size():
+		return rings
+	var c := _centroid(e)
+	var h := absf((c - _centroid(nb)).dot(nrm))
+	var reach := INF  # the nearest edge to the centre, in the ring's plane
+	for i in e.size():
+		var a := e[i]
+		var q := e[(i + 1) % e.size()]
+		if a.distance_squared_to(q) < 1e-10:
+			continue
+		var side := nrm.cross(q - a).normalized()
+		reach = minf(reach, absf((c - a).dot(side)))
+	b = minf(b, minf(h * 0.4, reach * 0.3))
+	var cut := PackedVector3Array()
+	for _attempt in 3:
+		if b < 0.003:
+			return rings
+		cut = _inset_ring(e, nrm, c, b)
+		if not cut.is_empty():
+			break
+		b *= 0.5
+	if cut.is_empty():
+		return rings
+	var mid := PackedVector3Array()
+	var t := b / h
+	for i in e.size():
+		mid.append(e[i].lerp(nb[i], t))
+	var out := rings.duplicate()
+	if top:
+		out[n - 1] = mid
+		out.append(cut)
+	else:
+		out[0] = mid
+		out.insert(0, cut)
+	return out
+
+
+## The normal of a planar ring (Newell's method), or zero for a point or a line.
+static func _ring_normal(r: PackedVector3Array) -> Vector3:
+	var s := Vector3.ZERO
+	for i in r.size():
+		var p := r[i]
+		var q := r[(i + 1) % r.size()]
+		s += Vector3((p.y - q.y) * (p.z + q.z), (p.z - q.z) * (p.x + q.x), (p.x - q.x) * (p.y + q.y))
+	if s.length_squared() < 1e-12:
+		return Vector3.ZERO
+	return s.normalized()
+
+
+## A convex ring in the plane normal to `nrm`, centred on c, moved in by d,
+## each edge parallel to its old self (mitred; repeated points move as one);
+## empty if an edge shorter than its corners' cut would turn over.
+static func _inset_ring(r: PackedVector3Array, nrm: Vector3, c: Vector3, d: float) -> PackedVector3Array:
+	var m := r.size()
+	var out := PackedVector3Array()
+	for i in m:
+		var p := r[i]
+		var a := r[_distinct(r, i, -1)]
+		var q := r[_distinct(r, i, 1)]
+		var n0 := nrm.cross(p - a).normalized()
+		var n1 := nrm.cross(q - p).normalized()
+		if n0.dot(c - (a + p) * 0.5) < 0.0:
+			n0 = -n0
+		if n1.dot(c - (p + q) * 0.5) < 0.0:
+			n1 = -n1
+		var dir := n0 + n1
+		dir = n0 if dir.length_squared() < 1e-8 else dir.normalized()
+		out.append(p + dir * d / maxf(0.35, dir.dot(n0)))
+	for i in m:
+		var j := (i + 1) % m
+		var was := r[j] - r[i]
+		if was.length_squared() > 1e-10 and (out[j] - out[i]).dot(was) <= 0.0:
+			return PackedVector3Array()
+	return out
+
+
+## The index of the nearest point before (step -1) or after (step 1) point i
+## of ring r that isn't at the same place.
+static func _distinct(r: PackedVector3Array, i: int, step: int) -> int:
+	var m := r.size()
+	var j := i
+	for _k in m - 1:
+		j = (j + step + m) % m
+		if r[j].distance_squared_to(r[i]) > 1e-10:
+			return j
+	return j
 
 
 static func _capsule(r: float, h: float) -> CapsuleMesh:
@@ -565,7 +819,12 @@ func _add(parent: Node3D, mesh: Mesh, kind: String, col, pos: Vector3, rot := Ve
 		k = "abrams_scorched" if kind in ["abrams_olive", "abrams_sand"] else "burnt"
 	k = VehicleMaterials.key(k, surface_family)
 	var t := Mats.tint_for(k, col) if col is Color and not burnt else Color(1, 1, 1)
-	if not burnt and VehicleMaterials.profile(kind, surface_family) in ["armor", "aircraft", "marine"]:
+	if burnt and kind in ["glass", "armor_glass", "headlamp", "signal_lens"]:
+		# A burnt-out vehicle's windows and lamps have cracked out in the heat:
+		# what's left is a sooty empty frame, not rusted steel (the char shader
+		# leaves anything this dark black with soot).
+		t = Color(0.3, 0.3, 0.3)
+	if not burnt and VehicleMaterials.profile(kind, surface_family) in ["armor", "aircraft", "marine", "service"]:
 		mesh = VehicleBody.paint_mesh(mesh)
 	var pt := [mesh, Mats.get_mat(k), t, shadow, pos, rot, scl, null, null]
 	if profiling:
@@ -701,18 +960,22 @@ func _fold(pv: Node3D) -> void:
 ## A shared gun builder's assembly `m` is done, its muzzle at `muzzle` in its
 ## parent's space: noted down (see _guns), then folded into the parent like
 ## any other construction pivot.
-func _gun(m: Node3D, muzzle: Vector3) -> void:
+## `hands` are where a gunner holds it, in `m`'s own space ([right, left]).
+func _gun(m: Node3D, muzzle: Vector3, hands: Array = []) -> void:
 	var parent := m.get_parent() as Node3D
 	var parts: Array = (_parts.get(m, []) as Array).duplicate()
 	var nodes: Array = m.get_children()
-	_guns.append({"parent": parent, "origin": m.position, "muzzle": muzzle, "parts": parts, "nodes": nodes})
+	var held: Array = []
+	for h: Vector3 in hands:
+		held.append(m.transform * h)
+	_guns.append({"parent": parent, "origin": m.position, "muzzle": muzzle, "parts": parts, "nodes": nodes, "hands": held})
 	_fold(m)
 
 
 ## A hand-built gun assembly on its own pivot `m` (at its trunnion, square
 ## to its parent), noted down as the shared builders' are.
-func gun_assembly(m: Node3D, muzzle_local: Vector3) -> void:
-	_gun(m, m.transform * muzzle_local)
+func gun_assembly(m: Node3D, muzzle_local: Vector3, hands: Array = []) -> void:
+	_gun(m, m.transform * muzzle_local, hands)
 
 
 ## The model is built: the machine gun (and a twin beside it, laid as one) is
@@ -738,7 +1001,7 @@ func _mount_guns() -> void:
 	for g: Dictionary in _guns:
 		# (a gun laid along its carrier's -Z: a cradle elevates about X)
 		var axis: Vector3 = (g.muzzle as Vector3) - (g.origin as Vector3)
-		if g.parent == parent and is_instance_valid(parent) and axis.normalized().dot(Vector3.FORWARD) > 0.95:
+		if is_instance_valid(g.parent) and g.parent == parent and axis.normalized().dot(Vector3.FORWARD) > 0.95:
 			var d := (g.muzzle as Vector3).distance_to(mg_tip.position)
 			if d < nearest:
 				nearest = d
@@ -748,18 +1011,18 @@ func _mount_guns() -> void:
 		return
 	var mount := _lift(best)
 	_onto(mg_tip, mount)
-	_add_mount(mount)
+	_add_mount(mount, best)
 	# A twin beside it (the other barrel of a twin AA gun) is laid with it.
 	var at: Vector3 = best.origin
 	var tip: Vector3 = best.muzzle
 	for g: Dictionary in _guns:
-		if g == best or g.parent != parent:
+		if g == best or not is_instance_valid(g.parent) or g.parent != parent:
 			continue
 		var o: Vector3 = g.origin
 		var t: Vector3 = g.muzzle
 		if absf(o.x - at.x) > 0.1 and absf(o.y - at.y) < 0.05 and absf(o.z - at.z) < 0.08 and absf(t.y - tip.y) < 0.05 and absf(t.z - tip.z) < 0.08:
 			var twin := _lift(g)
-			_add_mount(twin)
+			_add_mount(twin, g)
 			# (a twin's own muzzle marker, where it has one, goes with it)
 			if gun_tip and gun_tip.get_parent() == parent and gun_tip.position.distance_to(t) < 0.3:
 				_onto(gun_tip, twin)
@@ -795,9 +1058,16 @@ func _onto(n: Node3D, mount: Node3D) -> void:
 	n.transform = xf
 
 
-func _add_mount(mount: Node3D) -> void:
+func _add_mount(mount: Node3D, g: Dictionary = {}) -> void:
 	mg_mounts.append(mount)
 	mg_rests.append(mount.transform)
+	var hands: Array = []
+	for h: Vector3 in g.get("hands", []):
+		hands.append(h - mount.position)
+	mg_hands.append(hands)
+	var free := turret == null or not turret.is_ancestor_of(mount)
+	var door := free and surface_family == "aircraft" and absf(mount.position.x) > 0.5
+	mg_stow.append(-signf(mount.position.x) * 1.05 if door else 0.0)
 	mg_free = turret == null or not turret.is_ancestor_of(mount)
 
 
@@ -853,17 +1123,89 @@ func _wheel(parent: Node3D, pos: Vector3, r: float, w: float, hub_kind := "gunme
 	return VehicleWheels.pneumatic(self, parent, pos, r, w, hub_kind, hub_col, profile)
 
 
-func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3) -> void:
-	if wreck or team < 0:  # (burnt off a wreck with the paint)
+## A side's identification mark, painted on as armies paint them for a
+## campaign (the inverted-V chevrons of 2003, the bands of others): where the
+## old panel box `s` sat, centred on `pos`, on the face its thin axis is the
+## normal of (a roof's faces up, a flank's out to its side, an end's fore or
+## aft). It's brushed on in the vehicle's own paint, so it takes the dust,
+## grime and wear the hull round it takes and never stands clean and dark
+## like a hole in the roof; the side's colour, sunk toward the hull's grey,
+## still tells the sides apart from the battle camera, and so does its shape
+## (`_mark_outline`). Laid on the box's outer face, which stood clear of the
+## hull everywhere the box showed. Burnt off a wreck with the paint.
+## On a curved skin (a tail boom, a fuselage's tapering flank) a flat card
+## stands off the curve with its arms in the air: the caller's `skin` (a
+## point in model space moved onto the skin, a few millimetres proud of it)
+## lays the mark on the curve instead, in finer pieces that follow it.
+func _team_mark(parent: Node3D, team: int, pos: Vector3, s: Vector3, skin := Callable()) -> void:
+	if wreck or team < 0:
 		return
-	var mi := MeshInstance3D.new()
-	mi.mesh = Res.box(s)
-	mi.position = pos
-	# a subdued identification panel, not a toy's coloured sticker
+	var normal := Vector3.UP
+	var along := Vector3.RIGHT
+	var up := Vector3.FORWARD  # (a roof's mark points at the bow)
+	var size := Vector2(s.x, s.z)
+	var thin := s.y
+	if s.x < s.y and s.x <= s.z:
+		normal = Vector3(-1.0 if pos.x < 0.0 else 1.0, 0, 0)
+		along = Vector3.BACK
+		up = Vector3.UP
+		size = Vector2(s.z, s.y)
+		thin = s.x
+	elif s.z < s.y and s.z < s.x:
+		normal = Vector3(0, 0, -1.0 if pos.z < 0.0 else 1.0)
+		up = Vector3.UP
+		size = Vector2(s.x, s.y)
+		thin = s.z
+	var o := pos + normal * thin * 0.5
+	var col := _mark_col(team, false, normal == Vector3.UP)
+	if skin.is_valid():
+		VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return skin.call(o + along * q.x + up * q.y), normal, col, "paint", true, 2)
+		return
+	VehicleMarkings.polygons(self, parent, [_mark_outline(team, size)], func(q: Vector2) -> Vector3: return o + along * q.x + up * q.y, normal, col, "paint", true, 0)
+
+
+## A team mark's outline, `size` (across, up) centred on the origin: the
+## coalition's inverted-V chevron, its arms half the mark's height thick,
+## apex up (toward the bow on a roof or wing); the other side's band, its
+## ends cut on a slant leaning forward. Two shapes, so the sides read apart
+## even where the colour doesn't.
+static func _mark_outline(team: int, size: Vector2) -> PackedVector2Array:
+	# (a flank's mark box is wide and short: a chevron stretched across all of
+	# it, arms half its height thick, read from the battle camera as a smear.
+	# Painted no wider than 1.6 times its height, centred, with slimmer arms,
+	# it reads as a chevron)
+	var wide := size.x > size.y * 1.6
+	var w := minf(size.x, size.y * 1.6) * 0.5
+	var h := size.y * 0.5
+	if team == 0:
+		var t := size.y * (0.34 if wide else 0.52)
+		return PackedVector2Array([Vector2(0, h), Vector2(w, -h + t), Vector2(w, -h), Vector2(0, h - t), Vector2(-w, -h), Vector2(-w, -h + t)])
+	var slant := minf(size.y * 0.6, size.x * 0.3)
+	return PackedVector2Array([Vector2(-w + slant, -h), Vector2(w, -h), Vector2(w - slant, h), Vector2(-w, h)])
+
+
+## A team mark's paint: the side's colour mixed most of the way into a mid
+## grey, as a unit's tactical marks are brushed in flat, subdued paint that
+## the sun and dust fade further: a dusty slate blue for one side and a dull
+## brick for the other, both of about the lightness of the hull round them
+## and of each other. Pale tints of the side's colour glowed (a cornflower
+## or salmon sticker, the loudest thing on a drab vehicle from the battle
+## camera) and a dark navy read as a hole in the roof; mixed this far the
+## side's hue still shows against tan, olive and grey, and so does the mark's
+## shape (`_mark_outline`). A roof's mark (`roof`) faces the sun and the
+## battle camera square on and takes more light than a flank's, so it is
+## mixed a shade darker to come out no brighter. A wing's tip band (`band`)
+## lies flat to the sun across a wide, lit airfoil on a light grey airframe:
+## its paint is the duller still, so it frames the wing without reading as a
+## lit strip.
+static func _mark_col(team: int, band := false, roof := false) -> Color:
 	var tc: Color = Defs.TEAM_COLORS[team]
-	mi.material_override = Res.mat(tc.lerp(Color(0.25, 0.25, 0.25), 0.62).darkened(0.5), 0.85)
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mi)
+	# (the red side's grey is a warm one: mixed into a neutral grey its red
+	# turned a mauve under the sky's blue light, where a red oxide's brick
+	# stays red)
+	var grey := Vector3(1.0, 0.93, 0.83) if team != 0 else Vector3.ONE
+	var v := 0.35 if band else (0.34 if roof else 0.4)
+	return tc.lerp(Color(grey.x * v, grey.y * v, grey.z * v), 0.8 if band else (0.78 if roof else 0.75))
 
 
 # --- tanks -----------------------------------------------------------------------
@@ -1052,6 +1394,21 @@ func _technical(team: int, seed: int, aa := false) -> void:
 	_team_mark(m, team, Vector3(0.93, 1.2, 1.35), Vector3(0.03, 0.2, 0.8))
 
 
+## Where a car's side profile (z, y pairs) crosses height y at its nose
+## (`front`) or tail: x the face's z there, y how far it leans (dz per metre up).
+static func _car_face(prof: Array, y: float, front: bool) -> Vector2:
+	var best := Vector2(INF if front else -INF, 0.0)
+	var n := prof.size()
+	for i in range(0, n, 2):
+		var a := Vector2(prof[i], prof[i + 1])
+		var b := Vector2(prof[(i + 2) % n], prof[(i + 3) % n])
+		if (y - a.y) * (y - b.y) <= 0.0 and absf(b.y - a.y) > 1e-5:
+			var z := lerpf(a.x, b.x, (y - a.y) / (b.y - a.y))
+			if (z < best.x) if front else (z > best.x):
+				best = Vector2(z, (b.x - a.x) / (b.y - a.y))
+	return best
+
+
 ## Civilian cars, side profiles extruded across the width: a body with a
 ## shaped bonnet and boot, a narrower glasshouse on top, dark glass, bumpers,
 ## lights, wheels in arches. Local -Z is the front.
@@ -1077,19 +1434,30 @@ func _car(v: int, col: Color) -> void:
 			body = [-2.25, 0.3, 2.2, 0.3, 2.28, 0.6, 2.18, 0.9, 1.25, 0.95, -1.15, 0.96, -2.2, 0.82, -2.3, 0.55]
 			house = [-1.1, 0.93, 1.3, 0.93, 0.75, 1.43, -0.45, 1.45]
 	var key := "car%d" % v
-	_add(m, extrude_x(key + "b", body, -w, w), "car_paint", col, Vector3.ZERO)
+	var bf: float = minf(body[0], body[body.size() - 2])
+	var bb: float = maxf(body[2], body[4])
+	var wz := [bf + 0.75, bb - 0.75]
+	# The body is pressed sheet: its shoulders and the bends into the bonnet
+	# and boot roll over (shaded smooth, as the drivable cars'), the nose and
+	# tail round off in plan, and the arches are cut round the tyres. A flat
+	# slab with dead-sharp edges read as a painted box from the RTS camera.
+	VehicleWheelArches._xbody(self, m, key + "b", body, -w, w, 0.05, [[wz[0], 0.33, 0.37], [wz[1], 0.33, 0.37]], "car_paint", col, 6, [0.42, 0.07, 0.36, 0.06], VmCiv.ROLL)
 	var hw := w - 0.1 if v != 3 else w - 0.02
-	_add(m, extrude_x(key + "h", house, -hw, hw), "car_paint", col, Vector3.ZERO)
-	# glass: windscreen, rear screen, side windows (inset a touch)
 	var hz: Array = house
 	var fz: float = hz[0]
 	var fy: float = hz[1]
 	var tz: float = hz[6]
-	var ty: float = hz[7]
 	var rz: float = hz[4]
-	var ry: float = hz[5]
 	var bz: float = hz[2]
 	var by: float = hz[3]
+	# The roof is pressed with a crown and rolls over into the pillars, so the
+	# sun slides across it as a soft highlight: a dead-flat top flashed white
+	# from above whatever the paint (the drivable cars' _yloft). Its sides stay
+	# upright, so the side glass still lies on them.
+	var ty: float = (float(hz[5]) + float(hz[7])) * 0.5
+	var ry: float = ty
+	VmCiv._yloft(self, m, key + "h", [[-hw, fz, hw, fz, hw, bz, -hw, bz], [-hw, tz, hw, tz, hw, rz, -hw, rz]], [fy, ty], 0.05, "car_paint", col, Vector3.ZERO, 0.6)
+	# glass: windscreen, rear screen, side windows (inset a touch)
 	if not burnt:
 		var inside := Vector3(0, (fy + ty) * 0.5, (fz + bz) * 0.5)
 		var front_face := [Vector3(-hw, fy, fz), Vector3(hw, fy, fz), Vector3(hw, ty, tz), Vector3(-hw, ty, tz)]
@@ -1101,32 +1469,94 @@ func _car(v: int, col: Color) -> void:
 			var panes := 1 if v == 2 else 2
 			for pane in panes:
 				VehicleGlazing.quad(self, m, key + "side_%s_%d" % [side, pane], face, inside, Rect2(0.06 + pane * 0.46, 0.13, 0.88 if panes == 1 else 0.42, 0.74), 0.012, 0.012, "glass")
-			# the wing mirror on its arm from the window's front corner, the door handle
-			VehicleFittings.mirror(self, m, Vector3(side * (w + 0.14), fy + 0.16, fz + 0.22), Vector2(0.09, 0.13), 0.0, [Vector3(side * hw, fy + 0.10, fz + 0.25)], "rubber", null)
-			VehicleDoors.pull(self, m, Vector3(side * (w + 0.001), fy - 0.07, (fz + bz) * 0.5), Vector3(side, 0, 0), Vector3.BACK, 0.15, 0.006, "steel")
-	# moulded bumpers, lights, plate
-	var front: float = body[0] if v != 2 else body[0]
-	var bf: float = minf(body[0], body[body.size() - 2])
-	var bb: float = maxf(body[2], body[4])
+			# The wing mirror: a car's is a moulded shell on a short foot at
+			# the window's front corner, in the body's paint (black on the
+			# older cars that keep their chrome), its glass facing back. (A
+			# truck's mirror on tubular arms and a ball joint read as fitted
+			# kit, and cost a thousand vertices a side.)
+			var black := absi(hash(col.to_html(false) + str(v))) % 3 == 0
+			var glass_at := Vector3(side * (w + 0.075), fy + 0.12, fz + 0.24)
+			VmCiv._strut(self, m, Vector3(side * (hw + 0.03), fy + 0.03, fz + 0.27), glass_at + Vector3(-side * 0.04, -0.03, 0.0), 0.06, 0.03, "plain", VmCiv.TRIM, false)
+			_add(m, BevelMesh.make(Vector3(0.16, 0.1, 0.07), 0.022), "plain" if black else "car_paint", VmCiv.TRIM if black else col, glass_at)
+			_box(m, Vector3(0.135, 0.075, 0.006), glass_at + Vector3(0, 0, 0.036), "mirror", Color(0.78, 0.82, 0.84), Vector3.ZERO, false)
+	# The doors' shut lines down the sides, each stopping on the sill or over
+	# the rear arch, a handle near each door's rear edge, and the bonnet's U:
+	# the gaps that break a car's flank and bonnet into the pressings they are.
+	var last := minf(bz - 0.03, float(wz[1]) - 0.1) if v != 2 else bz - 0.02
+	var edges: Array = [fz + 0.02, (fz + last) * 0.5, last] if v in [0, 1, 4] else [fz + 0.02, last if v == 2 else fz + 0.92]
+	for side in [-1.0, 1.0]:
+		for i in edges.size():
+			var z: float = edges[i]
+			var foot := float(body[1]) + 0.07
+			for c: float in wz:
+				if absf(z - c) < 0.37:
+					foot = maxf(foot, 0.33 + sqrt(0.37 * 0.37 - (z - c) * (z - c)) + 0.03)
+			VehicleBody.seam(self, m, [Vector3(side * (w + 0.002), fy - 0.04, z), Vector3(side * (w + 0.002), foot, z)], 0.004)
+			if i > 0 and not burnt:
+				# a flush pull handle moulded into the door skin, black (a
+				# truck's bar handle on its posts stood off a car's door)
+				_add(m, BevelMesh.make(Vector3(0.014, 0.03, 0.13), 0.005), "plain", VmCiv.TRIM, Vector3(side * (w + 0.004), fy - 0.09, z - 0.16), Vector3.ZERO, Vector3.ONE, false)
+	VmCiv._bonnet_line(self, m, body, w - 0.22, fz - 0.06, bf + 0.16)
+	# Moulded bumpers, lights, plate. Parked cars of one shape differ by more
+	# than paint, as a street's do: some older ones keep chrome bumpers, and
+	# the wheel trims are silver, white or painted dark (drawn from the paint
+	# and shape, so a look still builds the same).
+	var trim := absi(hash(col.to_html(false) + str(v)))
+	var chrome := trim % 3 == 0
 	for z: float in [bf - 0.02, bb + 0.02]:
-		VehicleMounts.bumper(self, m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, z), "rubber", null, Vector3.ZERO, true)
+		VehicleMounts.bumper(self, m, Vector3(w * 2.0 + 0.04, 0.16, 0.12), Vector3(0, 0.42, z), "steel" if chrome else "rubber", Color(0.7, 0.71, 0.72) if chrome else null, Vector3.ZERO, true)
+	var hub: Color = [Color(0.62, 0.63, 0.62), Color(0.76, 0.76, 0.74), Color(0.24, 0.245, 0.25)][(trim >> 3) % 3]
+	# About one car in four runs on a bonnet from a breaker's yard, never
+	# painted to match: grey primer, or another car's colour. From above the
+	# bonnet is the biggest panel the battle camera sees, so this is what keeps
+	# a street of one shape from looking stamped from one mould. (A film on
+	# the bonnet's own slope, inside its shut lines.)
+	# (hashed shape first, so each shape of one paint draws its own)
+	var odd := absi(hash(str(v) + col.to_html(false)))
+	if odd % 4 == 0 and not burnt:
+		VmCiv._odd_bonnet(self, m, body, w - 0.22, fz - 0.1, bf + 0.2, col, odd >> 3)
+	# The lamps sit on the nose and tail as they lean (they floated a few
+	# centimetres ahead of a raked nose): sealed rectangular headlamps either
+	# side of a black grille, amber indicators under them, and tail clusters,
+	# each a housing round a ribbed lens rather than a flat white tile.
+	var nose := _car_face(body, 0.68, true)
+	var tail := _car_face(body, 0.74, false)
+	var rake := atan(nose.y)
+	for s in [-1.0, 1.0]:
+		VehicleFittings.rectangular_headlamp(self, m, Vector3(s * (w - 0.24), 0.68, nose.x - 0.006), Vector2(0.3, 0.1), Vector3(rake, 0, 0))
+		var lamp := _pivot(m, Vector3(s * (w - 0.2), 0.74, tail.x - 0.004))
+		lamp.rotation.x = atan(tail.y)
+		VehicleFittings.signal_lens(self, lamp, Vector3.ZERO, Vector2(0.24, 0.12), Color(0.62, 0.06, 0.05))
+		_fold(lamp)
+		if not burnt:
+			var low := _car_face(body, 0.585, true)
+			_add(m, Res.box(Vector3(0.16, 0.04, 0.02)), "signal_lens", Color(0.8, 0.46, 0.1), Vector3(s * (w - 0.24), 0.585, low.x - 0.004), Vector3(atan(low.y), 0, 0), Vector3.ONE, false)
+	# the grille between them: a black mesh panel behind three slats, bright
+	# on a car that keeps its chrome
+	var grille := _pivot(m, Vector3(0, 0.68, nose.x - 0.004))
+	grille.rotation.x = rake
+	_box(grille, Vector3(w * 2.0 - 0.86, 0.11, 0.012), Vector3.ZERO, "rubber", Color(0.025, 0.025, 0.025), Vector3.ZERO, false)
+	for i in 3:
+		_box(grille, Vector3(w * 2.0 - 0.9, 0.012, 0.014), Vector3(0, (i - 1) * 0.034, -0.008), "steel" if chrome else "rubber", Color(0.7, 0.71, 0.72) if chrome else Color(0.1, 0.1, 0.1), Vector3.ZERO, false)
+	_fold(grille)
 	if not burnt:
-		for s in [-1.0, 1.0]:
-			_add(m, Res.box(Vector3(0.3, 0.1, 0.04)), "paint", Color(0.92, 0.9, 0.8), Vector3(s * (w - 0.24), 0.68, bf - 0.01), Vector3.ZERO, Vector3.ONE, false)
-			_add(m, Res.box(Vector3(0.24, 0.12, 0.04)), "paint", Color(0.62, 0.06, 0.05), Vector3(s * (w - 0.2), 0.74, bb + 0.01), Vector3.ZERO, Vector3.ONE, false)
 		VehicleMarkings.plate(self, m, Vector3(0, 0.5, bb + 0.09), Vector2(0.42, 0.11), Vector3.BACK, 0.0, "", 0.02, Color(0.9, 0.88, 0.8))
 	if v == 2:
-		# the bed: its sides, the ribbed tailgate between them, the rubber mat
+		# the bed: its sides (their top rails rolled over, as pressed sheet's
+		# are), the ribbed tailgate between them, the rubber mat
 		for s in [-1.0, 1.0]:
-			_box(m, Vector3(0.06, 0.38, 1.95), Vector3(s * (w - 0.03), 1.2, 1.4), "car_paint", col)
+			VmCiv._rolled(self, m, key + "bed%d" % int(s), Vector3(s * (w - 0.03), 1.2, 1.4), Vector3(0.06, 0.38, 1.95), "car_paint", col)
 		VehicleCargo.sideboard(self, m, Vector3(w * 2.0, 0.38, 0.06), Vector3(0, 1.2, 2.38), "car_paint", col, Vector3.ZERO, 2)
 		_box(m, Vector3(w * 2.0 - 0.1, 0.04, 1.9), Vector3(0, 1.03, 1.4), "rubber")
-	# wheels in dark arches
-	var wz := [bf + 0.75, bb - 0.75]
-	for s in [-1.0, 1.0]:
-		for z in wz:
-			_box(m, Vector3(0.05, 0.5, 0.86), Vector3(s * (w - 0.01), 0.52, z), "rubber", null, Vector3.ZERO, false)
-			_wheel(m, Vector3(s * (w - 0.1), 0.33, z), 0.33, 0.22, "steel", Color(0.62, 0.63, 0.62))
+	# wheels under black plastic arch trims: a band round the top of each tyre,
+	# a few centimetres proud of the side so the arch reads from above without
+	# hiding the wheel (a flat slab here sat over it like a mud flap)
+	for s: float in [-1.0, 1.0]:
+		for z: float in wz:
+			var x0 := w - 0.03 if s > 0.0 else -(w + 0.012)
+			var x1 := w + 0.012 if s > 0.0 else -(w - 0.03)
+			VehicleWheelArches._flare(self, m, "%sarch_%d_%d" % [key, int(s), roundi(z * 100.0)], z, 0.33, 0.345, 0.41, x0, x1, 0.0, PI, "rubber", null, 6)
+			_wheel(m, Vector3(s * (w - 0.1), 0.33, z), 0.33, 0.22, "steel", hub)
 
 
 ## M1151 Humvee: wide and low, a long sloping bonnet over the grille, the
@@ -1476,25 +1906,14 @@ func _heli(team: int, attack: bool) -> void:
 static var _blur: ShaderMaterial
 
 
+## The disc a rotor's blades sweep at flight speed, on a plane mesh the size
+## of the rotor, turning with the hub: one material for every rotor, its
+## blade count and colour per rotor (see VehicleRotors.BLUR_SHADER, which the
+## propellers' discs share).
 static func _blur_mat() -> ShaderMaterial:
 	if _blur == null:
 		var sh := Shader.new()
-		sh.code = Mats.code("""
-shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
-instance uniform float blade_count = 4.0;
-void fragment() {
-	vec2 p = UV * 2.0 - 1.0;
-	float r = length(p);
-	float a = atan(p.y, p.x);
-	// The mesh turns with the hub. Each blade sweeps an arc during an exposure.
-	float sweep = pow(0.5 + 0.5 * cos(a * blade_count + r * 0.7), 3.6);
-	float disc = smoothstep(0.07, 0.13, r) * (1.0 - smoothstep(0.95, 1.0, r));
-	float tip = smoothstep(0.92, 0.95, r);
-	ALBEDO = mix(vec3(0.034, 0.038, 0.04), vec3(0.42, 0.40, 0.32), tip);
-	ALPHA = disc * (0.028 + (0.50 - 0.16 * r) * sweep);
-}
-""")
+		sh.code = Mats.code(VehicleRotors.BLUR_SHADER)
 		_blur = ShaderMaterial.new()
 		_blur.shader = sh
 	return _blur

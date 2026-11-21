@@ -1,0 +1,10 @@
+{
+  "entry": "changelog/unreleased/trench-digging-in-multiplayer.md",
+  "summary": "A trench dug or shelled in multiplayer no longer stalls joined players' updates, and its depth and cover keep up with the host's.",
+  "medium": "text",
+  "stage": "text",
+  "rationale": "An invisible replication fix: a still cannot show a snapshot that no longer stops part-way. tests/trench-peer.test.mjs checks a client follows the host's trench depth with no script errors, failing before the fix.",
+  "source_ref": "89504605",
+  "sources": [],
+  "output": null
+}

@@ -1,8 +1,11 @@
 class_name HudOrbat
 extends Control
-## Order of battle: every allied unit, grouped (infantry, support teams,
-## vehicles), a line each (docs/UI.md, Row): its symbol, callsign, what it's
-## doing as a code (MOV D8, PINNED · DEF E4) and its strength in pips. It sits
+## Order of battle: every allied unit, grouped by where it fights (infantry,
+## support teams, then land, air and sea vehicles), a line each (docs/UI.md,
+## Row): its symbol, callsign and strength in pips. What it was told to do
+## (MOV D8, DEF E4) shows only under the hand or while it's selected; a row
+## speaks up by itself only when the unit needs its commander (PINNED,
+## CONTACT, ROUTING, LOW AMMO, IMMOBILISED). It sits
 ## on the left scrim with no box: a header, then rows with a rule under each.
 ## Click a row to select the unit and look at it, Shift+click to add it to
 ## the selection, double-click to zoom in on it. Observers see both sides.
@@ -17,8 +20,9 @@ var open := true
 var _scroll := 0.0
 var _content_h := 0.0
 var _rows: Array = []  # [Rect2, kind ("sq"/"veh"), id, commandable]
+var _sections: Array = []  # [Rect2, [[kind, id], ...]]: a heading selects everything under it
 var _head := Rect2()
-var _pointer := Vector2.INF
+var _pointer := Vector2.INF  # where the cursor is over the list (rows are matched to it as they're drawn)
 
 
 func _ready() -> void:
@@ -33,7 +37,7 @@ func _gui_input(ev: InputEvent) -> void:
 	elif ev is InputEventPanGesture:
 		# two fingers on a trackpad scroll the list
 		_scroll = clampf(_scroll + (ev as InputEventPanGesture).delta.y * 30.0, 0.0, maxf(0.0, _content_h - size.y))
-		_rows.clear()
+		_rows.clear()  # the rows moved under the cursor: drawn again before they're asked
 		queue_redraw()
 		accept_event()
 	elif ev is InputEventMouseButton and ev.pressed:
@@ -51,6 +55,11 @@ func _gui_input(ev: InputEvent) -> void:
 			toggle()
 			accept_event()
 			return
+		for sc in _sections:
+			if (sc[0] as Rect2).has_point(mb.position):
+				_pick_all(sc[1], mb.shift_pressed)
+				accept_event()
+				return
 		for r in _rows:
 			if (r[0] as Rect2).has_point(mb.position):
 				_pick(String(r[1]), int(r[2]), bool(r[3]), mb.shift_pressed, mb.double_click)
@@ -64,31 +73,23 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 
-func content_h() -> float:
-	return _content_h
-
-
-## The squad or vehicle under the cursor in the list, as [kind, id] ("" when
-## none): the map marks the same unit, so a name in the list finds its place.
+## The row under the cursor: ["sq", sid] or ["veh", eid], or []. Matched by
+## where the rows are now, so a list scrolled under a still cursor follows.
 func hovered() -> Array:
-	if open:
-		for row in _rows:
-			if _is_hovered(row[0]):
-				return [String(row[1]), int(row[2])]
-	return ["", 0]
+	if not open or (is_inside_tree() and not is_visible_in_tree()):
+		return []  # folded, or hidden with the rest of the HUD
+	for row in _rows:
+		if _is_hovered(row[0]):
+			return [String(row[1]), int(row[2])]
+	return []
 
 
 func _is_hovered(rect: Rect2) -> bool:
 	return Rect2(Vector2.ZERO, size).has_point(_pointer) and rect.has_point(_pointer)
 
 
-## Whether a squad needs its commander now: in a fight, pinned, breaking, short
-## of ammunition or carrying wounded. The rest are quiet, and their rows step
-## back so the ones that matter catch the eye without a word being read.
-static func needs_you(st: Dictionary, code: String) -> bool:
-	return bool(st.contact) or bool(st.pinned) or bool(st.low_ammo) or int(st.wounded) > 0 \
-		or int(st.get("mstate", 0)) >= 2 or code.begins_with("ROUTING") or code.contains("FALL BACK") \
-		or code.begins_with("CONTACT") or code.begins_with("ATK") or code.contains("ASLT") or code.contains("ASSAULT")
+func content_h() -> float:
+	return _content_h
 
 
 func toggle() -> void:
@@ -139,6 +140,23 @@ func _pick(kind: String, id: int, mine: bool, add: bool, dbl: bool) -> void:
 			w.director.active = false
 
 
+## A heading clicked: every unit of yours under it (all the air, all the
+## boats), added to the selection with Shift.
+func _pick_all(units: Array, add: bool) -> void:
+	var inp = hud.world.input
+	if inp == null or units.is_empty():
+		return
+	if not add:
+		inp.clear_selection()
+	for u in units:
+		if String(u[0]) == "sq":
+			if not int(u[1]) in inp.sel_squads:
+				inp.sel_squads.append(int(u[1]))
+		elif not int(u[1]) in inp.sel_vehicles:
+			inp.sel_vehicles.append(int(u[1]))
+	Sfx.ui("click")
+
+
 # --- drawing ------------------------------------------------------------------------------
 
 func _draw() -> void:
@@ -149,10 +167,11 @@ func _draw() -> void:
 
 
 func _draw_content() -> void:
-	_rows.clear()
 	var w := hud.world
 	if w == null or w.input == null:
 		return
+	_rows.clear()
+	_sections.clear()
 	var lt: int = w.local_team
 	var teams: Array = [lt] if lt >= 0 else [0, 1]
 	# gather: squads by sid, vehicles
@@ -208,23 +227,29 @@ func _draw_content() -> void:
 				support.append(sid)
 			else:
 				mine_sqs.append(sid)
-		var tv := []
+		var by_dom := {"land": [], "air": [], "sea": []}
 		for v in vehs:
 			if v.team == t:
-				tv.append(v)
+				(by_dom[domain_of(String(v.vkind))] as Array).append(v)
 		if teams.size() > 1:
 			y = _team_header(y, t, top, bottom)
 		if not mine_sqs.is_empty():
-			y = _section(y, "Infantry", top, bottom)
+			_add_section(y, mine_sqs, [])
+			y = _section(y, "Infantry", top, bottom, mine_sqs.size())
 			for sid in mine_sqs:
 				y = _squad_row(y, int(sid), by_sid[sid], top, bottom)
 		if not support.is_empty():
-			y = _section(y, "Support", top, bottom)
+			_add_section(y, support, [])
+			y = _section(y, "Support", top, bottom, support.size())
 			for sid in support:
 				y = _squad_row(y, int(sid), by_sid[sid], top, bottom)
-		if not tv.is_empty():
-			y = _section(y, "Vehicles", top, bottom)
-			for v in tv:
+		for dom in DOMAINS:
+			var dv: Array = by_dom[dom[0]]
+			if dv.is_empty():
+				continue
+			_add_section(y, [], dv)
+			y = _section(y, String(dom[1]), top, bottom, dv.size())
+			for v in dv:
 				y = _vehicle_row(y, v, top, bottom)
 	_content_h = y + _scroll + 4.0
 	if _content_h > size.y:
@@ -233,6 +258,50 @@ func _draw_content() -> void:
 		var bh := maxf(24.0, (size.y - HEAD_H - 4.0) * frac)
 		var by := HEAD_H + 2.0 + (_scroll / maxf(1.0, _content_h - size.y)) * (size.y - HEAD_H - 4.0 - bh)
 		draw_rect(Rect2(W + 3, by, 2, bh), UiKit.RULE2)
+
+
+const DOMAINS := [["land", "Land"], ["air", "Air"], ["sea", "Sea"]]
+
+
+## Where a vehicle fights: "air" (it flies), "sea" (a boat) or "land".
+static func domain_of(vkind: String) -> String:
+	var d: Dictionary = Defs.VEHICLES.get(vkind, {})
+	if d.get("air", false):
+		return "air"
+	if String(d.get("base", "")) == "boat":
+		return "sea"
+	return "land"
+
+
+## What a squad's row says when nobody is looking at it: only what needs the
+## commander, else nothing.
+static func squad_alarm(st: Dictionary) -> String:
+	if int(st.get("mstate", 0)) >= 3 or String(st.code).contains("ROUTING"):
+		return "ROUTING"
+	if bool(st.pinned):
+		return "PINNED"
+	if bool(st.low_ammo):
+		return "LOW AMMO"
+	if bool(st.contact):
+		return "CONTACT"
+	return ""
+
+
+## A heading's hit box and the player's own units under it.
+func _add_section(y: float, sids: Array, vehs: Array) -> void:
+	var w := hud.world
+	var units := []
+	for sid in sids:
+		for s in w.soldiers:
+			if s.sid == int(sid):
+				if w.input.is_mine(s):
+					units.append(["sq", int(sid)])
+				break
+	for v in vehs:
+		if w.input.is_mine(v):
+			units.append(["veh", v.eid])
+	if not units.is_empty():
+		_sections.append([Rect2(0, y, W, SEC_H), units])
 
 
 func _visible_row(y: float, h: float, top: float, bottom: float) -> bool:
@@ -247,9 +316,11 @@ func _team_header(y: float, t: int, top: float, bottom: float) -> float:
 	return y + SEC_H
 
 
-func _section(y: float, label: String, top: float, bottom: float) -> float:
+func _section(y: float, label: String, top: float, bottom: float, n := -1) -> float:
 	if _visible_row(y, SEC_H, top, bottom):
-		UiKit.caps_at(self, Vector2(0, y + 15), label, 10, UiKit.FAINT)
+		var lx := UiKit.caps_at(self, Vector2(0, y + 15), label, 10, UiKit.FAINT)
+		if n >= 0:
+			UiKit.mono_at(self, Vector2(lx + 6.0, y + 15), "%02d" % n, 10, UiKit.FAINT)
 	return y + SEC_H
 
 
@@ -286,14 +357,14 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 	_rows.append([r, "sq", sid, mine])
 	_row_bg(r, sel)
 	var st: Dictionary = hud.squad_state(sid, mem)
-	var quiet := not sel and not _is_hovered(r) and not needs_you(st, String(st.code))
+	var look: bool = sel or _is_hovered(r) or sid == hud.focus_sid
 	var sym: Array = MapSymbols.squad_symbol(mem)
-	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 0.55 if quiet else 1.0)
+	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, team == w.local_team or w.local_team < 0, team, sym[0], "", 1.0)
 	var by := int(w.coop.sel_sq.get(sid, 0)) if w.coop else 0
 	if by != 0:
 		# a co-commander has it selected: his colour down the row's edge
 		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
-	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), Squad.callsign_of(team, sid), 13, UiKit.ACCENT if sel else (UiKit.DIM if quiet else UiKit.TEXT))
+	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), Squad.callsign_of(team, sid), 13, UiKit.ACCENT if sel else UiKit.TEXT)
 	var tag := String(sym[1])
 	if tag != "":
 		x += 5.0 + UiKit.caps_at(self, Vector2(x + 5.0, y + 17), tag, 10, UiKit.FAINT)
@@ -307,15 +378,19 @@ func _squad_row(y: float, sid: int, mem: Array, top: float, bottom: float) -> fl
 			alive += 1
 	var pw := mem.size() * 5.0 - 2.0
 	UiKit.pips(self, Vector2(W - pw - 2.0, y + 8), alive, hurt, mem.size() - alive - hurt)
-	# what it's doing, as a code, cut to fit
+	# what it's doing, as a code, cut to fit: the whole of it under the hand,
+	# else only an alarm
 	var cx := maxf(x + 12.0, 128.0)
-	var code := String(st.code)
-	if st.low_ammo:
+	var code := String(st.code) if look else squad_alarm(st)
+	if st.low_ammo and look:
 		code += " · LOW AMMO"
 	var maxw := W - pw - 12.0 - cx
 	while code.length() > 3 and UiKit.mono_w(code, 12) > maxw:
 		code = code.substr(0, code.length() - 2)
-	UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, UiKit.FAINT if quiet else _code_col(st, sel))
+	var cc := _code_col(st, sel)
+	if not look:
+		cc = {"ROUTING": UiKit.BAD, "PINNED": UiKit.WARN, "LOW AMMO": UiKit.WARN}.get(code, UiKit.TEXT)
+	UiKit.mono_at(self, Vector2(cx, y + 17), code, 12, cc)
 	return y + ROW_H
 
 
@@ -328,17 +403,16 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	var sel: bool = v.eid in w.input.sel_vehicles
 	_rows.append([r, "veh", v.eid, mine])
 	_row_bg(r, sel)
-	# a vehicle holding or on the move, and not badly hurt, is quiet like a squad
 	var hf: float = v.health_frac()
-	var vquiet: bool = not sel and not _is_hovered(r) and (v.flags & (Vehicle.F_TRACK | Vehicle.F_FIRE)) == 0 and hf >= 0.4
+	var look: bool = sel or _is_hovered(r) or v.eid == hud.focus_veh
 	var vs: Array = MapSymbols.vehicle_symbol(v.vkind)
-	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, v.team == w.local_team or w.local_team < 0, v.team, vs[0], "", 0.55 if vquiet else 1.0)
+	MapSymbols.nato(self, Vector2(11, y + ROW_H * 0.5), 17.0, v.team == w.local_team or w.local_team < 0, v.team, vs[0], "", 1.0)
 	var by := int(w.coop.sel_veh.get(v.eid, 0)) if w.coop else 0
 	if by != 0:
 		draw_rect(Rect2(0, y + 3, 2, ROW_H - 6), Net.player_color(by))
-	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), String(v.display_name()), 13, UiKit.ACCENT if sel else (UiKit.DIM if vquiet else UiKit.TEXT))
+	var x := 26.0 + UiKit.caps_at(self, Vector2(26, y + 17), String(v.display_name()), 13, UiKit.ACCENT if sel else UiKit.TEXT)
 	UiKit.steps(self, Vector2(W - 40, y + 8), hf * 6.0, 6, UiKit.GOOD if hf > 0.6 else (UiKit.WARN if hf > 0.3 else UiKit.BAD), 5.0, 9.0)
-	var code := "HOLD"
+	var code := "HOLD" if look else ""
 	var col := UiKit.ACCENT if sel else UiKit.DIM
 	if (v.flags & Vehicle.F_TRACK) != 0:
 		code = "IMMOBILISED"
@@ -349,9 +423,7 @@ func _vehicle_row(y: float, v, top: float, bottom: float) -> float:
 	elif hf < 0.4:
 		code = "BADLY DAMAGED"
 		col = UiKit.BAD
-	elif Defs.flat(v.position - v._last_pos).length() > 0.02:
+	elif Defs.flat(v.position - v._last_pos).length() > 0.02 and look:
 		code = "MOVING"
-	if vquiet:
-		col = UiKit.FAINT  # nothing wrong and nothing to do: it steps back
 	UiKit.mono_at(self, Vector2(maxf(x + 12.0, 128.0), y + 17), code, 12, col)
 	return y + ROW_H

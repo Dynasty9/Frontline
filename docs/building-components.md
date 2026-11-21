@@ -11,8 +11,8 @@ The collision and cover a structure gives (`Structure._define_parts`) never depe
 | `scripts/game/building_materials.gd` | `BuildingMaterials` | Construction materials: surface, colour, dressings, finish |
 | `scripts/game/building_walls.gd` | `BuildingWalls` | Faces (plinths, bands, boards, sheeting, joints, quoins), copings, piers |
 | `scripts/game/building_openings.gd` | `BuildingOpenings` | Windows, sills, heads, shutters, doorways, door leaves, roller shutters, louvres, ribbon glazing |
-| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets (and their wear), single-pitch roofs, canopies, north lights; `underside` for seating things on a slope |
-| `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks, pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
+| `scripts/game/building_roofs.gd` | `BuildingRoofs` | Gables, hipped roofs (and pyramids), flat roofs with parapets (and their wear), single-pitch roofs, canopies, north lights; `underside` for seating things on a slope, `sawtooth_rise` on north lights |
+| `scripts/game/building_fittings.gd` | `BuildingFittings` | Gutters, hoppers, downpipes, chimneys, flues, stacks (brick, and guyed steel), pipe runs, plant, masts, aerials, flagpoles, lamps, drums, crates, pallets |
 | `scripts/game/building_fences.gd` | `BuildingFences` | Fence bays in nine styles (picket, post-and-rail, railings, close-board, paling, chain-link, bow-top, military security, mesh panels) and their gates |
 | `scripts/game/building_wire.gd` | `BuildingWire` | Catenary spans, cables, guys with anchors, insulators, barbed strands, wall-top wire |
 | `scripts/game/building_weathering.gd` | `BuildingWeathering` | Ivy, weeds at the foot of walls, the fallen-in roof on a ruin's floor, roof tarps and holes; stains that fade into a wall (soot, rain streaks, scorch), shell scars, bullet strikes, boarded and sandbagged windows |
@@ -62,6 +62,7 @@ are made of (`trim`, `sill`, `head`, `base`, `cap`) and its `finish`, which deci
 | plaster | `plaster` | Darker rendered plinth, band under the eaves | Render bands in the wall's paint | Cast cap with drips |
 | brick | `brick` | Engineering-brick base | Concrete sills and lintels | Brick-on-edge over a creasing |
 | stone | `stone` | Stone base course, dressed quoins | Stone sills, lintel with a keystone | Saddleback |
+| fieldstone | `fieldstone` | Random rubble pointed in mortar | (none) | Stones on edge (`cock_and_hen`) |
 | concrete | `concrete` | Cast base | Cast | Cast cap with drips |
 | precast | `precast` | Sealed panel joints | Cast | Cast cap |
 | timber | `wood_painted` | Lapped weatherboards, corner boards | Painted timber | Timber |
@@ -73,6 +74,27 @@ drip edges), `roof_concrete` (flat slabs) and `canvas`.
 A house's material follows its colour index (`BuildingMaterials.house`, `HOUSE`): most are rendered and painted,
 the red-brown ones bare brick, the grey-brown ones rough stone. Brick and stone houses take the material's own
 colour (`house_color`), their roofs' gables follow, and their debris is their colour.
+
+A pitched roof's tint is `BuildingMaterials.roof_color`: three in four are clay or concrete tile (`ROOF_CLAY`,
+five weathered shades), the rest slate or grey tile (`ROOF_SLATE`); barns take `BARN_SHEET`. Which one is drawn
+from a stream of its own, so the roof's other choices are as they were. None is a new tile's bright orange: the
+tile photograph carries the tile-to-tile variation, the tint only the roof's age and make. Stone (the `stone`
+surface) is coursed rubble: three course heights in turn, a stone length per course, a shade per stone, in pale
+lime mortar. A flat roof's deck is covered in one of `FLAT_DECKS` (`deck_color`:
+bitumen felt, mineral felt, bare concrete, old asphalt; its own stream), and its stains and patches are of the
+same stuff. A house's colour index says its material (`ci % 6`, `BuildingMaterials.HOUSE`) and
+which of that material's three colours it is (`ci / 6`): MapGen draws the second from a stream of its own seeded
+from where the house is, so rendered houses come in the nine `RENDERS` and brick and stone in three shades each.
+
+A garden's or a field's stone wall (`low_wall` variant 0) is `fieldstone`: random rubble, pointed in darker
+mortar, and finished along the top as a waller finishes one, with field stones set on edge across it
+(`BuildingWalls.cock_and_hen`): packed tight, a tall one (the cock) and one or two shorter (hens) in turn, each
+leaning a little as the one before it, its shoulders and crown rounded and set off its middle, their feet bedded
+in a mortar ridge that shows only in the joints. They're the face's own stone (`fieldstone_cap`: the same
+pattern with its joints left off, since each piece is a stone of its own, its shade in its vertex colours), so
+the skyline is ragged rather than a lid. A wall's top is one part: one cached mesh per length, width and layout
+(six layouts, picked from the wall's generator), about 1,100 vertices for 4 m, the first and last stones flush
+with the wall's ends so walls in a line run on unbroken.
 
 ## Lived-in houses and lamplight
 
@@ -118,10 +140,107 @@ round dark holes, missing the openings); about one plain wall in fourteen has a 
 to the brick behind it, scorched round, spattered with strikes. At the windows, the glass of some lived-in houses
 is taped in crosses against the blast, some windows are boarded across (with gaps: a window a man can still see
 and shoot through) and some have sandbags laid along the sill. Soot, streaks and scorch are
-`BuildingWeathering.stain`: a patch of the wall's own surface 3 mm proud, its vertex colours running from the
+`BuildingWeathering.stain`: a patch of the wall's own surface 6 mm proud, its vertex colours running from the
 stain to exactly the tint the wall's body was drawn in (`Structure._tone`), so it fades into the wall with no
 edge; the fixture checks the rim comes back to the wall's colour. Everything stays within a hand's breadth of the
 face, so cover is unchanged.
+
+Under the war's marks lie the years' (`BuildingWeathering.grime`, on every rendered, brick, stone and panelled
+wall and on the storeys over them): grime gathered under the eaves, where the overhang keeps the rain off,
+fading down the wall; rain splashed up its foot above the plinth; and now and then a dark run down from a gutter
+that overflows. It covers each solid part of a wall's body from plinth to band in one patch (2 mm proud, under
+the war's stains at 6 mm), so the joins between the parts a wall is built of no longer show as lines down the
+face; its amount wanders along a wall but is the same at both ends, so the walls of a house meet with no step.
+Boards and sheet, whose laps stand proud, carry none.
+
+## Street furniture
+
+A town's streets carry more than lamps and poles (`BuildingStreet`, laid by `TownGen._street_furniture` once
+everything else is down): traffic lights at the four corners of the central crossroads (a head down each street,
+the lenses dark: the power's off; now and then one askew or a pole leaning), a telephone box and pillar post
+boxes on the main street's pavements, an advertising column on the square, a hoarding over each car park and
+bombed-out lot, street names on posts at the junctions, and what people running from the fighting dropped on the
+pavements. Each is kept clear of what's on the pavement already and off the drives, from a stream of its own into
+a decor list of its own after the rest, so the town is as it was; vehicles and blasts knock them down like the
+other street furniture (`Decor.BREAKABLE`). Render the pieces with `--building-kinds=street_kit`; the town views
+include the crossroads and the square.
+
+The older pieces are `BuildingStreet`'s too:
+- **The square's fountain** (`fountain`): a basin of dressed stone in segments with a moulded lip, a pedestal to a
+  lower bowl, a stem to an upper bowl, the finial, weed at the foot. Decor draws the water in it, and in each bowl,
+  on its own.
+- **The bus shelter** (`bus_shelter`): a steel frame, glazed back and ends (the odd pane shot out), a curved roof
+  with its fascia, a bench of slats, a timetable case, the stop's flag.
+- **Litter bins** (`litter_bin`): a slatted drum on a post.
+- **Planters** (`planter`): a tapered concrete trough with bedding flowers round a clipped box ball.
+- **A town's name board** (`town_sign`): a yellow board with its name, a district board under it, enamelled faces
+  on bare galvanised backs.
+
+Render them with `--building-kinds=street_pieces`.
+
+## The square
+
+The town square's monuments are `BuildingSquare`'s:
+- **The war memorial** (`memorial`, Decor `statue`): three steps, a moulded plinth, the die of dressed granite with
+  a bronze plaque of names on each face, a cornice (`monument`). On top stands a bronze soldier (`soldier`) larger
+  than life (a man of 1.8 m cast 2.1 m tall) resting on his arms reversed: his rifle upside down before him, its
+  muzzle on his base between his boots, his hands folded on its butt, his head bowed under his helmet, in greatcoat,
+  belt, pouches and pack. He is sculpted from lofted cross-sections (`BodyMesh`) as the game's soldiers are, with
+  their proportions, and cast as one cached shape on his base: one part in the bake. Or (the park's) it's an obelisk
+  with its capstone and a bronze laurel wreath fixed flat to its sloping face.
+- **Wreaths** (`wreath`): poppies on laurel with a ribbon bow, a cached shape a colour. `wreath_spots` lays two or
+  three on the top step in front, each leaning back just far enough that its back rests on the edge of the plinth's
+  cap. The fixture checks none is in the stone, the statue or another wreath, that each stands on the step and
+  rests on the plinth (3 cm lower, or further back, it would be in the stone), and the soldier's size and part
+  count.
+- **The market's stalls** (`stall`, Decor `stall`): a timber frame under a pitched canopy of striped canvas,
+  scalloped along its eaves, over a trestle of crates heaped with produce, a set of scales and a crate or two
+  under it. The canopies are `AWNINGS`.
+
+Bronze is a surface of its own (`bronze`): verdigris, worn through in patches to the darker metal, with runs of dirt
+down it. Render them with
+`--building-kinds=memorial,memorial_obelisk` (the memorial with three stalls beside it) in the studio stage; the
+town views include the square.
+
+## Furniture
+
+A house's room is furnished (`BuildingInteriors`): against each wall with no window or door in it
+(`Structure._house_wall_detail`, from a stream of its own) a wardrobe, a bookcase, a dresser with the television
+or a lamp on it, a settee, a kitchen run (cupboards, the sink, the cooker, wall cupboards) or a desk with its
+chair; pictures and a shelf hang only over the low ones. Everything keeps `REACH` (0.65 m) out from its wall and
+in from its ends, so two walls meeting in a corner never put things in each other's way. A floor big enough has a
+table in the middle with its chairs (one knocked over now and then). It is looks only, in the walls' own
+world-space materials so a town's walls still draw together; a chair and a table are one cached shape each, and
+books stand in runs. Render three rooms with `--building-kinds=house_rooms`. A shop's floor (variant 3:
+`TownGen._plan` marks a shop) is fitted out instead of furnished (`BuildingInteriors.shop`): rows of shelving
+running back from the door, stocked in runs of one kind or picked half empty, and the counter across the back
+with its till and scales and stock at its end, all clear of the front and of what stands against the walls.
+Its walls know it's a shop (the `shop` prop `MapGen._house` gives them) and are fitted out to match
+(`BuildingInteriors.shop_wall`, from the same stream and within the same `REACH` as a house's furniture): shelving
+the length of a plain wall packed with goods (now and then picked half empty), a cooler of drinks at one end of
+some, or a greengrocer's rack of crates under a chalked price board; its windows have a blind or nothing.
+Render two with `--building-kinds=shop_rooms`.
+
+## House plans and storeys
+
+A house is more than four walls when the town plans it so (`TownGen._plan`, from a stream of its own seeded from
+where the lot is, so the streets and lots are laid out as they were). Many of the bigger houses, most of the
+shops near the middle (flats over the shop) and most farmhouses have a floor over the ground floor:
+`BuildingStoreys.upper`, drawn with the roof (its eaves 2.8 m higher), with walls on the ground floor's lines,
+windows in most bays, curtains and a lamp on in some rooms, a string course at the floor and a band under the
+eaves. It is looks only, like the roof: the ground floor's walls are the cover men fight from, the floor above
+lifts off with the roof when men go in, and when a wall under it is knocked out (`Structure._bring_down_floors`)
+it comes down with the roof rather than stand on air.
+
+A wide house with the garden for it may have a wing out of the back, over whole bays of the back wall: at its
+left end (an L; the back downpipe is at the right) or in the middle (a T). `MapGen._house` lays the back wall's
+bays as it always did, the same random numbers, only out at the wing's far end; the wing's sides, floor and roof
+are spawned after everything else on the map (`MapGen._late`), so the wing itself renumbers nothing (a yard tree
+that would stand in it moves or goes, which does). The middle bay of its far end is a back door out to the garden
+(the way in for a squad clearing it). On one floor a wing is no deeper than it is wide, so its ridge runs with
+the house's; its roof takes the house roof's looks (`Structure.look`: the same covering, tint and pitch). The
+garden keeps clear of it (`TownGen._in_wing`). Render four with `--building-kinds=house_plans` (`--building-rear`
+for the wings); `--scenario=storeys` blows in a wall under a floor.
 
 ## Rubble
 
@@ -132,6 +251,12 @@ it, a joist or two run up out of it (charred or bare), and reinforcing rods bent
 stands proud of the cover boxes, and lumps at its edges bed into the ground; the fixture checks every size a
 fallen wall leaves. Render two with `--building-kinds=rubble`.
 
+A house that has gone dark (a ruin, or hit hard, holed or burning: see the lamplight above) also sheds debris at
+the foot of every wall (`BuildingWeathering.spill`: lumps of brick and render, plaster flakes, roof-tile shards,
+a splinter of timber, glass), thickest by the wall and thinning out over a metre and a half, all lying flat; it
+comes with the wall's rebuild when the house goes dark. Under a shot-out window lies its glass
+(`BuildingWeathering.shards`). Both draw from a stream of their own.
+
 ## Barns
 
 A farmstead's barn is built as a house but weatherboarded: `BuildingMaterials.HOUSE` ends in `timber`, and
@@ -140,8 +265,28 @@ weathered grey, dark green), drawing the same random numbers as before. Its roof
 galvanised or red) pitched four degrees steeper, always a plain gable, with no chimney or aerial and a loft door
 under a hoist beam high in each gable end. Its doors are ledged boards, its windows have no curtains or lamps,
 its walls no paint or pictures inside, and its floor (variant 2) is bare concrete strewn with straw
-(`BuildingWeathering.straw`), lying flat. Render one with `--building-kinds=barn`; the town views include a
+(`BuildingWeathering.straw`). Render one with `--building-kinds=barn`; the town views include a
 farmstead.
+
+Inside, the floor is fitted out as a working barn (`BuildingFarm.barn`, from the floor's own stream): small bales
+stacked in a back corner, each layer laid across the one under it and set back from it, a few pulled down and one
+broken open, a fork left in the stack; stalls along the rest of the back wall (boarded partitions, a rail and a
+gate shut or swung in, the manger with its hay rack, a bucket, fresh straw); a two-wheeled cart in the middle with
+bales, sacks or old straw in it; a workbench, a barrow and churns along one end, feed sacks on a pallet and a bin
+along the other. The floor knows which wall the door is in (`Structure.entry`, set by `MapGen._house`, which now
+draws the door's side before it spawns the floor: the same random numbers in the same order) and turns the
+layout so nothing stands within 2.3 m of it. Nothing on the floor within reach of a wall rises above 1.45 m
+(`BuildingFarm.LOW`), and the barn's windowless walls hang their tools above 1.5 m (`BuildingFarm.wall_tools`: a
+scythe, a hay rake, a fork, rope, a horse collar, a bow saw, a storm lantern), so the two never meet. Render them
+with `--building-kinds=barn_rooms` (roofs off).
+
+Round the yard (`TownGen.farmyards`, after everything else on the map is laid, from a stream seeded from where the
+farm is, so nothing else moves) a farm has its tractor (a parked civilian vehicle: Structure `car`, variant 5, cover
+like any car), a water trough at the barn's end, a plough and a harrow put away by it, a churn stand at the gate,
+a hen house with its run and hens by the farmhouse, a wheelbarrow at the barn door; each at the first of a few
+spots that has level ground and room clear of the buildings, the hedges and woods laid since, and the fence. All
+of them, like the round bales (below), are Decor pieces a vehicle or a blast knocks over (`Decor.BREAKABLE`).
+Render the kit with `--building-kinds=farm_kit`.
 
 ## Shop fronts
 
@@ -153,7 +298,16 @@ Under the fascia a striped canvas awning on its arms, its scalloped edge no lowe
 clear of the door, one or two lots of what the shop puts out: crates of fruit and vegetables on a stand, a table
 and chairs, a sandwich board and tubs of flowers, sacks on a pallet with gas bottles and buckets, a paper rack.
 The wares are breakable set dressing, placed from a stream of their own after every other piece of decor, so the
-town is otherwise the same. Render a parade of three with `--building-kinds=shops` in the studio stage; the town
+town is otherwise the same.
+
+A shop's street wall is its windows and its door (MapGen marks the bays of a shop's front house wall variant 3):
+each bay but the door's is a display window nearly its whole width (`Structure.shop_window_w`) over a 0.7 m stall
+riser, up to the fascia (`BuildingOpenings.shopfront`): pilasters up the piers with a console at each head, a
+panelled riser and sill, a slim frame with a mullion or two and a transom light, big panes as likely to be shot
+out as any. Behind the glass `BuildingShops.display` sets out the stock on a display bed, boxes, tins and jars and
+the odd card, with a low screen behind it. Joinery and fascia are painted alike (`BuildingShops.paint`, by the
+house's colour index, which every wall and the awning decor know) in the deep colours shopfronts are, on painted
+wood. The riser is cover for a man kneeling, and men fight from the window as from any other. Render a parade of three with `--building-kinds=shops` in the studio stage; the town
 views include a shop front.
 
 ## Roofscapes
@@ -189,6 +343,39 @@ door to the house) and some lawns with room for it a trampoline; these are drawn
 They're set dressing (Decor, appended after the rest so the town's other dressing keeps its looks): no cover,
 and a blast or a truck knocks them over. Render them with `--building-kinds=house_yard` in the studio stage.
 
+## The parish church
+
+A skirmish town has a parish church, built as a house is so men can go in (`MapGen._church`): `TownGen.church`
+stands it back from one of the roads into the town with its west tower to the road, first where its whole
+churchyard has room, from a stream of its own after the town and its villages are laid out and before the farms.
+The tower (Structure "church": coursed stone, the `church_stone` surface, over a plinth, dressed quoins long and
+short up its corners, string courses, a clock on its north and south faces, louvred belfry lancets under hood
+moulds, battlements, pinnacles, a slate spire with lucarnes and a gilded cross) is solid above its ground stage,
+which is the west porch: walls north, south and west (`CHURCH_TOWER_WALL`), the west doorway open under a
+pointed arch of two orders and a hood mould (`CHURCH_WEST_DOOR`, its head clear of a man at `CHURCH_DOOR_H`), its
+oak doors folded back inside, and a traceried two-light window over it. The nave and the chancel are each a floor
+(variant 3: flagstones and the quoins at the walls' outer corners, which the walls stop short of; in the nave
+pews either side of a red runner, the font, the pulpit by the chancel arch on the north side and the brass eagle
+lectern on the south; in the chancel a tiled floor, choir stalls, the altar on its step with a frontal, cross and
+candlesticks, behind a rail), house walls in the "church" material (coursed stone over a dressed plinth,
+whitewashed inside) laid by `Structure.church_walls` (bays with a window in each, the south door in the south
+side's west bay, the west door at the nave's west end under the tower, the nave's ends either side of the tower
+and of the chancel arch), and a roof that draws the walls on up to the eaves by the same plan (`_church_roof`:
+the rest of each two-light window - leaded lights with a coloured panel in each, a pointed head with tracery and a
+round light, a hood mould - a string course, quoins, stepped buttresses, and the south porch's oak frame and slate
+roof) under a 50 degree slate roof. `Structure.church_porch` says where the porch stands; its stone dwarf walls are
+low walls of their own (cover). A window's sill is chest high, so men inside fire from it; the roofs lift off when
+they go in, and a wall knocked down leaves rubble as a house's does. A squad's places when it's put in the church
+are kept inside it (`Terrain.slots`), and its roofs are `church_roof` fuel (`Fires`): slate on oak, hard to light.
+The `church` scenario has a fighter cell holding it and two squads clearing it by both doors. Render it with
+`--building-kinds=church` (and `church_open`, its roofs off) in the studio stage.
+
+Round it `TownGen._churchyard` lays out the churchyard from the same stream: a low stone wall all round
+(Structure "low_wall", cover as a garden wall is) with a gap in front for the path up to the west door and round
+to the south porch, rows of graves either side of the nave (clear of the porch) and behind the chancel (Decor "graves": `BuildingYards.graves`, headstones with
+round or pointed tops, the odd cross, some leaning, a few kerbed plots), a dark conifer at each front corner;
+then the yard is reserved, so nothing the map puts down after it lands among the graves.
+
 ## Wall fittings
 
 What's fixed to a house's walls comes from `BuildingFittings` (`meter_box`, `tap`, `wall_unit`, `wall_dish`,
@@ -213,23 +400,179 @@ negative inset so the frame stands proud of the face and glaze it fully (`glazin
 would show the block behind. Door leaves that swing are built in their own hinge kit (`BuildingKit.nodes(pivot)`);
 `BuildingOpenings.leaf` runs the leaf out along `toward` from the hinge line.
 
+## Headquarters
+
+A side's HQ (Structure `depot`) is drawn by `BuildingDepot.compound` where its three solid parts stand. It faces the
+way the battle puts it: twelve metres in from its own edge of the map, the enemy ahead (-z), its back to the map's
+edge (+z), and the road up from the rear running past its +x side (`TownGen.build_roads`). So its wall and the
+command post's slits face the enemy, and its gate, vehicle park, the command post's door and the flag face the rear
+and the road, where traffic comes from and where the side's own commander first looks at it from (the battle opens
+on the HQ's yaw).
+- **Two 20-foot containers** (`BuildingDepot.container`, an ISO 1C box 6.06 by 2.44 by 2.59 m) on sleepers either side
+  of the yard. Each has corrugated walls between the frame's corner posts and rails, a casting at each corner,
+  forklift pockets, and doors with four locking bars and their number plate. The left one is the signals office,
+  turned so its window with its shutter, air conditioner and cable run face the generators behind it, aerials on its
+  roof. The right one is the stores, its doors towards the gate. A regular army's are olive, tan or grey (`ARMY`), a
+  militia's rust, faded blue, teal or a grey-white off the docks (`COMMERCIAL`).
+- **The command post** (`BuildingDepot.command_post`): precast panels under a slab, two courses of sandbags round its
+  roof, vision slits with steel shutters (two towards the enemy), a guyed mast and a satellite dish weighted with
+  sandbags on the roof. Its steel door is at the back behind a sandbagged blast wall open towards the vehicle park,
+  with the side's board beside it and a floodlight over it. Sandbags are `BuildingDepot.sandbags`, laid in courses
+  of Structure's filled-sack mesh with the joints broken.
+- **The front:** a wall facing the enemy just out from the yard, with returns back along both sides to the
+  containers' ends. An army's is HESCO (`BuildingDepot.hesco`, MIL 1 cells, one cached mesh per surface for a
+  whole run); a militia's is runs of sandbags (`bag_run`, cached) with earth-filled drums between them.
+- **The yard** behind it, under a camouflage net draped from its spreaders down onto the wall's top and down its open
+  sides (`BuildingDepot.net`, its own node, since netting doesn't bake): the map table with the set and benches, a
+  board of maps, the radio desk along the stores, crated stores, rations and water on pallets.
+- **The power**, behind the signals office: two generators on a concrete pad (`generator`), cables along the ground
+  (`ground_cable`) to a distribution board on the command post and into the office, fuel drums on a spill pallet,
+  jerrycans, an extinguisher, and the long-range biconical aerial (`bicone`).
+- **The entry**, behind the stores off the road: the drive in, a barrier across the lane (`boom`), the guard's booth
+  sandbagged on its outward sides (`guard_post`), a stop board facing the road, a concrete barrier (`jersey`; drums
+  for a militia) between the wall's end and the gate, and the vehicle park on a hardstand with wheel stops, a water
+  trailer (`water_trailer`) and a light tower (`light_tower`). The flag stands by the command post's door.
+
+The parts stay as they were, so the HQ plays the same; its model is baked. Render both sides' with
+`--building-kinds=depot:0,depot:1` in the studio stage (add `--building-rear` for the side its commander sees), and
+both in the map with `--capture-set=hq` of `tests/fixtures/environment-views.gd`: each from its commander's opening
+view, closer from the same side, from the enemy's side and from above.
+
+## The field hospital
+
+A side's medic tent is `BuildingTents.field_hospital`, standing where its part is:
+- **The tent:** a frame tent 1.8 m to the eaves under a pitched roof, its arches showing through as seams every
+  bay. It has clear windows down both long sides with their blinds rolled up, and the door at its -x end open with
+  the flap rolled over it and boards for a step.
+- **Markings:** a red cross on white on both slopes of the roof and over the door, and a flag with the cross on
+  its pole.
+- **Rigging and stores:** guy ropes out to pegs; by the door, stretchers on trestles (`stretcher`) and crates of
+  medical stores (`medical_crate`); oxygen cylinders at the far end.
+
+A regular army's tent is new olive drab; a militia's is old khaki canvas, faded and patched. Render both with
+`--building-kinds=medic_tent:0,medic_tent:1` (`--building-rear` for the door end).
+
+## Bales
+
+A farm's bales (Decor `hay`) are `BuildingFarm.bales`: one to three round bales in a row, a third on the two where
+there are three.
+- **Straw bales** (the `straw` surface, fibres wound round the roll) are settled a little flat, with a faint net
+  wrap round them and the spiral of the roll in rings on their ends.
+- **About a third are silage**, sealed in black, dark green or now and then white film (the `film` surface: smooth,
+  a soft sheen), their ends puckered with folds round a darker middle.
+
+Render them with `--building-kinds=bales`.
+
+## At the kerb
+
+The pieces at the kerb are `BuildingKerbside`'s:
+- **A town's street lamp** (`column`): a steel column with its service door, an outreach arm and a cast lantern.
+- **A village's lamp** (`pole_lamp`): an enamelled shade on a bracket off a wooden pole.
+- **The square's lanterns** (`lantern_post`): a fluted cast post, its ladder bar, a glazed lantern with its roof
+  and finial.
+- **A pillar hydrant** (`hydrant`): flange, barrel, bonnet, and outlets with chained caps.
+- **A stop sign** (`stop_sign`): the octagon with STOP in its white border, standing off its post on brackets,
+  its back bare galvanised steel.
+- **A mailbox on its post** (`mailbox`), with its flag up or down.
+- **The electricity board's cabinet** (`cabinet`), with louvres, doors and a danger plate.
+
+Decor's lenses glow where the lamps' heads hang. Render them with `--building-kinds=kerbside`.
+
+## The vehicle works
+
+The factory's walls are `BuildingFactory.walls`, over the shed the structure's part makes:
+- a brick dado to knee height under a concrete coping, stopping either side of the shutter;
+- sheeting above it with corner flashings, and a band of glazing high along the sides and back (`BuildingOpenings.ribbon`);
+- gutters along the side eaves and a downpipe at each corner;
+- at the front, the roller shutter between hazard-painted bollards, and a personnel door with a sheeted canopy;
+- gas bottles chained to the back wall and drums down one side.
+
+Its chimney is `BuildingFactory.chimney`: the boiler's flue, a steel stack (`BuildingFittings.steel_stack`) out
+through the roof slab in the strip between the last north light and the side eaves, near the back. A sheeted
+shed has no brick stack: nothing on a light roof could carry one. The stack stands on a kerb under a storm collar,
+in flanged lengths, guyed three ways to blocks on the slab, under a rain cap. Its top is black with soot that runs
+down it, and rust weeps from its joints; the smoke comes out of the mouth `chimney` returns. The extract cowls stand
+on the north lights' slopes through flashings, and the pipes down the side come out of the wall and go back into it.
+
+Render it with `--building-kinds=factory:0` (add `--building-rear` for the back).
+
+## Pillbox
+
+The Coalition's concrete bunker is `BuildingPillbox`: a pillbox cast in place. Its surface is `shuttered`, concrete
+with the print of the plank formwork on its walls (a fine line every 15 cm, each board a shade of its own, rows of
+form-tie holes; the `boards` value of the concrete pattern, faded out with distance).
+- **`walls`** draws the structure's wall parts themselves, since they are what stops the bullets: as plain boxes that
+  meet flush (one pour, no seam between them), the four at the outer corners cut back 0.3 m (`CHAMFER`). The fixture
+  checks they fill every part but for that chamfer. Inside, the faces, floor and ceiling are dark, so a slit or the
+  doorway looks into the gloom of the room.
+- **`roof`**: the slab, half a metre thick at its edge and 0.66 m at the crown, 0.2 m over the walls, its corners cut back with theirs, its top edge
+  chamfered and its top falling from the crown (`CROWN`, `SLAB_TOP`) to every edge. Moss grows in patches on the
+  crown (one stain over all of it, so no patch's rim lies over another's). On the crown stand a cast steel
+  observation cupola in a concrete collar, vision slits round its front and a periscope through it; the escape hatch
+  on its kerb; and a mushroom vent cowl.
+- **`embrasure`**, on each slit's outer face: a frame `EMBRASURE` deep whose mouth splays out from the slit (the
+  hood's underside rises, the sill falls, the cheeks open out), and steel angle on the slit's lips.
+- **`door`**: the steel doors at the back stand open, folded flat against the wall either side, so the way in is
+  clear for the men who garrison it; **`step_irons`** go up the back wall to the roof.
+- **`weather`**: the grime of a season under the slab and runs down from its edge, the splash and weeds at the foot of
+  the back wall (earth is banked against the rest), and bullet strikes round the slits.
+
+`solid` lofts the convex outlines the walls' corners, the slab and the cheeks are cut from, cached per shape. The
+bunker bakes (`Structure.BAKED`'s path) so its stains merge with the rest of it rather than drawing one by one.
+Render it with `--building-kinds=bunker` (add `--building-rear` for the door side).
+
+## The water tower
+
+A town's water tower is `BuildingLandmarks.water_tower`, standing where Decor's `water_tower` stands:
+- **The legs:** four round columns splayed out to concrete piers, two tiers of struts with crossed tension rods and
+  turnbuckles between them, the riser pipe up the middle.
+- **The tank:** on its ring girder, with a catwalk and railing round its foot, its plates in riveted bands with rust
+  weeping from the top seam, under a cone roof with a hatch, a vent and a finial.
+- **The ladders:** one up a leg in its safety cage to the catwalk, another up the tank to the roof.
+
+Render it with `--building-kinds=water_tower`.
+
+## Crate stacks
+
+The cover crate stacks (structure `crates`) are `BuildingCargo.stack`, drawn inside the boxes their parts give for
+cover: variant 0 is one pallet load, variant 1 two loads side by side with a crate hoisted onto the left one.
+- **A load** is a low crate with two ammunition boxes on it, three layers of ammunition boxes (the top one laid
+  across to tie the stack), or a tall crate, each on its pallet; on the long stack a box is sometimes left on top
+  of the right-hand load.
+- **`shipping_crate`**: boards inside a frame of battens, a brace corner to corner across each long face, cleats
+  over the lid, two steel bands, and the lot number and this-way-up arrows stencilled on the ends (black on bare
+  pine; pale on the third painted olive drab).
+- **`ammo_box`**: sharp-edged painted boards, the lid a shade lighter, hasps and hinges, rope handles through end
+  cleats, the lot number and the yellow band of high explosive on the front.
+
+Each crate's battens, bands, ironwork, rope and stencil are one cached mesh per size, so a stack is a few dozen
+parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
+
 ## Who uses what
 
 | Component | Users |
 | --- | --- |
 | `BuildingWalls.face` | House walls (rendered, brick, stone), barracks (weatherboard), factory (sheet), research post (precast) |
-| `BuildingWalls.coping`, `plinth`, `joints` | Garden walls (saddleback stone, brick-on-edge over a blue-brick base), compound walls, flat-roof parapets, bridge parapets |
+| `BuildingWalls.coping`, `plinth`, `joints` | Garden walls (field stone finished with stones on edge, brick-on-edge over a blue-brick base), compound walls, flat-roof parapets, bridge parapets |
 | `BuildingOpenings.window` | House windows (louvred or boarded shutters, cracked panes), barracks windows |
 | `BuildingOpenings.doorway`, `leaf` | House doors (panelled, now and then a hood), barracks (ledged double doors), research post and bunker (steel) |
 | `BuildingOpenings.roller_door`, `ribbon` | Factory shutter; research post glazing |
 | `BuildingRoofs.gable`, `hip` | House roofs (tile: about a third hipped), barracks (sheet) |
 | `BuildingRoofs.flat`, `mono`, `canopy`, `sawtooth` | Flat house roofs; watchtower roof; barracks porch and house door hoods; factory north lights |
 | `BuildingFittings` rainwater goods | Every pitched and flat house roof, the barracks, the boat shed |
-| `BuildingFittings.chimney`, `flue`, `stack`, `pipe` | House chimneys; barracks stove, bunker vent, factory cowls, generator exhaust; factory chimney and pipe runs |
+| `BuildingFittings.chimney`, `flue`, `stack`, `steel_stack`, `pipe` | House chimneys; barracks stove, bunker vent, factory cowls, generator exhaust; the components sheet's brick works chimney; the factory's boiler stack and pipe runs |
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
-| `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB and research post masts; FOB and bunker aerials; town dump, barracks, Coalition dock flagpoles; bridge and quay lamps |
-| `BuildingFittings.drum`, `crate`, `pallet` | FOB, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB, research post and HQ command post masts; FOB, bunker and HQ signals aerials; town dump, barracks, HQ, Coalition dock flagpoles; bridge and quay lamps |
+| `BuildingFittings.drum`, `crate`, `pallet` | FOB, HQ yard, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingFactory.walls`, `chimney` | The factory (vehicle works) |
+| `BuildingPillbox.walls`, `roof`, `embrasure`, `door`, `weather` | The Coalition's concrete bunker |
+| `BuildingCargo.stack`, `shipping_crate`, `ammo_box`, `pallet_load`, `ammo_row` | Cover crate stacks, the town's supply dumps, the FOB's stores |
 | `BuildingWire` | Mast guys, tent, tarp, camouflage-net and FOB net guy ropes, utility-pole insulators, power-line sag (Decor), barbed strands (also the concertina), compound-wall wire |
+
+The FOB's command post is `WorksModels.command_post`, built over the block its part gives:
+- twelve tall HESCO cells (`_hesco` with `h` 2.0) in a square four to a side, with one cell left out at the back
+  as the way in (`skip`) behind a baffle of bags;
+- a roof of sheets on timber bearers under a burst layer of bags.
 
 Specialised construction stays with its builder: the dock's boat shed frame and jetty, trench kit, the
 concertina's coils, sandbags, HESCO cells, the camouflage net itself, trees, cars and wrecks.

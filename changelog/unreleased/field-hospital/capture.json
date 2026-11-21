@@ -1,0 +1,44 @@
+{
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "source_ref": "c916a601fa3a39ed44229add69a3f8ff647f4983",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen FLAGS",
+  "comparisons": [
+    {
+      "subjects": [
+        "medic_tent:0"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-kinds=medic_tent:0,medic_tent:1",
+        "--building-match=AFTER/capture.json"
+      ],
+      "crop": [
+        300,
+        180,
+        1400,
+        860
+      ]
+    },
+    {
+      "subjects": [
+        "medic_tent:1"
+      ],
+      "flags": [
+        "--building-single",
+        "--building-rear",
+        "--building-kinds=medic_tent:0,medic_tent:1",
+        "--building-match=AFTER/capture.json"
+      ],
+      "crop": [
+        260,
+        180,
+        1400,
+        860
+      ]
+    }
+  ],
+  "notes": "Both sides render from the after run's cameras (the new tent's guys and stores frame wider than the old prism).",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}

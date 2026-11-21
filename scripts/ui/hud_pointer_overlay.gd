@@ -38,13 +38,19 @@ func _draw() -> void:
 			if it[2]:
 				ok += 1
 		_hint(mp, "%d × %s" % [ok, Defs.BUILDINGS[inp.place_kind].name], "%d SUP" % (ok * int(Defs.BUILDINGS[inp.place_kind].cost)), UiKit.GOOD)
-	elif inp.hover and inp.hover.visible and not inp.pinging:
-		if inp.has_units() and inp.hover.is_hostile_to(lt):
-			_hint(mp, "Attack", "", UiKit.BAD)
-		elif inp.hover is Soldier:
-			_hover_card(inp.hover as Soldier, mp)
-		elif inp.hover is Vehicle:
-			_vehicle_card(inp.hover as Vehicle, mp)
+	elif inp.pinging or inp.order_mode != "":
+		pass
+	elif inp.hover and inp.hover.visible and inp.has_units() and inp.hover.is_hostile_to(lt):
+		_hint(mp, "Attack", "", UiKit.BAD)
+	elif hud.focus_sid != 0:
+		var man: Soldier = inp.hover as Soldier if inp.hover is Soldier and inp.hover.visible else null
+		_squad_card(hud.focus_sid, man, _card_at(mp))
+	elif hud.focus_veh != 0:
+		var fv := hud.world.entity(hud.focus_veh) as Vehicle
+		if fv and not fv.gone:
+			_vehicle_card(fv, _card_at(mp))
+	elif inp.hover and inp.hover.visible and inp.hover is Soldier:
+		_hover_card(inp.hover as Soldier, mp)
 
 
 ## Company of Heroes style cover pips where each man will end up, a facing
@@ -221,17 +227,154 @@ func _vehicle_card(v: Vehicle, mp: Vector2) -> void:
 		sub += " · Shared control" if v.team == hud.world.local_team else ""
 	var hf := v.health_frac()
 	var st := "Track broken" if (v.flags & Vehicle.F_TRACK) != 0 else ("Burning" if hf < 0.2 else ("Smoking" if hf < 0.4 else ""))
-	var wd := maxf(UiKit.caps_w(nm, 14) + UiKit.caps_w(sub, 11) + 40.0, 184.0)
-	var r := Rect2(mp + Vector2(24, 24), Vector2(wd, 62.0 if st != "" else 46.0))
+	var d: Dictionary = Defs.VEHICLES.get(v.vkind, {})
+	var role := String(d.get("role", ""))
+	var men := 0
+	for pk in v.pax:
+		men += int(pk[1]) if pk is Array and pk.size() > 1 else 0
+	var code := _vehicle_code(v)
+	var wd := maxf(maxf(UiKit.caps_w(nm, 14) + UiKit.caps_w(sub, 11) + 40.0, UiKit.caps_w(role, 11) + 24.0), 236.0)
+	var hgt := 50.0 + (16.0 if role != "" else 0.0) + (16.0 if code != "" else 0.0) + (16.0 if st != "" else 0.0)
+	var r := _fit_card(Rect2(mp, Vector2(wd, hgt)))
 	_card(r)
 	UiKit.caps_at(self, r.position + Vector2(12, 20), nm, 14, UiKit.TEXT)
 	if v.team >= 0:
 		UiKit.caps_at(self, r.position + Vector2(20 + UiKit.caps_w(nm, 14), 20), sub, 11, Net.player_color(own) if own != 0 else Defs.TEAM_COLORS[v.team].lightened(0.35))
 	var x := r.position.x + 12.0
 	x += UiKit.mono_at(self, Vector2(x, r.position.y + 39), "HP", 10, UiKit.FAINT) + 5.0
-	UiKit.steps(self, Vector2(x, r.position.y + 31), hf * 12.0, 12, UiKit.GOOD if hf > 0.5 else (UiKit.WARN if hf > 0.25 else UiKit.BAD), 6.0, 8.0)
+	x += UiKit.steps(self, Vector2(x, r.position.y + 31), hf * 12.0, 12, UiKit.GOOD if hf > 0.5 else (UiKit.WARN if hf > 0.25 else UiKit.BAD), 6.0, 8.0) + 14.0
+	if men > 0:
+		UiKit.mono_at(self, Vector2(x, r.position.y + 39), "%d ABOARD" % men, 10, UiKit.DIM)
+	var y := r.position.y + 58.0
+	if role != "":
+		UiKit.caps_at(self, Vector2(r.position.x + 12, y), role, 11, UiKit.FAINT)
+		y += 16.0
+	if code != "":
+		UiKit.mono_at(self, Vector2(r.position.x + 12, y), code, 11, UiKit.ACCENT if v.team == hud.world.local_team else UiKit.DIM)
+		y += 16.0
 	if st != "":
-		UiKit.caps_at(self, r.position + Vector2(12, 54), st, 11, UiKit.BAD)
+		UiKit.caps_at(self, Vector2(r.position.x + 12, y), st, 11, UiKit.BAD)
+
+
+## Where a hover card goes: beside the order of battle when the hand is on
+## one of its rows, else down and right of the cursor.
+func _card_at(mp: Vector2) -> Vector2:
+	if not hud.orbat.hovered().is_empty():
+		return Vector2(hud.orbat.global_position.x + HudOrbat.W + 18.0, mp.y - 18.0)
+	return mp + Vector2(24, 24)
+
+
+## Keeps a card on the screen (it flips to the cursor's other side at an edge).
+func _fit_card(r: Rect2) -> Rect2:
+	var vs := get_viewport_rect().size
+	if r.end.x > vs.x - 8.0:
+		r.position.x = r.position.x - r.size.x - 48.0
+	if r.end.y > vs.y - 8.0:
+		r.position.y = vs.y - 8.0 - r.size.y
+	r.position.x = maxf(8.0, r.position.x)
+	r.position.y = maxf(8.0, r.position.y)
+	return r
+
+
+## A vehicle's order as a code, as far as anyone can tell from outside.
+func _vehicle_code(v: Vehicle) -> String:
+	if v.team != hud.world.local_team and hud.world.local_team >= 0:
+		return ""
+	if (v.flags & Vehicle.F_TRACK) != 0:
+		return "IMMOBILISED"
+	if (v.flags & Vehicle.F_FIRE) != 0:
+		return "ENGAGING"
+	if Defs.flat(v.position - v._last_pos).length() > 0.02:
+		return "MOVING"
+	return "HOLDING"
+
+
+## The squad under the hand (docs/UI.md, Hover card): who they are and what
+## they are, how many are still fighting, their nerve and their ammunition,
+## what they were told to do and what they're doing about it; and the man
+## under the cursor, if there is one. An enemy squad shows only what can be
+## seen of it.
+func _squad_card(sid: int, man: Soldier, at: Vector2) -> void:
+	var w := hud.world
+	var mem: Array = []
+	for s in w.soldiers:
+		if s.sid == sid:
+			mem.append(s)
+	if mem.is_empty():
+		return
+	var team: int = mem[0].team
+	var lt := w.local_team
+	var own := team == lt or lt < 0
+	var alive := 0
+	var hurt := 0
+	var ammo := 0.0
+	for s in mem:
+		if s.life == Soldier.Life.DOWNED:
+			hurt += 1
+		elif s.life == Soldier.Life.ALIVE or s.life == Soldier.Life.HIDDEN:
+			alive += 1
+			ammo += s.ammo_fraction()
+	var lost := mem.size() - alive - hurt
+	ammo = ammo / maxf(1.0, float(alive))
+	var st: Dictionary = hud.squad_state(sid, mem) if own else {}
+	var cs := Squad.callsign_of(team, sid) if own else "Enemy"
+	var kind := hud.sel_info._squad_name(mem)
+	var sym: Array = MapSymbols.squad_symbol(mem)
+	var side: String = Defs.TEAM_NAMES[team] if team >= 0 else ""
+	var wd := maxf(296.0, UiKit.caps_w(cs, 14) + UiKit.caps_w(kind, 11) + UiKit.caps_w(side, 10) + 70.0)
+	var lines := 1 + (2 if own else 0) + (1 if man != null else 0)
+	var r := _fit_card(Rect2(at, Vector2(wd, 40.0 + lines * 18.0)))
+	_card(r)
+	var x0 := r.position.x + 12.0
+	var y := r.position.y + 22.0
+	MapSymbols.nato(self, Vector2(x0 + 9.0, y - 5.0), 18.0, own, team, sym[0], "", 1.0)
+	var x := x0 + 26.0 + UiKit.caps_at(self, Vector2(x0 + 26.0, y), cs, 14, UiKit.TEXT)
+	UiKit.caps_at(self, Vector2(x + 8.0, y), kind, 11, UiKit.FAINT)
+	if team >= 0:
+		UiKit.caps_at(self, Vector2(r.end.x - 12.0 - UiKit.caps_w(side, 10), y), side, 10, Defs.TEAM_COLORS[team].lightened(0.35))
+	y += 22.0
+	# strength: a pip per man, how many are fit to fight, and their nerve
+	x = x0 + UiKit.mono_at(self, Vector2(x0, y), "STR", 10, UiKit.FAINT) + 8.0
+	x += UiKit.pips(self, Vector2(x, y - 9.0), alive, hurt, lost) + 8.0
+	UiKit.mono_at(self, Vector2(x, y), "%d/%d" % [alive, mem.size()], 11, UiKit.TEXT if alive * 2 > mem.size() else UiKit.BAD)
+	if own and int(st.get("morale", -1)) >= 0:
+		var mcol: Color = [UiKit.GOOD, UiKit.WARN, Color(1.0, 0.62, 0.35), UiKit.BAD][int(st.mstate)]
+		var mtxt: String = SquadBrain.STATE_NAMES[int(st.mstate)].to_upper()
+		UiKit.mono_at(self, Vector2(r.end.x - 12.0 - UiKit.mono_w(mtxt, 11), y), mtxt, 11, mcol)
+	elif not own:
+		UiKit.mono_at(self, Vector2(r.end.x - 12.0 - UiKit.mono_w("IN SIGHT", 10), y), "IN SIGHT", 10, UiKit.BAD)
+	y += 18.0
+	if own:
+		x = x0 + UiKit.mono_at(self, Vector2(x0, y), "AMMO", 10, UiKit.FAINT) + 8.0
+		UiKit.steps(self, Vector2(x, y - 9.0), ammo * 8.0, 8, UiKit.WARN if ammo < 0.3 else UiKit.INTEL, 5.0, 9.0)
+		var xo := String(st.get("xo", ""))
+		if xo != "":
+			var xt := "XO · " + String(Hud.INTENT_CODES.get(xo, xo.to_upper()))
+			UiKit.mono_at(self, Vector2(r.end.x - 12.0 - UiKit.mono_w(xt, 10), y), xt, 10, UiKit.ACCENT)
+		y += 18.0
+		# what it was told, and what it's doing about it
+		UiKit.rule(self, Vector2(x0, y - 11.5), Vector2(r.end.x - 12.0, y - 11.5))
+		var code := String(st.code)
+		while code.length() > 3 and UiKit.mono_w(code, 11) > r.size.x - 24.0:
+			code = code.substr(0, code.length() - 2)
+		var cc: Color = st.col
+		UiKit.mono_at(self, Vector2(x0, y + 3.0), code, 11, UiKit.ACCENT if cc == UiKit.DIM or cc == UiKit.TEXT else cc)
+		y += 18.0
+	if man != null:
+		var role := "SL" if (man.flags & Soldier.F_LEADER) != 0 else HudSelInfo._role(man)
+		var act := man.doing_text()
+		if man.life == Soldier.Life.DOWNED:
+			act = "Wounded"
+		var mx := x0 + UiKit.mono_at(self, Vector2(x0, y + 3.0), "›", 11, UiKit.FAINT) + 6.0
+		mx += UiKit.caps_at(self, Vector2(mx, y + 3.0), man.sname if own else String(man.udef.get("name", man.utype)), 12, UiKit.TEXT) + 8.0
+		mx += UiKit.mono_at(self, Vector2(mx, y + 3.0), role, 10, UiKit.FAINT) + 8.0
+		var hf := man.health_frac()
+		mx += UiKit.steps(self, Vector2(mx, y - 6.0), hf * 5.0, 5, UiKit.GOOD if hf > 0.5 else (UiKit.WARN if hf > 0.25 else UiKit.BAD), 4.0, 8.0) + 8.0
+		if act != "" and own:
+			var at2 := act.to_upper()
+			while at2.length() > 3 and UiKit.mono_w(at2, 10) > r.end.x - 12.0 - mx:
+				at2 = at2.substr(0, at2.length() - 2)
+			UiKit.mono_at(self, Vector2(mx, y + 3.0), at2, 10, Hud.CAT_COLORS.get(man.doing_cat(), UiKit.DIM))
 
 
 ## A hover card's ground: ink with corner ticks (docs/UI.md, Panels).

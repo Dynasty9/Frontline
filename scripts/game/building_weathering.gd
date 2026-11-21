@@ -49,7 +49,7 @@ static func weeds(k: BuildingKit, length: float, gaps: Array, rng: RandomNumberG
 
 
 ## A stain on a wall face, in a face kit (+z out, x along it, y up): a patch
-## of the wall's own surface laid 3 mm proud over `rect` (face x and y), each
+## of the wall's own surface laid `z` proud over `rect` (face x and y), each
 ## point the colour `tone` gives for the wall there (as its body was tinted:
 ## see Structure._tone) times `mul` as far as `amount` says (a Callable of u
 ## across and v up the patch's unit square, 0 to 1), and the wall's own colour
@@ -57,7 +57,9 @@ static func weeds(k: BuildingKit, length: float, gaps: Array, rng: RandomNumberG
 ## window that burned, rain stains under a sill, the scorch round a shell hit.
 ## `edges` says which rims fade out (1 left, 2 right, 4 bottom, 8 top): leave
 ## one open where something proud of the wall (a head, a sill) hides the seam.
-static func stain(k: BuildingKit, rect: Rect2, surface: String, tone: Callable, mul: Color, amount: Callable, cols := 8, rows := 8, edges := 15) -> void:
+## `z` is how far proud it lies: the years' grime (see grime) lowest, the
+## marks of the war over it.
+static func stain(k: BuildingKit, rect: Rect2, surface: String, tone: Callable, mul: Color, amount: Callable, cols := 8, rows := 8, edges := 15, z := 0.006) -> void:
 	var at := PackedVector3Array()
 	var shade := PackedColorArray()
 	for j in rows + 1:
@@ -75,7 +77,7 @@ static func stain(k: BuildingKit, rect: Rect2, surface: String, tone: Callable, 
 			# browser, and scaled down for the merged material to restore)
 			if not Mats.per_material:
 				c = c.srgb_to_linear()
-			at.append(Vector3(p.x, p.y, 0.003))
+			at.append(Vector3(p.x, p.y, z))
 			shade.append(Color(c.r / Mats.VC_K, c.g / Mats.VC_K, c.b / Mats.VC_K))
 	var v3 := PackedVector3Array()
 	var n3 := PackedVector3Array()
@@ -98,6 +100,69 @@ static func stain(k: BuildingKit, rect: Rect2, surface: String, tone: Callable, 
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	Mats.keep_arrays(mesh, arrays)
 	k.part_with(mesh, Mats.vc_variant(Mats.get_mat(surface)), Transform3D.IDENTITY, Color(1, 1, 1), false)
+
+
+## The dirt every wall gathers over the years, over the solid parts of a
+## face (`rects`, face x and y: the wall's body as built, never across an
+## opening) whose band under the eaves is at `top`: a grey shadow of grime
+## under the eaves, where the overhang keeps the rain from washing it off,
+## fading down the wall; the rain splashed up off the ground darkening it
+## above its plinth; and here and there a dark run down from the eaves where
+## the gutter overflows. `strength` says how much shows (render the most;
+## brick and stone, darker already, less). Each part is covered from plinth
+## to band in one patch, so the face reads as one surface rather than the
+## pieces it's built of; the amount wanders a little along the wall but comes
+## back to the same at both ends of its `length`, so the walls of a house
+## meet with no step between them. `foot` is where the face starts above
+## whatever's under it: the ground's splash only reaches a face that stands
+## on the ground (`splash`).
+static func grime(k: BuildingKit, length: float, top: float, rects: Array, surface: String, tone: Callable, strength: float, rng: RandomNumberGenerator, splash := true, foot := 0.3) -> void:
+	var wob := rng.randf_range(-0.35, 0.35)
+	var wob2 := rng.randf_range(-0.2, 0.2)
+	var ph := rng.randf() * TAU
+	var x0 := -length * 0.5
+	var lo := foot
+	var hi := top - 0.04
+	var wet := 0.6 if splash else 0.0
+	var mul := Color(0.58, 0.58, 0.54)
+	var amount := func(x: float, y: float) -> float:
+		var along := 1.0 + sin(PI * (x - x0) / length) * (wob + wob2 * sin(x * 2.3 + ph))
+		var eaves := pow(clampf((y - (top - 0.75)) / 0.71, 0.0, 1.0), 1.7)
+		var splashed := wet * pow(clampf(1.0 - (y - lo) / 0.65, 0.0, 1.0), 1.5)
+		return strength * maxf(eaves, splashed) * along
+	for r: Rect2 in rects:
+		var a := maxf(r.position.x, x0)
+		var b := minf(r.end.x, -x0)
+		var y0 := maxf(r.position.y, lo)
+		var y1 := minf(r.end.y, hi)
+		if b - a < 0.05 or y1 - y0 < 0.05:
+			continue
+		var inside := func(p: Vector2) -> Color:
+			return tone.call(Vector2(clampf(p.x, a + 0.01, b - 0.01), clampf(p.y, y0 + 0.01, y1 - 0.01)))
+		stain(k, Rect2(a, y0, b - a, y1 - y0), surface, inside, mul, func(u: float, v: float) -> float:
+			return amount.call(lerpf(a, b, u), lerpf(y0, y1, v)), maxi(1, ceili((b - a) / 0.7)), maxi(1, ceili((y1 - y0) / 0.3)), 0, 0.002)
+	# where the gutter has overflowed, or a joint in it leaks, a dark run
+	# down the wall from the eaves (only down a part that reaches them, and
+	# no further than its foot)
+	for i in rng.randi_range(0, 2):
+		var sw := rng.randf_range(0.14, 0.32)
+		var x := rng.randf_range(x0 + sw, -x0 - sw)
+		for r: Rect2 in rects:
+			if x - sw * 0.5 < r.position.x + 0.02 or x + sw * 0.5 > r.end.x - 0.02 or r.end.y < hi:
+				continue
+			var bottom := maxf(hi - rng.randf_range(0.7, 1.8), r.position.y + 0.1)
+			if hi - bottom < 0.5:
+				break
+			var deep := rng.randf_range(0.5, 0.85) * strength
+			# (over the grime: its rim the grimed wall's colour)
+			var inside := func(p: Vector2) -> Color:
+				var c: Color = tone.call(Vector2(x, clampf(p.y, r.position.y + 0.01, r.end.y - 0.01)))
+				var g: float = clampf(float(amount.call(p.x, p.y)), 0.0, 1.0)
+				return Color(c.r * lerpf(1.0, mul.r, g), c.g * lerpf(1.0, mul.g, g), c.b * lerpf(1.0, mul.b, g))
+			stain(k, Rect2(x - sw * 0.5, bottom, sw, hi - bottom + 0.002), surface, inside, Color(0.6, 0.59, 0.57), func(u: float, v: float) -> float:
+				var across := 1.0 - absf(u * 2.0 - 1.0)
+				return deep * sqrt(across) * pow(v, 0.6), 2, 4, 7, 0.004)
+			break
 
 
 ## Soot from a fire inside, licked up the wall from an opening whose top is
@@ -454,6 +519,42 @@ static func hole(k: BuildingKit, rng: RandomNumberGenerator) -> void:
 	for i in rng.randi_range(3, 6):
 		var a := rng.randf() * TAU
 		k.plate(Vector3(0.2, 0.014, 0.14), Vector3(cos(a) * size.x * 0.52, 0.01, sin(a) * size.y * 0.52), "paint", Color(0.48, 0.22, 0.14), Vector3(rng.randf_range(-0.3, 0.3), a, 0))
+
+
+## What a ruined or shelled house sheds at the foot of a wall `length` long,
+## in its face kit (+z out, y = 0 the ground): lumps of brick and render,
+## flakes of plaster, shards of roof tile, splinters of timber and glass,
+## thickest near the wall and thinning out to a metre and a half from it,
+## all lying flat (a man walks over it, nothing stands where he would).
+## `wall` is the wall's own colour, for the render that came off it.
+static func spill(k: BuildingKit, length: float, wall: Color, rng: RandomNumberGenerator) -> void:
+	var hx := length * 0.5 - 0.15
+	var near := func() -> float: return 0.15 + pow(rng.randf(), 1.8) * 1.4
+	for i in rng.randi_range(7, 12):
+		var s := rng.randf_range(0.07, 0.15)
+		k.box(Vector3(s * 1.5, s * 0.8, s), Vector3(rng.randf_range(-hx, hx), s * 0.35, near.call()), "rubble" if i % 3 != 0 else "brick",
+			Color(0.58, 0.55, 0.5).darkened(rng.randf_range(0.0, 0.3)) if i % 3 != 0 else Color(0.55, 0.3, 0.22), Vector3(rng.randf_range(-0.3, 0.3), rng.randf() * TAU, 0), false)
+	for i in rng.randi_range(4, 8):
+		k.plate(Vector3(rng.randf_range(0.1, 0.32), 0.018, rng.randf_range(0.08, 0.2)), Vector3(rng.randf_range(-hx, hx), 0.012, near.call()), "plaster",
+			wall.lerp(Color(0.8, 0.78, 0.72), 0.4).darkened(rng.randf_range(0.0, 0.2)), Vector3(rng.randf_range(-0.1, 0.1), rng.randf() * TAU, rng.randf_range(-0.1, 0.1)))
+	for i in rng.randi_range(4, 9):
+		k.plate(Vector3(rng.randf_range(0.1, 0.22), 0.014, rng.randf_range(0.08, 0.16)), Vector3(rng.randf_range(-hx, hx), 0.01, near.call()), "paint",
+			Color(0.5, 0.24, 0.16).darkened(rng.randf_range(0.0, 0.35)), Vector3(rng.randf_range(-0.15, 0.15), rng.randf() * TAU, rng.randf_range(-0.15, 0.15)))
+	for i in rng.randi_range(0, 2):
+		var ln := rng.randf_range(0.5, 1.2)
+		# (lying roughly along the wall, as it fell from it)
+		k.box(Vector3(0.06, 0.04, ln), Vector3(rng.randf_range(-hx, hx) * 0.55, 0.02, near.call() + 0.3), "wood_dark" if rng.randf() < 0.5 else "burnt",
+			Color(0.36, 0.27, 0.18) if rng.randf() < 0.5 else CHAR, Vector3(0, PI * 0.5 + rng.randf_range(-0.45, 0.45), 0), false)
+	for i in rng.randi_range(3, 6):
+		k.plate(Vector3(rng.randf_range(0.04, 0.1), 0.004, rng.randf_range(0.03, 0.08)), Vector3(rng.randf_range(-hx, hx), 0.006, near.call() * 0.6), "glass", BuildingOpenings.GLASS, Vector3(0, rng.randf() * TAU, 0))
+
+
+## Broken glass on the ground under a shot-out window `w` wide at `x`, in the
+## wall's face kit: shards out to most of a metre from the wall.
+static func shards(k: BuildingKit, x: float, w: float, rng: RandomNumberGenerator) -> void:
+	for i in rng.randi_range(5, 10):
+		k.plate(Vector3(rng.randf_range(0.04, 0.12), 0.004, rng.randf_range(0.03, 0.09)), Vector3(x + rng.randf_range(-w * 0.55, w * 0.55), 0.006, 0.12 + pow(rng.randf(), 1.5) * 0.7),
+			"glass", BuildingOpenings.GLASS, Vector3(0, rng.randf() * TAU, 0))
 
 
 ## The floor of a house that burned and fell in, `size` its footprint, its

@@ -630,14 +630,15 @@ static func _haunch(w: float) -> Mesh:
 ## geotextile, filled with earth till its sides bulge between the corners;
 ## spiral coil joints pin each cell to the next. Earth heaped along the foot,
 ## the odd weed growing out of the fill.
-static func _hesco(model: Node3D, L: float, rng: RandomNumberGenerator) -> void:
+static func _hesco(model: Node3D, L: float, rng: RandomNumberGenerator, h := 1.37, skip := -1) -> void:
 	var cw := 1.1
 	var n := maxi(1, int(round(L / cw)))
-	var h := 1.37
 	var d := 1.06
 	var cell := _bulge_box(Vector3(cw - 0.03, h, d), 0.055, false)
 	for i in n:
 		var x := -L * 0.5 + (i + 0.5) * cw
+		if i == skip:
+			continue  # (a cell left out: a way in)
 		var tint := Color(0.53, 0.48, 0.36) * rng.randf_range(0.9, 1.06)
 		tint.a = 1.0
 		_mk(model, cell, "hesco_cell", Vector3(x, 0, rng.randf_range(-0.012, 0.012)), Vector3(0, rng.randf_range(-0.01, 0.01), 0), tint)
@@ -657,6 +658,35 @@ static func _hesco(model: Node3D, L: float, rng: RandomNumberGenerator) -> void:
 			_rod(model, Vector3(x, 0.0, sz), Vector3(x, h + 0.02, sz), 0.016, "wire", Color(0.34, 0.34, 0.32), 5, false)
 	var apron := _mk(model, Res.dome(1.0, 14), "earth", Vector3(0, -0.02, 0), Vector3.ZERO, Color(0.3, 0.24, 0.16), false)
 	apron.scale = Vector3(L * 0.5 + 0.25, 0.12, d * 0.5 + 0.3)
+
+
+## The FOB's command post, `model` at its middle: a square of HESCO cells four
+## to a side, two metres high (the tall kind), one left out at the back for
+## the way in behind a baffle of bags; over the middle a roof of sheets on
+## bearers under a burst layer of bags (the structure lays the `bags`).
+static func command_post(model: Node3D, rng: RandomNumberGenerator, bags: Array) -> void:
+	var h := 2.0
+	for side in 4:
+		var wall := Node3D.new()
+		wall.rotation.y = side * PI * 0.5
+		model.add_child(wall)
+		wall.position = Basis(Vector3.UP, side * PI * 0.5) * Vector3(0, 0, -1.65)
+		if side % 2 == 0:
+			# (the back wall's second cell from its left, x = 0.55 in the model, is the way in)
+			_hesco(wall, 4.4, rng, h, 1 if side == 2 else -1)
+		else:
+			_hesco(wall, 2.2, rng, h)
+	# the roof: bearers across the walls' tops, sheets over them, bags on those
+	for i in 4:
+		_mk(model, Res.box(Vector3(0.1, 0.1, 3.4)), "wood", Vector3(-1.2 + i * 0.8, h + 0.05, 0), Vector3.ZERO, Color(0.42, 0.33, 0.22))
+	_mk(model, Res.box(Vector3(3.5, 0.03, 3.5)), "corrugated", Vector3(0, h + 0.115, 0), Vector3.ZERO, Color(0.42, 0.42, 0.4))
+	for r in 6:
+		bags.append({"p": Vector3(rng.randf_range(-0.05, 0.05), h + 0.25, -1.4 + r * 0.56), "s": Vector3(3.2, 0.22, 0.46), "r": rng.randf_range(-0.02, 0.02)})
+	# the baffle of bags outside the way in, so nothing fired at it goes straight through
+	bags.append({"p": Vector3(0.55, 0.3, 2.75), "s": Vector3(1.9, 0.6, 0.45), "r": 0.0})
+	bags.append({"p": Vector3(0.55, 0.84, 2.75), "s": Vector3(1.7, 0.48, 0.45), "r": 0.0})
+	# and the dark of the doorway past it
+	_mk(model, Res.box(Vector3(1.0, 1.9, 0.05)), "plain_dark", Vector3(0.55, 0.95, 1.12), Vector3.ZERO, Color(0.04, 0.04, 0.04), false)
 
 
 ## A box `s` (base on y = 0) whose four sides bulge out by `b` in the middle,
@@ -936,9 +966,9 @@ static func _tarp(model: Node3D, p: Vector3, col: Color) -> void:
 ## for the Coalition, the Rebels' a faded desert pattern on cut poles.
 static func _camo_net(model: Node3D, rebel: bool, rng: RandomNumberGenerator) -> Array:
 	var net := MeshInstance3D.new()
-	net.mesh = _net_mesh(rng.randi() % 2)
+	net.mesh = net_mesh(rng.randi() % 2)
 	net.material_override = Mats.netting_tent()
-	Mats.set_inst(net, &"tint", Color(0.42, 0.37, 0.26) if rebel else Color(0.23, 0.27, 0.15))
+	Camo.dress_net(net, 1 if rebel else 0)
 	model.add_child(net)
 	var pk := "wood_dark" if rebel else "steel"
 	var pc = null if rebel else Color(0.45, 0.46, 0.42)
@@ -954,16 +984,15 @@ static func _camo_net(model: Node3D, rebel: bool, rng: RandomNumberGenerator) ->
 	return [net]
 
 
-## The net's shape: a square 7.2 m across, high in the middle over the centre
-## pole, sagging between the corner poles and draped down to knee height at
-## its edges. UV runs 0..1 corner to corner (the netting shader frays its edge).
-static func _net_mesh(v: int) -> ArrayMesh:
-	var key := "net%d" % v
+## The net's shape: a square 2S across (7.2 m), `top` high in the middle
+## over the centre pole, held at `eave` by corner poles `pole` out, sagging
+## between them and draped down to `hem` (knee height) at its edges. UV runs
+## 0..1 corner to corner (the netting shader frays its edge).
+static func net_mesh(v: int, S := 3.6, pole := 2.5, top := 2.6, eave := 1.8, hem := 0.35) -> ArrayMesh:
+	var key := "net%d|%s|%s|%s|%s|%s" % [v, S, pole, top, eave, hem]
 	if _meshes.has(key):
 		return _meshes[key]
-	var N := 20
-	var S := 3.6
-	var pole := 2.5
+	var N := int(clampf(S * 5.5, 20.0, 32.0))
 	var pos: Array = []
 	for j in N + 1:
 		var row: Array = []
@@ -976,10 +1005,10 @@ static func _net_mesh(v: int) -> ArrayMesh:
 			var y := 0.0
 			if d < pole:
 				var f := d / pole
-				y = lerpf(2.6, 1.8, pow(f, 0.8)) - 0.32 * f * mid
+				y = lerpf(top, eave, pow(f, 0.8)) - 0.32 * f * mid
 			else:
 				var g := (d - pole) / (S - pole)
-				y = lerpf(1.8 - 0.32 * mid, 0.35 + 0.25 * mid, pow(g, 0.7))
+				y = lerpf(eave - 0.32 * mid, hem + 0.25 * mid, pow(g, 0.7))
 			y += 0.08 * sin(x * 2.1 + v * 1.7) * sin(z * 1.7 - v) + 0.04 * sin(x * 5.3 + z * 4.1 + v)
 			row.append(Vector3(x, y, z))
 		pos.append(row)
@@ -1142,3 +1171,58 @@ static func _at_weapon(model: Node3D, rebel: bool, rng: RandomNumberGenerator) -
 	for i in 2:
 		_mk(model, Res.cyl(0.07, 0.07, 1.2, 12), "paint", Vector3(1.0 + i * 0.17, 0.08, 0.35), Vector3(PI * 0.5, 0.2, 0), tube.darkened(0.05))
 	_mk(model, Res.box(Vector3(0.5, 0.25, 0.3)), "paint", Vector3(-1.0, 0.13, 0.5), Vector3(0, 0.3, 0), OD)
+
+
+## A militia's tunnel entrance (in `root`, standing on the ground): the shaft
+## going down black, shored round its mouth with timber frames and boards, a
+## ladder down into it; a ring of sandbags round the mouth (a gap where men go
+## in); a sheet of corrugated iron propped over it on poles against the eyes
+## overhead; the spoil heaped behind; a hurricane lamp hung on a frame post.
+## Returns where its flag should hang.
+static func tunnel_mouth(root: Node3D, rng: RandomNumberGenerator) -> Vector3:
+	var k := BuildingKit.nodes(root, rng)
+	var wood := Color(0.42, 0.31, 0.2)
+	var earth := Color(0.33, 0.26, 0.18)
+	# the hole, its sides falling away into the dark
+	k.cyl(0.95, 0.95, 0.02, Vector3(0, 0.015, 0), "plain_dark", Color(0.02, 0.02, 0.02), Vector3.ZERO, 16, false)
+	k.cyl(0.95, 0.85, 1.2, Vector3(0, -0.6, 0), "earth", earth.darkened(0.5), Vector3.ZERO, 16, false)
+	# the shoring round its mouth: four frames, boards between
+	for i in 4:
+		var a := TAU * i / 4.0 + PI * 0.25
+		var p := Vector3(cos(a), 0, sin(a)) * 0.9
+		k.box(Vector3(0.14, 0.7, 0.14), p + Vector3(0, 0.2, 0), "wood_dark", wood.darkened(rng.randf_range(0.0, 0.15)))
+	for side in 4:
+		var a := TAU * side / 4.0
+		var face := k.at_point(Vector3(cos(a), 0, sin(a)) * 0.86, Vector3(0, -a + PI * 0.5, 0))
+		for b in 2:
+			face.box(Vector3(1.3, 0.16, 0.05), Vector3(rng.randf_range(-0.04, 0.04), 0.1 + b * 0.18, 0), "wood", wood.lightened(rng.randf_range(-0.05, 0.1)), Vector3(0, 0, rng.randf_range(-0.04, 0.04)), false)
+	# the ladder down
+	for sx: float in [-0.2, 0.2]:
+		k.rod(Vector3(sx, -1.2, -0.6), Vector3(sx, 0.9, -0.82), 0.03, "wood", wood.lightened(0.1), 6, false)
+	for i in 6:
+		var y := -1.0 + i * 0.32
+		var z := lerpf(-0.6, -0.82, (y + 1.2) / 2.1)
+		k.rod(Vector3(-0.2, y, z), Vector3(0.2, y, z), 0.02, "wood", wood.lightened(0.1), 4, false)
+	# sandbags round the mouth, a gap at the ladder
+	var ring := 14
+	for i in ring:
+		var a := TAU * (i + 0.5) / ring
+		if absf(angle_difference(a, -PI * 0.5)) < 0.5:
+			continue
+		var p := Vector3(cos(a), 0, sin(a)) * 1.45
+		for c in 2:
+			k.part(Res.sphere(0.5, 8), "sandbag", Transform3D(Basis(Vector3.UP, -a + PI * 0.5) * Basis.from_scale(Vector3(0.62, 0.16, 0.34)), p + Vector3(0, 0.08 + c * 0.15, 0)), Color(0.5, 0.45, 0.32).darkened(rng.randf_range(0.0, 0.15)), c == 1)
+	# the sheet propped over its back half on two poles, its far edge down on
+	# the spoil: the mouth open under it at the front
+	var sheet := Basis(Vector3.RIGHT, 0.36)
+	for sx: float in [-0.95, 0.95]:
+		k.rod(Vector3(sx, 0, 0.0), Vector3(sx, 1.25, 0.0), 0.035, "wood_dark", wood.darkened(0.1), 6)
+	k.part(Res.box(Vector3(2.2, 0.03, 2.3)), "corrugated", Transform3D(sheet, Vector3(0, 0.84, 1.05)), Color(0.42, 0.3, 0.2))
+	# the spoil heaped behind
+	for i in 3:
+		k.part(Res.sphere(0.5, 8), "earth", Transform3D(Basis.from_scale(Vector3(rng.randf_range(1.2, 1.8), rng.randf_range(0.5, 0.8), rng.randf_range(0.8, 1.2))), Vector3(-0.8 + i * 0.8, 0.12, 1.75 + rng.randf_range(-0.15, 0.15))), earth.darkened(rng.randf_range(0.0, 0.12)))
+	# a hurricane lamp hung on the front post
+	var post := Vector3(cos(PI * 1.25), 0, sin(PI * 1.25)) * 0.9 + Vector3(0, 0.55, 0)
+	k.cyl(0.05, 0.06, 0.16, post + Vector3(-0.08, 0.0, 0), "metal_dark", Color(0.3, 0.25, 0.15), Vector3.ZERO, 8, false)
+	k.cyl(0.035, 0.035, 0.08, post + Vector3(-0.08, 0.02, 0), "glass", Color(0.9, 0.75, 0.4), Vector3.ZERO, 8, false)
+	return Vector3(0.95, 1.5, 0.0)

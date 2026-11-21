@@ -1,0 +1,27 @@
+{
+  "before_ref": "78a9818a6551cb4b0b04e288f3df3a507118b5fc",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    3600
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 82.",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> --surface-focus=<focus> --surface-size=<size> [--surface-team=1] --surface-out=<outside-repo-directory>",
+  "shots": [
+    {"model": "varsuk", "focus": "1.3,1.8,0.2", "size": 3.5, "team": 1, "label": "Varsuk: chamfered turret, side number, tow cable, bustle tarp"},
+    {"model": "kuma", "focus": "0.4,2.4,-0.4", "size": 4.5, "team": 0, "label": "Kuma: chamfered roof, weld seams, lifting eyes, turret number"},
+    {"model": "panther", "focus": "0,1.6,0", "size": 7.5, "team": 0, "label": "Namer: bolted armour modules, welds, hull number"},
+    {"model": "slammer", "focus": "0,2.0,-0.5", "size": 6, "team": 0, "label": "Merkava: welded turret plates, flank seams, turret number"},
+    {"model": "hatchback", "focus": "0,0.9,0", "size": 4.6, "team": 0, "label": "Hatchback: tinted glass, pressed bonnet, shut lines, trim"},
+    {"model": "van_transport", "focus": "0,1.4,0", "size": 6.5, "team": 0, "label": "Van: crowned windows, rolled roof, roof pod and hatch"},
+    {"model": "shikra", "focus": "0,1.2,0", "size": 17, "team": 1, "label": "Shikra: camouflage, stars, panel joints"},
+    {"model": "kajman", "focus": "0,2.0,1.5", "size": 10, "team": 1, "label": "Kajman: stars, bort number, exhaust soot"}
+  ]
+}

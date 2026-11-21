@@ -81,11 +81,11 @@ darkens toward that edge (`UiScrim`), so it reads over any ground without a box:
 
 - **Top** (the **Status** line): the side, `SUP` and its rate, `UNITS`, `FOB`, `TOWNS`, and the clock. A line under
   it for each FOB says what its trucks are doing.
-- **Left**: the ORBAT (one ruled line per squad and vehicle) and under it FIRES (the ready missions; the rest
-  folded into one line). The minimap and its tool column at the bottom. A quiet row (a squad moving or holding
-  with nothing wrong, a vehicle holding or moving whole) steps back to `DIM` and `FAINT`; one that needs the
-  commander (in contact, pinned, breaking, short of ammunition, carrying wounded, attacking) stays bright. Pointing
-  at a row marks its unit on the map with accent ticks.
+- **Left**: the ORBAT (one ruled line per squad and vehicle, by domain: infantry, support, land, air, sea) and
+  under it FIRES (the ready missions; the rest folded into one line). The minimap and its tool column at the
+  bottom. The column steps back to half strength while the cursor is out on the battlefield (`Hud.calm`) and
+  comes up as it goes to it.
+- **Lower middle**: the command net (`HudRadio`), one transmission at a time, centred just above the selection.
 - **Bottom**: the selection (the squad's name, its codes, the plan's stages, a cell per man) and the orders as keys.
   The bottom scrim only darkens while there's something selected.
 - **Right**: the **Log** and the mission's objectives; in co-op the command net.
@@ -151,18 +151,33 @@ says in prose. They come in three levels:
 - a **caution** (`▲ CAUTION`) is ruled off above and below in `WARN` and flickers on once;
 - a **warning** (`▲ WARNING`) is ruled off in `BAD` and flickers on twice.
 
-The same report from several units within a few seconds is one line that names them (`Bravo 1, Charlie 1 and
-Delta 1 are moving out of the shellfire.`, then `Bravo 1, Charlie 1 +3 are …`).
+Three lines at most: several units making the same report within a few seconds share one line that names them
+(`Bravo 1, Charlie 1 and Delta 1 are moving out of the shellfire.`, then `Bravo 1, Charlie 1 +3 are …`); the same
+news again updates its line with a count (`×3`) rather than adding one (chat excepted), routine
+news (trained, built) is faintest and shortest, and radio traffic goes to the command net instead. The message
+history (L by default) opens in their place on a lighter ink.
 
-The message history (L by default) opens in their place on a lighter ink.
+## Command net
+
+Radio traffic is a subtitle, not a log line: a live dot and the sender in accent capitals, the words centred under
+it in prose, typed on, held while they're read and cut. One at a time; a squad answering an order replaces
+another answer but never talks over real traffic (`HudRadio.ack`).
+
+## Quiet by default
+
+Say a thing when it's new or when it needs the commander, then get out of the way. An order is drawn for a moment
+as it's given and again only while its unit is selected or under the hand (`HudOverlay.order_alpha`); a row of the
+ORBAT says what its unit is doing only under the hand and otherwise only its alarms; a squad's callsign over its symbol on
+the map shows only while it's selected, under the hand, suppressed, newly ordered or on the tactical map, and the
+unit under the hand wears accent ticks there; finished objectives fold away.
+Detail is one hover away, not on the screen all the time.
 
 ## Marks on the battlefield
 
-A squad's callsign over its symbol shows only when it helps: when it is selected, pointed at on the map or in the
-ORBAT, suppressed, newly ordered, or on the tactical map. Otherwise the symbol and its pips say enough.
-
 Names over bases and towns are capitals with the world-text outline and a small square in the owner's colour, no
-box; a selected vehicle wears accent corner ticks; hover cards are ink with ticks and counted health and ammunition;
+box; a selected vehicle wears accent corner ticks; hover cards are ink with ticks and counted health and ammunition (a squad's: callsign and type,
+pips, nerve, ammunition, its order code and the man under the cursor; placed beside the ORBAT when the hand is on
+a row there);
 order tags, grid letters and how long ago an enemy was seen are mono; a cursor hint says what the click will do in
 capitals and its cost or square in mono (`MORTAR HE D4`, `3 × SANDBAGS 90 SUP`).
 
@@ -192,5 +207,3 @@ A spinner for real waiting is allowed. Nothing pulses to get attention; the acce
 - Use `UiMotion` for anything that moves.
 - Add the new part to the gallery (`scripts/test/ui_gallery.gd`) and look at it with `--ui-gallery=out.png
   --gallery-theme=KEY` in each theme.
-
-ORBAT hover is resolved against the current visible row rectangles after scrolling, and clears over blank space or a collapsed list. Repeated unit reports group for four seconds from the first arrival, without extending that window as more reports arrive. A later report or a different urgency starts a new line.

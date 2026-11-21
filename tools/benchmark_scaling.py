@@ -44,7 +44,7 @@ p.add_argument("--exported", action="store_true")
 p.add_argument("--details", action="store_true", help="Time individual soldier methods; adds profiling overhead")
 p.add_argument("--rendered", action="store_true")
 p.add_argument("--nohud", action="store_true", help="Hide the HUD to isolate its rendering cost")
-p.add_argument("--require-target", action="store_true", help="Fail if any measured rendered frame exceeds 16.67 ms or simulation tick exceeds 33.33 ms")
+p.add_argument("--require-target", action="store_true", help="Require --rendered with measured frames at most 16.67 ms and simulation ticks at most 33.33 ms")
 p.add_argument("--local-server", action="store_true")
 p.add_argument("--generated", action="store_true")
 p.add_argument("--commanders", action="store_true")
@@ -150,7 +150,7 @@ result["budgets"] = {
     "simulation_30hz_every_sample": ticks.get("count", 0) > 0 and ticks.get("max_ms", float("inf")) <= 1000/30,
     "simulation_30hz_p95": ticks.get("count", 0) > 0 and ticks.get("p95_ms", float("inf")) <= 1000/30,
 }
-target_failed = result["budgets"]["render_60_fps_every_sample"] is False or not result["budgets"]["simulation_30hz_every_sample"]
+target_failed = result["budgets"]["render_60_fps_every_sample"] is not True or not result["budgets"]["simulation_30hz_every_sample"]
 (out / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
 print(json.dumps(result, indent=2))
 raise SystemExit(1 if timed_out or proc.returncode != 0 or not result["client"] or (a.local_server and not result["server"]) or result["errors"] or (a.require_target and target_failed) else 0)

@@ -92,8 +92,23 @@ var toss = null  # [from pos, from yaw, velocity, spin] while it's flying (clien
 var vk := ""  # what a wreck used to be
 var wreck_turret_yaw := INF
 var wreck_finish := {}
+var turret_off := false  # (a wreck) its ammunition went up and blew the turret off (_blow_turret)
 var _wreck_soot: ShaderMaterial
+var _loose_turret: Node3D
+var _turret_seat := Transform3D.IDENTITY
+var _turret_rest := Transform3D.IDENTITY
+const TURRET_FLIGHT := 1.6
+const TURRET_SETTLE := 0.7
 var bent_skirts := 0
+## (a roof over a house's wing) the roof whose looks it shares, so its
+## covering, tint and pitch match the house's: that roof's eid (0: its own)
+var look := 0
+## (a furnished floor) which of its walls the door is in: 0 the front (-z), 1
+## the back, 2 the -x end, 3 the +x end; -1 not known. It's laid out from it.
+var entry := -1
+## (a shop's walls) fitted out inside as a shop's, not a house's: shelving
+## where a house has its wardrobe, a blind or nothing at its windows.
+var shop := false
 var door_shut := false  # (a house's doorway) its doors are shut: the first man through kicks them in, or just opens them
 var _door_kicked := false
 var _door_leaves: Array = []  # (view) the door leaves: [hinge pivot, how far it swings open]
@@ -146,6 +161,9 @@ func is_player_building() -> bool:
 
 func apply_props(d: Dictionary) -> void:
 	var old_depth := trench_depth() if skind == "trench" else 0.0
+	var light := d.has("burnt") or d.has("door") or d.has("pos") or d.has("yaw") or d.has("size") or d.has("variant") or d.has("toss")
+	if light:
+		_probes_changed()  # (where it was)
 	if world and world.structure_view:
 		world.structure_view.unbatch(self)
 	if d.has("skind"):
@@ -189,8 +207,16 @@ func apply_props(d: Dictionary) -> void:
 		bent_skirts = d.get("bent_skirts", 0)
 	if d.has("wreck_finish"):
 		wreck_finish = d.wreck_finish  # (built in its own paint, burnt out over it: _ruin)
+	if d.has("turret_off"):
+		turret_off = d.turret_off
 	if d.has("door"):
 		door_shut = d.door
+	if d.has("look"):
+		look = d.look
+	if d.has("entry"):
+		entry = d.entry
+	if d.has("shop"):
+		shop = d.shop
 	if d.has("zc"):
 		zone_c = d.zc
 		zone_r = d.zr
@@ -217,6 +243,15 @@ func apply_props(d: Dictionary) -> void:
 		dark = d.dark
 		if dark and not was_dark and model and _lit_glass:
 			_rebuild_model()  # the same walls with the lamps out
+	if light:
+		_probes_changed()  # (and where it is, as it is now)
+
+
+## The light probes round it trace again: burnt to a snag, a door flung open,
+## thrown somewhere else (LightProbes). Only where there's a view to light.
+func _probes_changed() -> void:
+	if world and world.has_view and world.atmo and world.atmo.light_probes:
+		world.atmo.light_probes.structure_changed(self)
 
 
 func get_props() -> Dictionary:
@@ -227,11 +262,19 @@ func get_props() -> Dictionary:
 	if skind == "town":
 		d["zc"] = zone_c
 		d["zr"] = zone_r
+	if look > 0:
+		d["look"] = look
+	if entry >= 0:
+		d["entry"] = entry
+	if shop:
+		d["shop"] = true
 	if is_finite(wreck_turret_yaw):
 		d["wreck_turret_yaw"] = wreck_turret_yaw
-		if not wreck_finish.is_empty():
-			d["wreck_finish"] = wreck_finish
 		d["bent_skirts"] = bent_skirts
+	if not wreck_finish.is_empty():
+		d["wreck_finish"] = wreck_finish  # (every wreck, not just a tank's: the clients build it burnt out from this)
+	if turret_off:
+		d["turret_off"] = true
 	return d
 
 
@@ -333,6 +376,8 @@ func _default_hp() -> float:
 			return 400.0
 		"rubble":
 			return 2000.0
+		"church":
+			return 12000.0
 		"roof":
 			return 450.0
 		"depot":
@@ -357,6 +402,17 @@ func _part(p: Vector3, s: Vector3, nav: int, veh: int, cover := true, col := tru
 	return {"p": p, "s": s, "nav": nav, "veh": veh, "cover": cover, "col": col, "color": color, "r": r}
 
 
+## A shop's display window (house wall variant 3): its sill (the top of the
+## stall riser) and head (under the fascia: see BuildingShops.front), and how
+## wide it is in a bay `L` long.
+const SHOP_SILL := 0.7
+const SHOP_HEAD := 2.35
+
+
+static func shop_window_w(L: float) -> float:
+	return maxf(1.3, L - 0.6)
+
+
 func _define_parts() -> void:
 	parts = []
 	var L := size.x
@@ -367,6 +423,23 @@ func _define_parts() -> void:
 			parts = [_part(Vector3(0, h * 0.5, 0), Vector3(L, h, 0.5 if variant % 3 != 1 else 0.9), Nav.LOW, Nav.LOW, true, true, c)]
 		"tall_wall":
 			parts = [_part(Vector3(0, 1.3, 0), Vector3(L, 2.6, 0.5), Nav.SOLID, Nav.LOW, true, true, C_CONCRETE)]
+		"church":
+			# a parish church's west tower (its nave and chancel are house walls,
+			# floors and roofs: see MapGen._church): its ground stage the west
+			# porch - walls north, south and west, the west doorway open, the
+			# nave's west door at its east side - and above it solid
+			var tc := Color(0.6, 0.58, 0.53)
+			var hw := L * 0.5
+			var wt := CHURCH_TOWER_WALL
+			var dw := CHURCH_WEST_DOOR
+			var st := CHURCH_STAGE
+			var pw := hw - wt - dw * 0.5
+			parts = []
+			for sx: float in [-1.0, 1.0]:
+				parts.append(_part(Vector3(sx * (hw - wt * 0.5), st * 0.5, 0), Vector3(wt, st, size.z), Nav.SOLID, Nav.SOLID, true, true, tc))
+				parts.append(_part(Vector3(sx * (dw * 0.5 + pw * 0.5), st * 0.5, -hw + wt * 0.5), Vector3(pw, st, wt), Nav.SOLID, Nav.SOLID, true, true, tc))
+			parts.append(_part(Vector3(0, (st + CHURCH_DOOR_H) * 0.5, -hw + wt * 0.5), Vector3(dw, st - CHURCH_DOOR_H, wt), Nav.FREE, Nav.FREE, false, true, tc))
+			parts.append(_part(Vector3(0, st + (size.y - st) * 0.5, 0), Vector3(L, size.y - st, size.z), Nav.FREE, Nav.FREE, false, true, tc))
 		"house_wall":
 			var c: Color = HOUSE_COLORS[int(size.y) % HOUSE_COLORS.size()]
 			var th := 0.4
@@ -394,6 +467,17 @@ func _define_parts() -> void:
 						var dp := _part(Vector3(0, 1.05, DOOR_Z), Vector3(w, 2.1, 0.08), Nav.FREE, Nav.FREE, false, true, c)
 						dp["door"] = true
 						parts.append(dp)
+				3:
+					# a shop's display window: nearly the whole bay glazed over a low
+					# stall riser (cover for a man kneeling), the fascia over it
+					var w := shop_window_w(L)
+					var pier := (L - w) * 0.5
+					parts = [
+						_part(Vector3(-L * 0.5 + pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(L * 0.5 - pier * 0.5, 1.5, 0), Vector3(pier, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c),
+						_part(Vector3(0, SHOP_SILL * 0.5, 0), Vector3(w, SHOP_SILL, th), Nav.LOW, Nav.LOW, true, true, c),
+						_part(Vector3(0, (3.0 + SHOP_HEAD) * 0.5, 0), Vector3(w, 3.0 - SHOP_HEAD, th), Nav.FREE, Nav.FREE, false, true, c),
+					]
 				_:
 					parts = [_part(Vector3(0, 1.5, 0), Vector3(L, 3.0, th), Nav.SOLID, Nav.LOW, true, true, c)]
 		"floor":
@@ -499,7 +583,7 @@ func _define_parts() -> void:
 				for side in [-1.0, 1.0]:
 					parts.append(_part(Vector3(side * (L + 1.5) * 0.25, y, rear * 1.2), Vector3((L - 1.5) * 0.5, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT))
 				parts.append(_part(Vector3(0, y, rear * 2.4), Vector3(1.5, h, 0.85), Nav.LOW, Nav.LOW, true, true, C_DIRT))
-				if built and trench_depth() >= 0.85 and eid % 2 == 1:
+				if built and trench_depth() >= 0.85 and TrenchFittings.recess(self) != TrenchFittings.Recess.SHELF:
 					parts.append(_part(Vector3(0, 0.3, rear * 1.4), Vector3(1.5, 0.12, 1.1), Nav.FREE, Nav.FREE, true, true, C_WOOD))
 			else:
 				parts.append(_part(Vector3(0, y, rear * 1.2), Vector3(L, h, 0.95), Nav.LOW, Nav.LOW, true, true, C_DIRT))
@@ -859,14 +943,19 @@ func trench_depth() -> float:
 func _trench_changed(old_depth: float) -> void:
 	if skind != "trench" or is_equal_approx(old_depth, trench_depth()):
 		return
-	world.nav.remove_structure(self)
+	# only the host paths soldiers (a client has no nav); every peer reshapes
+	# the hole, its cover and fighting positions, so the view matches the dig
+	if world.nav:
+		world.nav.remove_structure(self)
 	_define_parts()
-	world.nav.add_structure(self)
+	if world.nav:
+		world.nav.add_structure(self)
 	if body:
 		remove_child(body)
 		body.queue_free()
 		body = null
-	if trench_depth() > 0.0:
+	# a client keeps bodies only for what it draws, as set_view_active does
+	if trench_depth() > 0.0 and (srv or (world.has_view and view_active)):
 		_make_body()
 	world.terrain.structure_changed(self, true)
 	_compute_cover_pts()
@@ -902,10 +991,14 @@ func take_damage(amount: float, _source = null) -> void:
 
 
 func smash(_by) -> void:
-	if not smashable or gone:
+	if indestructible or not smashable or gone:
 		return
 	world.fx_event([Fx.DEBRIS, position + Vector3(0, 0.8, 0), _main_color(), 8])
 	world.fx_event([Fx.SOUND, "thud", position])
+	if skind == "house_wall":
+		house_dark()
+		_bring_down_floors(true)
+		world.call_deferred("spawn", "structure", {"skind": "rubble", "pos": position, "yaw": yaw, "size": Vector3(size.x * 0.8, 0.0, 1.2)})
 	if skind == "tree":
 		world.fx_event([Fx.TREE_FALL, position, Defs.yaw_of(Defs.flat(position - _by.position)), eid, variant])
 	world.despawn(self)
@@ -933,12 +1026,18 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	var material := BuildingMaterials.house(ci)
 	var wall := BuildingMaterials.house_color(ci, HOUSE_COLORS[ci % HOUSE_COLORS.size()])
 	var trim: Color = HOUSE_TRIMS[ci % HOUSE_TRIMS.size()]
+	if material == "church":
+		_church_wall_detail(rng, L, ci, wall)
+		return
 	var k := _kit(rng).at_point(Vector3(0, 0, 0.2))
 	var gaps: Array = []
 	if variant == 1:
 		gaps = [Rect2(-0.65, 1.0, 1.3, 1.0)]
 	elif variant == 2:
 		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
+	elif variant == 3:
+		var sw := shop_window_w(L)
+		gaps = [Rect2(-sw * 0.5, SHOP_SILL, sw, SHOP_HEAD - SHOP_SILL)]
 	BuildingWalls.face(k, L, 3.0, material, wall, gaps, {"band": 2.9})
 	# the foundation, below the ground where it's level, showing where the
 	# ground falls away under a house on a slope
@@ -974,7 +1073,19 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 	if variant == 1 and war.randf() < 0.55:
 		BuildingWeathering.streaks(k, 0.0, 1.0, 1.3, surf, tone, war)
 	if variant != 0 and war.randf() < 0.07:
-		BuildingWeathering.soot(k, 0.0, 2.0 if variant == 1 else 2.2, 1.3 if variant == 1 else 1.9, 2.85, surf, tone, war, L * 0.5 - 0.05)
+		var gap: Rect2 = gaps[0]
+		BuildingWeathering.soot(k, 0.0, gap.end.y, gap.size.x, 2.85, surf, tone, war, L * 0.5 - 0.05)
+	# the years' dirt: grime under the eaves, rain splashed up its foot
+	# (none on boards or sheet, whose laps stand proud of the face; a stream
+	# of its own)
+	var finish: String = BuildingMaterials.value(material, "finish", "render")
+	if finish in ["render", "brick", "stone", "panels", "cast"]:
+		var grime := RandomNumberGenerator.new()
+		grime.seed = rng.seed ^ 0x6d1e7a
+		var rects: Array = []
+		for b: Array in _body:
+			rects.append(b[0])
+		BuildingWeathering.grime(k, L, 2.9, rects, surf, tone, 1.0 if rendered else 0.55, grime)
 	if war.randf() < 0.22:
 		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.2)), war.randf_range(0.5, 1.1), war.randi_range(8, 20), chips, war, gaps, L * 0.5)
 	if variant == 0 and war.randf() < 0.07:
@@ -984,6 +1095,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			BuildingWeathering.scar(k, Vector2(war.randf_range(-room_x, room_x), war.randf_range(1.25, 1.9)), r, surf, tone, raw, chips, war, gaps, L * 0.5)
 	var at_window := war.randf()
 	var lamp_side := 0.0
+	var shot_out := false
 	# inside: the room's paint and skirting, what hangs on its walls
 	var room := _kit(life).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
 	# (a wall doesn't know which house it is, so the paint follows the house's
@@ -994,10 +1106,41 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 		BuildingFurnishings.lining(room, L, 3.0, gaps, BuildingFurnishings.INTERIORS[(ci * 4 + 1) % BuildingFurnishings.INTERIORS.size()])
 		match variant:
 			0:
-				BuildingFurnishings.wall_things(room, L)
+				# what stands against a wall with no window or door in it (a
+				# stream of its own, so the rest of the wall is as it was);
+				# pictures and a shelf over it, unless it's tall
+				var home := RandomNumberGenerator.new()
+				home.seed = rng.seed ^ 0x40e5c1
+				if shop:
+					# (a shop's: its shelving, a cooler, a rack of fruit)
+					BuildingInteriors.shop_wall(room, L, home)
+				elif home.randf() >= 0.8 or not BuildingInteriors.against_wall(room, L, home):
+					BuildingFurnishings.wall_things(room, L)
 			1:
 				BuildingFurnishings.radiator(room, 0.0, 1.0)
+	elif variant == 0:
+		# (a barn's: the tools hung up over what's stood against it, from a
+		# stream of their own)
+		var tools := RandomNumberGenerator.new()
+		tools.seed = rng.seed ^ 0x6a2b07
+		BuildingFarm.wall_tools(room, L, tools)
 	match variant:
+		3:
+			# a shop's window, in the shop's own paint (the fascia's colours),
+			# its stock set out behind the glass; a lamp on in some by night
+			var paint := BuildingShops.paint(ci)
+			var sw := shop_window_w(L)
+			var sopts := {"frame": paint, "glazing": 0.45}
+			if life.randf() < 0.4 and not dark:
+				sopts["lit"] = true
+				sopts["glazing"] = 0.8
+				_lit_glass = true
+			elif life.randf() < 0.5:
+				sopts["glazing"] = 0.8
+			if at_window < 0.3:
+				sopts["tape"] = true
+			BuildingOpenings.shopfront(k, Vector3(0, (SHOP_SILL + SHOP_HEAD) * 0.5, 0), Vector2(sw, SHOP_HEAD - SHOP_SILL), sopts)
+			BuildingShops.display(k, sw - 0.1, SHOP_SILL, paint, life)
 		1:
 			var opts := {"material": material, "wall": wall, "frame": trim}
 			# who lives here: curtains or a blind or nets (or none, in an empty
@@ -1007,6 +1150,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 			# (and a house still lived in keeps its glass; its lamps are out
 			# once it's a ruin, or hit; a barn has none)
 			var lived := life.randf() < 0.35 and not barn
+			shot_out = not lived and not barn
 			if lived:
 				if not dark:
 					opts["lit"] = true
@@ -1014,6 +1158,8 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				opts["glazing"] = 0.85
 			if barn:
 				opts["curtains"] = ""
+			elif shop and opts["curtains"] != "blind":
+				opts["curtains"] = ""  # (a shop's window: a blind, or nothing)
 			if rng.randf() < 0.45:
 				opts["shutters"] = [Color(0.24, 0.36, 0.27), Color(0.31, 0.39, 0.46), Color(0.36, 0.25, 0.16), Color(0.5, 0.22, 0.17)][(ci + 1) % 4]
 				opts["shutter"] = "louvred" if rng.randf() < 0.5 else "boarded"
@@ -1045,7 +1191,7 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				_lit_glass = _lit_glass or not dark
 			# double doors: shut (till someone comes through), or swung in -
 			# one may be gone. Each leaf hangs on its own hinge so it can swing.
-			var dc: Color = [Color(0.3, 0.2, 0.13), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.42, 0.2, 0.15)][(ci + 2) % 4]
+			var dc: Color = [Color(0.26, 0.2, 0.16), Color(0.22, 0.32, 0.26), Color(0.26, 0.31, 0.4), Color(0.34, 0.15, 0.12)][(ci + 2) % 4]
 			_door_leaves = []
 			for sx in [-1.0, 1.0]:
 				var lost := rng.randf() < 0.25
@@ -1059,6 +1205,15 @@ func _house_wall_detail(rng: RandomNumberGenerator) -> void:
 				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "ledged" if barn else "panelled", dc, -sx)
 				_door_leaves.append([pv, a])
 	_wall_fixtures(k, rng, L, barn, ivied, lamp_side)
+	# a ruined or shelled house sheds debris at the foot of its walls, and a
+	# shot-out window its glass on the ground under it (a stream of its own,
+	# so nothing else about the wall changes)
+	var fall := RandomNumberGenerator.new()
+	fall.seed = rng.seed ^ 0x6b1d5e
+	if dark and not barn:
+		BuildingWeathering.spill(k, L, wall, fall)
+	if shot_out and fall.randf() < 0.7:
+		BuildingWeathering.shards(k, 0.0, 1.3, fall)
 
 
 ## What's fixed to the outside of a house wall (`k` at its face): on a plain
@@ -1105,6 +1260,515 @@ func _wall_fixtures(k: BuildingKit, rng: RandomNumberGenerator, L: float, barn: 
 			BuildingFittings.doormat(k, Vector3(0, 0.14, 0.3), BuildingFittings.MATS[fix.randi() % BuildingFittings.MATS.size()])
 
 
+## A parish church's west tower (`size`: its side, its height to the
+## battlements; `variant` the church's colour index): coursed stone over a
+## chamfered plinth, dressed quoins long and short up its corners, string
+## courses between its three stages - the west door under a pointed arch and
+## a hood mould, a tall traceried window over it, a clock on its north and
+## south faces, two louvred lancets in each face of the belfry - and over
+## them a cornice, battlements, a pinnacle at each corner and a slate spire
+## with a gilded cross. Its ground stage is the west porch: the doorway
+## stands open, its oak doors folded back against the walls inside, and at
+## the far side of it is the nave's west door (Structure.church_walls).
+## Above that it is solid: men take cover against it.
+func _church_model(rng: RandomNumberGenerator) -> void:
+	var k := _kit(rng)
+	k.sink.cast_all = true
+	var tw := size.x
+	var th := size.y
+	var hw := tw * 0.5
+	var wt := CHURCH_TOWER_WALL
+	var dw := CHURCH_WEST_DOOR
+	var st := CHURCH_STAGE
+	var wall := BuildingMaterials.house_color(variant, CHURCH_DRESS)
+	var dress := CHURCH_DRESS
+	# the ground stage: its north and south walls, its west wall either side
+	# of the doorway and over it; the flags on its floor, the boards of the
+	# ringing chamber's floor over it
+	var pw := hw - wt - dw * 0.5
+	for sx: float in [-1.0, 1.0]:
+		k.box(Vector3(wt, st, tw), Vector3(sx * (hw - wt * 0.5), st * 0.5, 0), "church_stone", wall)
+		k.box(Vector3(pw, st, wt), Vector3(sx * (dw * 0.5 + pw * 0.5), st * 0.5, -hw + wt * 0.5), "church_stone", wall)
+	k.box(Vector3(dw, st - CHURCH_DOOR_H, wt), Vector3(0, (st + CHURCH_DOOR_H) * 0.5, -hw + wt * 0.5), "church_stone", wall)
+	k.plate(Vector3(tw - wt * 2.0, 0.05, tw - wt), Vector3(0, 0.03, wt * 0.5), "stone", dress.darkened(0.3))
+	k.plate(Vector3(tw - wt * 2.0, 0.04, tw - wt), Vector3(0, st - 0.02, wt * 0.5), "wood_dark", Color(0.2, 0.14, 0.09))
+	k.plate(Vector3(0.05, st - 0.2, tw - wt - 0.1), Vector3(hw - wt - 0.02, st * 0.5, wt * 0.5), "plaster", Color(0.84, 0.82, 0.76))
+	k.plate(Vector3(0.05, st - 0.2, tw - wt - 0.1), Vector3(-hw + wt + 0.02, st * 0.5, wt * 0.5), "plaster", Color(0.84, 0.82, 0.76))
+	# above it, solid to the battlements
+	k.box(Vector3(tw, th - st, tw), Vector3(0, st + (th - st) * 0.5, 0), "church_stone", wall)
+	# the plinth and its weathering, open across the doorway; string courses
+	_church_course(k, tw, -0.3, 1.3, 0.15, dw, dress.darkened(0.2))
+	_church_course(k, tw, 0.25, 0.5, 0.07, dw, dress.darkened(0.12))
+	for y: float in [5.2, 10.4]:
+		_church_course(k, tw, y, 0.18, 0.08, 0.0, dress)
+	# quoins, long and short in turn up each corner
+	for cx: float in [-1.0, 1.0]:
+		for cz: float in [-1.0, 1.0]:
+			var y := 0.5
+			var i := 0
+			while y < th - 0.35:
+				var long := i % 2 == 0
+				var s := Vector3(0.62, 0.3, 0.32) if long else Vector3(0.32, 0.3, 0.62)
+				k.box(s, Vector3(cx * (hw - s.x * 0.5 + 0.025), y + 0.15, cz * (hw - s.z * 0.5 + 0.025)), "stone", dress.darkened(rng.randf_range(0.0, 0.08)), Vector3.ZERO, false)
+				y += 0.32
+				i += 1
+	var faces := []
+	for f in 4:
+		var a := f * PI * 0.5
+		faces.append(k.at_point(Vector3(sin(a) * hw, 0, cos(a) * hw), Vector3(0, a, 0)))
+	# the west door (the face at -z): dressed jambs, a pointed arch of two
+	# orders, the dark of the porch under it, a hood mould, a step
+	var west: BuildingKit = faces[2]
+	var spring := 2.2
+	west.prism(Vector3(dw, 0.85, 0.02), Vector3(0, spring + 0.425, 0.006), "plain_dark", Color(0.03, 0.03, 0.03))
+	west.plate(Vector3(dw, CHURCH_DOOR_H - spring, 0.02), Vector3(0, (spring + CHURCH_DOOR_H) * 0.5, 0.006), "plain_dark", Color(0.03, 0.03, 0.03))
+	for sx: float in [-1.0, 1.0]:
+		west.box(Vector3(0.22, spring, 0.16), Vector3(sx * (dw * 0.5 + 0.11), spring * 0.5, 0.06), "stone", dress)
+		west.box(Vector3(0.14, spring, 0.1), Vector3(sx * (dw * 0.5 + 0.3), spring * 0.5, 0.05), "stone", dress.darkened(0.06))
+		west.bar(Vector3(sx * (dw * 0.5 + 0.11), spring, 0.06), Vector3(0, spring + 0.95, 0.06), 0.22, 0.16, "stone", dress)
+		west.bar(Vector3(sx * (dw * 0.5 + 0.3), spring, 0.05), Vector3(0, spring + 1.15, 0.05), 0.14, 0.1, "stone", dress.darkened(0.06))
+		west.bar(Vector3(sx * (dw * 0.5 + 0.48), spring - 0.05, 0.08), Vector3(0, spring + 1.33, 0.08), 0.08, 0.16, "stone", dress.lightened(0.05))
+		west.box(Vector3(0.2, 0.16, 0.18), Vector3(sx * (dw * 0.5 + 0.5), spring - 0.12, 0.09), "stone", dress.lightened(0.05))
+	west.box(Vector3(dw + 0.6, 0.14, 0.7), Vector3(0, 0.07, 0.35), "stone", dress.darkened(0.12))
+	# the oak doors, folded back inside
+	var oak := Color(0.26, 0.17, 0.1)
+	for sx: float in [-1.0, 1.0]:
+		BuildingOpenings.leaf(west.at_point(Vector3(sx * dw * 0.5, 0, -wt - 0.04), Vector3(0, PI, 0)), Vector2(minf(pw, dw * 0.5) - 0.04, spring), "ledged", oak, -sx)
+	# the west window over it, between the string courses
+	_church_lights(west, 5.6, 7.0, rng)
+	_church_head(west, 7.0, rng)
+	# the clock, on the north and south faces
+	for ck: BuildingKit in [faces[1], faces[3]]:
+		ck.cyl(0.74, 0.74, 0.06, Vector3(0, 8.5, 0.03), "paint", Color(0.9, 0.88, 0.82), Vector3(PI * 0.5, 0, 0), 20)
+		ck.part(BuildingKit.ring(0.7, 0.82), "stone", Mats.place(Vector3(0, 8.5, 0.06), Vector3(PI * 0.5, 0, 0)), dress, false)
+		for m in 12:
+			var ma := TAU * m / 12.0
+			ck.plate(Vector3(0.03, 0.1, 0.01), Vector3(sin(ma) * 0.6, 8.5 + cos(ma) * 0.6, 0.065), "metal_dark", Color(0.1, 0.1, 0.1), Vector3(0, 0, -ma))
+		var hr := rng.randf() * TAU
+		var mn := rng.randf() * TAU
+		ck.bar(Vector3(0, 8.5, 0.08), Vector3(sin(hr) * 0.38, 8.5 + cos(hr) * 0.38, 0.08), 0.045, 0.015, "metal_dark", Color(0.08, 0.08, 0.08), false)
+		ck.bar(Vector3(0, 8.5, 0.09), Vector3(sin(mn) * 0.58, 8.5 + cos(mn) * 0.58, 0.09), 0.03, 0.015, "metal_dark", Color(0.08, 0.08, 0.08), false)
+	# the belfry: two louvred lancets in each face
+	for bk: BuildingKit in faces:
+		for sx: float in [-1.0, 1.0]:
+			var x := sx * 0.62
+			bk.box(Vector3(0.74, 2.1, 0.06), Vector3(x, 12.15, -0.02), "plain_dark", Color(0.06, 0.06, 0.06))
+			BuildingOpenings.louvre(bk, Vector3(x, 12.15, 0.0), Vector2(0.64, 1.95), Color(0.3, 0.25, 0.2), "wood")
+			bk.prism(Vector3(0.74, 0.45, 0.05), Vector3(x, 13.2 + 0.225, -0.02), "plain_dark", Color(0.06, 0.06, 0.06))
+			for side: float in [-1.0, 1.0]:
+				bk.box(Vector3(0.14, 2.1, 0.14), Vector3(x + side * 0.44, 12.15, 0.04), "stone", dress)
+				bk.bar(Vector3(x + side * 0.44, 13.2, 0.04), Vector3(x, 13.75, 0.04), 0.13, 0.12, "stone", dress)
+		bk.bar(Vector3(-1.3, 13.2, 0.07), Vector3(0, 14.25, 0.07), 0.08, 0.14, "stone", dress.lightened(0.05))
+		bk.bar(Vector3(1.3, 13.2, 0.07), Vector3(0, 14.25, 0.07), 0.08, 0.14, "stone", dress.lightened(0.05))
+	# the top: a cornice, battlements, a pinnacle at each corner, the spire
+	k.box(Vector3(tw + 0.3, 0.3, tw + 0.3), Vector3(0, th + 0.15, 0), "stone", dress)
+	for f in 4:
+		var a := f * PI * 0.5
+		var along := Vector3(cos(a), 0, -sin(a))
+		var out := Vector3(sin(a), 0, cos(a))
+		k.box(Vector3(tw + 0.3, 0.35, 0.3), Vector3(0, th + 0.47, 0) + out * (hw), "stone", dress, Vector3(0, a, 0))
+		for i in 4:
+			k.box(Vector3(0.5, 0.5, 0.3), Vector3(0, th + 0.9, 0) + out * (hw) + along * ((i - 1.5) * 1.15), "stone", dress, Vector3(0, a, 0))
+	for cx: float in [-1.0, 1.0]:
+		for cz: float in [-1.0, 1.0]:
+			var p := Vector3(cx * (hw + 0.02), th + 0.3, cz * (hw + 0.02))
+			k.box(Vector3(0.44, 1.0, 0.44), p + Vector3(0, 0.5, 0), "stone", dress)
+			k.cyl(0.0, 0.27, 1.4, p + Vector3(0, 1.0 + 0.7, 0), "stone", dress, Vector3(0, PI * 0.25, 0), 4)
+	k.cyl(0.0, tw * 0.4, CHURCH_SPIRE, Vector3(0, th + 0.3 + CHURCH_SPIRE * 0.5, 0), "plain_dark", CHURCH_SLATE.darkened(0.05), Vector3(0, PI / 8.0, 0), 8)
+	# lucarnes: a little gabled light on each cardinal face of the spire
+	for f in 4:
+		var a := f * PI * 0.5
+		var lk := k.at_point(Vector3(sin(a), 0, cos(a)) * (tw * 0.4 * 0.72), Vector3(0, a, 0))
+		var ly := th + 0.3 + CHURCH_SPIRE * 0.28
+		lk.box(Vector3(0.5, 0.7, 0.5), Vector3(0, ly, 0), "stone", dress)
+		lk.prism(Vector3(0.62, 0.42, 0.6), Vector3(0, ly + 0.56, 0), "plain_dark", CHURCH_SLATE.darkened(0.05))
+		lk.box(Vector3(0.22, 0.42, 0.04), Vector3(0, ly - 0.02, 0.25), "plain_dark", Color(0.05, 0.05, 0.05))
+	var tip := Vector3(0, th + 0.3 + CHURCH_SPIRE, 0)
+	var gold := Color(0.72, 0.58, 0.26)
+	k.part(Res.sphere(0.13, 8), "metal", Transform3D(Basis.IDENTITY, tip + Vector3(0, 0.08, 0)), gold, false)
+	k.bar(tip, tip + Vector3(0, 1.3, 0), 0.07, 0.07, "metal", gold, false)
+	k.bar(tip + Vector3(-0.35, 0.95, 0), tip + Vector3(0.35, 0.95, 0), 0.07, 0.07, "metal", gold, false)
+
+
+## A course of stone round the tower (`tw` square) at height `y`, `h` deep
+## and standing `out` proud of its faces, open across the west doorway (`gap`
+## wide) when it has one.
+func _church_course(k: BuildingKit, tw: float, y: float, h: float, out: float, gap: float, col: Color) -> void:
+	var d := out + 0.1
+	var s := tw + out * 2.0
+	var r := tw * 0.5 + out - d * 0.5
+	for sx: float in [-1.0, 1.0]:
+		k.box(Vector3(d, h, s), Vector3(sx * r, y, 0), "stone", col)
+	k.box(Vector3(s, h, d), Vector3(0, y, r), "stone", col)
+	if gap <= 0.0:
+		k.box(Vector3(s, h, d), Vector3(0, y, -r), "stone", col)
+		return
+	var run := (s - gap) * 0.5
+	for sx: float in [-1.0, 1.0]:
+		k.box(Vector3(run, h, d), Vector3(sx * (gap * 0.5 + run * 0.5), y, -r), "stone", col)
+
+
+## The walls of a church's nave (`W` wide, `L` long, its west end at -z) or
+## of its chancel (`chancel`), in the body's own frame: [where the wall's
+## middle is (x, z), its yaw (its +z out), its length, its variant (0 plain,
+## 1 a lancet, 2 a door)]. The long sides in bays of about 2.8 m with a
+## lancet in each, the south door (in the porch) in the south side's west
+## bay; the nave's west end either side of the tower, and the west door
+## between them, under the tower; its east end either side of the chancel
+## arch; the chancel's east end, open to the nave at its west. MapGen lays
+## the walls by this and the roof draws their upper parts by it.
+static func church_walls(W: float, L: float, chancel: bool) -> Array:
+	var out := []
+	var segs := maxi(1, int(round(L / 2.8)))
+	var seg := L / segs
+	for side: float in [-1.0, 1.0]:
+		for i in segs:
+			var v := 2 if not chancel and side < 0.0 and i == 0 else 1
+			out.append([Vector2(side * W * 0.5, -L * 0.5 + (i + 0.5) * seg), PI * 0.5 * side, seg, v])
+	var e_len := W - 0.4
+	if chancel:
+		var n := maxi(1, int(round(e_len / 2.8)))
+		for i in n:
+			out.append([Vector2(-e_len * 0.5 + (i + 0.5) * e_len / n, L * 0.5), 0.0, e_len / n, 1])
+	else:
+		var west := (e_len - CHURCH_TOWER) * 0.5
+		var east := (e_len - (W - 2.4)) * 0.5
+		for sx: float in [-1.0, 1.0]:
+			out.append([Vector2(sx * (CHURCH_TOWER * 0.5 + west * 0.5), -L * 0.5), PI, west, 0])
+			out.append([Vector2(sx * ((W - 2.4) * 0.5 + east * 0.5), L * 0.5), 0.0, east, 0])
+		out.append([Vector2(0, -L * 0.5), PI, CHURCH_TOWER, 2])
+	return out
+
+
+## Where the south porch stands in front of a church wall entry (`e`, from
+## church_walls) and which way its side walls run: [the porch's middle (x,
+## z), its yaw] in the body's frame, or [] if the wall isn't the south door.
+static func church_porch(e: Array) -> Array:
+	if int(e[3]) != 2 or absf(sin(float(e[1]))) < 0.5:
+		return []
+	var p: Vector2 = e[0]
+	var n := Vector2(sin(float(e[1])), cos(float(e[1])))
+	return [p + n * (0.2 + CHURCH_PORCH.y * 0.5), float(e[1])]
+
+
+## The church's dressed stone (quoins, string courses, window surrounds), its
+## slate, and the colours in its windows' glass.
+const CHURCH_DRESS := Color(0.74, 0.7, 0.62)
+const CHURCH_SLATE := Color(0.31, 0.3, 0.29)
+const CHURCH_GLASS := [Color(0.42, 0.09, 0.1), Color(0.1, 0.16, 0.42), Color(0.52, 0.38, 0.1), Color(0.12, 0.3, 0.16), Color(0.32, 0.12, 0.34)]
+
+
+## A church's wall (the ground floor's part of it; the roof draws the rest
+## up to the eaves): coursed stone over a dressed plinth, plastered and
+## whitewashed inside; a window wall the lower part of a tall two-light
+## lancet (its sill a man's chest high, so men inside fire from it), a door
+## wall a door under a pointed stone arch, its oak doors hung to swing; the
+## odd bullet strike.
+func _church_wall_detail(rng: RandomNumberGenerator, L: float, ci: int, wall: Color) -> void:
+	var k := _kit(rng).at_point(Vector3(0, 0, 0.2))
+	var gaps: Array = []
+	if variant == 1:
+		gaps = [Rect2(-0.65, 1.0, 1.3, 1.0)]
+	elif variant == 2:
+		gaps = [Rect2(-0.95, 0.0, 1.9, 2.2)]
+	BuildingWalls.face(k, L, 3.0, "church", wall, gaps, {"plinth": 0.45})
+	k.box(Vector3(L, 0.5, 0.42), Vector3(0, -0.25, -0.2), "stone", CHURCH_DRESS.darkened(0.2))
+	var room := _kit(rng).at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0))
+	BuildingFurnishings.lining(room, L, 3.0, gaps, Color(0.86, 0.84, 0.78))
+	var war := RandomNumberGenerator.new()
+	war.seed = rng.seed ^ 0x3b0a7c55
+	if war.randf() < 0.22:
+		BuildingWeathering.pocks(k, Vector2(war.randf_range(-L * 0.35, L * 0.35), war.randf_range(1.0, 2.6)), war.randf_range(0.5, 1.1), war.randi_range(8, 20),
+			wall.lightened(0.18).lerp(Color(0.72, 0.7, 0.66), 0.5), war, gaps, L * 0.5)
+	match variant:
+		1:
+			_church_lights(k, 1.0, 3.0, rng)
+			_church_lights(room, 2.0, 3.0, rng, false)
+		2:
+			var w := 1.9
+			BuildingOpenings.doorway(k, Vector3.ZERO, Vector2(w, 2.2), {"material": "church", "wall": wall, "frame": CHURCH_DRESS})
+			# the pointed arch over it, the tympanum dark in it
+			k.prism(Vector3(w, 0.7, 0.04), Vector3(0, 2.2 + 0.35, -0.04), "plain_dark", Color(0.12, 0.1, 0.09))
+			for sx: float in [-1.0, 1.0]:
+				k.bar(Vector3(sx * (w * 0.5 + 0.12), 2.2, 0.05), Vector3(0, 3.0, 0.05), 0.22, 0.14, "stone", CHURCH_DRESS)
+				k.box(Vector3(0.24, 2.2, 0.14), Vector3(sx * (w * 0.5 + 0.12), 1.1, 0.05), "stone", CHURCH_DRESS)
+			var oak := Color(0.26, 0.17, 0.1)
+			_door_leaves = []
+			for sx in [-1.0, 1.0]:
+				var a: float = -sx * rng.randf_range(1.0, 1.55)
+				var pv := Node3D.new()
+				pv.position = Vector3(sx * (w * 0.5 - 0.09), 0, DOOR_Z)
+				pv.rotation.y = 0.0 if door_shut else a
+				model.add_child(pv)
+				BuildingOpenings.leaf(BuildingKit.nodes(pv, rng), Vector2(0.88, 2.06), "ledged", oak, -sx)
+				_door_leaves.append([pv, a])
+
+
+## A two-light window's straight part, from `y0` up to `y1`, in a face kit:
+## two lights of leaded glass either side of a stone mullion, saddle bars
+## across them and a coloured panel in each (the glass is stained), dressed
+## jambs and a sill where it starts (`outer`: the outside face, which has the
+## jambs and the sill).
+func _church_lights(k: BuildingKit, y0: float, y1: float, rng: RandomNumberGenerator, outer := true) -> void:
+	var glass: Color = [Color(0.2, 0.24, 0.3), Color(0.27, 0.22, 0.25), Color(0.22, 0.26, 0.23), Color(0.24, 0.24, 0.27)][rng.randi() % 4]
+	var w := 1.2
+	var ym := (y0 + y1) * 0.5
+	k.plate(Vector3(w, y1 - y0, 0.02), Vector3(0, ym, 0.012), "glass", glass)
+	for sx: float in [-1.0, 1.0]:
+		var jewel: Color = CHURCH_GLASS[rng.randi() % CHURCH_GLASS.size()]
+		k.plate(Vector3(0.36, minf(0.62, (y1 - y0) * 0.55), 0.008), Vector3(sx * 0.3, ym, 0.024), "glass", jewel)
+	k.plate(Vector3(0.08, y1 - y0, 0.06), Vector3(0, ym, 0.035), "stone", CHURCH_DRESS)
+	var y := y0 + 0.45
+	while y < y1 - 0.05:
+		k.plate(Vector3(w, 0.02, 0.016), Vector3(0, y, 0.03), "metal_dark", Color(0.1, 0.1, 0.1))
+		y += 0.45
+	if outer:
+		for sx: float in [-1.0, 1.0]:
+			k.box(Vector3(0.16, y1 - y0, 0.12), Vector3(sx * (w * 0.5 + 0.08), ym, 0.05), "stone", CHURCH_DRESS)
+		if y0 < 1.5 or y0 > 5.0:
+			k.box(Vector3(w + 0.4, 0.12, 0.22), Vector3(0, y0 - 0.06, 0.09), "stone", CHURCH_DRESS)
+
+
+## A two-light window's head over `top`, in a face kit: the two lights'
+## pointed heads, a round light in the tracery over them, all glazed, under
+## a pointed arch of dressed stone and a hood mould.
+func _church_head(k: BuildingKit, top: float, rng: RandomNumberGenerator) -> void:
+	var dress := CHURCH_DRESS
+	k.prism(Vector3(1.2, 0.8, 0.02), Vector3(0, top + 0.4, 0.012), "glass", CHURCH_GLASS[rng.randi() % CHURCH_GLASS.size()].darkened(0.3))
+	for sx: float in [-1.0, 1.0]:
+		k.bar(Vector3(sx * 0.6, top, 0.03), Vector3(sx * 0.3, top + 0.4, 0.03), 0.06, 0.05, "stone", dress)
+		k.bar(Vector3(0, top, 0.03), Vector3(sx * 0.3, top + 0.4, 0.03), 0.06, 0.05, "stone", dress)
+		k.bar(Vector3(sx * 0.68, top, 0.05), Vector3(0, top + 0.82, 0.05), 0.16, 0.12, "stone", dress)
+		k.bar(Vector3(sx * 0.84, top - 0.1, 0.09), Vector3(0, top + 0.98, 0.09), 0.07, 0.14, "stone", dress.lightened(0.05))
+		k.box(Vector3(0.14, 0.12, 0.16), Vector3(sx * 0.86, top - 0.12, 0.09), "stone", dress.lightened(0.05))
+	k.part(BuildingKit.ring(0.1, 0.14), "stone", Mats.place(Vector3(0, top + 0.53, 0.03), Vector3(PI * 0.5, 0, 0)), dress, false)
+
+
+## A church's roof (`size`: its body's width, its eaves' height, its length
+## along z, the west end at -z; its body a nave, or a chancel if short): the
+## walls above the ground floor's up to the eaves (the rest of each window:
+## its lights, its traceried head), a stone string course where they start,
+## quoins up the corners, stepped buttresses between the nave's bays, the
+## south porch's timber frame and roof on its dwarf walls, and a steep slate
+## roof with lead flashings, a gable wall at each end (the nave's over the
+## chancel and against the tower). All of it lifts off when men go in, as a
+## house's roof does.
+func _church_roof(rng: RandomNumberGenerator, ci: int) -> void:
+	var W := size.x
+	var L := size.z
+	var h := size.y
+	var chancel := L < 6.0
+	var wall := BuildingMaterials.house_color(ci, CHURCH_DRESS)
+	var k := _kit(rng)
+	k.sink.cast_all = true
+	var plan := church_walls(W, L, chancel)
+	for e: Array in plan:
+		var p: Vector2 = e[0]
+		var len: float = e[2]
+		var wk := k.at_point(Vector3(p.x, 0, p.y), Vector3(0, e[1], 0))
+		# (the nave's ends are drawn whole, below)
+		if chancel or absf(sin(float(e[1]))) > 0.5:
+			wk.box(Vector3(len, h - 3.0, 0.4), Vector3(0, 3.0 + (h - 3.0) * 0.5, 0), "church_stone", wall)
+			wk.box(Vector3(len, 0.14, 0.1), Vector3(0, 3.0, 0.23), "stone", CHURCH_DRESS)
+		if int(e[3]) == 1:
+			var fk := wk.at_point(Vector3(0, 0, 0.2))
+			var top := minf(3.0 + 1.3, h - 1.3)
+			_church_lights(fk, 3.0, top, rng)
+			_church_lights(wk.at_point(Vector3(0, 0, -0.2), Vector3(0, PI, 0)), 3.0, top, rng, false)
+			_church_head(fk, top, rng)
+		var porch := church_porch(e)
+		if not porch.is_empty():
+			_church_porch(wk.at_point(Vector3(0, 0, 0.2 + CHURCH_PORCH.y * 0.5)), rng)
+	# the nave's end walls above the ground floor: over the chancel arch, and
+	# against the tower
+	if not chancel:
+		for ez: float in [-1.0, 1.0]:
+			k.box(Vector3(W - 0.4, h - 3.0, 0.4), Vector3(0, 3.0 + (h - 3.0) * 0.5, ez * L * 0.5), "church_stone", wall)
+			k.box(Vector3(W - 0.4, 0.14, 0.1), Vector3(0, 3.0, ez * (L * 0.5 + 0.23)), "stone", CHURCH_DRESS)
+		# stepped buttresses between the bays
+		var segs := maxi(1, int(round(L / 2.8)))
+		for i in range(1, segs):
+			var z := -L * 0.5 + L * i / segs
+			for sx: float in [-1.0, 1.0]:
+				k.box(Vector3(0.55, h * 0.62, 0.7), Vector3(sx * (W * 0.5 + 0.47), h * 0.31, z), "stone", CHURCH_DRESS.darkened(0.06))
+				k.box(Vector3(0.36, h * 0.24, 0.56), Vector3(sx * (W * 0.5 + 0.38), h * 0.74, z), "stone", CHURCH_DRESS.darkened(0.06))
+				k.prism(Vector3(0.56, 0.36, 0.36), Vector3(sx * (W * 0.5 + 0.38), h * 0.86 + 0.18, z), "stone", CHURCH_DRESS, Vector3(0, PI * 0.5, 0))
+	# quoins up the corners above the ground floor's (the floor has theirs)
+	for c: Vector2 in _church_corners(W, L, chancel):
+		_church_quoins(k, c, 3.0, h, rng)
+	var rk := k.at_point(Vector3.ZERO, Vector3(0, PI * 0.5, 0))
+	BuildingRoofs.gable(rk, L, W, h, 50.0, 0.35, "roof_tile", CHURCH_SLATE,
+		{"gable_material": "church", "gable_col": wall, "trim": Color(0.2, 0.2, 0.21), "gable_inset": -0.07, "gutters": not chancel,
+		"downpipes": [[L * 0.5 - 0.6, 1.0], [-(L * 0.5 - 0.6), -1.0]], "wall_face": W * 0.5 + 0.2, "wall_face_x": L * 0.5 + 0.2})
+	# (its snow, SnowRoof: the lips along its eaves, as a house's; a church
+	# isn't heated through the week, so no icicles hang from it)
+	_roof_form = {"L": L, "W": W, "h": h, "pitch": 50.0, "fx": L * 0.5 + 0.2, "fz": W * 0.5 + 0.2, "hipped": false, "barn": false,
+		"cold": true, "ang": PI * 0.5}
+	# a stone cross on the east gable of each
+	var apex := Vector3(0, h + (W * 0.5) * tan(deg_to_rad(50.0)) + 0.05, L * 0.5 + 0.1)
+	k.box(Vector3(0.12, 0.9, 0.12), apex + Vector3(0, 0.45, 0), "stone", CHURCH_DRESS)
+	k.box(Vector3(0.5, 0.12, 0.12), apex + Vector3(0, 0.62, 0), "stone", CHURCH_DRESS)
+
+
+## The outer corners of a church body's walls that show (the nave's four; a
+## chancel's two at its east end), in its frame.
+static func _church_corners(W: float, L: float, chancel: bool) -> Array:
+	var out := []
+	for sx: float in [-1.0, 1.0]:
+		out.append(Vector2(sx * (W * 0.5 + 0.2), L * 0.5 + 0.2))
+		if not chancel:
+			out.append(Vector2(sx * (W * 0.5 + 0.2), -L * 0.5 - 0.2))
+	return out
+
+
+## Dressed quoins up a church's outer corner `c`, from `y0` to `y1`: long and
+## short in turn, each one tight in the corner (and filling it: the walls
+## meet short of their outer corner).
+func _church_quoins(k: BuildingKit, c: Vector2, y0: float, y1: float, rng: RandomNumberGenerator) -> void:
+	var sx := signf(c.x)
+	var sz := signf(c.y)
+	var y := y0
+	var i := 0
+	while y + 0.2 < y1:
+		var hgt := minf(0.3, y1 - y)
+		var s := Vector3(0.62, hgt, 0.42) if i % 2 == 0 else Vector3(0.42, hgt, 0.62)
+		k.box(s, Vector3(c.x - sx * (s.x * 0.5 - 0.025), y + hgt * 0.5, c.y - sz * (s.z * 0.5 - 0.025)), "stone", CHURCH_DRESS.darkened(rng.randf_range(0.0, 0.08)), Vector3.ZERO, false)
+		y += hgt + 0.02
+		i += 1
+
+
+## The south porch, in a frame at its middle (its +z out from the church):
+## an oak frame on its stone dwarf walls (those are low walls of their own:
+## MapGen._church) - posts, wall plates, a cambered tie beam and arch braces
+## over its mouth, cusped barge boards - under a steep slate roof, a stone
+## cross on its gable.
+func _church_porch(k: BuildingKit, rng: RandomNumberGenerator) -> void:
+	var pw := CHURCH_PORCH.x
+	var pd := CHURCH_PORCH.y
+	var oak := Color(0.3, 0.21, 0.13)
+	var low := 0.9
+	var eaves := 2.65
+	var sides := pw * 0.5 - 0.25
+	for sx: float in [-1.0, 1.0]:
+		var x := sx * sides
+		for z: float in [-pd * 0.5 + 0.2, 0.0, pd * 0.5 - 0.12]:
+			k.box(Vector3(0.16, eaves - low, 0.16), Vector3(x, (low + eaves) * 0.5, z), "wood_dark", oak.darkened(rng.randf_range(0.0, 0.1)))
+		k.box(Vector3(0.18, 0.12, pd), Vector3(x, low + 0.06, 0), "wood_dark", oak)
+		k.box(Vector3(0.2, 0.18, pd + 0.1), Vector3(x, eaves + 0.09, 0), "wood_dark", oak)
+		# the arch brace in the mouth
+		k.beam(Vector3(x, eaves - 0.7, pd * 0.5 - 0.12), Vector3(sx * 0.35, eaves, pd * 0.5 - 0.12), 0.12, 0.12, "wood_dark", oak)
+	k.box(Vector3(pw - 0.3, 0.2, 0.18), Vector3(0, eaves + 0.1, pd * 0.5 - 0.12), "wood_dark", oak)
+	# the roof: two slopes of slate over the frame, rafters' ends under them
+	var run := pw * 0.5 + 0.2
+	var rise := run * tan(deg_to_rad(50.0))
+	var slope := run / cos(deg_to_rad(50.0)) + 0.06
+	for sx: float in [-1.0, 1.0]:
+		k.box(Vector3(slope, 0.08, pd + 0.35), Vector3(sx * run * 0.5, eaves + 0.2 + rise * 0.5, 0.15), "roof_tile", CHURCH_SLATE, Vector3(0, 0, -sx * deg_to_rad(50.0)))
+		# the barge boards, and the gable's open triangle (the dark of the roof)
+		k.beam(Vector3(sx * (run + 0.02), eaves + 0.12, pd * 0.5 + 0.3), Vector3(0, eaves + 0.2 + rise, pd * 0.5 + 0.3), 0.22, 0.05, "wood_dark", oak.darkened(0.1))
+	k.prism(Vector3(pw - 0.1, rise - 0.05, 0.04), Vector3(0, eaves + 0.2 + (rise - 0.05) * 0.5, pd * 0.5 - 0.16), "wood_dark", oak.darkened(0.35))
+	k.box(Vector3(0.24, 0.12, pd + 0.4), Vector3(0, eaves + 0.24 + rise, 0.15), "plain_dark", CHURCH_SLATE.darkened(0.2))
+	var top := Vector3(0, eaves + 0.28 + rise, pd * 0.5 + 0.28)
+	k.box(Vector3(0.1, 0.6, 0.1), top + Vector3(0, 0.3, 0), "stone", CHURCH_DRESS)
+	k.box(Vector3(0.36, 0.1, 0.1), top + Vector3(0, 0.42, 0), "stone", CHURCH_DRESS)
+
+
+## A church's floor: flagstones (their joints), quoins up its outer corners
+## (the walls meet short of them), and in the nave pews either side of a
+## red runner down the aisle, facing east, the font by the doors, the pulpit
+## by the chancel arch on the north side and the lectern on the south; in
+## the chancel a tiled floor, the choir stalls either side, the altar on its
+## step, a frontal on it and a cross and candlesticks, the rail before it.
+## Wood and stone below a man's head: men inside stand among them.
+func _church_floor(rng: RandomNumberGenerator) -> void:
+	var k := _kit(rng)
+	var top := 0.06
+	var nave := size.z > 6.0
+	var joint := Color(0.36, 0.34, 0.31)
+	var x := -size.x * 0.5 + 0.7
+	while x < size.x * 0.5 - 0.1:
+		k.plate(Vector3(0.012, 0.003, size.z), Vector3(x, top + 0.002, 0), "plain_dark", joint)
+		x += 0.7
+	var z := -size.z * 0.5 + 0.55
+	while z < size.z * 0.5 - 0.1:
+		k.plate(Vector3(size.x - 0.02, 0.003, 0.012), Vector3(0, top + 0.002, z), "plain_dark", joint)
+		z += 0.55
+	for c: Vector2 in _church_corners(size.x, size.z, not nave):
+		_church_quoins(k, c, 0.0, 3.0, rng)
+	var oak := Color(0.32, 0.22, 0.14)
+	var brass := Color(0.75, 0.6, 0.25)
+	if nave:
+		var aisle := 1.4
+		var pew := (size.x - 0.8 - aisle) * 0.5 - 0.1
+		k.plate(Vector3(0.9, 0.006, size.z - 1.2), Vector3(0, top + 0.004, 0.2), "canvas", Color(0.3, 0.08, 0.07))
+		var pz := -size.z * 0.5 + 3.4
+		while pz < size.z * 0.5 - 2.2:
+			for side: float in [-1.0, 1.0]:
+				var px := side * (aisle * 0.5 + pew * 0.5)
+				k.box(Vector3(pew, 0.05, 0.42), Vector3(px, top + 0.45, pz), "wood_dark", oak)
+				k.box(Vector3(pew, 0.42, 0.05), Vector3(px, top + 0.7, pz - 0.22), "wood_dark", oak)
+				k.box(Vector3(pew - 0.1, 0.04, 0.12), Vector3(px, top + 0.06, pz + 0.3), "canvas", Color(0.36, 0.12, 0.1))
+				for ex: float in [-1.0, 1.0]:
+					k.box(Vector3(0.06, 0.95, 0.52), Vector3(px + ex * pew * 0.5, top + 0.475, pz - 0.02), "wood_dark", oak.darkened(0.1))
+			pz += 1.0
+		# the font by the doors (across from the south door, clear of the way
+		# in from the west): a bowl on a shaft, an oak cover
+		var fz := -size.z * 0.5 + 1.4
+		var fx := size.x * 0.25
+		k.box(Vector3(0.9, 0.15, 0.9), Vector3(fx, top + 0.075, fz), "stone", CHURCH_DRESS.darkened(0.08))
+		k.cyl(0.2, 0.26, 0.6, Vector3(fx, top + 0.45, fz), "stone", CHURCH_DRESS, Vector3.ZERO, 8)
+		k.cyl(0.42, 0.34, 0.3, Vector3(fx, top + 0.9, fz), "stone", CHURCH_DRESS, Vector3.ZERO, 8)
+		k.cyl(0.0, 0.4, 0.35, Vector3(fx, top + 1.22, fz), "wood_dark", oak.darkened(0.15), Vector3.ZERO, 8)
+		# the pulpit: an oak tub on a stone foot, steps up to it, a desk
+		var pp := Vector3(size.x * 0.5 - 1.05, top, size.z * 0.5 - 1.1)
+		k.cyl(0.2, 0.28, 0.9, pp + Vector3(0, 0.45, 0), "stone", CHURCH_DRESS, Vector3.ZERO, 6)
+		k.cyl(0.58, 0.5, 1.0, pp + Vector3(0, 1.4, 0), "wood_dark", oak, Vector3.ZERO, 6)
+		k.cyl(0.62, 0.62, 0.06, pp + Vector3(0, 1.93, 0), "wood_dark", oak.darkened(0.1), Vector3.ZERO, 6)
+		k.box(Vector3(0.5, 0.04, 0.32), pp + Vector3(-0.3, 1.97, 0), "wood_dark", oak.darkened(0.1), Vector3(0, 0, 0.3))
+		for i in 3:
+			var sh := 0.3 * (3 - i)
+			k.box(Vector3(0.3, sh, 0.55), pp + Vector3(-0.66 - i * 0.3, sh * 0.5, 0), "wood_dark", oak.darkened(0.05))
+		# the lectern: a brass eagle on a turned stand, the Bible on its wings
+		var lp := Vector3(-size.x * 0.5 + 1.2, top, size.z * 0.5 - 1.2)
+		k.cyl(0.24, 0.3, 0.08, lp + Vector3(0, 0.04, 0), "metal", brass, Vector3.ZERO, 10)
+		k.cyl(0.05, 0.07, 1.0, lp + Vector3(0, 0.55, 0), "metal", brass, Vector3.ZERO, 8)
+		k.part(Res.sphere(0.13, 8), "metal", Transform3D(Basis.IDENTITY, lp + Vector3(0, 1.1, 0)), brass)
+		k.box(Vector3(0.6, 0.04, 0.34), lp + Vector3(0, 1.24, 0.04), "metal", brass, Vector3(-0.45, 0, 0))
+		k.box(Vector3(0.44, 0.06, 0.3), lp + Vector3(0, 1.29, 0.04), "canvas", Color(0.14, 0.08, 0.07), Vector3(-0.45, 0, 0))
+	else:
+		# encaustic tiles: red and buff in a band down the middle, black edges
+		k.plate(Vector3(size.x - 0.5, 0.008, size.z - 0.6), Vector3(0, top + 0.004, 0), "paint", Color(0.42, 0.18, 0.12))
+		var tz := -size.z * 0.5 + 0.6
+		while tz < size.z * 0.5 - 0.6:
+			k.plate(Vector3(size.x - 0.8, 0.01, 0.22), Vector3(0, top + 0.006, tz), "paint", Color(0.66, 0.56, 0.4))
+			tz += 0.5
+		# the choir stalls, a desk before each
+		for sx: float in [-1.0, 1.0]:
+			var cx := sx * (size.x * 0.5 - 0.55)
+			k.box(Vector3(0.45, 0.45, 2.2), Vector3(cx, top + 0.225, -0.6), "wood_dark", oak.darkened(0.08))
+			k.box(Vector3(0.06, 0.6, 2.2), Vector3(cx + sx * 0.22, top + 0.75, -0.6), "wood_dark", oak.darkened(0.12))
+			k.box(Vector3(0.3, 0.9, 2.2), Vector3(cx - sx * 0.48, top + 0.45, -0.6), "wood_dark", oak)
+			k.box(Vector3(0.38, 0.04, 2.24), Vector3(cx - sx * 0.48, top + 0.92, -0.6), "wood_dark", oak.darkened(0.1), Vector3(0, 0, sx * 0.2))
+		var az := size.z * 0.5 - 0.75
+		k.box(Vector3(size.x - 0.6, 0.15, 1.6), Vector3(0, top + 0.075, size.z * 0.5 - 1.0), "stone", CHURCH_DRESS.darkened(0.05))
+		k.box(Vector3(1.8, 0.95, 0.75), Vector3(0, top + 0.15 + 0.475, az), "stone", CHURCH_DRESS)
+		k.plate(Vector3(1.9, 0.02, 0.85), Vector3(0, top + 1.11, az), "canvas", Color(0.88, 0.86, 0.8))
+		k.plate(Vector3(1.86, 0.7, 0.02), Vector3(0, top + 0.75, az - 0.39), "canvas", Color(0.36, 0.12, 0.3))
+		k.plate(Vector3(0.1, 0.7, 0.024), Vector3(0, top + 0.75, az - 0.39), "canvas", brass)
+		k.box(Vector3(0.06, 0.55, 0.06), Vector3(0, top + 1.4, az + 0.2), "metal", brass)
+		k.box(Vector3(0.3, 0.06, 0.06), Vector3(0, top + 1.52, az + 0.2), "metal", brass)
+		for sx: float in [-1.0, 1.0]:
+			k.cyl(0.03, 0.04, 0.3, Vector3(sx * 0.6, top + 1.27, az + 0.15), "metal", brass, Vector3.ZERO, 6)
+			k.cyl(0.012, 0.012, 0.16, Vector3(sx * 0.6, top + 1.5, az + 0.15), "paint", Color(0.92, 0.9, 0.84), Vector3.ZERO, 6)
+		var rz := size.z * 0.5 - 2.2
+		k.bar(Vector3(-size.x * 0.5 + 0.5, top + 0.75, rz), Vector3(size.x * 0.5 - 0.5, top + 0.75, rz), 0.08, 0.06, "wood_dark", oak)
+		var px2 := -size.x * 0.5 + 0.5
+		while px2 <= size.x * 0.5 - 0.45:
+			if absf(px2) > 0.5:
+				k.box(Vector3(0.05, 0.75, 0.05), Vector3(px2, top + 0.375, rz), "wood_dark", oak)
+			px2 += 0.35
+
+
 ## Each part of a house wall's body as drawn: [its rect in the face (x, y),
 ## its tint], so a stain can fade into exactly the wall it lies on.
 var _body: Array = []
@@ -1119,9 +1783,26 @@ func _tone(p: Vector2) -> Color:
 	return best
 
 
+## A parish church's west tower (square, and how tall to its battlements),
+## its chancel's length and its spire's height (see MapGen._church).
+const CHURCH_TOWER := 4.6
+const CHURCH_TOWER_H := 15.5
+const CHURCH_CHANCEL := 4.4
+const CHURCH_SPIRE := 9.0
+## The tower's ground stage (the west porch: how tall to its ceiling, how
+## thick its walls, how wide its west doorway and how tall, its head clear of
+## a man), and the south porch (wide, deep).
+const CHURCH_STAGE := 3.6
+const CHURCH_TOWER_WALL := 0.6
+const CHURCH_WEST_DOOR := 1.5
+const CHURCH_DOOR_H := 2.6
+const CHURCH_PORCH := Vector2(3.0, 2.4)
+
+
 ## The house's painted woodwork (window frames, door frames, fascias and barge
 ## boards), by its colour index.
-const HOUSE_TRIMS := [Color(0.86, 0.85, 0.8), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.84, 0.83, 0.78), Color(0.36, 0.38, 0.43)]
+## (the whites are an old gloss gone dull and a little yellow: never a new paint's glare)
+const HOUSE_TRIMS := [Color(0.77, 0.76, 0.7), Color(0.32, 0.23, 0.16), Color(0.23, 0.34, 0.28), Color(0.74, 0.73, 0.67), Color(0.36, 0.38, 0.43)]
 
 
 ## A concrete road bridge on piers - deck, kerbed footways, parapet walls,
@@ -1133,7 +1814,6 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 	var L := size.z
 	var conc := Color(0.6, 0.58, 0.54)
 	var dark := Color(0.42, 0.41, 0.39)
-	var asphalt := Color(0.16, 0.16, 0.16)
 	if variant == 1:
 		# the quay: a block of concrete from the seabed up, a lip round the top
 		_mk(Res.box(Vector3(W, 3.5, L)), "concrete", Vector3(0, -1.72, 0), Vector3.ZERO, conc)
@@ -1157,7 +1837,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 		return
 	# the deck: a thick slab, asphalt down the middle between kerbed footways
 	_mk(Res.box(Vector3(W, 0.55, L)), "concrete", Vector3(0, -0.25, 0), Vector3.ZERO, conc)
-	_mk(Res.box(Vector3(W - 2.0, 0.02, L)), "concrete_floor", Vector3(0, 0.035, 0), Vector3.ZERO, asphalt, false)
+	_mk(Res.box(Vector3(W - 2.0, 0.02, L)), "asphalt", Vector3(0, 0.035, 0), Vector3.ZERO, null, false)
 	for sx in [-1.0, 1.0]:
 		_mk(Res.box(Vector3(0.62, 0.16, L)), "concrete", Vector3(sx * (W * 0.5 - 0.67), 0.08, 0), Vector3.ZERO, conc.lightened(0.05), false)
 		# parapet wall with its coping, drain holes along the foot
@@ -1166,7 +1846,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 		# the girder under the edge, stained by the weather
 		_mk(Res.box(Vector3(0.5, 0.75, L)), "concrete", Vector3(sx * (W * 0.5 - 0.9), -0.88, 0), Vector3.ZERO, dark)
 		# a white line along the edge of the carriageway
-		_mk(Res.box(Vector3(0.12, 0.01, L)), "paint", Vector3(sx * (W * 0.5 - 1.15), 0.048, 0), Vector3.ZERO, Color(0.8, 0.79, 0.74), false)
+		_mk(Res.box(Vector3(0.12, 0.01, L)), "road_paint", Vector3(sx * (W * 0.5 - 1.15), 0.048, 0), Vector3.ZERO, Color(0.8, 0.79, 0.74), false)
 	# the piers: a wall of concrete under the deck, a cutwater upstream and down
 	var spans := maxi(2, int(round(L / 9.0)))
 	for i in range(1, spans):
@@ -1177,6 +1857,7 @@ func _bridge_model(rng: RandomNumberGenerator) -> void:
 			_mk(Res.cyl(0.55, 0.55, 2.6, 8), "concrete", Vector3(sx * W * 0.41, -2.0, z), Vector3.ZERO, dark)
 	# the abutments, into the banks at either end
 	for sz in [-1.0, 1.0]:
+		_mk(Res.box(Vector3(W - 2.0, 0.008, 0.06)), "metal_dark", Vector3(0, 0.048, sz * (L * 0.5 - 0.4)), Vector3.ZERO, null, false)
 		_mk(Res.box(Vector3(W + 0.8, 1.6, 1.4)), "concrete", Vector3(0, -0.85, sz * (L * 0.5 - 0.6)), Vector3.ZERO, dark)
 		for sx in [-1.0, 1.0]:
 			_mk(Res.box(Vector3(0.5, 1.1, 0.5)), "concrete", Vector3(sx * (W * 0.5 - 0.18), 0.55, sz * (L * 0.5 - 0.25)), Vector3.ZERO, conc.lightened(0.04))
@@ -1205,6 +1886,7 @@ func open_door(by: Entity, kicked: bool) -> void:
 	for i in range(parts.size() - 1, -1, -1):
 		if parts[i].get("door", false):
 			parts.remove_at(i)
+	_probes_changed()  # (the doorway lets the sky in)
 	if body:
 		var dn := body.get_node_or_null("Door")
 		if dn:
@@ -1250,10 +1932,11 @@ func _swing_leaves(kicked: bool) -> void:
 
 ## A building's model on its own, without a world (the field manual's preview).
 ## `id` stands in for the entity id its look is seeded from.
-static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0, dark := false) -> Node3D:
+static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, shut := false, id := 0, dark := false, shop := false) -> Node3D:
 	var st := Structure.new()
 	st.eid = id
 	st.dark = dark
+	st.shop = shop
 	st.skind = kind
 	st.team = side
 	st.variant = v
@@ -1271,6 +1954,19 @@ static func preview_model(kind: String, side: int, v := 0, sz := Vector3.ZERO, s
 	st.remove_child(m)
 	st.free()
 	return m
+
+
+## A structure's parts (cover, collision, pathing) on their own, without a
+## world or a model (for the tests).
+static func preview_parts(kind: String, sz: Vector3, v := 0) -> Array:
+	var st := Structure.new()
+	st.skind = kind
+	st.variant = v
+	st.size = sz
+	st._define_parts()
+	var out: Array = st.parts.duplicate(true)
+	st.free()
+	return out
 
 
 ## A tree. Its id decides the look, so every peer builds the same one and
@@ -1392,6 +2088,9 @@ static func _leaves(bake: Mats.Bake, p: Vector3, r: float, squash: float, col: C
 func _roof_model(rng: RandomNumberGenerator) -> void:
 	var ci: int = variant / 2
 	var material := BuildingMaterials.house(ci)
+	if material == "church":
+		_church_roof(rng, ci)
+		return
 	var wall_col := BuildingMaterials.house_color(ci, HOUSE_COLORS[ci % HOUSE_COLORS.size()])
 	var trim: Color = HOUSE_TRIMS[ci % HOUSE_TRIMS.size()]
 	var h := size.y
@@ -1401,12 +2100,18 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 	var k := _kit(rng).at_point(Vector3.ZERO, Vector3(0, 0.0 if long_x else PI * 0.5, 0))
 	k.sink.cast_all = true
 	if variant % 2 == 0:
-		var tint := Res.vary(Color(0.5, 0.22, 0.14), 0.12, rng) if rng.randf() < 0.75 else Color(0.36, 0.34, 0.32)
+		# (the same draws as ever: clay or not, and how far its shade is off;
+		# which clay or slate it is comes from a stream of its own)
+		var clay := rng.randf() < 0.75
+		var shade := rng.randf_range(-0.12, 0.12) if clay else 0.0
+		var kind_rng := RandomNumberGenerator.new()
+		kind_rng.seed = rng.seed ^ 0x2007c0
+		var tint := BuildingMaterials.roof_color(clay, shade, kind_rng)
 		var barn := material == "timber"
 		var covering := "roof_sheet" if barn else "roof_tile"
 		if barn:
-			# rusted, galvanised or painted red sheet
-			tint = [Color(0.45, 0.3, 0.22), Color(0.52, 0.53, 0.52), Color(0.44, 0.17, 0.13)][posmod(ci / BuildingMaterials.HOUSE.size() + 1, 3)]
+			# rusted, galvanised or painted red sheet, dulled by the weather
+			tint = BuildingMaterials.BARN_SHEET[posmod(ci / BuildingMaterials.HOUSE.size() + 1, 3)]
 		var end := L * 0.5 - 0.3
 		# its form: a third of them hipped, pitched anywhere from 24 to 36
 		# degrees (a stream of its own, so tints and chimneys stay as they were)
@@ -1418,6 +2123,10 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			pitch += 4.0
 		var fx := L * 0.5 + 0.2
 		var fz := W * 0.5 + 0.2
+		roof_pitch = pitch
+		roof_hipped = hipped
+		_roof_form = {"L": L, "W": W, "h": h, "pitch": pitch, "fx": fx, "fz": fz, "hipped": hipped, "barn": barn,
+			"ang": 0.0 if long_x else PI * 0.5, "th": BuildingMaterials.value(covering, "thickness", 0.09)}
 		var ropts := {"gable_material": material, "gable_col": wall_col, "trim": trim, "gable_inset": -0.07, "gutters": true,
 			"downpipes": [[end, 1.0], [-end, -1.0]], "wall_face": fz, "wall_face_x": fx}
 		var rise := BuildingRoofs.hip(k, L, W, h, pitch, 0.35, covering, tint, ropts) if hipped else BuildingRoofs.gable(k, L, W, h, pitch, 0.35, covering, tint, ropts)
@@ -1448,6 +2157,7 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			foot -= 0.05
 			BuildingFittings.chimney(k, Vector3(cx, foot, z), Vector2(0.6, 0.6), h + rise + 0.5,
 				"brick", Res.vary(BuildingMaterials.color("brick"), 0.08, rng))
+			_roof_form["chimney"] = Vector3(cx, 0, z)
 			if aerial:
 				# lashed to the stack, above its pots
 				BuildingFurnishings.aerial(k, Vector3(cx + 0.33, h + rise - 0.4, z), 1.9, life.randf_range(-0.6, 0.6))
@@ -1503,9 +2213,10 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 			for m in 15 * 15:
 				mottle.append(growth.randf())
 			var face := k.moved(Transform3D(Basis(Vector3.RIGHT, side * deg_to_rad(pitch)), Vector3(lx, BuildingRoofs.underside(fx, fz, h, pitch, lx, lz, hipped) + lift, lz))).at_point(Vector3.ZERO, Vector3(-PI * 0.5, 0, 0))
-			BuildingWeathering.stain(face, Rect2(-r, -r * 0.8, r * 2.0, r * 1.6), "roof_tile", on_tile, Color(1.3, 1.6, 1.2) if pale else Color(0.45, 0.68, 0.3), func(u: float, v: float) -> float:
+			BuildingWeathering.stain(face, Rect2(-r, -r * 0.8, r * 2.0, r * 1.6), "roof_tile", on_tile, Color(1.2, 1.4, 1.12) if pale else Color(0.6, 0.72, 0.42), func(u: float, v: float) -> float:
 				var q := Vector2(u * 2.0 - 1.0, v * 2.0 - 1.0)
-				var d := q.length() * (1.0 + 0.22 * sin(q.angle() * 4.0 + ph) + 0.1 * sin(q.angle() * 9.0 - ph))
+				# (its edge wanders in a few uneven lobes: no two alike, never a star)
+				var d := q.length() * (1.0 + 0.17 * sin(q.angle() * 2.0 + ph) + 0.11 * sin(q.angle() * 3.0 - ph * 1.7) + 0.06 * sin(q.angle() * 7.0 + ph * 0.6))
 				# (in clumps, thickest in the middle)
 				var spots := 0.35 + 0.65 * mottle[roundi(v * 14.0) * 15 + roundi(u * 14.0)]
 				return clampf((1.0 - d) * 1.6, 0.0, 1.0) * spots, 14, 14)
@@ -1513,7 +2224,14 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 		# (years of weather on it, from a stream of its own)
 		var flat_wear := RandomNumberGenerator.new()
 		flat_wear.seed = rng.seed ^ 0x6a7e5d
-		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear})
+		roof_pitch = 0.0
+		_roof_form = {"flat": true, "L": L, "W": W, "h": h, "ang": 0.0 if long_x else PI * 0.5}
+		# (what it's covered in, from a stream of its own too: the wing's
+		# roof the house's)
+		var covering := RandomNumberGenerator.new()
+		covering.seed = rng.seed ^ 0xdec4
+		BuildingRoofs.flat(k, L, W, h, {"material": material, "col": wall_col, "wall_face": W * 0.5 + 0.2, "hatch": rng.randf() < 0.3, "wear": flat_wear,
+			"deck": BuildingMaterials.deck_color(covering)})
 		var top := h + 0.2
 		# what's up there: a water tank, an air conditioner, a dish
 		if rng.randf() < 0.65:
@@ -1526,6 +2244,19 @@ func _roof_model(rng: RandomNumberGenerator) -> void:
 
 
 var _roof_t := 0.0
+## A house roof's form as its model was built, for what it keeps dry
+## (RainCover): its pitch (degrees; 0 flat, -1 not built yet) and whether
+## it's hipped rather than gabled.
+var roof_pitch := -1.0
+var roof_hipped := false
+## (view) The roof's form as its model was built, for the snow on it
+## (SnowRoof.cap): its size, pitch, the kit's turn, its chimney.
+var _roof_form := {}
+## (view) The roof's snow as Structure._snow_roof dressed it: its snow_k
+## (how much it holds, how warm the house is, its chimney; Mats SURFACE),
+## and the lip along its eaves (SnowRoof).
+var _snow_k := Vector4.ZERO
+var _snow_cap: MeshInstance3D
 
 
 ## A roof is hidden while anyone is inside (so you can see your men), and
@@ -1543,6 +2274,39 @@ func _roof_view(dt: float) -> void:
 			break
 	if model.visible == inside:
 		model.visible = not inside
+	if world.atmo and world.atmo.snow_cover > 0.0 and not _roof_form.is_empty() and not burnt and (_snow_cap == null or not is_instance_valid(_snow_cap) or _snow_cap.get_parent() != model) and SnowRoof.turn():
+		_snow_roof()
+
+
+## (view) Dresses the roof for the snow, the first time it lies on it: how
+## much this one holds (one roof more than the next; a barn's cold, so a full
+## coat), whether the house under it is lived in and warm (more than half
+## are: its snow thaws in wet patches and bare round the chimney, icicles
+## hang from its eaves), and the snow's lip along the eaves (SnowRoof).
+func _snow_roof() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = ((look if look > 0 else eid) * 7919 + variant) ^ 0x5a0f11
+	var barn: bool = _roof_form.get("barn", false)
+	var heat := 0.0
+	if not barn and not _roof_form.get("cold", false) and rng.randf() < 0.55:
+		heat = rng.randf_range(0.5, 1.0)
+	var carry := 1.3 if barn else rng.randf_range(0.95, 1.25)
+	var stack := Vector2(10000, 10000)
+	if _roof_form.has("chimney") and heat > 0.0:
+		var at: Vector3 = position + Basis(Vector3.UP, yaw) * (Basis(Vector3.UP, float(_roof_form.ang)) * (_roof_form.chimney as Vector3))
+		stack = Vector2(at.x, at.z)
+	_snow_k = Vector4(carry, -(1.0 + heat * 0.99), stack.x, stack.y)
+	for mi in Mats.snow_parts(model):
+		Mats.set_inst(mi, &"snow_k", _snow_k)
+	if _snow_cap and is_instance_valid(_snow_cap):
+		_snow_cap.queue_free()
+	_snow_cap = MeshInstance3D.new()
+	_snow_cap.mesh = SnowRoof.cap(_roof_form, heat, carry, yaw, rng)
+	_snow_cap.material_override = SnowRoof.material()
+	_snow_cap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_snow_cap.rotation.y = float(_roof_form.ang)
+	model.add_child(_snow_cap)
+	Mats.set_inst(_snow_cap, &"snow_k", _snow_k)
 
 
 ## Lays the model at its tilt, resting on the ground (on its side, on its roof...).
@@ -1656,12 +2420,7 @@ func _ruin(wk: VehicleModels, rng: RandomNumberGenerator, blades := 0) -> void:
 	if not tracked and not _heli_wreck() and not wk.wheels.is_empty():
 		var axle := 0.0
 		for w: Node3D in wk.wheels:
-			var xf := w.transform
-			var up := w.get_parent() as Node3D
-			while up != null and up != wk.root:
-				xf = up.transform * xf
-				up = up.get_parent() as Node3D
-			axle += xf.origin.y
+			axle += _in_root(wk, w).origin.y
 		axle /= float(wk.wheels.size())
 		# (the rim is about half the tyre: the hull drops by the rest, unevenly)
 		wk.root.position.y -= clampf(axle * 0.42, 0.0, 0.6)
@@ -1673,32 +2432,42 @@ func _ruin(wk: VehicleModels, rng: RandomNumberGenerator, blades := 0) -> void:
 		# A vehicle that brews up burns out end to end: the burn reaches the
 		# hull's farthest corner from where the fire started, whichever end that is.
 		var from := _burn_source if _burn_source.is_finite() else _wreck_engine_deck
-		var far := 0.0
+		var ends: Array[Vector3] = []
 		for cx: float in [-0.5, 0.5]:
 			for cy: float in [0.0, 1.0]:
 				for cz: float in [-0.5, 0.5]:
-					far = maxf(far, ((Vector3(cx * size.x, cy * size.y, cz * size.z) - from) * Vector3(1.0, 0.74, 1.0)).length())
+					ends.append(Vector3(cx * size.x, cy * size.y, cz * size.z))
+		if wk.gun_tip:
+			ends.append(wk.root.transform * _in_root(wk, wk.gun_tip).origin)  # (and out along the gun: its paint burns off too)
+		var far := 0.0
+		for e in ends:
+			far = maxf(far, ((e - from) * Vector3(1.0, 0.74, 1.0)).length())
 		_wreck_reach = clampf(far * 1.12 / 2.56, 1.0, 4.5)
 		_wreck_soot = wk.scorch_finish()
 	var debris := Node3D.new()
 	debris.name = "Debris"
 	model.add_child(debris)
 	if world.fx and world.fx.vfx and world.fx.vfx.scorch_tex:
-		# the ground it burnt on, black and ashen
-		var burnt_ground := Decal.new()
-		burnt_ground.texture_albedo = world.fx.vfx.scorch_tex
-		burnt_ground.cull_mask = Res.GROUND_DECAL_LAYER
-		var across := maxf(size.x, size.z) * 1.7
-		burnt_ground.size = Vector3(across, 4.0, across)
-		burnt_ground.upper_fade = 0.3
-		burnt_ground.lower_fade = 0.3
-		burnt_ground.rotation.y = rng.randf() * TAU
-		burnt_ground.modulate = Color(1, 1, 1, 0.92)
-		debris.add_child(burnt_ground)
-	if world.atmo and world.atmo.grass:
-		world.atmo.grass.scar(position, maxf(size.x, size.z) * 0.8, 0.9)  # (and the grass round it burnt flat)
+		# the ground it burnt on, black and ashen a few metres out all round
+		# it (a scorch's black heart is about half its size): two laid one
+		# over the other, the blacker the nearer the hull
+		for grow: float in [1.8, 1.3]:
+			var burnt_ground := Decal.new()
+			burnt_ground.texture_albedo = world.fx.vfx.scorch_tex
+			burnt_ground.cull_mask = Res.GROUND_DECAL_LAYER
+			burnt_ground.size = Vector3(size.x * grow + 9.0 * (grow - 0.8), 4.0, size.z * grow + 9.0 * (grow - 0.8))
+			burnt_ground.upper_fade = 0.3
+			burnt_ground.lower_fade = 0.3
+			burnt_ground.rotation.y = rng.randf_range(-0.25, 0.25) + (PI if rng.randf() < 0.5 else 0.0)
+			burnt_ground.modulate = Color(1, 1, 1, 0.95)
+			debris.add_child(burnt_ground)
 	var spread := maxf(3.5, size.z * 0.65)
 	var turn := Basis(Vector3.UP, rotation.y)
+	if world.atmo and world.atmo.grass:
+		# and the grass round it burnt flat, all along it
+		var along := turn * Vector3(0, 0, size.z * 0.3)
+		for end: float in [-1.0, 0.0, 1.0]:
+			world.atmo.grass.scar(position + along * end, size.x * 0.5 + 4.5, 1.5)
 	for i in clampi(int(size.z * 0.6), 3, 8) + blades:
 		# lengths of broken blade, and torn, crumpled bits of skin and kit
 		# half sunk into the ground (one end up where they dug in)
@@ -1716,6 +2485,127 @@ func _ruin(wk: VehicleModels, rng: RandomNumberGenerator, blades := 0) -> void:
 		debris.add_child(mi)
 		Mats.apply(mi, "burnt_debris", Color(1, 1, 1))
 	_level_debris()
+
+
+## `n`'s place in the model, as a transform in `wk.root`'s space.
+static func _in_root(wk: VehicleModels, n: Node3D) -> Transform3D:
+	var xf := n.transform
+	var up := n.get_parent() as Node3D
+	while up != null and up != wk.root:
+		xf = up.transform * xf
+		up = up.get_parent() as Node3D
+	return xf
+
+
+## The box round everything drawn under `n`, in its own space.
+static func _bounds_in(n: Node3D, orientation := Basis.IDENTITY) -> AABB:
+	var box := AABB()
+	var first := true
+	for mi: MeshInstance3D in n.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null or mi.has_meta(&"shadow_proxy"):
+			continue
+		var xf := mi.transform
+		var up := mi.get_parent() as Node3D
+		while up != null and up != n:
+			xf = up.transform * xf
+			up = up.get_parent() as Node3D
+		xf = Transform3D(orientation, Vector3.ZERO) * xf
+		# Models batch many pieces into one mesh. Its box still contains empty
+		# corners, so ground contact must use its vertices, not its box corners.
+		for surface in mi.mesh.get_surface_count():
+			var vertices: PackedVector3Array = mi.mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
+			for vertex: Vector3 in vertices:
+				var point := xf * vertex
+				box = AABB(point, Vector3.ZERO) if first else box.expand(point)
+				first = false
+	return box
+
+
+## Her ammunition went up: the blast lifted the turret clean off its ring and
+## threw it down a few metres away, upside down, on its side or dug in nose
+## first, its gun bent. Where it sat there's a black hole in the hull roof.
+## It was burning when it went, so the burn reaches it where it fell.
+func _blow_turret(wk: VehicleModels, rng: RandomNumberGenerator) -> void:
+	var t := wk.turret
+	var debris := model.get_node_or_null("Debris") as Node3D
+	if t == null or debris == null:
+		return
+	# Thin radio whips snap in the cook-off; they cannot prop up inverted armour.
+	for whip: Node3D in wk.antennas:
+		if t.is_ancestor_of(whip):
+			whip.scale.y *= 0.12
+			whip.rotation.x += 0.55
+	var seat := _in_root(wk, t)
+	var box := _bounds_in(t)
+	var aim := seat.basis.inverse() * (_in_root(wk, wk.gun_tip).origin - seat.origin) if wk.gun_tip else Vector3.ZERO  # (the gun, in the turret's own space)
+	# the ring it sat on, gaping and black
+	var ring := clampf(minf(box.size.x, box.size.z) * 0.34, 0.45, 1.15)
+	var hole := MeshInstance3D.new()
+	hole.mesh = Res.cyl(ring, ring, 0.1, 20)
+	hole.position = seat.origin + Vector3(0, 0.02, 0)
+	hole.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	wk.root.add_child(hole)
+	Mats.apply(hole, "burnt", Color(0.12, 0.11, 0.1))
+	if wk.gun_mount:
+		wk.gun_mount.rotation.x = rng.randf_range(-0.45, 0.25)  # (bent up or down where it hit)
+	t.get_parent().remove_child(t)
+	debris.add_child(t)
+	# thrown off to one side, a little ahead or behind
+	var side := -1.0 if rng.randf() < 0.5 else 1.0
+	var gap := rng.randf_range(0.8, 2.8)
+	var spot := Vector3(0.0, 0.0, rng.randf_range(-0.35, 0.25) * size.z)
+	var fate := rng.randf()
+	var tilt_at := Vector3(rng.randf_range(-0.12, 0.12), rng.randf() * TAU, PI + rng.randf_range(-0.18, 0.18))  # upside down
+	if fate >= 0.8:
+		tilt_at = Vector3(rng.randf_range(0.3, 0.55), tilt_at.y, rng.randf_range(-0.3, 0.3))  # dug in, nose first
+	elif fate >= 0.45:
+		tilt_at = Vector3(rng.randf_range(-0.2, 0.2), tilt_at.y, side * rng.randf_range(1.15, 1.45))  # on its side
+	var b := Basis.from_euler(tilt_at)
+	if (b * aim).x * side < -1.0:
+		# (its gun points away from the hull, not back across it)
+		tilt_at.y += PI
+		b = Basis.from_euler(tilt_at)
+	# Orient the visible geometry before combining its bounds. Rotating the one large
+	# turret box includes empty corners below the gun and leaves it floating.
+	var resting_box := _bounds_in(t, b)
+	var lo := resting_box.position.y
+	var inner := resting_box.position.x if side > 0.0 else -resting_box.end.x
+	spot.x = side * (size.x * 0.5 + gap - inner)
+	var turn := Basis(Vector3.UP, rotation.y)
+	spot.y = world.ground_y(position + turn * spot) - position.y - lo - 0.18  # (bedded into the ground a little)
+	t.transform = Transform3D(b, spot)
+	_loose_turret = t
+	_turret_seat = debris.transform.affine_inverse() * wk.root.transform * seat
+	_turret_rest = t.transform
+	# the burn reaches it where it lies
+	var from := _burn_source if _burn_source.is_finite() else _wreck_engine_deck
+	if from.is_finite() and _wreck_soot:
+		var lie := (debris.transform * t.transform).origin  # (in the model's space, as `from` is)
+		var reach := ((lie - from) * Vector3(1.0, 0.74, 1.0)).length() + box.size.length() * 0.5
+		_wreck_reach = maxf(_wreck_reach, clampf(reach * 1.12 / 2.56, 1.0, 4.5))
+
+	_update_turret_pose()
+
+
+## Evaluate from recorded battle time, so rewinding and late model builds
+## reconstruct the same pose without replaying a physics simulation.
+func _update_turret_pose() -> void:
+	if not is_instance_valid(_loose_turret):
+		return
+	var age := maxf(0.0, world.time - float(wreck_finish.get("since", -100.0)))
+	if age >= TURRET_FLIGHT + TURRET_SETTLE:
+		_loose_turret.transform = _turret_rest
+		return
+	var u := clampf(age / TURRET_FLIGHT, 0.0, 1.0)
+	var pose := _turret_seat.interpolate_with(_turret_rest, u)
+	# A short heavy arc clears the ring, then the hull. A single low rebound
+	# loses its energy quickly rather than making armour look weightless.
+	pose.origin.y += 4.0 * 3.2 * u * (1.0 - u)
+	if age > TURRET_FLIGHT:
+		var settle := (age - TURRET_FLIGHT) / TURRET_SETTLE
+		pose.origin.y += sin(settle * PI) * 0.22 * (1.0 - settle)
+		pose.basis = _turret_rest.basis * Basis(Vector3.FORWARD, sin(settle * TAU) * 0.12 * (1.0 - settle))
+	_loose_turret.transform = pose
 
 
 ## The clients fly the model from where it was to where it is now.
@@ -1820,13 +2710,55 @@ func _destroyed(quiet := false) -> void:
 		house_dark()  # a wall down or the roof gone: the rest of the house goes dark
 	if not quiet:
 		world.fx_event([Fx.DEBRIS, position + Vector3(0, 1.0, 0), _main_color(), 14])
-	if not quiet and size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent"]:
+	if not quiet and size.x > 3.0 and skind in ["house_wall", "tall_wall", "barracks", "factory", "research", "concrete_wall", "medic_tent", "church"]:
 		world.fx_event([Fx.EXPLODE, position + Vector3(0, 0.5, 0), 0.6])
 		var rub := Vector3(size.x * 0.8, 0, 1.6 if size.z < 2.0 else size.z * 0.6)
 		world.call_deferred("spawn", "structure", {"skind": "rubble", "pos": position, "yaw": yaw, "size": rub})
 	if team >= 0 and is_player_building():
 		world.send_msg(team, "alert", "%s destroyed at %s." % [display_name(), Defs.grid_ref(position)], position)
+	if skind == "house_wall":
+		_bring_down_floors()
 	world.despawn(self)
+
+
+## A house wall knocked out brings down the storey drawn over it, and the
+## roof that carries it, rather than leave them standing on air.
+func _bring_down_floors(rammed := false) -> void:
+	for st: Structure in world.structures_near(position, 16.0):
+		if st.gone or st.skind != "roof" or (not rammed and st.size.y <= BuildingStoreys.GROUND + 0.5):
+			continue
+		var half := Vector2(st.size.x * 0.5 + 0.3, st.size.z * 0.5 + 0.3)
+		if Defs.point_in_obb(Vector2(position.x, position.z), Vector2(st.position.x, st.position.z), half, st.yaw):
+			st.call_deferred("_fall_in", rammed)
+
+
+## A roof (and the storey under it) falling in: the debris, and it's gone.
+func _fall_in(rammed := false) -> void:
+	if gone:
+		return
+	world.stat("storey_fell")
+	world.fx_event([Fx.DEBRIS, position + Vector3(0, size.y * 0.5, 0), _main_color(), 18])
+	if rammed:
+		world.fx_event([Fx.SOUND, "thud", position])
+	else:
+		world.fx_event([Fx.EXPLODE, position + Vector3(0, 1.0, 0), 0.8])
+	world.despawn(self)
+
+
+## A second storey under the roof of a house that has one (its eaves above
+## the ground floor's): see BuildingStoreys. From a stream of its own, so the
+## roof on it is as it would be on one storey.
+func _storey_model(rng: RandomNumberGenerator) -> void:
+	var ci: int = variant / 2
+	var material := BuildingMaterials.house(ci)
+	var wall_col := BuildingMaterials.house_color(ci, HOUSE_COLORS[ci % HOUSE_COLORS.size()])
+	var up := RandomNumberGenerator.new()
+	up.seed = rng.seed ^ 0x5702e7
+	var k := _kit(up)
+	k.sink.cast_all = true
+	# (its lamps out with the rest of the house's when it goes dark)
+	if BuildingStoreys.upper(k, size.x, size.z, BuildingStoreys.GROUND, size.y, material, wall_col, HOUSE_TRIMS[ci % HOUSE_TRIMS.size()], up, not dark):
+		_lit_glass = true
 
 
 ## Builders and repairers call this. amount = work-seconds.
@@ -2048,9 +2980,10 @@ func queue_research(peer: int, item: String) -> void:
 	var def: Dictionary = Defs.UPGRADES[item]
 	if not team in def.teams or world.rules.has_upgrade(team, item) or queue.size() >= 4:
 		return
-	if def.has("requires") and not world.rules.has_upgrade(team, String(def.requires)):
-		world.rules.notify(peer, team, "%s needs %s first." % [def.name, Defs.item_name(String(def.requires))])
-		return
+	for rq in Defs.requires_of(item):
+		if not world.rules.has_upgrade(team, String(rq)):
+			world.rules.notify(peer, team, "%s needs %s first." % [def.name, Defs.item_name(String(rq))])
+			return
 	for q in queue:
 		if q.item == item:
 			return
@@ -2334,6 +3267,7 @@ func _process(_dt: float) -> void:
 func _view_process(_dt: float) -> void:
 	if not world.has_view or not view_active or model == null:
 		return
+	_update_turret_pose()
 	if _wreck_soot and world.time - float(wreck_finish.since) < VehicleModels.BURN_SPREAD:
 		_update_wreck_soot()
 	if burn > 0.0 or _fire_fx:
@@ -2401,7 +3335,10 @@ func fire_kind() -> String:
 		"low_wall":
 			return "hedge" if variant % 3 == 1 else ""
 		"roof":
-			return "roof" if variant % 2 == 0 else ""  # pitched roofs are tiles on timber; flat ones are concrete
+			if variant % 2 != 0:
+				return ""  # flat roofs are concrete
+			# pitched roofs are tiles on timber; a church's slate on great oak trusses
+			return "church_roof" if BuildingMaterials.house(variant / 2) == "church" else "roof"
 		"bunker":
 			return "log_bunker" if team == 1 else ""
 		"ammo_cache":
@@ -2444,6 +3381,7 @@ func char_out() -> void:
 	net_dirty = true
 	world.push_props(self, {"burnt": true, "variant": variant})
 	world.stat("burnt_out")
+	_probes_changed()  # (a tree's crown gone: the sky comes through)
 	if world.has_view and model:
 		_rebuild_model()
 
@@ -2556,6 +3494,7 @@ func _burn_view() -> void:
 			_fire_fx = world.fx.vfx.make_fire(box[1], smoke, skind == "wreck" and _wreck_engine_deck.is_finite())
 			world.fx.vfx.add_child(_fire_fx)
 			_fire_fx.global_transform = Transform3D(Basis(Vector3.UP, yaw), to_global(box[0]))
+			_fire_fx.set_meta(&"melts", self)  # (its heat melts the snow off it: SnowMelt)
 		world.fx.vfx.set_fire(_fire_fx, burn)
 	elif _fire_fx and was > 0:
 		# out: it smoulders a while, then the smoke thins away
@@ -2563,10 +3502,33 @@ func _burn_view() -> void:
 		_fire_fx = null
 
 
+## (view) In the snow, the heat of its own fire melting the snow off it
+## (`melted` 1: all of it): a burning roof or wreck goes bare, and whitens
+## again only slowly, as the ground round it does (SnowMelt).
+func melt_snow(melted: float) -> void:
+	if model == null or not is_inside_tree():
+		return
+	if world and world.structure_view:
+		world.structure_view.unbatch(self)
+	# (a roof keeps what the snow made of it, Structure._snow_roof: only how
+	# much is left on it goes down)
+	var k := _snow_k if _snow_k != Vector4.ZERO else Vector4(1.0, 0.0, 10000.0, 10000.0)
+	k.x *= 1.0 - melted
+	for mi in Mats.snow_parts(model):
+		Mats.set_inst(mi, &"snow_k", k)
+	if _snow_cap and is_instance_valid(_snow_cap):
+		Mats.set_inst(_snow_cap, &"snow_k", k)
+
+
 ## (view) While it burns it chars, and the char glows with embers.
 func _fire_view(dt: float) -> void:
 	if burn > 0.0:
-		_char = minf(1.0, _char + dt * burn / 32.0)
+		# A wreck (or a car the fire has already gutted) was built burnt out:
+		# rust and ash with soot along its flanks. The fire on it only
+		# blackens it in patches, where its embers glow, instead of painting
+		# the whole shell black again.
+		var most := 0.3 if skind == "wreck" or (skind == "car" and burnt) else 1.0
+		_char = minf(most, _char + dt * burn / 32.0)
 	if not _wreck_soot and (absf(_char - _char_set) > 0.02 or absf(burn - _glow_set) > 0.04):
 		_apply_char(burn)
 	elif _wreck_soot and (absf(burn - _glow_set) > 0.04 or (burn <= 0.0 and _glow_set > 0.0)):
@@ -2623,24 +3585,29 @@ func _dress_vehicle(wk: VehicleModels) -> void:
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = eid * 7919 + variant  # (as _build_model's)
+	var blown := false
 	if wk.turret and is_finite(wreck_turret_yaw):
 		wk.pose_skirts(bent_skirts)
 		wk.turret.rotation.y = wreck_turret_yaw
 		if wk.gun_mount:
 			wk.gun_mount.rotation.x = -0.095
+		blown = turret_off
 	elif wk.turret:
 		wk.turret.rotation = Vector3(rng.randf_range(-0.12, 0.08), rng.randf_range(-1.4, 1.4), rng.randf_range(-0.08, 0.08))
-		if rng.randf() < 0.3:
-			wk.turret.position += Vector3(rng.randf_range(-3.0, 3.0), -1.0, rng.randf_range(1.0, 3.0))
-			wk.turret.rotation += Vector3(rng.randf_range(-0.5, 0.5), 0, rng.randf_range(-0.6, 0.6))
+		# (an old hulk on the map: some had theirs blown off)
+		blown = turret_off or (vk == "" and rng.randf() < 0.3)
 	if not is_finite(wreck_turret_yaw):
 		wk.root.rotation.z = rng.randf_range(-0.04, 0.04)
 	if wk.engine_deck.is_finite():
 		_wreck_engine_deck = wk.root.transform * wk.engine_deck
+	if blown:
+		_burn_source = wk.root.transform * (_in_root(wk, wk.turret).origin + Vector3(0, 0.3, 0))  # (the ammunition went up under it)
 	var lost := 0
 	if wk.rotor and _heli_wreck():
 		lost = _break_up(wk, rng)
 	_ruin(wk, rng, lost)
+	if blown:
+		_blow_turret(wk, rng)
 
 
 ## (view) Lays the char (and the glow of the embers in it) over the model:
@@ -2838,7 +3805,7 @@ func _mk(mesh: Mesh, kind: String, p: Vector3, rot := Vector3.ZERO, col = null, 
 ## their models that end up merged straight into the merged meshes (see
 ## Mats.Bake), with the surfaces _skin would have given them. The rest are made
 ## as nodes as ever: the door leaves (they swing), anything glassy or glowing.
-const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof"]
+const BAKED := ["house_wall", "low_wall", "floor", "rubble", "crates", "roof", "depot", "medic_tent", "church"]
 var _bake: Mats.Bake = null
 
 
@@ -2888,15 +3855,21 @@ func _skinned(mesh: Mesh, sm: StandardMaterial3D, p: Vector3, rot: Vector3, scl:
 func _build_model() -> void:
 	model = Node3D.new()
 	add_child(model)
-	_bake = Mats.Bake.new() if skind in BAKED else null
+	# (and the concrete bunker: its stains, which merge_static would leave as
+	# a draw call each, go into its merged meshes with the rest)
+	_bake = Mats.Bake.new() if skind in BAKED or (skind == "bunker" and team != 1) else null
 	_body = []
 	var rng := RandomNumberGenerator.new()
-	rng.seed = eid * 7919 + variant
+	rng.seed = (look if look > 0 else eid) * 7919 + variant
 	var bags: Array = []
 	var works_keep: Array = []
 	for p in parts:
-		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town"] or skind in WorksModels.OWN_KINDS:
+		if skind in ["watchtower", "tree", "trench", "car", "wreck", "low_wall", "roof", "bridge", "dock", "town", "church", "crates"] or skind in WorksModels.OWN_KINDS:
 			break
+		if skind == "bunker" and team != 1:
+			break  # (the pillbox draws its walls from its parts itself, as one pour)
+		if skind == "fob" and p.s.y > 2.0:
+			continue  # (the command post: HESCO, drawn below)
 		if p.color == C_SAND and p.s.y <= 1.3 and minf(p.s.x, p.s.z) <= 1.0:
 			bags.append(p)
 			continue
@@ -2905,10 +3878,14 @@ func _build_model() -> void:
 		var col: Color = p.color
 		if skind == "house_wall":
 			col = BuildingMaterials.house_color(int(size.y), col)
-		if skind in ["house_wall", "rubble", "crates"]:
+		if skind in ["house_wall", "rubble"]:
 			col = Res.vary(col, 0.05, rng)
 		if skind == "rubble":
 			continue  # (drawn as a heap, below)
+		if skind == "depot":
+			continue  # (its containers and command post stand where its parts are, below)
+		if skind == "medic_tent":
+			continue  # (its tent stands where its part is, below)
 		if skind == "house_wall":
 			# (what it was tinted, for stains to fade into: see _tone)
 			var drawn := Res.mat(col).albedo_color
@@ -2935,11 +3912,11 @@ func _build_model() -> void:
 						var smat := Res.mat(Res.vary(hc, 0.05, rng).lightened(0.06))
 						_skinned(smesh, smat, Vector3(x, 1.2, rng.randf_range(-0.15, 0.15)), Vector3.ZERO, Vector3(0.8, 1.3, 0.8), true)
 			else:
-				# a garden wall of field stone under a saddleback coping, or of
-				# brick on a darker base course under a brick-on-edge coping
+				# a garden wall of field stone finished with stones on edge, or
+				# of brick on a darker base course under a brick-on-edge coping
 				_bx(p.p, p.s, p.color)
 				var lk := _kit(rng)
-				var lm := "brick" if variant % 3 == 2 else "stone"
+				var lm := "brick" if variant % 3 == 2 else "fieldstone"
 				BuildingWalls.coping(lk, p.s.x, p.s.z, p.s.y, lm, p.color)
 				var wear := RandomNumberGenerator.new()
 				wear.seed = rng.seed ^ 0x77ea7e12
@@ -2960,12 +3937,14 @@ func _build_model() -> void:
 			BuildingWire.topping(tk, p.s.x, top, 1.0, 3, "clean" if rng.randf() < 0.5 else "rust")
 		"house_wall":
 			_house_wall_detail(rng)
+		"church":
+			_church_model(rng)
 		"rubble":
 			# a heap of broken masonry over the boxes it covers with
 			BuildingWeathering.heap(_kit(rng), size.x, maxf(1.0, size.z), rng)
 		"floor":
 			# a rug in most houses' main room, lying flat
-			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2:
+			if size.x > 3.0 and size.z > 3.0 and rng.randf() < 0.65 and variant != 2 and variant != 3:
 				BuildingFurnishings.rug(_kit(rng), Vector3(rng.randf_range(-0.6, 0.6), 0.06, rng.randf_range(-0.5, 0.5)),
 					Vector2(minf(size.x * 0.4, 3.0), minf(size.z * 0.4, 2.2)), BuildingFurnishings.FABRICS[rng.randi() % BuildingFurnishings.FABRICS.size()])
 			# a ruin: its roof burned and fell in on the floor
@@ -2974,18 +3953,38 @@ func _build_model() -> void:
 			# a barn: straw over its floor
 			if variant == 2:
 				BuildingWeathering.straw(_kit(rng), size, 0.06, rng)
+			# a church: flagstones, pews, the altar
+			if variant == 3:
+				_church_floor(rng)
+			# a lived-in room big enough for it: the table and its chairs (a
+			# stream of its own, so the rug lies where it did)
+			var home := RandomNumberGenerator.new()
+			home.seed = rng.seed ^ 0x7ab1e5
+			if variant == 0 and size.x > 4.5 and size.z > 4.5 and home.randf() < 0.75:
+				BuildingInteriors.table(_kit(home), size, BuildingInteriors.WOODS[home.randi() % BuildingInteriors.WOODS.size()], home)
+			# a shop's: its shelving, its counter, its stock
+			if variant == 3:
+				BuildingInteriors.shop(_kit(home), size, home, entry)
+			# a barn's: the hay, the stalls, the cart, the bench (clear of the
+			# wall its door is in)
+			if variant == 2:
+				BuildingFarm.barn(_kit(home), size, entry, home)
 		"bridge":
 			_bridge_model(rng)
 		"dock":
 			DockModel.build(model, team, size)
 		"roof":
+			if size.y > BuildingStoreys.GROUND + 0.5:
+				_storey_model(rng)
 			_roof_model(rng)
 		"crates":
-			for p in parts:
-				_bx(p.p + Vector3(0, p.s.y * 0.5 + 0.01, 0), Vector3(p.s.x * 0.9, 0.04, p.s.z * 0.9), C_WOOD.darkened(0.3), p.r)
+			# stores stacked as they came off the lorry: framed crates and ammunition
+			# boxes, each load on its pallet, inside the boxes the parts give for cover
+			BuildingCargo.stack(_kit(rng), variant, rng)
 		"car":
 			# parked cars: the island's own (hatchbacks, SUVs, pickups, 4x4s)
-			var civ_key: String = ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
+			# (variant 5: a farm's tractor, parked in its yard; 6 on, burnt out)
+			var civ_key: String = "tractor" if variant % 6 == 5 else ["hatchback", "suv", "offroad", "mb4wd", "hatchback_sport"][variant % 5]
 			if civ_key in VmCiv.KEYS:
 				_vehicle_model(civ_key, -1, eid, variant >= 6)
 			else:
@@ -2997,19 +3996,19 @@ func _build_model() -> void:
 		"tree":
 			tree_model(model, eid, variant)
 		"fob":
-			# command post: HESCO block under camouflage netting, radio mast, ammo
+			# command post: a square of tall HESCO cells under a roof of sheets
+			# and bags (WorksModels.command_post), camouflage netting over it all,
+			# the radio mast, stores
+			WorksModels.command_post(model, rng, bags)
 			for x in [-2.2, 2.2]:
 				for z in [-2.2, 2.2]:
 					_mk(Res.cyl(0.06, 0.06, 3.6, 6), "wood_dark", Vector3(x * 1.6, 1.8, z * 1.6))
+			# (pitched over the corner poles and the block, a little higher in the
+			# middle, its skirts hanging down to head height all round)
 			var net := MeshInstance3D.new()
-			var nm := PlaneMesh.new()
-			nm.size = Vector2(8.6, 8.6)
-			nm.subdivide_width = 8
-			nm.subdivide_depth = 8
-			net.mesh = nm
-			net.material_override = Mats.netting()
-			Mats.set_inst(net, &"tint", Color(0.3, 0.34, 0.2) if team != 1 else Color(0.44, 0.39, 0.27))
-			net.position = Vector3(0, 3.45, 0)
+			net.mesh = WorksModels.net_mesh(eid % 2, 4.6, 3.52, 3.85, 3.45, 1.7)
+			net.material_override = Mats.netting_tent(9.2)
+			Camo.dress_net(net, 1 if team == 1 else 0)
 			model.add_child(net)
 			var fk := _kit(rng)
 			# the net's corner poles guyed out to pegs
@@ -3020,9 +4019,7 @@ func _build_model() -> void:
 			BuildingFittings.mast(fk, Vector3(-1.8, 0, -1.8), 9.0, 3, PI * 0.25, Color(0.25, 0.26, 0.27), 0.42, 2.4)
 			_flag = _box(Vector3(-1.1, 7.6, -1.8), Vector3(1.4, 0.8, 0.04), tc)
 			BuildingFittings.whip(fk, Vector3(1.8, 2.4, 1.6), 3.6)
-			for i in 4:
-				BuildingFittings.crate(fk, Vector3(-4.5 + i * 0.9, 0, 3.8), Vector3(0.8, 0.5, 0.5), Color(0.3, 0.33, 0.2), rng.randf_range(-0.1, 0.1), "paint")
-				BuildingFittings.crate(fk, Vector3(-4.5 + i * 0.9 + 0.1, 0.5, 3.8), Vector3(0.8, 0.4, 0.5), Color(0.28, 0.31, 0.19), rng.randf_range(-0.15, 0.15), "paint")
+			BuildingCargo.ammo_row(fk, Vector3(-4.6, 0, 3.8), 4, 3, rng)
 			for i in 3:
 				BuildingFittings.drum(fk, Vector3(3.6 + i * 0.65, 0, -3.9), Color(0.3, 0.33, 0.24), false, i * 0.7)
 			_mk(Res.box(Vector3(1.2, 0.9, 0.8)), "paint", Vector3(4.0, 0.45, 3.6), Vector3(0, 0.3, 0), Color(0.33, 0.35, 0.28))
@@ -3032,16 +4029,13 @@ func _build_model() -> void:
 			# tarp, fuel drums, and a flagpole flying the colours of whoever holds
 			# the place (the town's own while nobody does)
 			var tk := _kit(rng)
+			# (two pallet loads as BuildingCargo stacks them: boxes of rounds, and
+			# a crate with boxes on it or a tall crate; the rest under the tarp)
+			var top := INF
 			for ix in 2:
-				BuildingFittings.pallet(tk, Vector3(0.55 + (ix - 0.5) * 1.2, 0, 0.35), Vector2(1.18, 1.5))
-			for ix in 2:
-				for iz in 2:
-					for iy in 2:
-						var cp := Vector3(0.55 + (ix - 0.5) * 1.14, 0.13 + iy * 0.55, 0.35 + (iz - 0.5) * 0.69)
-						var cyaw := rng.randf_range(-0.05, 0.05)
-						BuildingFittings.crate(tk, cp, Vector3(1.08, 0.53, 0.64), Res.vary(C_WOOD, 0.06, rng), cyaw, "wood", iz == 0 or ix == 1, iy == 1)
-			_mk(Res.box(Vector3(1.32, 0.86, 1.12)), "canvas", Vector3(0.85, 1.67, 0.4), Vector3(0, 0.06, 0), Color(0.33, 0.36, 0.25))
-			_mk(Res.prism(Vector3(1.12, 0.18, 1.34)), "canvas", Vector3(0.85, 2.19, 0.4), Vector3(0, PI * 0.5 + 0.06, 0), Color(0.31, 0.34, 0.23))
+				top = minf(top, BuildingCargo.pallet_load(tk, Vector3(0.55 + (ix - 0.5) * 1.2, 0, 0.35), 1 if ix == 0 else (0 if rng.randf() < 0.5 else 2), rng))
+			_mk(Res.box(Vector3(1.32, 0.86, 1.12)), "canvas", Vector3(0.85, top + 0.43, 0.4), Vector3(0, 0.06, 0), Color(0.33, 0.36, 0.25))
+			_mk(Res.prism(Vector3(1.12, 0.18, 1.34)), "canvas", Vector3(0.85, top + 0.95, 0.4), Vector3(0, PI * 0.5 + 0.06, 0), Color(0.31, 0.34, 0.23))
 			var drum_cols := [Color(0.45, 0.17, 0.12), Color(0.2, 0.3, 0.42), Color(0.3, 0.33, 0.2), Color(0.62, 0.5, 0.18)]
 			for ix in 2:
 				for iz in 3:
@@ -3107,65 +4101,39 @@ func _build_model() -> void:
 			var hoist := BuildingFittings.flagpole(bk, Vector3(size.x * 0.4 - 0.55, 3.0 + rise - 0.1, 0), 1.3, Color(0.6, 0.6, 0.58), false)
 			_flag = _box(hoist + Vector3(0.52, -0.25, 0), Vector3(1.0, 0.6, 0.04), tc)
 		"factory":
-			# a sheeted shed on a concrete upstand under a slab, north lights
-			# along the roof, a roller shutter onto a loading apron, pipes on
-			# brackets down one side, extract cowls and the works chimney
+			# a sheeted shed on a brick dado under a slab, north lights along
+			# the roof, a roller shutter onto a loading apron between bollards,
+			# glazing high along the sides and back, gutters and downpipes,
+			# pipes on brackets down one side in and out of the wall, extract
+			# cowls and the boiler's steel stack for the works chimney
+			# (BuildingFactory has the walls and the chimney)
 			var fk := _kit(rng)
 			_mk(Res.box(Vector3(size.x + 0.4, 0.3, size.z + 0.4)), "concrete", Vector3(0, 5.15, 0), Vector3.ZERO, Color(0.48, 0.48, 0.46))
 			BuildingRoofs.sawtooth(fk.at_point(Vector3(0, 5.3, 0)), size.x * 0.9, size.z * 0.8, 3, 0.9, "roof_sheet", Color(0.45, 0.47, 0.45), Color(0.3, 0.32, 0.3), true)
-			var shed := Color(0.45, 0.46, 0.44)
-			for face in 4:
-				var out: Vector3 = [Vector3(0, 0, -1), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(1, 0, 0)][face]
-				var flen := size.x if face < 2 else size.z
-				var face_kit := fk.on_face(out * Vector3(size.x * 0.5, 0, size.z * 0.5), out)
-				BuildingWalls.face(face_kit, flen, 5.0, "corrugated", shed, [Rect2(-2.3, 0.0, 4.6, 4.45)] if face == 0 else [])
-				if face == 0:
-					BuildingOpenings.roller_door(face_kit, Vector3(0, 0, 0.035), Vector2(4.4, 3.9), Color(0.55, 0.5, 0.36))
+			BuildingFactory.walls(fk, size, Color(0.45, 0.46, 0.44), rng)
 			_mk(Res.box(Vector3(6.4, 0.12, 3.4)), "concrete_floor", Vector3(0, 0.06, -size.z * 0.5 - 1.7))
-			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 3.2, -size.z * 0.45), Vector3(size.x * 0.5 + 0.25, 3.2, size.z * 0.45), 0.18, Color(0.5, 0.42, 0.3), Vector3(-0.25, 0, 0))
-			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 2.7, -size.z * 0.45), Vector3(size.x * 0.5 + 0.25, 2.7, size.z * 0.45), 0.12, Color(0.35, 0.37, 0.33), Vector3(-0.25, 0, 0))
+			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 3.2, -size.z * 0.43), Vector3(size.x * 0.5 + 0.25, 3.2, size.z * 0.43), 0.18, Color(0.5, 0.42, 0.3), Vector3(-0.25, 0, 0), "steel", true)
+			BuildingFittings.pipe(fk, Vector3(size.x * 0.5 + 0.25, 2.7, -size.z * 0.43), Vector3(size.x * 0.5 + 0.25, 2.7, size.z * 0.43), 0.12, Color(0.35, 0.37, 0.33), Vector3(-0.25, 0, 0), "steel", true)
+			# the cowls stand on the north lights' slopes, through a flashing
+			# laid on the sheet (`ang` the slopes' pitch, as sawtooth lays them)
+			var ang := atan2(0.9, size.x * 0.9 / 3.0 * 0.78)
 			for i in 2:
-				BuildingFittings.flue(fk, Vector3(-size.x * 0.25 + i * 1.4, 5.3, size.z * 0.32), 0.3, 0.35, Color(0.4, 0.41, 0.4), "steel")
-			BuildingFittings.stack(fk, Vector3(size.x * 0.35, 5.1, size.z * 0.3), 0.55, 0.42, 5.0)
+				var cx := -size.x * 0.25 + i * 1.4
+				var cy := 5.3 + BuildingRoofs.sawtooth_rise(size.x * 0.9, 3, 0.9, cx) + 0.04
+				fk.plate(Vector3(0.74, 0.012, 0.9), Vector3(cx, cy + 0.008, size.z * 0.32), "steel", Color(0.36, 0.37, 0.36), Vector3(0, 0, ang))
+				BuildingFittings.flue(fk, Vector3(cx, cy - 0.38 * tan(ang), size.z * 0.32), 0.3, 0.5, Color(0.4, 0.41, 0.4), "steel")
+			var mouth := BuildingFactory.chimney(fk, size, rng)
 			if world != null and world.fx and world.fx.vfx and built:
 				var stack := world.fx.vfx.make_burner(0.7)
-				stack.position = Vector3(size.x * 0.35, 10.4, size.z * 0.3)
+				stack.position = mouth + Vector3(0, 0.15, 0)  # (out from under its rain cap)
 				model.add_child(stack)
 				world.fx.vfx.set_burning(stack, 0.0, 0.35)
 			BuildingFittings.flagpole(fk, Vector3(-size.x * 0.4 - 0.66, 5.3, 0), 1.5, Color(0.6, 0.6, 0.58), false)
 			_flag = _box(Vector3(-size.x * 0.4, 6.4, 0), Vector3(1.2, 0.7, 0.04), tc)
 		"medic_tent":
-			# (the placeholder block goes now: a deferred free would still be
-			# baked into the merged model below)
-			for c in model.get_children():
-				model.remove_child(c)
-				c.queue_free()
-			var hz := size.z * 0.5
-			# an olive-drab ward tent with the red cross on white panels
-			_mk(Res.prism(Vector3(size.z, 2.8, size.x)), "canvas", Vector3(0, 1.4, 0), Vector3(0, PI / 2, 0), Color(0.4, 0.41, 0.31))
-			for sx in [-1.0, 1.0]:
-				_mk(Res.box(Vector3(0.05, 2.75, 0.05)), "wood_dark", Vector3(sx * (size.x * 0.5 - 0.1), 1.375, 0))
-			var ang := atan2(2.8, hz)
-			for sd in [-1.0, 1.0]:
-				var nrm := Vector3(0, hz, sd * 2.8).normalized()
-				var cpos := Vector3(0, 1.4, sd * hz * 0.5) + nrm * 0.03
-				var rot := Vector3(sd * (PI * 0.5 - ang), 0, 0)
-				_mk(Res.box(Vector3(1.9, 0.02, 1.9)), "paint", cpos, rot, Color(0.9, 0.9, 0.88), false)
-				_mk(Res.box(Vector3(1.4, 0.03, 0.42)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
-				_mk(Res.box(Vector3(0.42, 0.03, 1.4)), "paint", cpos + nrm * 0.01, rot, Color(0.75, 0.08, 0.07), false)
-				for x in [-size.x * 0.4, 0.0, size.x * 0.4]:
-					BuildingWire.guy(_kit(rng), Vector3(x, 1.4, sd * hz * 0.5), Vector3(x, 0.0, sd * (hz + 1.4)), true, "peg")
-			_mk(Res.box(Vector3(0.06, 2.0, 1.5)), "canvas", Vector3(-size.x * 0.5 - 0.02, 1.0, 0), Vector3.ZERO, Color(0.25, 0.25, 0.22))
-			_mk(Res.box(Vector3(size.x + 0.6, 0.06, size.z + 0.6)), "canvas", Vector3(0, 0.03, 0), Vector3.ZERO, Color(0.3, 0.28, 0.24), false)
-			for i in 2:
-				var sp := Vector3(-size.x * 0.5 - 1.6, 0.35, -1.0 + i * 1.6)
-				_mk(Res.box(Vector3(2.0, 0.05, 0.6)), "canvas", sp, Vector3(0, 0.1, 0), Color(0.35, 0.38, 0.28))
-				_mk(Res.box(Vector3(2.4, 0.05, 0.05)), "wood", sp + Vector3(0, -0.02, 0.32), Vector3(0, 0.1, 0))
-				_mk(Res.box(Vector3(2.4, 0.05, 0.05)), "wood", sp + Vector3(0, -0.02, -0.32), Vector3(0, 0.1, 0))
-			_mk(Res.cyl(0.03, 0.03, 4.2, 4), "steel", Vector3(size.x * 0.5 + 0.8, 2.1, hz + 0.5))
-			_mk(Res.box(Vector3(1.0, 0.65, 0.03)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.92, 0.92, 0.9), false)
-			_mk(Res.box(Vector3(0.6, 0.16, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
-			_mk(Res.box(Vector3(0.16, 0.5, 0.04)), "paint", Vector3(size.x * 0.5 + 1.32, 3.85, hz + 0.5), Vector3.ZERO, Color(0.75, 0.08, 0.07), false)
+			# a field hospital: a frame tent with the red cross, stretchers and
+			# stores at its door (BuildingTents; it stands where its part is)
+			BuildingTents.field_hospital(_kit(rng), size, team, rng)
 		"research":
 			# a precast block under a slab: ribbon glazing round it, a steel
 			# door, a dish, a guyed mast with the flag, plant on the roof and
@@ -3199,10 +4167,12 @@ func _build_model() -> void:
 			BuildingFittings.flue(rk, Vector3(size.x * 0.5 + 1.4, 1.0, 1.7), 0.05, 0.45)
 			_flag = _box(Vector3(-1.75, 6.9, -2.2), Vector3(0.8, 0.5, 0.04), tc)
 		"depot":
-			for i in 6:
-				Res.mi(model, Res.cyl(0.08, 0.08, 1.6, 6), Res.mat(C_WOOD), Vector3(-9 + i * 3.6, 0.8, -6))
-			Res.mi(model, Res.cyl(0.06, 0.06, 9.0, 6), Res.mat(Color(0.7, 0.7, 0.7)), Vector3(0, 4.5, 0))
-			_flag = _box(Vector3(0.9, 8.4, 0), Vector3(1.8, 1.0, 0.05), tc)
+			# a side's headquarters: two containers either side of a yard under a
+			# net, the command post at the back of it, a barrier at the gate
+			# (BuildingDepot; they stand where its parts are)
+			var hoist := BuildingDepot.compound(_kit(rng), size if size.z > 5.0 else Vector3(17, 3, 11), team, tc, rng)
+			BuildingDepot.net(model, team)
+			_flag = _box(hoist + Vector3(0.72, -0.42, 0), Vector3(1.4, 0.84, 0.04), tc)
 			_add_label(display_name(), 10.0)
 		"sandbags":
 			WorksModels.apron(model, size.x * 0.5 + 0.25, 0.75)
@@ -3239,6 +4209,11 @@ func _build_model() -> void:
 			_mg_model(rng, bags)
 			if variant != 1:
 				WorksModels.apron(model, foot.x + 0.3, foot.y + 0.3)
+			elif world != null:
+				# the trench it's dug into clears its own parapet and kit from the bay
+				for other in world.structures_near(position, 8.0):
+					if other.skind == "trench" and not other.gone and other.model != null:
+						other.refresh_trench_furnishings()
 		"mortar_pit":
 			# the floor dug out and trodden flat inside the ring of bags
 			WorksModels.pit_floor(model, 1.7)
@@ -3270,20 +4245,27 @@ func _build_model() -> void:
 					var y := 2.6 + WorksModels.roof_soil_height(Vector2(x, -2.2), soil_variant) + 0.08
 					bags.append({"p": Vector3(x, y, -2.2), "s": Vector3(0.75, 0.2, 0.45), "r": rng.randf_range(-0.09, 0.09)})
 			else:
-				# reinforced concrete: a thick roof slab with an overhang under a
-				# layer of bags, earth banked up to the slits, steel angle round
-				# the embrasure, a steel door, a vent and a whip aerial
-				_box(Vector3(0, 2.62, 0), Vector3(6.3, 0.16, 6.3), C_CONCRETE.darkened(0.28))
-				for row in 2:
-					bags.append({"p": Vector3(0, 2.82, -2.6 + row * 0.5), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				bags.append({"p": Vector3(0, 2.82, 2.6), "s": Vector3(5.2, 0.24, 0.48), "r": 0.0})
-				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
-				for y in [1.1, 1.66]:
-					_mk(Res.box(Vector3(2.7, 0.07, 0.1)), "metal_dark", Vector3(0, y, -2.82), Vector3.ZERO, Color(0.2, 0.2, 0.19))
+				# reinforced concrete, cast in place (BuildingPillbox): the walls
+				# drawn from their parts as one pour with chamfered corners; the
+				# roof slab over them, its observation cupola, hatch and vent; a
+				# splayed embrasure at every slit; earth banked up to the slits,
+				# the steel doors open at the back, a whip aerial; the grime of a
+				# season and the bullet strikes round the slits
 				var bk := _kit(rng)
-				BuildingOpenings.leaf(bk.at_point(Vector3(-0.5, 0, 2.6)), Vector2(1.0, 1.92), "steel", Color(0.3, 0.32, 0.25), 1.0)
-				BuildingFittings.flue(bk, Vector3(1.8, 2.8, 1.6), 0.08, 0.6, Color(0.3, 0.3, 0.29), "steel")
-				BuildingFittings.whip(bk, Vector3(-2.3, 2.8, 2.3), 2.4)
+				if team == 0:
+					bk.paint = team  # (the Coalition's painted over in its camouflage)
+				var wc := BuildingPillbox.CONCRETE
+				BuildingPillbox.walls(bk, parts, wc)
+				BuildingPillbox.roof(bk, BuildingPillbox.WEATHERED, rng)
+				BuildingPillbox.embrasure(bk.on_face(Vector3(0, 0, -BuildingPillbox.HALF), Vector3.FORWARD), 2.6, wc)
+				for sx: float in [-1.0, 1.0]:
+					BuildingPillbox.embrasure(bk.on_face(Vector3(sx * BuildingPillbox.HALF, 0, 0), Vector3(sx, 0, 0)), 1.8, wc)
+				WorksModels.berms(model, 2.8, 0.95, 2.0, false, self)
+				var rear := bk.on_face(Vector3(0, 0, BuildingPillbox.HALF), Vector3.BACK)
+				BuildingPillbox.door(rear, 2.0, 1.9)
+				BuildingPillbox.step_irons(rear, 2.2)
+				BuildingFittings.whip(bk, Vector3(-1.2, BuildingPillbox.SLAB_TOP, 1.2), 2.4)
+				BuildingPillbox.weather(bk, parts, wc, rng)
 			_box(Vector3(0, 0.02, 0), Vector3(4.4, 0.04, 4.4), Color(0.3, 0.29, 0.27), 0.0, false)
 		"watchtower":
 			for p in parts:
@@ -3302,14 +4284,9 @@ func _build_model() -> void:
 			_box(Vector3(5.3, 2.85, -4.8), Vector3(1.0, 0.35, 0.3), Color(1.0, 0.5, 0.1))
 			_flag = _box(Vector3(-4.8, 0.5, 4.8), Vector3(0.6, 0.6, 0.6), tc)
 		"tunnel":
-			Res.mi(model, Res.cyl(1.0, 1.0, 0.04, 14), Res.mat(Color(0.03, 0.03, 0.03)), Vector3(0, 0.04, 0), Vector3.ZERO, false)
-			Res.mi(model, Res.torus(1.0, 1.6), Res.mat(C_DIRT), Vector3(0, 0.08, 0))
-			_box(Vector3(0, 0.25, -1.05), Vector3(2.0, 0.2, 0.2), C_WOOD)
-			_box(Vector3(0, 0.25, 1.05), Vector3(2.0, 0.2, 0.2), C_WOOD)
-			_box(Vector3(-0.9, 0.7, 0), Vector3(0.15, 1.4, 0.15), C_WOOD)
-			_box(Vector3(0.9, 0.7, 0), Vector3(0.15, 1.4, 0.15), C_WOOD)
-			_box(Vector3(0, 1.4, 0), Vector3(2.0, 0.15, 0.15), C_WOOD)
-			_flag = _box(Vector3(0, 1.75, 0), Vector3(0.5, 0.3, 0.03), tc)
+			# a dug shaft, shored, sandbagged, a sheet propped over it (WorksModels)
+			var hang := WorksModels.tunnel_mouth(model, rng)
+			_flag = _box(hang, Vector3(0.5, 0.3, 0.03), tc)
 	if not bags.is_empty():
 		_bag_walls(bags, rng)
 	_skin(model)
@@ -3351,6 +4328,8 @@ func _trench_neighbors_key() -> String:
 	for other in world.structures_near(position, size.x * 0.5 + 5.0):
 		if other != self and other.skind == "trench" and not other.gone and other.trench_depth() > 0.15:
 			ids.append(other.eid)
+		elif other.skind in ["mg_nest", "hmg_nest"] and other.variant == 1 and not other.gone:
+			ids.append(-other.eid)  # a gun bay dug into the line takes the place of the bay's own kit
 	ids.sort()
 	return str(ids)
 
@@ -3378,37 +4357,9 @@ func _make_trench_furnishings() -> void:
 	var done := Node3D.new()
 	done.name = "Done"
 	model.add_child(done)
-	var fsgn := _enemy_side()
-	# kit only along fire bays, kept clear of the corners where the traverses join
-	var kx := size.x * 0.5 - 1.2
-	# a few filled bags along the parapet (rests for the rifles)
-	var kit_bags: Array = []
-	for i in (rng.randi_range(2, 4) if kx > 0.8 else 0):
-		var bx := rng.randf_range(-kx, kx)
-		var bag := {"p": Vector3(bx, 0.2, fsgn * 1.05), "s": Vector3(0.55 * rng.randi_range(1, 2), 0.19, 0.36), "r": rng.randf_range(-0.2, 0.2)}
-		if WorksModels.trench_backed(self, bag.p, bag.s.x * 0.5):
-			kit_bags.append(bag)
+	var kit_bags := TrenchFittings.furnish(self, done, rng)
 	if not kit_bags.is_empty():
 		_bag_walls(kit_bags, rng, done)
-	WorksModels.trench_shoring(self, done, rng)
-	if TrenchNet.has_recess(self):
-		var rear := -fsgn
-		var wood := Res.mat(C_WOOD.darkened(0.25))
-		# Alternating supply shelves and roofed resting bays share the same excavation.
-		Res.mi(done, Res.box(Vector3(1.2, 0.1, 0.48)), wood, Vector3(0, -0.7, rear * 1.55), Vector3.ZERO, false)
-		if eid % 2 == 0:
-			for x in [-0.33, 0.3]:
-				Res.mi(done, Res.box(Vector3(0.45, 0.26, 0.3)), Res.mat(Color(0.25, 0.28, 0.2)), Vector3(x, -0.52, rear * 1.55), Vector3.ZERO, false)
-		else:
-			for x in [-0.66, 0.66]:
-				Res.mi(done, Res.box(Vector3(0.09, 1.35, 0.09)), wood, Vector3(x, -0.42, rear * 1.7), Vector3.ZERO, false)
-			for board in 8:
-				Res.mi(done, Res.box(Vector3(0.18, 0.1, 1.1)), Mats.get_mat("wood"), Vector3(-0.66 + board * 0.19, 0.3 + rng.randf_range(-0.018, 0.018), rear * 1.4), Vector3(0, rng.randf_range(-0.025, 0.025), 0.04), false)
-			for x in [-0.55, 0.55]:
-				Res.mi(done, Res.box(Vector3(0.12, 0.13, 1.18)), wood, Vector3(x, 0.18, rear * 1.4), Vector3.ZERO, false)
-			Res.mi(done, Res.box(Vector3(0.9, 0.12, 0.4)), Res.mat(Color(0.29, 0.31, 0.23)), Vector3(0, -0.59, rear * 1.55), Vector3.ZERO, false)
-		for i in 3:
-			Res.mi(done, Res.box(Vector3(0.13, 0.025, 0.18)), Res.mat(Color(0.31, 0.27, 0.19)), Vector3(rng.randf_range(-0.5, 0.5), -1.13, rear * rng.randf_range(1.0, 1.6)), Vector3(0, rng.randf() * TAU, 0), false)
 	_trench_furnishing_key = _trench_neighbors_key()
 
 static var _bag_mesh: ArrayMesh
@@ -3457,6 +4408,14 @@ const BAG_COLS := [
 	[[Color(1.0, 1.0, 1.0), 0.5], [Color(0.92, 0.8, 0.66), 0.3], [Color(1.36, 1.44, 1.72), 0.2]],
 ]
 const BAG_CLOTH := Color(0.5, 0.45, 0.33)  # the "bag" surface's own colour
+## Bags filled from a trench's own spoil and left out in it: all one hessian,
+## caked in the same earth, so a parapet reads as part of the ground.
+const TRENCH_BAGS := [[Color(0.86, 0.82, 0.76), 1.0]]
+
+
+## Bags laid in a trench line (its parapet, a gun bay dug into it).
+func _trench_bags() -> bool:
+	return skind in ["trench", "bunker"] or (skind in ["mg_nest", "hmg_nest"] and variant == 1)
 
 
 ## Stacks individual sandbags to fill each part box the way they're laid in
@@ -3468,6 +4427,8 @@ func _bag_walls(list: Array, rng: RandomNumberGenerator, parent: Node3D = null) 
 	if _bag_mesh == null:
 		_bag_mesh = _pillow()
 	var pal: Array = BAG_COLS[team] if team >= 0 and team <= 1 else BAG_COLS[2]
+	if _trench_bags():
+		pal = TRENCH_BAGS
 	var lot := rng.randi() % pal.size()  # most of a wall's bags come from one lot
 	var xf: Array[Transform3D] = []
 	var cols: Array[Color] = []
@@ -3538,9 +4499,10 @@ func _bag(xf: Array[Transform3D], cols: Array[Color], p: Dictionary, pb: Basis, 
 				pick = i
 				break
 	var c: Color = pal[pick][0]
-	if skind in ["trench", "bunker"]:
-		c = c.lerp(C_DIRT, 0.22 if top else 0.38)
 	var k := rng.randf_range(0.86, 1.06) + (0.06 if top else 0.0)
+	if _trench_bags():
+		c = c.lerp(C_DIRT * 1.5, 0.4 if top else 0.55)
+		k = rng.randf_range(0.9, 1.0) + (0.04 if top else 0.0)
 	var want := Color(clampf(BAG_CLOTH.r * c.r * k, 0.0, 1.0), clampf(BAG_CLOTH.g * c.g * k, 0.0, 1.0), clampf(BAG_CLOTH.b * c.b * k, 0.0, 1.0)).srgb_to_linear()
 	var base := BAG_CLOTH.srgb_to_linear()
 	cols.append(Color(want.r / base.r, want.g / base.g, want.b / base.b))
@@ -3579,15 +4541,29 @@ static func _skinnable(sm: StandardMaterial3D) -> bool:
 
 
 func _surf_kind(c: Color, mesh: Mesh) -> String:
+	var kind := _plain_surf_kind(c, mesh)
+	# (the Coalition's concrete bunker is painted over in its camouflage, as
+	# pillboxes were; the base's barracks, works and labs keep their own paint)
+	if skind == "bunker" and team == 0:
+		return Camo.painted("precast" if kind == "concrete" else kind, team)
+	return kind
+
+
+func _plain_surf_kind(c: Color, mesh: Mesh) -> String:
 	var v := maxf(c.r, maxf(c.g, c.b))
 	var dark := v < 0.16
 	match skind:
 		"house_wall":
 			return BuildingMaterials.surface(BuildingMaterials.house(int(size.y)))
 		"floor":
-			return "floor_tiles" if variant != 2 else "concrete_floor"
+			return "floor_tiles" if variant < 2 else "concrete_floor"
 		"rubble":
 			return "rubble"
+		"low_wall":
+			# a stone garden wall is field stone, random rubble (its top is
+			# stones on edge: see BuildingWalls.cock_and_hen)
+			if variant % 3 == 0 and Res.box_size(mesh) != Vector3.ZERO:
+				return "fieldstone"
 		"crates":
 			return "wood" if not dark else "metal_dark"
 		"car":

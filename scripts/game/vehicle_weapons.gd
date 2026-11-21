@@ -10,6 +10,13 @@ extends RefCounted
 ## stand a few centimetres ahead of it and keeps its own position.
 
 const X90 := Vector3(PI / 2, 0, 0)
+## A gun's own steel (Mats "weapon"): what a family's plain "gunmetal_w"
+## becomes on the guns themselves; a painted tube keeps its paint.
+const STEEL := "weapon"
+
+
+static func _steel(mat: String) -> String:
+	return STEEL if mat == "gunmetal_w" else mat
 
 ## A pivot at `from` whose local -Z runs toward `to`.
 static func _aimed(k: VehicleModels, parent: Node3D, from: Vector3, to: Vector3) -> Node3D:
@@ -37,6 +44,18 @@ static func _bore(k: VehicleModels, m: Node3D, z: float, radius: float, at := Ve
 	VehicleBody.cylinder(k, m, radius, radius, 0.004, Vector3(at.x, at.y, z - 0.0015), X90, "burnt", Color(0.018, 0.019, 0.018), 12, false, false, true)
 
 
+## A conical flash hider on a barrel's end (the ZU-23's 2A14 and its kin),
+## flaring forward over `length` from the barrel's `radius` to `mouth` and
+## standing a little proud of the barrel's end at `muzzle` (in `m`'s space,
+## the gun along -Z): a lip round its open mouth, the bore dark inside it.
+static func cone_hider(k: VehicleModels, m: Node3D, muzzle: Vector3, radius: float, mouth: float, length: float, mat := "gunmetal_w") -> void:
+	mat = _steel(mat)
+	var front := muzzle.z - length * 0.12
+	VehicleBody.cylinder(k, m, radius * 1.1, mouth, length, Vector3(muzzle.x, muzzle.y, front + length * 0.5), X90, mat, null, 12)
+	VehicleBody.cylinder(k, m, mouth * 1.05, mouth * 1.05, length * 0.06, Vector3(muzzle.x, muzzle.y, front + length * 0.03), X90, mat, null, 12, false)
+	_bore(k, m, front, mouth * 0.8, Vector2(muzzle.x, muzzle.y))
+
+
 ## The barrel's crown standing in a brake's front face: the worn metal lip the
 ## bore is cut through, as the barrel builder draws it, so a closed brake face
 ## still reads as an open muzzle from the camera.
@@ -44,11 +63,39 @@ static func _crown(k: VehicleModels, m: Node3D, z: float, radius: float) -> void
 	k._add(m, VehicleFittings._ring(radius * 0.62, radius * 1.02), "gunmetal", Color(0.29, 0.30, 0.28), Vector3(0, 0, z), X90, Vector3(1, 0.3, 1))
 	_bore(k, m, z, radius * 0.62)
 
+## Cooling holes through a round jacket along local Z: `rows` rings between
+## `rear` and `front`, `around` holes a ring (staggered ring to ring), each a
+## dark disc set into the skin of a `radius` jacket, `hole` across. Only the
+## upper three quarters are pierced where the eye goes; the cradle hides the
+## underside.
+static func _holes(k: VehicleModels, m: Node3D, rear: float, front: float, radius: float, rows: int, around: int, hole: float) -> void:
+	for i in rows:
+		var z := lerpf(rear, front, (i + 0.5) / rows)
+		for j in around:
+			var a := TAU * (j + (0.5 if i % 2 == 1 else 0.0)) / around
+			var dir := Vector3(cos(a), sin(a), 0.0)
+			if dir.y < -0.45:
+				continue
+			# (the disc's axis is radial: rotate +Y onto it)
+			var basis := Basis(Quaternion(Vector3.UP, dir))
+			k._add(m, VehicleBody.drum(hole, hole, 0.003, 8, true, false), "burnt", Color(0.02, 0.02, 0.02), dir * (radius + 0.0002) + Vector3(0, 0, z), basis.get_euler(), Vector3.ONE, false)
+
+
+## A row of rivet heads on a face, `n` from `a` to `b`, standing out along
+## `normal`.
+static func _rivets(k: VehicleModels, m: Node3D, a: Vector3, b: Vector3, normal: Vector3, n: int, r: float, mat: String) -> void:
+	var basis := Basis(Quaternion(Vector3.UP, normal.normalized()))
+	for i in n:
+		var at := a.lerp(b, i / maxf(1.0, n - 1.0))
+		k._add(m, VehicleBody.drum(r, r * 0.7, r * 0.6, 6, true, false), mat, null, at + normal.normalized() * r * 0.3, basis.get_euler(), Vector3.ONE, false)
+
+
 ## Coaxial machine-gun port: the old cylinder's centre, length and radius, along
 ## -Z. A port sleeve, the barrel, a slotted flash hider and its bore. The
 ## caller keeps its own muzzle marker, so the coax tracer still leaves the same
 ## point.
 static func coax(k: VehicleModels, parent: Node3D, center: Vector3, length: float, radius := 0.022, mat := "gunmetal_w") -> void:
+	mat = _steel(mat)
 	var m := k._pivot(parent, center)
 	var half := length * 0.5
 	var hider := minf(0.06, length * 0.22)
@@ -66,6 +113,7 @@ static func coax(k: VehicleModels, parent: Node3D, center: Vector3, length: floa
 ## length). `bands` adds evenly spaced clamp bands along the tube; with none,
 ## one barrel clamp still stands where the tube's rear third ends.
 static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle: Vector3, root: Vector2, barrel: Vector2, brake: Vector2, mat := "gunmetal_w", col = null, bands := 0) -> Vector3:
+	mat = _steel(mat)
 	var m := _aimed(k, parent, breech, muzzle)
 	var length := breech.distance_to(muzzle)
 	var root_end := -minf(root.y, length * 0.5)
@@ -79,8 +127,20 @@ static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle
 	var thick := minf(barrel.x * 1.24, root.x * 0.8)
 	_z(k, m, root_end + 0.01, root_end - chamber, thick, thick, mat, col, 10, true, Vector2.ZERO, false)
 	_z(k, m, root_end - chamber, root_end - chamber - 0.03, thick, barrel.x, mat, col, 10, false, Vector2.ZERO, false, false)
-	# (the tube's ends are in the chamber step and the brake)
-	_z(k, m, root_end - chamber - 0.03, brake_start - 0.01, barrel.x, barrel.y, mat, col, 10, true, Vector2.ZERO, false, false)
+	# (the tube's ends are in the chamber step and the brake, or the crown)
+	var tube_rear := root_end - chamber - 0.03
+	var tube_front := brake_start - 0.01 if brake.y >= 0.01 else -length + 0.012
+	if mat == STEEL or k.wreck:
+		_z(k, m, tube_rear, tube_front, barrel.x, barrel.y, mat, col, 10, true, Vector2.ZERO, false, false)
+	else:
+		# A painted tube doesn't keep its paint at the muzzle end: the gas
+		# out of the brake and the barrel's heat burn it off the last fifth,
+		# down to the blackened steel, so the gun reads two-tone from above
+		# (its muzzle end as dark as the brake) instead of one painted rod.
+		var burn := lerpf(tube_rear, tube_front, 0.8)
+		var burn_r := lerpf(barrel.x, barrel.y, 0.8)
+		_z(k, m, tube_rear, burn, barrel.x, burn_r, mat, col, 10, true, Vector2.ZERO, false, false)
+		_z(k, m, burn, tube_front, burn_r, barrel.y, STEEL, null, 10, true, Vector2.ZERO, false, false)
 	var clamps := bands if bands > 0 else 1
 	for i in clamps:
 		var f := (i + 1.0) / (clamps + 1.0) if bands > 0 else 0.38
@@ -89,11 +149,18 @@ static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle
 		_z(k, m, z + 0.018, z - 0.018, r * 1.35, r * 1.35, "metal_dark", null, 10, false)
 		# the clamp's pinch bolt on top
 		k._box(m, Vector3(r * 0.5, r * 0.5, 0.03), Vector3(0, r * 1.45, z), "metal_dark", null, Vector3.ZERO, false)
+	if brake.y < 0.01:
+		# No brake (the M242's barrel ends plain; a flash hider the caller
+		# puts on, VehicleWeapons.cone_hider): the barrel's crown closes it.
+		_z(k, m, -length + 0.012, -length, barrel.y, barrel.y * 0.97, mat, col, 10, false, Vector2.ZERO, false, true)
+		_bore(k, m, -length, barrel.y * 0.75)
+		k._gun(m, muzzle)
+		return muzzle
 	# Muzzle brake: a body with its front lip, the side ports cut through it in
 	# two rows (dark slots either side, where the gas turns out and blackens
 	# the steel), the crown and bore in its face.
-	_z(k, m, brake_start, -length + brake.y * 0.12, brake.x * 0.96, brake.x, "gunmetal_w", null, 10)
-	_z(k, m, -length + brake.y * 0.12, -length, brake.x * 1.02, brake.x * 0.96, "gunmetal_w", null, 10, false)
+	_z(k, m, brake_start, -length + brake.y * 0.12, brake.x * 0.96, brake.x, STEEL, null, 10)
+	_z(k, m, -length + brake.y * 0.12, -length, brake.x * 1.02, brake.x * 0.96, STEEL, null, 10, false)
 	for f: float in [0.34, 0.66]:
 		var z := lerpf(brake_start, -length, f)
 		for side: float in [-1.0, 1.0]:
@@ -109,104 +176,223 @@ static func autocannon(k: VehicleModels, parent: Node3D, breech: Vector3, muzzle
 ## the left (-1) or right (+1), 0 for none; `grips` adds spade grips and the
 ## butterfly trigger for crew-served mounts. Returns the muzzle.
 static func hmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, can := -1.0, grips := false, mat := "gunmetal_w", can_col := Color(0.29, 0.31, 0.22)) -> Vector3:
+	mat = _steel(mat)
 	var m := _aimed(k, parent, receiver, muzzle)
 	var s := size
 	var length := receiver.distance_to(muzzle)
-	VehicleMounts.receiver(k, m, Vector3(0.16, 0.19, 0.62) * s, Vector3.ZERO, mat)
-	k._add(m, BevelMesh.make(Vector3(0.17, 0.035, 0.42) * s, 0.008 * s), mat, null, Vector3(0, 0.11, -0.02) * s)
+	# (the side plates stand 13.5 cm apart: the receiver is deep, not broad)
+	VehicleMounts.receiver(k, m, Vector3(0.135, 0.19, 0.62) * s, Vector3.ZERO, mat)
+	k._add(m, BevelMesh.make(Vector3(0.145, 0.035, 0.42) * s, 0.008 * s), mat, null, Vector3(0, 0.11, -0.02) * s)
 	k._box(m, Vector3(0.02, 0.05, 0.03) * s, Vector3(0, 0.15, 0.18) * s, mat, null, Vector3.ZERO, false)
-	k._box(m, Vector3(0.15, 0.16, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
+	k._box(m, Vector3(0.13, 0.16, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
 	if grips:
+		# The spade grips: each a loop off the back plate like a spade's handle,
+		# an arm out at its top and its foot and the grip between them,
+		# swelling to the palm and leaning out a little; the butterfly trigger
+		# between them, where both thumbs fall.
 		for side: float in [-1.0, 1.0]:
-			VehicleBody.rod(k, m, Vector3(side * 0.05, 0.03, 0.335) * s, Vector3(side * 0.075, 0.03, 0.39) * s, 0.012 * s, mat, null, 6, false, -1.0, false, false)
-			VehicleBody.cylinder(k, m, 0.02 * s, 0.02 * s, 0.14 * s, Vector3(side * 0.075, 0.03, 0.4) * s, Vector3.ZERO, "rubber", null, 6, false)
-		k._box(m, Vector3(0.07, 0.025, 0.02) * s, Vector3(0, 0.03, 0.37) * s, mat, null, Vector3.ZERO, false)
+			var top := Vector3(side * 0.08, 0.095, 0.4) * s
+			var foot := Vector3(side * 0.07, -0.035, 0.4) * s
+			for arm: Array in [[Vector3(side * 0.045, 0.075, 0.335), top], [Vector3(side * 0.045, -0.035, 0.335), foot]]:
+				VehicleBody.rod(k, m, (arm[0] as Vector3) * s, arm[1], 0.011 * s, mat, null, 6, false, -1.0, false, false)
+			VehicleBody.rod(k, m, foot, top, 0.017 * s, "rubber", null, 8, false, 0.019 * s)
+			k._add(m, Res.sphere(0.018 * s, 8), "rubber", null, top, Vector3.ZERO, Vector3(1.0, 0.6, 1.0), false)
+		k._add(m, BevelMesh.make(Vector3(0.075, 0.032, 0.012) * s, 0.004 * s), mat, null, Vector3(0, 0.035, 0.375) * s, Vector3(-0.35, 0, 0), Vector3.ONE, false)
 	# The perforated barrel support, its carrying handle, the barrel and hider.
 	var jacket := -0.31 * s
 	var jacket_end := maxf(-0.57 * s, -length + 0.2 * s)
-	_z(k, m, jacket, jacket_end, 0.046 * s, 0.046 * s, mat, null, 10, true, Vector2.ZERO, false)
-	for i in 3:
-		var z := lerpf(jacket, jacket_end, (i + 1) / 4.0)
-		_z(k, m, z + 0.011 * s, z - 0.011 * s, 0.051 * s, 0.051 * s, "metal_dark", null, 10, false)
-	VehicleDoors.pull(k, m, Vector3(0, 0.046 * s, (jacket + jacket_end) * 0.5), Vector3.UP, Vector3.FORWARD, 0.11 * s, 0.008 * s, mat)
+	_z(k, m, jacket, jacket_end, 0.046 * s, 0.046 * s, mat, null, 12, true, Vector2.ZERO, false)
+	# the barrel support's cooling holes, three staggered rings of them, and
+	# its front collar with the front sight post standing on it
+	_holes(k, m, jacket - 0.02 * s, jacket_end + 0.05 * s, 0.046 * s, 3, 8, 0.011 * s)
+	_z(k, m, jacket_end + 0.035 * s, jacket_end, 0.05 * s, 0.05 * s, mat, null, 12, false)
+	k._box(m, Vector3(0.008, 0.035, 0.012) * s, Vector3(0, 0.066 * s, jacket_end + 0.018 * s), mat, null, Vector3.ZERO, false)
+	# the trunnion block under the receiver's front, its pin across
+	k._box(m, Vector3(0.11, 0.05, 0.09) * s, Vector3(0, -0.11, -0.24) * s, mat)
+	VehicleBody.rod(k, m, Vector3(-0.06, -0.115, -0.24) * s, Vector3(0.06, -0.115, -0.24) * s, 0.011 * s, "steel", null, 6, false)
+	# the side plates' rivets, two rows a side
+	for side: float in [-1.0, 1.0]:
+		for y: float in [0.055, -0.055]:
+			_rivets(k, m, Vector3(side * 0.0685, y, -0.24) * s, Vector3(side * 0.0685, y, 0.2) * s, Vector3(side, 0, 0), 5, 0.006 * s, mat)
+	# the quick-change barrel's carrying handle, out ahead of the support
+	VehicleDoors.pull(k, m, Vector3(0, 0.028 * s, jacket_end - 0.12 * s), Vector3.UP, Vector3.FORWARD, 0.12 * s, 0.008 * s, mat)
 	_z(k, m, jacket_end, -length + 0.12 * s, 0.028 * s, 0.026 * s, mat, null, 8, true, Vector2.ZERO, false, false)
-	k._box(m, Vector3(0.012, 0.045, 0.02) * s, Vector3(0, 0.045 * s, -length + 0.17 * s), mat, null, Vector3.ZERO, false)
-	_z(k, m, -length + 0.12 * s, -length, 0.044 * s, 0.032 * s, mat, null, 8, false)
+	# the flash hider flares out to the muzzle, its mouth a thin lip
+	_z(k, m, -length + 0.12 * s, -length + 0.01 * s, 0.03 * s, 0.043 * s, mat, null, 10, false)
+	_z(k, m, -length + 0.01 * s, -length, 0.043 * s, 0.043 * s, mat, null, 10, false, Vector2.ZERO, false)
+	VehicleBody.cylinder(k, m, 0.038 * s, 0.038 * s, 0.003, Vector3(0, 0, -length + 0.004 * s), X90, "burnt", Color(0.02, 0.02, 0.02), 10, false, false, true)
 	_bore(k, m, -length, 0.014 * s)
+	if can == 0.0:
+		# fed from elsewhere (a remote station's chute): the feedways open
+		# either side under the cover, belt in on one, links out on the other
+		for side: float in [-1.0, 1.0]:
+			k._box(m, Vector3(0.004, 0.03, 0.1) * s, Vector3(side * 0.0685, 0.072, 0.03) * s, "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
 	if can != 0.0:
 		var side := signf(can)
-		VehicleFittings.ammo_can(k, m, Vector3(side * 0.18, -0.07, 0.08) * s, can_col, Vector3.ZERO, Vector3(0.12, 0.19, 0.29) * s)
-		# The belt rises from the can's mouth into the feed tray.
-		_belt(k, m, Vector3(side * 0.16, 0.035, 0.06) * s, Vector3(side * 0.085, 0.07, 0.04) * s, 0.011 * s, 0.12 * s, 3)
+		var can_at := Vector3(side * 0.155, -0.07, 0.08) * s
+		var can_size := Vector3(0.12, 0.19, 0.29) * s
+		VehicleFittings.ammo_can(k, m, can_at, can_col, Vector3.ZERO, can_size, true)
+		# The belt rises out of the can into the feed tray under the cover.
+		_belt(k, m, can_at, can_size, Vector3(side * 0.071, 0.072, 0.03) * s, 0.011 * s, 0.138 * s)
 	# The feed cover's latch at its front, the bolt's retracting handle on
 	# the right of the receiver.
 	k._box(m, Vector3(0.05, 0.02, 0.025) * s, Vector3(0, 0.13, -0.24) * s, "metal_dark", null, Vector3.ZERO, false)
-	VehicleBody.rod(k, m, Vector3(0.085, 0.0, 0.08) * s, Vector3(0.13, 0.0, 0.08) * s, 0.008 * s, "steel", null, 6, false)
-	VehicleBody.cylinder(k, m, 0.016 * s, 0.016 * s, 0.03 * s, Vector3(0.135, 0.0, 0.08) * s, Vector3(0, 0, PI / 2), "rubber", null, 6, false)
-	k._gun(m, muzzle)
+	VehicleBody.rod(k, m, Vector3(0.0725, 0.0, 0.08) * s, Vector3(0.115, 0.0, 0.08) * s, 0.008 * s, "steel", null, 6, false)
+	VehicleBody.cylinder(k, m, 0.016 * s, 0.016 * s, 0.03 * s, Vector3(0.12, 0.0, 0.08) * s, Vector3(0, 0, PI / 2), "rubber", null, 6, false)
+	# the slot along the right side plate the handle's stud runs back in
+	k._box(m, Vector3(0.004, 0.014, 0.3) * s, Vector3(0.0685, 0.0, -0.02) * s, "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+	# a crew-served gun is held by its spade grips
+	k._gun(m, muzzle, [Vector3(0.075, 0.03, 0.4) * s, Vector3(-0.075, 0.03, 0.4) * s] if grips else [])
 	return muzzle
 
 
 ## General-purpose machine gun (7.62 mm, M240 / PKT pattern). `stock` adds the
 ## butt and pistol grip of a pintle gun; coaxial and remote mounts omit it.
-static func mmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, can := -1.0, stock := true, mat := "gunmetal_w", can_col := Color(0.29, 0.31, 0.22)) -> Vector3:
+static func mmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, can := -1.0, stock := true, mat := "gunmetal_w", can_col := Color(0.29, 0.31, 0.22), pk := false) -> Vector3:
+	mat = _steel(mat)
 	var m := _aimed(k, parent, receiver, muzzle)
 	var s := size
 	var length := receiver.distance_to(muzzle)
-	VehicleMounts.receiver(k, m, Vector3(0.08, 0.13, 0.42) * s, Vector3.ZERO, mat)
-	k._add(m, BevelMesh.make(Vector3(0.09, 0.03, 0.26) * s, 0.006 * s), mat, null, Vector3(0, 0.075, -0.02) * s)
-	if stock:
+	VehicleMounts.receiver(k, m, Vector3(0.066, 0.108, 0.42) * s, Vector3.ZERO, mat)
+	k._add(m, BevelMesh.make(Vector3(0.072, 0.024, 0.27) * s, 0.005 * s), mat, null, Vector3(0, 0.064, -0.02) * s)
+	if stock and pk:
+		# the PK's skeleton stock: an open frame, a bar along its comb and
+		# one under it, closed by the butt plate
+		VehicleBody.rod(k, m, Vector3(0, 0.025, 0.2) * s, Vector3(0, 0.018, 0.44) * s, 0.009 * s, mat, null, 6, false)
+		VehicleBody.rod(k, m, Vector3(0, -0.05, 0.21) * s, Vector3(0, -0.068, 0.44) * s, 0.009 * s, mat, null, 6, false)
+		k._add(m, BevelMesh.make(Vector3(0.042, 0.12, 0.02) * s, 0.006 * s), mat, null, Vector3(0, -0.024, 0.448) * s)
+	elif stock:
 		k._add(m, BevelMesh.make(Vector3(0.05, 0.1, 0.24) * s, 0.01 * s), mat, null, Vector3(0, -0.01, 0.32) * s)
+	if stock:
 		k._box(m, Vector3(0.035, 0.1, 0.045) * s, Vector3(0, -0.1, 0.12) * s, mat, null, Vector3(-0.3, 0, 0), false)
+		# the trigger guard's loop in front of the grip
+		VehicleFrames.path(k, m, [Vector3(0, -0.064, 0.05) * s, Vector3(0, -0.098, 0.062) * s, Vector3(0, -0.1, 0.1) * s, Vector3(0, -0.075, 0.115) * s], 0.004 * s, mat, null, 4, false, 0)
 	var trunnion := maxf(-0.39 * s, -length + 0.12 * s)
-	_z(k, m, -0.21 * s, trunnion, 0.03 * s, 0.03 * s, mat, null, 8, true, Vector2.ZERO, false)
-	VehicleBody.rod(k, m, Vector3(0, -0.035, -0.22) * s, Vector3(0, -0.035 * s, minf(trunnion - 0.1 * s, -length * 0.55)), 0.011 * s, mat, null, 6, false, -1.0, false)
-	VehicleDoors.pull(k, m, Vector3(0, 0.03, -0.3) * s, Vector3.UP, Vector3.FORWARD, 0.09 * s, 0.006 * s, mat)
-	_z(k, m, trunnion, -length + 0.07 * s, 0.016 * s, 0.016 * s, mat, null, 6, false, Vector2.ZERO, false, false)
-	_z(k, m, -length + 0.07 * s, -length, 0.022 * s, 0.018 * s, mat, null, 6, false)
+	_z(k, m, -0.21 * s, trunnion, 0.023 * s, 0.023 * s, mat, null, 8, true, Vector2.ZERO, false)
+	var gas := minf(trunnion - 0.1 * s, -length * 0.55)
+	VehicleBody.rod(k, m, Vector3(0, -0.035, -0.22) * s, Vector3(0, -0.035 * s, gas), 0.011 * s, mat, null, 6, false, -1.0, false)
+	# the gas block clamped round the barrel at the tube's end, and the bipod
+	# folded back under the tube from its collar there, its feet together
+	k._add(m, BevelMesh.make(Vector3(0.034, 0.05, 0.04) * s, 0.005 * s), mat, null, Vector3(0, -0.018 * s, gas))
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.rod(k, m, Vector3(side * 0.012 * s, -0.048 * s, gas + 0.015 * s), Vector3(side * 0.018 * s, -0.052 * s, gas + 0.29 * s), 0.0055 * s, mat, null, 6, false)
+		k._box(m, Vector3(0.012, 0.01, 0.03) * s, Vector3(side * 0.018 * s, -0.058 * s, gas + 0.29 * s), mat, null, Vector3.ZERO, false)
+	# the receiver's stamped stiffening ribs, the folding charging handle on
+	# its right
+	for side: float in [-1.0, 1.0]:
+		for y: float in [0.022, -0.022]:
+			k._box(m, Vector3(0.003, 0.008, 0.3) * s, Vector3(side * 0.034, y, -0.02) * s, mat, null, Vector3.ZERO, false)
+	k._add(m, BevelMesh.make(Vector3(0.022, 0.018, 0.034) * s, 0.004 * s), mat, null, Vector3(0.045, 0.012, -0.12) * s)
+	VehicleDoors.pull(k, m, Vector3(0, 0.023, -0.3) * s, Vector3.UP, Vector3.FORWARD, 0.09 * s, 0.006 * s, mat)
+	_z(k, m, trunnion, -length + 0.07 * s, 0.016 * s, 0.016 * s, mat, null, 8, false, Vector2.ZERO, false, false)
+	# the flash hider: a cone flaring to the muzzle with slots cut round it,
+	# the front sight post on its collar
+	_z(k, m, -length + 0.07 * s, -length, 0.018 * s, 0.024 * s, mat, null, 10, false)
+	for side: float in [-1.0, 1.0]:
+		k._box(m, Vector3(0.004, 0.012, 0.05) * s, Vector3(side * 0.021, 0, -length + 0.03 * s) * Vector3(1, 1, 1), "burnt", Color(0.02, 0.02, 0.02), Vector3.ZERO, false)
+	k._box(m, Vector3(0.006, 0.03, 0.01) * s, Vector3(0, 0.03 * s, -length + 0.085 * s), mat, null, Vector3.ZERO, false)
 	_bore(k, m, -length, 0.009 * s)
+	for side: float in [-1.0, 1.0]:
+		_rivets(k, m, Vector3(side * 0.034, 0.035, -0.17) * s, Vector3(side * 0.034, 0.035, 0.13) * s, Vector3(side, 0, 0), 4, 0.004 * s, mat)
 	if can != 0.0:
-		VehicleFittings.ammo_can(k, m, Vector3(signf(can) * 0.08, -0.07, 0.02) * s, can_col, Vector3.ZERO, Vector3(0.08, 0.13, 0.15) * s)
-		_belt(k, m, Vector3(signf(can) * 0.075, 0.0, 0.0) * s, Vector3(signf(can) * 0.04, 0.045, -0.02) * s, 0.0065 * s, 0.065 * s, 2)
+		var can_at := Vector3(signf(can) * 0.073, -0.07, 0.02) * s
+		var can_size := Vector3(0.08, 0.13, 0.15) * s
+		VehicleFittings.ammo_can(k, m, can_at, can_col, Vector3.ZERO, can_size, true)
+		_belt(k, m, can_at, can_size, Vector3(signf(can) * 0.035, 0.04, -0.02) * s, 0.0062 * s, 0.071 * s)
 	# The feed cover's hinge across its back, the rear sight leaf up on it.
-	VehicleBody.rod(k, m, Vector3(-0.045, 0.09, 0.11) * s, Vector3(0.045, 0.09, 0.11) * s, 0.007 * s, "metal_dark", null, 6, false)
-	k._box(m, Vector3(0.03, 0.028, 0.006) * s, Vector3(0, 0.102, 0.08) * s, mat, null, Vector3.ZERO, false)
-	k._gun(m, muzzle)
+	VehicleBody.rod(k, m, Vector3(-0.037, 0.077, 0.11) * s, Vector3(0.037, 0.077, 0.11) * s, 0.007 * s, "metal_dark", null, 6, false)
+	k._box(m, Vector3(0.026, 0.026, 0.006) * s, Vector3(0, 0.089, 0.08) * s, mat, null, Vector3.ZERO, false)
+	# with its butt, a gunner holds the pistol grip and steadies the wrist of the stock
+	k._gun(m, muzzle, [Vector3(0, -0.09, 0.13) * s, Vector3(-0.03, 0.04, 0.24) * s] if stock else [])
 	return muzzle
 
 
-## A belt of linked rounds from `a` (the can's mouth) to `b` (the feed tray):
-## the blackened steel links and `n` cartridges standing in them, laid along
-## the gun's axis, brass cases and their dark bullet tips forward.
-static func _belt(k: VehicleModels, m: Node3D, a: Vector3, b: Vector3, radius: float, length: float, n: int) -> void:
-	VehicleFrames.beam(k, m, a, b, length * 0.55, radius * 0.9, "metal_dark", null, false)
-	for i in n:
-		var at := a.lerp(b, (i + 0.5) / n) + Vector3(0, radius * 0.5, 0)
-		VehicleBody.cylinder(k, m, radius, radius, length * 0.68, at + Vector3(0, 0, length * 0.16), X90, "paint", Color(0.62, 0.48, 0.2), 6, false, true, false)
-		VehicleBody.cylinder(k, m, radius * 0.95, radius * 0.45, length * 0.32, at - Vector3(0, 0, length * 0.34), X90, "metal_dark", null, 6, false, false, true)
+## Cartridge brass: bright, warm and metallic, dulled a little by handling.
+const BRASS := Color(0.4, 0.32, 0.17)
+
+
+## The belt feeding a gun from the open can beside it (VehicleFittings.ammo_can
+## with `open`), the can centred at `can` and `size` across, in the gun's
+## space: the belt's top fold lies side by side in the can's mouth, then it
+## rises over the lip on the gun's side and runs into the feed tray at `tray`.
+## Each round lies along the gun's axis, its brass case behind and its dark
+## bullet forward, held in a blackened steel link; `radius` and `length` are
+## a round's.
+static func _belt(k: VehicleModels, m: Node3D, can: Vector3, size: Vector3, tray: Vector3, radius: float, length: float) -> void:
+	var case_len := length * 0.72
+	for p in _belt_rounds(can, size, tray, radius):
+		var base := p.z + length * 0.5
+		VehicleBody.cylinder(k, m, radius, radius, case_len, Vector3(p.x, p.y, base - case_len * 0.5), X90, "steel", BRASS, 6, false, true, false)
+		VehicleBody.cylinder(k, m, radius * 0.92, radius * 0.3, length - case_len, Vector3(p.x, p.y, base - case_len - (length - case_len) * 0.5), X90, "metal_dark", null, 6, false, false, true)
+		# the link's loop round the case, the steel gone black
+		VehicleBody.cylinder(k, m, radius * 1.1, radius * 1.1, length * 0.12, Vector3(p.x, p.y, base - case_len * 0.3), X90, "metal_dark", Color(0.06, 0.06, 0.06), 6, false, false, false)
+	# the feedway in the receiver's side, where the belt goes in
+	var side := signf(can.x - tray.x)
+	k._box(m, Vector3(0.004, radius * 3.2, length * 0.75), tray - Vector3(side * 0.003, 0, 0), "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+
+
+## Where the belt's rounds lie (their middles), from the can's far wall to
+## the last before the feed tray: along the can's mouth just under the rim, up
+## over the lip on the gun's side and into the tray, a round every pitch (a
+## little over one case across), so it reads as one belt.
+static func _belt_rounds(can: Vector3, size: Vector3, tray: Vector3, radius: float) -> Array[Vector3]:
+	var side := signf(can.x - tray.x)  # (the can's side of the gun)
+	var pitch := radius * 2.35
+	var top := can.y + size.y * 0.4  # (the can body's rim: see ammo_can)
+	var lip := can.x - side * size.x * 0.5
+	var fold_y := top - radius * 0.35
+	var line: Array[Vector3] = [
+		Vector3(can.x + side * (size.x * 0.5 - radius * 1.4), fold_y, can.z),
+		Vector3(lip + side * radius * 1.5, fold_y, can.z),
+		Vector3(lip - side * radius * 0.3, top + radius * 1.7, lerpf(can.z, tray.z, 0.4)),
+		tray,
+	]
+	# each round a pitch on from the last in a straight line, so where the belt
+	# bends over the lip its rounds fan out rather than run into each other
+	var rounds: Array[Vector3] = [line[0]]
+	var seg := 0
+	var t := 0.0
+	while seg < line.size() - 1:
+		var prev := rounds[rounds.size() - 1]
+		var found := false
+		while seg < line.size() - 1:
+			var a := line[seg].lerp(line[seg + 1], t)
+			var d := line[seg + 1] - a
+			var f := a - prev
+			var qa := d.dot(d)
+			var qb := 2.0 * f.dot(d)
+			var disc := qb * qb - 4.0 * qa * (f.dot(f) - pitch * pitch)
+			if qa > 0.0 and disc >= 0.0:
+				var u := (-qb + sqrt(disc)) / (2.0 * qa)
+				if u >= 0.0 and u <= 1.0:
+					t = lerpf(t, 1.0, u)
+					found = true
+					break
+			seg += 1
+			t = 0.0
+		if not found:
+			break
+		var p := line[seg].lerp(line[seg + 1], t)
+		if p.distance_to(tray) < radius * 1.2:
+			break
+		rounds.append(p)
+	return rounds
 
 
 ## Automatic grenade launcher (40 mm). `feed` puts the linked-round container on
 ## the left (-1) or right (+1), 0 for none; `drum` chooses the round drum over
 ## a box, and `feed_offset` is its centre's distance from the gun's axis, so a
-## box clears the mount's yoke arms. Returns the muzzle.
-static func gmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, feed := 1.0, drum := true, mat := "gunmetal_w", feed_col := Color(0.29, 0.31, 0.22), feed_offset := 0.24) -> Vector3:
+## box clears the mount's yoke arms. `style` "mk19" builds the American Mk 19
+## (see _mk19) instead of the jacketed GMG. Returns the muzzle.
+static func gmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vector3, size := 1.0, feed := 1.0, drum := true, mat := "gunmetal_w", feed_col := Color(0.29, 0.31, 0.22), feed_offset := 0.24, style := "") -> Vector3:
+	mat = _steel(mat)
 	var m := _aimed(k, parent, receiver, muzzle)
 	var s := size
 	var length := receiver.distance_to(muzzle)
-	VehicleMounts.receiver(k, m, Vector3(0.24, 0.24, 0.62) * s, Vector3.ZERO, mat)
-	k._add(m, BevelMesh.make(Vector3(0.18, 0.08, 0.32) * s, 0.012 * s), mat, null, Vector3(0, 0.15, 0.05) * s)
-	k._box(m, Vector3(0.2, 0.14, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
-	for side: float in [-1.0, 1.0]:
-		VehicleBody.cylinder(k, m, 0.02 * s, 0.02 * s, 0.13 * s, Vector3(side * 0.07, 0, 0.37) * s, Vector3.ZERO, "rubber", null, 6, false)
-	var jacket_end := maxf(-0.66 * s, -length + 0.16 * s)
-	_z(k, m, -0.3 * s, jacket_end, 0.075 * s, 0.075 * s, mat, null, 10, true, Vector2.ZERO, false)
-	for i in 3:
-		var z := lerpf(-0.3 * s, jacket_end, (i + 1) / 4.0)
-		_z(k, m, z + 0.01 * s, z - 0.01 * s, 0.078 * s, 0.078 * s, "metal_dark", null, 10, false)
-	_z(k, m, jacket_end, -length + 0.08 * s, 0.05 * s, 0.05 * s, mat, null, 8, true, Vector2.ZERO, false, false)
-	_z(k, m, -length + 0.08 * s, -length, 0.062 * s, 0.06 * s, mat, null, 8, false)
-	_bore(k, m, -length, 0.04 * s)
+	if style == "mk19":
+		_mk19(k, m, length, s, mat)
+	else:
+		_gmg_body(k, m, length, s, mat)
 	if feed != 0.0:
 		var side := signf(feed)
 		if drum:
@@ -222,11 +408,51 @@ static func gmg(k: VehicleModels, parent: Node3D, receiver: Vector3, muzzle: Vec
 	return muzzle
 
 
+## The jacketed GMG's body along -Z in `m`: the boxy receiver and its raised
+## cover, the back plate and grips, the barrel jacket with its bands, the
+## barrel and its muzzle collar.
+static func _gmg_body(k: VehicleModels, m: Node3D, length: float, s: float, mat: String) -> void:
+	VehicleMounts.receiver(k, m, Vector3(0.24, 0.24, 0.62) * s, Vector3.ZERO, mat)
+	k._add(m, BevelMesh.make(Vector3(0.18, 0.08, 0.32) * s, 0.012 * s), mat, null, Vector3(0, 0.15, 0.05) * s)
+	k._box(m, Vector3(0.2, 0.14, 0.03) * s, Vector3(0, 0, 0.325) * s, mat)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.cylinder(k, m, 0.02 * s, 0.02 * s, 0.13 * s, Vector3(side * 0.07, 0, 0.37) * s, Vector3.ZERO, "rubber", null, 6, false)
+	var jacket_end := maxf(-0.66 * s, -length + 0.16 * s)
+	_z(k, m, -0.3 * s, jacket_end, 0.075 * s, 0.075 * s, mat, null, 10, true, Vector2.ZERO, false)
+	for i in 3:
+		var z := lerpf(-0.3 * s, jacket_end, (i + 1) / 4.0)
+		_z(k, m, z + 0.01 * s, z - 0.01 * s, 0.078 * s, 0.078 * s, "metal_dark", null, 10, false)
+	_z(k, m, jacket_end, -length + 0.08 * s, 0.05 * s, 0.05 * s, mat, null, 8, true, Vector2.ZERO, false, false)
+	_z(k, m, -length + 0.08 * s, -length, 0.062 * s, 0.06 * s, mat, null, 8, false)
+	_bore(k, m, -length, 0.04 * s)
+
+
+## The Mk 19's body along -Z in `m`: the long square receiver under its flat
+## top cover, the feed throat open on its left and the links' exit on its
+## right, the back plate with the spade grips, a charging handle out either
+## side of its back, and the short plain barrel with a collar at its muzzle -
+## no jacket, which is what tells it from the GMG at a glance.
+static func _mk19(k: VehicleModels, m: Node3D, length: float, s: float, mat: String) -> void:
+	VehicleMounts.receiver(k, m, Vector3(0.2, 0.2, 0.7) * s, Vector3(0, 0, 0.02) * s, mat)
+	k._add(m, BevelMesh.make(Vector3(0.21, 0.04, 0.52) * s, 0.008 * s), mat, null, Vector3(0, 0.12, 0.04) * s)
+	for side: float in [-1.0, 1.0]:
+		k._box(m, Vector3(0.006, 0.07 if side < 0.0 else 0.05, 0.14) * s, Vector3(side * 0.101, 0.05, -0.1) * s, "plain_dark", Color(0.03, 0.03, 0.03), Vector3.ZERO, false)
+	k._box(m, Vector3(0.18, 0.16, 0.03) * s, Vector3(0, 0, 0.385) * s, mat)
+	for side: float in [-1.0, 1.0]:
+		VehicleBody.cylinder(k, m, 0.02 * s, 0.02 * s, 0.13 * s, Vector3(side * 0.07, 0, 0.43) * s, Vector3.ZERO, "rubber", null, 6, false)
+		VehicleBody.rod(k, m, Vector3(side * 0.1, -0.02, 0.26) * s, Vector3(side * 0.16, -0.05, 0.3) * s, 0.012 * s, mat, null, 6, false)
+		k._box(m, Vector3(0.03, 0.05, 0.02) * s, Vector3(side * 0.165, -0.055, 0.3) * s, "rubber", null, Vector3.ZERO, false)
+	_z(k, m, -0.33 * s, -length + 0.06 * s, 0.036 * s, 0.034 * s, mat, null, 10, true, Vector2.ZERO, false, false)
+	_z(k, m, -length + 0.06 * s, -length, 0.044 * s, 0.044 * s, mat, null, 10, false)
+	_bore(k, m, -length, 0.026 * s)
+
+
 ## Rotary barrel cluster from its rear carrier to the muzzles: `barrels` tubes
 ## on `cluster` radius round a spindle, with clamps at the given fractions of
 ## the length. Housings, motors and feed chutes stay with the aircraft or mount
 ## that carries them. Returns the muzzle.
 static func rotary(k: VehicleModels, parent: Node3D, rear: Vector3, muzzle: Vector3, barrels: int, cluster: float, barrel_radius: float, clamps: Array = [0.55, 0.92], mat := "gunmetal_w", phase := 0.0) -> Vector3:
+	mat = _steel(mat)
 	var m := _aimed(k, parent, rear, muzzle)
 	var length := rear.distance_to(muzzle)
 	var clamp_r := cluster + barrel_radius * 1.6

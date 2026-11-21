@@ -257,7 +257,7 @@ const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attac
 	"intent_hold", "intent_take", "intent_screen", "intent_reserve", "intent_ambush", "cam_follow", "cam_mount",
 	"stance", "fire_discipline", "target_priority", "dismount",
 	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
-	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
+	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "doctrine", "jump_alert", "log", "hide_hud",
 	"help", "manual", "photo_mode", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
 	"group_set_1", "group_set_2", "group_set_3", "group_set_4", "group_set_5", "group_set_6", "group_set_7",
 	"group_set_8", "group_set_9", "group_set_0", "group_1", "group_2", "group_3", "group_4", "group_5", "group_6",
@@ -389,6 +389,9 @@ func _key(ev: InputEvent) -> void:
 		"orbat":
 			if world.hud:
 				world.hud.toggle_orbat()
+		"doctrine":
+			if world.hud:
+				world.hud.toggle_doctrine()
 		"jump_alert":
 			# the newest of the alerts and the co-commanders' pings
 			var at := Vector3.INF
@@ -889,6 +892,12 @@ func _order(screen: Vector2, shift: bool, face_in := Vector3.ZERO, kind := "") -
 		if tgt.skind in ["tunnel", "mg_nest", "watchtower"]:
 			world.send_cmd({"t": "enter", "squads": sel_squads, "target": tgt.eid})
 			_marker(tgt.position, Color(0.6, 0.9, 1.0))
+			Sfx.ui("click")
+			return
+		# a dugout's doorway (anywhere else on a trench is a place to move to)
+		if tgt.skind == "trench" and TrenchNet.has_dugout(tgt) and Defs.flat(world.cam.ground_point(screen) - TrenchNet.dugout_door(tgt)).length() < 1.6:
+			world.send_cmd({"t": "enter", "squads": sel_squads, "target": tgt.eid})
+			_marker(TrenchNet.dugout_door(tgt), Color(0.6, 0.9, 1.0))
 			Sfx.ui("click")
 			return
 	if tgt is Vehicle and tgt.team == lt and not sel_vehicles.is_empty() and sel_squads.is_empty():

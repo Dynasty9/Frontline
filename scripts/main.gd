@@ -222,7 +222,7 @@ func _ready() -> void:
 	if _curtains:
 		_intro()
 	Net.game_start.connect(_on_game_start)
-	Net.net_error.connect(func(m): return_to_menu(m))
+	Net.net_error.connect(_on_net_error)
 	if args.has("name"):
 		Net.my_name = args.name
 	if args.has("mood"):
@@ -828,6 +828,31 @@ func _warm_up(cur: Curtain) -> void:
 		cur.finish(2.2)
 
 
+func _on_net_error(msg: String) -> void:
+	# a test client whose host ends the battle first (its own --quit-after,
+	# counted from the start, runs out before the client's, counted from when
+	# the world reached it) reports what it had and quits, rather than waiting
+	# at the menu for a world that won't come back
+	if _quit_at > 0.0 and world and not world.srv and world.has_meta("world_at"):
+		_quit_at = -1.0
+		_client_summary(" host_left=1")
+		TestRun.quit(get_tree())
+		return
+	return_to_menu(msg)
+
+
+## The CLIENT line a test client prints when it quits (docs/DEVELOPMENT.md, "Host / client").
+func _client_summary(extra: String) -> void:
+	var counts := {}
+	var enemy := 0
+	for e in world.entities.values():
+		counts[e.ekind()] = int(counts.get(e.ekind(), 0)) + 1
+		if e.team >= 0 and e.team != world.local_team:
+			enemy += 1
+	counts["ENEMY_KNOWN"] = enemy
+	print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d%s" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine(), extra])
+
+
 func return_to_menu(msg: String) -> void:
 	if is_instance_valid(replay_viewer):
 		replay_viewer.queue_free()
@@ -1180,10 +1205,46 @@ func _process(_dt: float) -> void:
 		set_meta("demoed", true)
 		var ddir := Defs.flat(world.cam.cam.global_transform.basis.x).normalized()
 		world.rules.demo_support(String(args["demo-support"]), world.cam.focus_pos, ddir)
+	# --research=KEY,KEY,...: those steps of the doctrine tree already done for
+	# the side the player is on (Coalition for observers), and --research-q=KEY
+	# under way at its first Research Post (pictures of the tree and the cards)
+	if args.has("research") and world.srv and world.time > 0.5 and not has_meta("researched"):
+		set_meta("researched", true)
+		var rt := maxi(world.local_team, 0)
+		for rk in String(args.research).split(","):
+			if rk != "" and Defs.UPGRADES.has(rk):
+				world.rules.apply_upgrade(rt, rk)
+		if args.has("research-q"):
+			for st in world.structures:
+				if st.skind == "research" and st.team == rt and st.built:
+					for rk in String(args["research-q"]).split(","):
+						st.queue_research(world.local_peer, rk)
+					break
 	if args.has("bot-cmds"):
 		_bot_cmds()
 	if args.has("bot-defense"):
 		_bot_defense()
+	# --hover=squad|vehicle: the cursor rests on the nearest of the player's
+	# own men (or vehicles) to the middle of the view (the hover cards)
+	if args.has("hover") and world.input and world.cam and world.time > 1.0:
+		var hv := String(args.hover)
+		var vsz2 := get_viewport().get_visible_rect().size
+		var best_d := INF
+		var best_p := Vector2(-1, -1)
+		for e in (world.vehicles if hv == "vehicle" else world.soldiers):
+			if e.team != world.local_team or not e.visible or e.gone:
+				continue
+			if hv != "vehicle" and (e.sid == 0 or e.life != 0):
+				continue
+			var hp3: Vector3 = e.position + Vector3(0, 0.9 if hv != "vehicle" else 1.2, 0)
+			if world.cam.cam.is_position_behind(hp3):
+				continue
+			var sp: Vector2 = world.cam.cam.unproject_position(hp3)
+			var d := sp.distance_to(vsz2 * Vector2(0.5, 0.45))
+			if d < best_d:
+				best_d = d
+				best_p = sp
+		world.input.debug_mouse = best_p
 	if args.has("cursor") and world.input:
 		var cv := String(args.cursor).split(",")
 		var vsz := get_viewport().get_visible_rect().size
@@ -1219,6 +1280,23 @@ func _process(_dt: float) -> void:
 						bp = Vector3(v.position.x + float(ba[1]), 0.3, v.position.z)
 						break
 			world.combat.explode(bp, {"dmg": 160.0 * bsz, "radius": 4.0 + bsz * 3.0, "fling": 8.0 + bsz * 4.0, "at": 300.0, "top": true, "src": null, "team": -1, "size": bsz})
+	# --destroy-near=x,z,kind,time: the structure of that kind nearest x,z
+	# destroyed at that time, the way enough damage destroys it (a single wall
+	# knocked down, for the light probes' before-and-after)
+	if args.has("destroy-near") and world.srv and not has_meta("destroyed_near"):
+		var dn := String(args["destroy-near"]).split(",")
+		if world.time >= float(dn[3]):
+			set_meta("destroyed_near", true)
+			var at := Vector3(float(dn[0]), 0, float(dn[1]))
+			var best = null  # (untyped: the launch doesn't compile game classes)
+			var best_d := INF
+			for st in world.structures_near(at, 30.0):
+				var d: float = Vector2(st.position.x - at.x, st.position.z - at.z).length()
+				if not st.gone and st.skind == dn[2] and d < best_d:
+					best = st
+					best_d = d
+			if best:
+				best.take_damage(best.hp + 1.0)
 	# --focus-town[=dx,dz]: the camera on the middle of town (offset in metres)
 	if args.has("focus-town") and world.cam and world.time > 1.0 and not world.has_meta("town_focused") and world.town_rect.size.x > 0.0:
 		var off := Vector3.ZERO
@@ -1444,6 +1522,8 @@ func _process(_dt: float) -> void:
 		set_meta("hud_panel", true)
 		if String(args["hud-panel"]) == "over":
 			world.hud.show_game_over(maxi(world.local_team, 0))
+		elif String(args["hud-panel"]) == "doctrine":
+			world.hud.toggle_doctrine()
 		var hp: Control = {"settings": world.hud.settings_panel, "help": world.hud.help_panel, "menu": world.hud.menu_panel, "log": world.hud.log_panel}.get(String(args["hud-panel"]))
 		if hp == world.hud.menu_panel:
 			world.hud.toggle_menu()  # as Esc opens it, fitted to its rows
@@ -1522,14 +1602,7 @@ func _process(_dt: float) -> void:
 			print("FINAL ", world.debug_stats())
 			print("REPORT ", world.battle.summary())
 		else:
-			var counts := {}
-			var enemy := 0
-			for e in world.entities.values():
-				counts[e.ekind()] = int(counts.get(e.ekind(), 0)) + 1
-				if e.team >= 0 and e.team != world.local_team:
-					enemy += 1
-			counts["ENEMY_KNOWN"] = enemy
-			print("CLIENT entities=%d %s time=%.1f team_info=%s waited=%.1f team=%d mine=%d" % [world.entities.size(), str(counts), world.time, str(world.team_info[0].get("supply", -1)), float(world.get_meta("world_at", -1.0)), world.local_team, _mine()])
+			_client_summary("")
 		if not world.coop.peers.is_empty() or int(world.coop.stats.get("sent", 0)) > 0:
 			print("COOP ", world.coop.summary())
 		TestRun.quit(get_tree())

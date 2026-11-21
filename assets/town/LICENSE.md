@@ -15,11 +15,13 @@ CC0 1.0 assets from [Poly Haven](https://polyhaven.com/license):
 - [Brick Wall 001](https://polyhaven.com/a/brick_wall_001), Rob Tuytel and Dimitrios Savva.
 - [Plastered Wall](https://polyhaven.com/a/plastered_wall), Amal Kumar.
 - [Tree Bark 03](https://polyhaven.com/a/tree_bark_03), Rob Tuytel.
+- [Gravel Floor 02](https://polyhaven.com/a/gravel_floor_02), Dimitrios Savva and Jenelle van Heerden; 2 m scan.
 - [Gravelly Sand](https://polyhaven.com/a/gravelly_sand), Dario Barresi.
+- [Rocky Trail 02](https://polyhaven.com/a/rocky_trail_02), Amal Kumar; 2 m scan.
 
 `tools/bake_town_assets.py` verifies original 2K JPEG source checksums from
 `sources.json`, caches downloads under `build/terrain/town-source`, and packs
-bundled runtime textures. Asphalt retains 2K; other surfaces use 1K. Repair asphalt uses colour only.
+bundled runtime textures. Aerial asphalt retains 2K; other surfaces use 1K. Repair asphalt uses colour only.
 `*_color.jpg` is sRGB colour. `*_surface.png` stores linear OpenGL normals in RGB
 and roughness in alpha. Alpha is data; imports preserve it and generate mipmaps.
 The game never downloads these assets. Shader tinting varies grass moisture and
@@ -29,6 +31,10 @@ Street surfaces combine the aerial scan at 30 m for broad cracks and weathering
 with Road Damaged Clean at 2.2 m for fine aggregate and normal/roughness detail.
 The fine scan is desaturated toward charcoal in the shader; repaired patches
 retain the same aggregate scale. The normal maps follow the actual road slope.
+
+Country tracks are drawn by the terrain itself: the trail scan (its height
+packed in the colour alpha) is a layer of the terrain's material arrays, and
+its shoulders blend into the meadow's own rutted-soil scan (assets/terrain).
 
 The baker also measures each packed photograph's average linear albedo in
 `material_means.tres`. Building materials use those values to preserve their

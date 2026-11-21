@@ -136,6 +136,15 @@ var _mg_lay := PackedVector2Array()  # (view) each machine-gun mount's traverse 
 var _mg_rate := PackedVector2Array()  # (view) and how fast each is moving
 var _mg_recoil := 0.0  # (view) how far the machine gun has run back on its cradle
 var _mg_climb := 0.0  # (view) how far its muzzle has jumped with the last rounds
+## A standing gunner: his grips at his chest, his body this far behind them.
+const GUNNER_CHEST := 1.3
+const GUNNER_REACH := 0.32
+var _gunners: Array = []  # (view) the man on each crew-served mount (a SoldierModel; true: not made yet), null where none
+var _gunner_fire := 0.0  # (view) seconds since the mounted gun last fired, for its gunner
+var _gunner_skip := 0  # (view) frames since the gunners were last posed
+var _mg_heat := 0.0  # (view) how hot the mounted gun's barrel is from its last bursts
+var _smoke_t := 0.0  # (view) until its next wisp of barrel smoke
+var _gunner_dt := 0.0
 var _turret_rest := Vector3.INF
 var _vel_s := Vector3.ZERO
 var _vel_prev := Vector3.ZERO
@@ -143,6 +152,8 @@ var turret: Node3D
 var tail_rotor: Node3D
 var blades: Node3D
 var blur: MeshInstance3D
+var _tail_blades: Node3D  # the tail rotor's blades and the disc shown for them at flight speed
+var _tail_blur: Node3D
 var wheels: Array = []
 var always_animate_tracks := false  # Long-lens footage also needs distant shoe contact.
 var _belt_yaw := 0.0
@@ -151,6 +162,14 @@ var _engine_sound: AudioStreamPlayer3D
 var _track_sound: AudioStreamPlayer3D
 var _drive_load := 0.0
 var _last_pos := Vector3.ZERO
+## (view) How much snow it carries (see _snow_view), as last drawn, and its parts.
+var _snow := -1.0
+var _snow_drawn := Vector3(-1, -1, -1)  # (as last drawn: the hull's, the gun's, the engine's run)
+var _snow_yaw := 0.0
+var _barrel_snow := -1.0
+var _barrel_hot := 0.0  # (view) 1 just fired, cooling to 0
+var _engine_run := 0.0  # (view) s its engine has been running, for the warmth on its deck
+var _snow_meshes: Array[MeshInstance3D] = []
 var _rotor_spd := 0.0
 var engine_exhaust: GeometryInstance3D
 var _rotor_snd: AudioStreamPlayer3D
@@ -771,7 +790,11 @@ func sim(dt: float) -> void:
 			if VehicleBrain.applies(self):
 				VehicleBrain.think(self)
 		var hull_yaw := rotation.y
+		var before_drive := position
 		_drive(dt)
+		var crushes := is_tracked() and not is_light()
+		if crushes and (before_drive != position or hull_yaw != rotation.y):
+			_resolve_hull(before_drive, hull_yaw)
 		if b == "tank" and _target_ok():
 			var available := maxf(0.0, float(motion_profile().traverse) - absf(_traverse)) * dt
 			var correction := clampf(wrapf(rotation.y - hull_yaw, -PI, PI), -available, available)
@@ -786,7 +809,7 @@ func sim(dt: float) -> void:
 		if vdef.has("service"):
 			_service_tick(dt)
 		smash_t -= dt
-		if smash_t <= 0.0:
+		if not crushes and smash_t <= 0.0:
 			smash_t = 0.15
 			_smash()
 	var laid := _salvo > 0 or (vdef.has("art") and world.time - last_fire_t < 4.0)
@@ -1111,6 +1134,60 @@ func _face(dt: float) -> void:
 	rotation.y += step
 	if base() != "tank":
 		turret_yaw -= step  # tanks stabilize across every driving manoeuvre in sim()
+
+
+## Sweep the corners as well as the centre. A long tick, reversing or pivoting
+## can all put a track into a wall before the vehicle's navigation cell changes.
+func _resolve_hull(start: Vector3, start_yaw: float) -> void:
+	var size := _hull_size()
+	var half := Vector2(size.x, size.z) * 0.5
+	var travel := position.distance_to(start)
+	var nearby := world.structures_near((position + start) * 0.5, half.length() + travel * 0.5)
+	if nearby.is_empty():
+		return
+	var turn := wrapf(rotation.y - start_yaw, -PI, PI)
+	var steps := maxi(1, ceili((travel + absf(turn) * half.length()) / 0.5))
+	var previous := start
+	var previous_yaw := start_yaw
+	var crushed: Array[Structure] = []
+	for i in range(1, steps + 1):
+		var t := float(i) / steps
+		var next := start.lerp(position, t)
+		var c := Vector2(next.x, next.z)
+		var heading := start_yaw + turn * t
+		crushed.clear()
+		for st: Structure in nearby:
+			if st.gone or not Defs.obb_overlap(c, half, heading, Vector2(st.position.x, st.position.z), st.foot, st.yaw):
+				continue
+			var friendly := st.team == team and st.is_player_building()
+			if st.smashable and not st.indestructible and not friendly:
+				if st.skind != "rubble":
+					crushed.append(st)
+				continue
+			for part in st.nav_parts():
+				if part.v != Nav.SOLID or not Defs.obb_overlap(c, half, heading, part.c, part.h, part.yaw):
+					continue
+				if not st.indestructible and not friendly and st.skind in ["barracks", "factory", "research", "medic_tent", "dock"]:
+					crushed.append(st)
+					break
+				# A vehicle already intersecting a solid when placed can back out.
+				var old := Vector2(previous.x, previous.z)
+				if c.distance_squared_to(part.c) > old.distance_squared_to(part.c) and Defs.obb_overlap(old, half, previous_yaw, part.c, part.h, part.yaw):
+					continue
+				position = previous
+				rotation.y = previous_yaw
+				speed = 0.0
+				yaw_rate = 0.0
+				velocity = Vector3.ZERO
+				return
+		for st in crushed:
+			if st.smashable:
+				st.smash(self)
+			else:
+				st.take_damage(st.hp, self)
+			world.stat("smash")
+		previous = next
+		previous_yaw = heading
 
 
 func _smash() -> void:
@@ -1954,6 +2031,16 @@ func _wreck_out(hard := 0.0) -> void:
 		if has_tank_model():
 			props["bent_skirts"] = bent_skirts
 			props["wreck_turret_yaw"] = turret_yaw
+		if (has_tank_model() or String(vdef.get("cat", "")) == "armour") and bool(vdef.get("cannon", false)):
+			# A hit that sets her ammunition off lifts the turret clean off its
+			# ring and throws it down beside her (Structure._blow_turret): the
+			# harder she was hit, the likelier.
+			var odds := 0.15 + 0.45 * clampf(-hp / maxf(max_hp, 1.0), 0.0, 1.0)
+			if brew_up_next > 0 or (brew_up_next == 0 and world.rng.randf() < odds):
+				props["turret_off"] = true
+				world.stat("turret_blown_off")
+				world.fx_event([Fx.EXPLODE, position + Vector3(0, hs.y + 0.4, 0), 2.2, "fuel"])
+			brew_up_next = 0
 		props["pos"] = plan[0]
 		props["yaw"] = plan[1]
 		props["tilt"] = plan[2]
@@ -1982,6 +2069,7 @@ const CRASH_SPIN := 1
 const CRASH_AUTOROTATE := 2
 var crashing := 0  # (host) 0 flying, or how she's coming down
 var crash_mode_next := 0  # (tests and showcase stages) how the next shoot-down goes; 0 at random
+var brew_up_next := 0  # (tests and showcase stages) 1: her ammunition goes up when she's knocked out, -1: it doesn't; 0 by chance
 var _crash_t := 0.0
 var _crash_tilt := Vector2.ZERO  # (pitch, roll) the wreck comes to rest at
 
@@ -2672,6 +2760,8 @@ func mg_kick(k: float) -> bool:
 		return false
 	_mg_recoil = minf(_mg_recoil + k, k * 2.4)
 	_mg_climb = minf(_mg_climb + k * randf_range(0.15, 0.6), 0.045)
+	_gunner_fire = 0.0
+	_mg_heat = minf(_mg_heat + k * 3.0, 2.0)
 	return true
 
 
@@ -2703,7 +2793,7 @@ func _lay_guns(dt: float) -> void:
 		_mg_lay.resize(mounts.size())
 		_mg_rate.resize(mounts.size())
 		for i in mounts.size():
-			_mg_lay[i] = Vector2(0.0, _vm.mg_rests[i].basis.get_euler().x)
+			_mg_lay[i] = Vector2(_vm.mg_stow[i], _vm.mg_rests[i].basis.get_euler().x)
 	var aim := aim_point()
 	var w: Dictionary = Defs.WEAPONS.get(String(vdef.mg), {})
 	var high := 1.3 if w.get("aa", false) else 0.85
@@ -2719,7 +2809,7 @@ func _lay_guns(dt: float) -> void:
 	for i in mounts.size():
 		var mount := mounts[i]
 		var rest: Transform3D = _vm.mg_rests[i]
-		var want := Vector2(0.0, rest.basis.get_euler().x)
+		var want := Vector2(_vm.mg_stow[i], rest.basis.get_euler().x)
 		if aim.is_finite():
 			var frame := (mount.get_parent() as Node3D).global_basis.orthonormalized()
 			var local := frame.inverse() * (aim - mount.global_position)
@@ -2739,11 +2829,157 @@ func _lay_guns(dt: float) -> void:
 		var xf := Transform3D(pose, rest.origin + pose.z * _mg_recoil)
 		if mount.transform != xf:
 			mount.transform = xf
+	if not _gunners.is_empty():
+		_pose_gunners(dt)
+	if _mg_heat > 0.02:
+		_barrel_smoke(dt)
+
+
+## A barrel hot from a burst smokes (view): once the firing stops, thin
+## wisps of burnt propellant and oil curl up off the muzzle and drift away on
+## the wind for a few seconds, thicker after a long burst and from a cannon.
+func _barrel_smoke(dt: float) -> void:
+	_mg_heat *= exp(-dt / 4.5)
+	_smoke_t -= dt
+	if _gunner_fire < 0.18 or _smoke_t > 0.0 or _vm.mg_tip == null or world.fx == null or world.fx.gunfx == null:
+		return
+	var heat := minf(_mg_heat, 1.5)
+	_smoke_t = lerpf(0.42, 0.1, heat / 1.5)
+	var camera := get_viewport().get_camera_3d()
+	var muzzle := _vm.mg_tip.global_position
+	if camera == null or camera.global_position.distance_to(muzzle) > 140.0 or randf() > Settings.fx_mult():
+		return
+	var axis := -_vm.mg_tip.global_basis.z
+	var size := clampf(_mg_heat * 0.5, 0.25, 1.0)
+	var at := muzzle - axis * randf_range(0.0, 0.25) + GunFx._jit(0.02)
+	var col := Color(GunFx.SMOKE.r, GunFx.SMOKE.g, GunFx.SMOKE.b, 0.07 + 0.12 * minf(heat, 1.0))
+	world.fx.gunfx.puff(at, Vector3(0, randf_range(0.25, 0.45), 0) + GunFx._jit(0.06), 0.015 * size + 0.01, (0.1 + 0.16 * size) * randf_range(0.8, 1.25), randf_range(1.6, 2.6), col, 1.6, 0.35, 0.0, 1.0)
+
+
+## The crew on the crew-served guns (view): a man of the vehicle's side, in
+## its kit, on each gun with grips - a technical's DShK, a Humvee's .50 in its
+## turret, a door gun, a boat's bow gun - his hands on the grips wherever it's
+## laid, standing behind it (kneeling at a boat's bow or crouched in a
+## helicopter's door) and turning with it, his shoulders working when it fires.
+## (Each is made the first time the vehicle comes near enough to see him, so
+## one never seen costs nothing.)
+func _build_gunners() -> void:
+	_gunners.clear()
+	if team < 0 or _vm.mg_mounts.is_empty() or _vm.gunner_seated:
+		return
+	var any := false
+	for i in _vm.mg_mounts.size():
+		var hands: Array = _vm.mg_hands[i]
+		_gunners.append(true if hands.size() >= 2 else null)
+		any = any or hands.size() >= 2
+	if not any:
+		_gunners.clear()
+
+
+func _make_gunner(i: int) -> SoldierModel:
+	var g := SoldierModel.new()
+	g.host_world = world
+	model.add_child(g)
+	g.build("rifleman" if team == 0 else "fighter", team, eid * 13 + i)
+	g.crew = true
+	_gunners[i] = g
+	return g
+
+
+func _pose_gunners(dt: float) -> void:
+	_gunner_fire += dt
+	# Close ones are posed every frame, distant ones every few; far off the
+	# gun reads on its own and the man is left out.
+	_gunner_dt += dt
+	var camera := get_viewport().get_camera_3d()
+	var cd := camera.global_position.distance_to(global_position) if camera else 0.0
+	var shown := cd < 260.0
+	for i in _gunners.size():
+		var g: Variant = _gunners[i]
+		if g is bool and shown:
+			_make_gunner(i)
+			_gunner_skip = 99  # (posed at once: never seen standing at the model's origin)
+		elif g is SoldierModel and is_instance_valid(g) and (g as Node3D).visible != shown:
+			(g as Node3D).visible = shown
+	if not shown:
+		return
+	_gunner_skip += 1
+	if _gunner_skip < (1 if cd < 60.0 else (2 if cd < 120.0 else 4)):
+		return
+	_gunner_skip = 0
+	dt = _gunner_dt
+	_gunner_dt = 0.0
+	var low := is_heli() or is_boat()
+	var posture: int = Soldier.Post.CROUCH if low else Soldier.Post.STAND
+	var act: int = Soldier.Act.SHOOT if _gunner_fire < 0.6 else Soldier.Act.IDLE
+	for i in _gunners.size():
+		if not _gunners[i] is SoldierModel:
+			continue
+		var g: SoldierModel = _gunners[i]
+		if not is_instance_valid(g):
+			continue
+		var mount: Node3D = _vm.mg_mounts[i]
+		var hands: Array = _vm.mg_hands[i]
+		var xf := mount.global_transform
+		var right: Vector3 = xf * (hands[0] as Vector3)
+		var left: Vector3 = xf * (hands[1] as Vector3)
+		var fwd := Defs.flat(-xf.basis.z)
+		if fwd.length_squared() < 0.0001:
+			continue
+		fwd = fwd.normalized()
+		var mid := (right + left) * 0.5
+		# behind the grips at arm's length, the grips at his chest standing
+		# (lower, kneeling or crouched), feet on whatever he stands on
+		var feet := mid - fwd * (0.42 if not low else 0.38) - Vector3(0, GUNNER_CHEST if not low else 0.78, 0)
+		if i == 0 and not _vm.gunner_floor.is_empty():
+			feet = _gunner_feet(_vm.gunner_floor, mid, fwd)
+		g.global_transform = Transform3D(Basis(Vector3.UP, atan2(-fwd.x, -fwd.z)), feet)
+		g.crew_r = right
+		g.crew_l = left
+		g.pose(dt, Soldier.Life.ALIVE, posture, act, 0.0, false, act == Soldier.Act.SHOOT)
+
+
+## Where a standing gunner's feet go on the floor his builder gave him
+## (VehicleModels.gunner_floor): in a hatch, on its one spot; in a bed, behind
+## the grips at arm's length (`mid` their middle, `fwd` the gun's flat
+## heading, both world), kept on the floor. Where the floor runs out behind
+## the grips - the gun swung back over his spot - he steps round the receiver
+## to its side instead of standing in front of the muzzle.
+func _gunner_feet(st: Dictionary, mid: Vector3, fwd: Vector3) -> Vector3:
+	var on: Node3D = st.on
+	var xf := on.global_transform
+	var area: Rect2 = st.area
+	var y: float = st.y
+	if area.size == Vector2.ZERO:
+		return xf * Vector3(area.position.x, y, area.position.y)
+	var grips := xf.affine_inverse() * mid
+	var f3 := xf.basis.inverse() * fwd
+	var f := Vector2(f3.x, f3.z)
+	if f.length_squared() < 0.0001:
+		return xf * Vector3(area.get_center().x, y, area.get_center().y)
+	var at := gunner_spot(area, Vector2(grips.x, grips.z), f.normalized())
+	return xf * Vector3(at.x, y, at.y)
+
+
+## Where on the floor `area` a standing gunner goes, in its x and z: behind
+## the grips `g` at arm's length along the gun's heading `f`, kept on the
+## floor - or, where the floor runs out behind them, beside the receiver on
+## the roomier side, out of the gun's line.
+static func gunner_spot(area: Rect2, g: Vector2, f: Vector2) -> Vector2:
+	var at := (g - f * GUNNER_REACH).clamp(area.position, area.end)
+	if (at - g).dot(f) > -GUNNER_REACH * 0.6:
+		var side := Vector2(-f.y, f.x)
+		var room := (area.get_center() - g).dot(side)
+		at = (g - f * 0.12 + side * (0.45 if room >= 0.0 else -0.45)).clamp(area.position, area.end)
+	return at
 
 
 ## The main gun's kick rocks the hull back from the shot.
 func recoil(dir: Vector3) -> void:
 	_cradle_age = 0.0
+	# (the blast throws the snow off the barrel, and it's too hot to hold more a while)
+	_barrel_hot = 1.0
+	_barrel_snow = 0.0
 	var fwd := Defs.dir_of(rotation.y)
 	var side := fwd.cross(Vector3.UP)
 	var k := 0.9 if weight() >= 2 else 0.5
@@ -3090,19 +3326,23 @@ func _view_process(dt: float) -> void:
 			_rotor_snd.pitch_scale = (0.55 + 0.45 * rpm) * (1.0 + load * 0.08)
 			_rotor_snd.volume_db = _rotor_vol + (rpm - 1.0) * 9.0 + load * 6.0
 		rotor.rotation.y += dt * _rotor_spd
+		var fast := _rotor_spd > 18.0
 		if tail_rotor:
 			tail_rotor.rotation.x += dt * _rotor_spd * 2.6
+			# (the tail rotor's blades turn 2.6 times as fast: they blur with the main ones)
+			if _tail_blur:
+				_tail_blur.visible = fast
+				_tail_blades.visible = not fast
 		for i in _vm.rotors.size():
 			var xr: Node3D = _vm.rotors[i]
 			xr.rotation.y += dt * _rotor_spd * (-1.0 if i % 2 == 0 else 1.0)
 			var xb := xr.get_node_or_null("Blur")
 			if xb:
-				xb.visible = _rotor_spd > 18.0
+				xb.visible = fast
 				var xbl := xr.get_node_or_null("Blades")
 				if xbl:
 					xbl.visible = not xb.visible
 		if blur:
-			var fast := _rotor_spd > 18.0
 			blur.visible = fast
 			blades.visible = not fast
 	if not rotor and _vm and not _vm.rotors.is_empty():
@@ -3176,6 +3416,7 @@ func _view_process(dt: float) -> void:
 		var camera := get_viewport().get_camera_3d()
 		var near := v and camera != null and camera.global_position.distance_squared_to(global_position) < 10000.0
 		_vm.update_antennas((position - _last_pos) / dt, dt, near)
+	_snow_view(dt, Defs.flat(position - _last_pos).length())
 	_last_pos = position
 	if burner:
 		var hf := health_frac()
@@ -3194,6 +3435,88 @@ func _view_process(dt: float) -> void:
 		ring.visible = selected and (not world.cam or world.cam.mount_subject != self)
 		if ring.visible and is_heli():
 			_update_landing_ring()
+
+
+## (view) The snow it carries, in the snow weather (Mats' snow_k). A fresh fall
+## settles on a vehicle standing still as on everything else; one on the move
+## is shaken and blown clear of most of it, faster the faster it goes, and a
+## turret swinging round throws off what lay on it. A battle that opens in snow
+## finds them dusted from a night parked, some more and some less. Each hull
+## has its own drifts (a seed), and its engine deck stays warm and bare, the
+## bare patch spreading the longer the engine runs. A vehicle on fire melts
+## its snow off, and a gun that has fired is bare until its barrel cools.
+const SNOW_SHED := 20.0  # (s for one at 5 m/s to shake off most of it)
+const SNOW_KEPT := 0.25  # (what's left in the corners however far it drives)
+const SNOW_BURN := 15.0  # (s for a fire to melt it all off)
+const BARREL_COOL := 180.0  # (s a fired barrel stays too warm to hold snow)
+const ENGINE_WARM := 240.0  # (s for an engine's warmth to spread through its deck)
+
+
+func _snow_view(dt: float, moved: float) -> void:
+	var cover: float = world.atmo.snow_cover if world.atmo else 0.0
+	if cover <= 0.0 or dt <= 0.0 or model == null:
+		return
+	var own := float(absi(hash(eid)) % 997) / 997.0
+	if _snow < 0.0:
+		_snow = 0.5 + 0.4 * fmod(own * 7.31, 1.0)
+		_snow_yaw = turret_yaw
+		if _barrel_snow < 0.0:
+			_barrel_snow = _snow
+		# (its engine has been running a while before the battle opens)
+		_engine_run = 30.0 + 60.0 * fmod(own * 3.17, 1.0)
+	var swing := absf(wrapf(turret_yaw - _snow_yaw, -PI, PI)) / dt
+	_snow_yaw = turret_yaw
+	_snow = snow_carry(_snow, cover, moved / dt, swing, dt)
+	if burner and float(burner.get_meta("fire", 0.0)) > 0.02:
+		_snow = maxf(0.0, _snow - dt / SNOW_BURN)
+	_barrel_hot = maxf(0.0, _barrel_hot - dt / BARREL_COOL)
+	if _barrel_hot <= 0.0:
+		_barrel_snow += dt * cover / Atmosphere.SNOW_IN
+	_barrel_snow = clampf(_barrel_snow, 0.0, _snow)
+	_engine_run += dt
+	# (in steps, so a part's values change seldom: in the browser each new
+	# value is a material of its own, so fewer steps and seeds there)
+	var steps := 4.0 if Mats.per_material else 8.0
+	var run := engine_spread(_engine_run)
+	if Mats.per_material:
+		run = floorf(run / 2.0) * 2.0
+	var drawn := Vector3(roundf(_snow * steps) / steps, roundf(_barrel_snow * steps) / steps, run)
+	if drawn == _snow_drawn:
+		return
+	if _snow_drawn.x < 0.0 or (not _snow_meshes.is_empty() and not is_instance_valid(_snow_meshes[0])):
+		_snow_meshes = Mats.snow_parts(model)
+	_snow_drawn = drawn
+	# (the seed in snow_k.y's fraction, the engine's run in its whole part)
+	var sq := (floorf(own * 4.0) + 0.5) / 4.0 if Mats.per_material else 0.02 + own * 0.96
+	var deck := Vector2(10000.0, 10000.0)
+	if _vm and _vm.engine_deck.is_finite():
+		# (the engine bay spans the hull: its warmth is centred on the hull's
+		# line, at the deck's end; engine_deck itself is where a fire breaks
+		# through, over one grille)
+		deck = Vector2(0.0, _vm.engine_deck.z)
+	var gun: Node3D = _vm.gun_mount if _vm else null
+	for mi in _snow_meshes:
+		if is_instance_valid(mi):
+			var hull := turret == null or not turret.is_ancestor_of(mi)
+			var on_gun := gun != null and (gun == mi or gun.is_ancestor_of(mi))
+			Mats.set_inst(mi, &"snow_k", Vector4(drawn.y if on_gun else drawn.x, run + sq, deck.x if hull else 10000.0, deck.y if hull else 10000.0))
+
+
+## How far an engine's warmth has spread through its deck after `secs`
+## running, in quarters (0 just started, 4 as far as it goes).
+static func engine_spread(secs: float) -> float:
+	return clampf(floorf(secs / ENGINE_WARM * 4.0), 0.0, 4.0)
+
+
+## The snow a vehicle carries after `dt` more seconds: gathering at the pace
+## it settles on everything (Atmosphere.SNOW_IN) while it stands, shaken off by
+## driving (`speed`, m/s) and by its turret swinging (`swing`, rad/s), down to
+## what stays in the corners.
+static func snow_carry(was: float, cover: float, speed: float, swing: float, dt: float) -> float:
+	if speed > 0.3 or swing > 0.05:
+		var shake := minf(speed / 5.0, 2.0) + minf(swing, 0.5)
+		return maxf(minf(was, SNOW_KEPT), was - dt * shake / SNOW_SHED)
+	return minf(1.0, was + dt * cover / Atmosphere.SNOW_IN)
 
 
 ## The far side of a helicopter's footprint can be on a different contour from
@@ -3506,6 +3829,7 @@ func _build_model() -> void:
 			helm.position = k.helm_seat
 	turret = k.turret
 	_vm = k
+	_build_gunners()
 	if bent_skirts:
 		k.pose_skirts(bent_skirts)
 	_belt_yaw = rotation.y
@@ -3513,8 +3837,23 @@ func _build_model() -> void:
 	_last_pos = position
 	rotor = k.rotor
 	tail_rotor = k.tail_rotor
+	if tail_rotor:
+		# (an old-style tail rotor has neither: it stays as it is)
+		_tail_blades = tail_rotor.get_node_or_null("Blades") as Node3D
+		_tail_blur = tail_rotor.get_node_or_null("Blur") as Node3D
+		if _tail_blades == null:
+			_tail_blur = null
 	blades = k.blades
 	blur = k.blur
+	# A drone's rotors (it has no main rotor) turn at flight speed from the
+	# start: their blur discs stand in for the blades, which would strobe.
+	if not rotor:
+		for xr: Node3D in k.rotors:
+			var xb := xr.get_node_or_null("Blur") as Node3D
+			var xbl := xr.get_node_or_null("Blades") as Node3D
+			if xb and xbl:
+				xb.visible = true
+				xbl.visible = false
 	wheels = k.wheels
 	if not k.belts.is_empty() and Sfx.enabled:
 		var abrams: bool = vdef.get("model", vkind) == "tank"

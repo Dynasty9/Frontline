@@ -119,8 +119,18 @@ static func rod(k: VehicleModels, parent: Node3D, a: Vector3, b: Vector3, radius
 
 
 ## A bolt head: half of its 6 mm driven into the face, half standing proud.
-static func fastener(k: VehicleModels, parent: Node3D, position: Vector3, normal: Vector3, radius := 0.012) -> void:
-	k._add(parent, _head(radius), "steel", Color(0.28, 0.29, 0.27), position, VehicleFrames.aim(normal).get_euler(), Vector3.ONE, false)
+## Bolts on a fielded vehicle are blackened or painted over with the plate, not
+## bright steel: by default a dark, oiled steel, whose flat top no longer
+## mirrors the sky as a white speck from the battle camera; `mat` and `col`
+## paint it (a hatch's bolts in the lid's own paint). The steel keeps the
+## roster's thousands of heads in a surface of their own, which casts no
+## shadow: painted ones join their paint's, and its shadow.
+static func fastener(k: VehicleModels, parent: Node3D, position: Vector3, normal: Vector3, radius := 0.012, mat := "steel", col: Variant = FASTENER) -> void:
+	k._add(parent, _head(radius), mat, col, position, VehicleFrames.aim(normal).get_euler(), Vector3.ONE, false)
+
+
+## A bolt head's blackened steel (it was a bright 0.28).
+const FASTENER := Color(0.13, 0.135, 0.125)
 
 
 ## A bolt head's mesh. The roster carries thousands of them, so it has no
@@ -460,3 +470,142 @@ static func _gusset(reach: float, drop: float, t: float) -> ArrayMesh:
 	for z: float in [-t * 0.5, t * 0.5]:
 		rings.append(PackedVector3Array([Vector3(0, 0, z), Vector3(reach, 0, z), Vector3(0, -drop, z)]))
 	return VehicleModels.solid(rings, "body_gusset_%.4f_%.4f_%.4f" % [reach, drop, t])
+
+
+## An armoured hull or turret lofted through `rings` (as VehicleModels.solid
+## takes them: convex, each the same count of points) with every edge broken
+## as cut and welded plate leaves it: the edge round the last ring chamfered
+## by `top` and round the first by `bottom` (a turret's roof, a section hull's
+## tail and nose), and with `corner` the edges running the length of the solid
+## (a turret's upright corners, a hull's chines and roof edges) cut back that
+## far along both faces wherever the outline turns more than `turn` degrees.
+## A plate box built as a plain loft shows a dead-sharp CG edge at every one
+## of those; the narrow facets catch the sun from the RTS camera and draw the
+## solid's outline. The faces stay in their planes, so whatever stands on
+## them stays put; each corner's cut is held to a third of its shorter edge.
+static func armour(rings: Array, key: String, top := 0.0, bottom := 0.0, corner := 0.0, turn := 20.0) -> ArrayMesh:
+	if corner > 0.0:
+		key += "|corner%.3f,%.0f" % [corner, turn]
+	var cached := VehicleModels._bevel_key(key, top, bottom)
+	if VehicleModels._cache.has(cached):
+		return VehicleModels._cache[cached]
+	if corner > 0.0:
+		rings = _broken_corners(rings, corner, turn)
+	return VehicleModels.solid(rings, key, false, top, bottom)
+
+
+## `rings` with each lengthwise edge cut back `b` along both of its faces: a
+## point where any ring turns more than `turn` degrees becomes two, the same
+## points in every ring so the loft keeps its faces. The cut is a third of the
+## shortest edge beside that point in any ring (a narrow chine gets a narrow
+## facet); a point with no length beside it in some ring (a nose drawn to an
+## edge) is left whole.
+static func _broken_corners(rings: Array, b: float, turn: float) -> Array:
+	var n: int = (rings[0] as PackedVector3Array).size()
+	var limit := cos(deg_to_rad(turn))
+	var cuts: Array[float] = []
+	for i in n:
+		var sharp := false
+		var cut := b
+		for r: PackedVector3Array in rings:
+			var p := r[i]
+			var a := r[(i + n - 1) % n]
+			var q := r[(i + 1) % n]
+			var shorter := minf(p.distance_to(a), p.distance_to(q))
+			if shorter < 0.001:
+				cut = 0.0
+				break
+			cut = minf(cut, shorter / 3.0)
+			if (p - a).normalized().dot((q - p).normalized()) < limit:
+				sharp = true
+		cuts.append(cut if sharp and cut >= 0.004 else 0.0)
+	var out := []
+	for r: PackedVector3Array in rings:
+		var o := PackedVector3Array()
+		for i in n:
+			var p := r[i]
+			if cuts[i] <= 0.0:
+				o.append(p)
+				continue
+			o.append(p + (r[(i + n - 1) % n] - p).normalized() * cuts[i])
+			o.append(p + (r[(i + 1) % n] - p).normalized() * cuts[i])
+		out.append(o)
+	return out
+
+
+## Exhaust soot on the plate an outlet blows across: a smear tapering away
+## from the outlet the way the exhaust trails (`along`), wider at its foot,
+## in three films, each smaller and darker than the one under it, so it
+## thickens toward the outlet and fades out at its edges as soot does. It lies
+## on the plane through `origin` (the outlet's trailing edge) spanned by
+## `along` and `up`, `out` the plate's outward normal; `length` long,
+## `height` across at the outlet. Diesel and turbine exhausts blacken the
+## paint behind them within weeks, and the dark streak is one of the few
+## marks of use that reads from the RTS camera. Painted on (VehicleMarkings),
+## so a wreck, which burns its own way, leaves it off.
+## Soot fades into the paint rather than stopping at a line: where the plate's
+## paint is known (`paint` and `paint_col`, as the hull was painted, or else
+## the parent's first part in its family's finish, the hull), two faint films
+## a little longer and wider than the rest go first, the paint itself a tenth
+## and a quarter of the way to the black core, so its camouflage carries on
+## through them; the wash then takes the paint not quite half way (not to one
+## grey, which stood out pale on dark green and as a grey ring on sand), the
+## brown-black seven tenths, and the core is black. Every step is a like
+## share of the way, so no film's edge stands out as a line. Without a known
+## paint, the three films as they were.
+static func soot(k: VehicleModels, parent: Node3D, origin: Vector3, along: Vector3, up: Vector3, out: Vector3, length: float, height: float, paint := "", paint_col: Variant = null) -> void:
+	var a := along.normalized()
+	var u := up.normalized()
+	var under := _paint_under(k, parent, paint, paint_col)
+	# each film: [length, half-height, colour, material], outermost first
+	var films := []
+	if under.is_empty():
+		for layer in 3:
+			films.append([1.0 - layer * 0.28, 0.5 - layer * 0.12, SOOT[layer], "plain_dark"])
+	else:
+		var kind: String = under[0]
+		var base: Color = under[1]
+		for fringe: Vector3 in SOOT_FRINGE:
+			films.append([fringe.x, 0.5 * fringe.y, base.lerp(SOOT[2], fringe.z), kind])
+		films.append([1.0, 0.5, base.lerp(SOOT[2], 0.45), kind])
+		films.append([0.72, 0.38, base.lerp(SOOT[2], 0.7), "plain_dark"])
+		films.append([0.44, 0.26, SOOT[2], "plain_dark"])
+	for i in films.size():
+		var film: Array = films[i]
+		var o := origin + out.normalized() * (0.003 + i * 0.0015)
+		var l: float = length * float(film[0])
+		var h: float = height * float(film[1])
+		var smear := PackedVector2Array([Vector2(0, -h), Vector2(l * 0.45, -h * 0.75), Vector2(l * 0.8, -h * 0.35), Vector2(l, h * 0.05), Vector2(l * 0.75, h * 0.5), Vector2(l * 0.35, h * 0.85), Vector2(0, h)])
+		VehicleMarkings.polygons(k, parent, [smear], func(q: Vector2) -> Vector3: return o + a * q.x + u * q.y, out, film[2], film[3])
+
+
+## Soot's three films, outermost first: a thin grey wash over the paint, then
+## brown-black, then the black core at the outlet.
+const SOOT: Array[Color] = [Color(0.34, 0.32, 0.29), Color(0.22, 0.21, 0.19), Color(0.12, 0.115, 0.105)]
+## The faint fringes laid first where the paint is known: (length, height, how
+## far the paint goes toward the core), as VmShips._drip grades a streak.
+const SOOT_FRINGE: Array[Vector3] = [Vector3(1.18, 1.3, 0.1), Vector3(1.08, 1.14, 0.25)]
+
+
+## The paint under a mark: [its material, its colour] as the caller gave it,
+## or the parent's (else the root's) first part in its family's own finish
+## (the hull the family laid first); empty if none is known (a part built
+## outside a bake).
+static func _paint_under(k: VehicleModels, parent: Node3D, paint: String, paint_col: Variant) -> Array:
+	if paint != "":
+		var preset := VehicleMaterials.preset(VehicleMaterials.key(paint, k.surface_family))
+		return [paint, paint_col if paint_col is Color else preset.get("col_a", Color(0.3, 0.3, 0.25))]
+	for node: Node3D in [parent, k.root]:
+		for pt: Array in k._parts.get(node, []):
+			var mat := pt[1] as ShaderMaterial
+			if mat == null:
+				continue
+			var kind := mat.resource_name.get_file()
+			if VehicleMaterials.profile(kind, k.surface_family) != k.surface_family:
+				continue
+			var c: Variant = mat.get_shader_parameter("col_a")
+			if c is Color and pt[2] is Color:
+				return [kind, (c as Color) * (pt[2] as Color)]
+	return []
+
+

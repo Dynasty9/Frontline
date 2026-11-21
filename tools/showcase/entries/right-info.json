@@ -1,15 +1,15 @@
 {
   "entry": "changelog/unreleased/right-info.md",
-  "summary": "Quiet ORBAT rows recede, map callsigns show on demand, and repeated log reports merge.",
-  "medium": "motion",
-  "stage": "Godot_v4.7.2-stable_linux.x86_64 --path REPO --audio-driver Dummy --rendering-method gl_compatibility --resolution 1280x720 --fixed-fps 15 --script tests/fixtures/hud-info-clips.gd -- --scenario=attack --preset=low --seed=3 --play=0 --no-stun --perf=0 --capture-fps=15 --frames=OUTPUT --label=BEFORE_OR_AFTER",
-  "rationale": "Full-width, normal-speed gameplay makes the partial-scroll hover mapping, quiet/urgent hierarchy and later repeated report readable. First three seconds show the old hover mismatch; the next nine show the updated controls. Cued actions and reports are disclosed in motion-capture.json. Retains the original comparison sheet. Software capture is not a performance measurement.",
-  "source_ref": "f2a1efed883378260f2eb2ec52c41289f87ac995",
-  "before_ref": "9d4da7515b2a8f7d67ddd383e2d348756cc78e38",
+  "summary": "Map callsigns show on demand, the unit under the hand is marked on the map, and the same report from several units merges into one log line.",
+  "medium": "still",
+  "stage": "game capture at 1920x1080, --perf=0: --scenario=roster --seed=3 --focus=-84,24 --zoom=34 --shot-at=12; --mission=bridgehead --play --shot-at=40",
+  "rationale": "Matched native-pixel crops of the same frames, before (main after #306) and after this branch: the log and the map labels. The earlier clip (scroll-and-reports.webm) predates the merge with #306 and shows ORBAT dimming and per-repeat lines that no longer ship; it is kept here for provenance but no longer shown in the entry, and needs re-recording with tests/fixtures/hud-info-clips.gd.",
+  "source_ref": "cc9d0286de67b0676a8f557eb37c330e5e983667 + merge with main",
+  "before_ref": "a47d03f7a2476641def9886714e95103a6efb762",
   "sources": [
     {
       "file": "changelog/unreleased/right-info/comparison.jpg",
-      "sha256": "c02d16562b6e2967ff21a9811a4b9bd0d2ae1aed084e575ff055696db1262411"
+      "sha256": "cf3d5d6f9b57736e5b7f9606421ff18bacbe944d5a525a129d6109c64d3bed33"
     },
     {
       "file": "changelog/unreleased/right-info/scroll-and-reports.webm",

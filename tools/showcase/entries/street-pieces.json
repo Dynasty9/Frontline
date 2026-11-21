@@ -1,0 +1,24 @@
+{
+  "entry": "changelog/unreleased/street-pieces.md",
+  "summary": "The square's fountain, bus shelters, planters, litter bins and town name boards rebuilt.",
+  "medium": "still",
+  "stage": "tests/fixtures/environment-views.gd (FL_ONLY_VIEW); tools/showcase/building-surfaces.tscn (street_pieces)",
+  "rationale": "Appearance change: the bus stop and a name board in the map at the game's camera from the same cameras, and every piece in the studio.",
+  "source_ref": "302209c2a7084fc3fe8298892cb3e655dfdcd863",
+  "before_ref": "38b3d6b1d954178b6added13e28a5ec56cc23d7f",
+  "sources": [
+    {
+      "file": "changelog/unreleased/street-pieces/comparison.jpg",
+      "sha256": "66362b1c3886f7041f10c8b63148752bd0fb3fc4ed3b7bc889aa79778b3ee58a"
+    },
+    {
+      "file": "changelog/unreleased/street-pieces/pieces.jpg",
+      "sha256": "faaf19818e08740caa4e14fb1e2e86eccc3fd3834fc44a3cf4a88bd20a1bd79a"
+    },
+    {
+      "file": "changelog/unreleased/street-pieces/capture.json",
+      "sha256": "77e131f5eac7019daedc638c5f0d2a62e031bcefc5ee3cbe12e5b7effd1f0cb6"
+    }
+  ],
+  "output": null
+}

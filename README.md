@@ -23,7 +23,7 @@ Frontline is a real-time strategy game about modern infantry combat. You command
 
 Your soldiers take cover behind real walls and wrecks, keep their heads down under fire, drag their wounded to safety and throw enemy grenades back. Squads leapfrog forward one team at a time, clear houses room by room, set ambushes on the roads, and break and run when a fight goes badly. Tanks pop smoke when a missile is fired at them. Shellfire sets woods, hedgerows, roofs and cars alight, and the fire spreads with the wind and drives men out of their cover. Life goes on round the fighting: birds feed in the fields until the shooting sends them up, rats run along the walls in town, ducks paddle on the ponds and dolphins roll through the swell offshore. The towns look lived in, with curtains in the windows, flowers on the sills and pictures on the walls inside, and after dark lamps glow behind a third of the windows. Boats land raiding parties on the beach, and helicopters carry vehicles to the front on a cable. Helicopters fly like the real thing: the nose dips as they gather speed, they bank round turns, climb away from the pad and come down a glide path into a low hover, throwing up dust as they set down. Shot down, they spin in or autorotate to a crash.
 
-Grenades burst into dust and fast fragments, shells throw dense fans of earth and falling clods, and vehicle fuel burns in rolling fireballs. Animated smoke and dust catch the sun and spread across the ground. At night, illumination flares drift down under parachutes and tracers streak across the fighting. The Cinematic graphics preset adds a sky worked out from how sunlight scatters in the air, shadows thrown by fires and flares, sun shafts, lens flare, eye adaptation, a film look, heat haze shimmering over fires, wrecks and engines, motion blur on rotors and flying debris, and time that passes: the sun crosses the sky and golden hour fades through a blue dusk into moonlit night as the battle goes on (Settings > Lighting & Look > Time passes). In the rain, vehicles, buildings and gear turn dark and glossy with water.
+Grenades burst into dust and fast fragments, shells throw dense fans of earth and falling clods, and vehicle fuel burns in rolling fireballs. Animated smoke and dust catch the sun and spread across the ground. At night, illumination flares drift down under parachutes and tracers streak across the fighting. The Cinematic graphics preset adds a sky worked out from how sunlight scatters in the air, shadows thrown by fires and flares, sun shafts, lens flare, eye adaptation, a film look, heat haze shimmering over fires, wrecks and engines, motion blur on rotors and flying debris, and time that passes: the sun crosses the sky and golden hour fades through a blue dusk into moonlit night as the battle goes on (Settings > Lighting & Look > Time passes). In the rain, vehicles, buildings and gear turn dark and glossy with water. Snow falls past the camera and lies in wind-blown drifts over the ground, roofs and trees, banks up against walls and hedges, gathers on parked tanks and is shaken off moving ones, churns to mud wherever shells and tracks have been, and melts back to wet earth round fires and under idling engines.
 
 You can play alone against the computer, team up with friends against it, or fight each other online. Desktop skirmishes offer 1,024, 2,048 and 3,072 metre square battlefields. Single-player simulation runs in its own local process so combat does not block drawing the battlefield. Seeded mountain belts, snowy peaks and mossy valleys surround towns, forests, roads and river crossings. Slopes shape movement and construction, and ridges screen troops from observation and fire. Larger maps need more memory; see the measured workloads in [simulation scaling](docs/SIMULATION_SCALING.md).
 
@@ -64,7 +64,10 @@ When you're ready, choose **Play vs AI**, pick a side and an opponent (**Recruit
 5. **Build.** Select your engineers and use the build menu at the bottom of the screen. Barracks train more squads, a factory builds vehicles, and new FOBs extend your reach. Trenches deepen as crews dig, retain unfinished work, and can be cleared after collapse. Dig in with trenches, sandbags, HESCO walls or barricades, wire, mines and tank traps; throw camouflage nets over your guns and push an ammo cache up behind the line.
 6. **Take the towns.** The town and every village fly a flag by their supply dump. Right-click one with a squad selected: hold its ground with no enemy there and it's yours, and its trucks start bringing supply to your nearest FOB. The more you hold, the more you can build.
 7. **Call support.** The buttons above the minimap call in mortars, artillery and air strikes.
-8. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
+8. **Grow your force.** A Research Post opens the **doctrine tree** (**Y**): land, air, sea and the infantry's kit, step by step from carriers to tanks and artillery, from transport helicopters to gunships and drones, from riverine boats to a patrol ship. Every vehicle in the game is on it.
+9. **Get eyes on.** Ground your side can't see right now is drawn darker, on the battlefield and the minimap. Watchtowers, drones from the helipad and recon flights (on the support panel) see further, and every aircraft you call in spots for you as it flies over. Whatever they spot stays on the map as a last-known position.
+
+The screen stays quiet so you can watch the battle: an order shows for a moment as you give it and the squad answers over the radio, then it's out of sight. Rest the cursor on a squad (on the ground, its map symbol or its line in the order of battle) to see how it's doing and what it was told.
 
 Press **F1** at any time for help, and **F4** for the Field Manual. Hold **Tab** to see how the battle is going: kills, losses, supply and how well each commander is doing. When it's over, the **after-action report** shows both sides' figures, who fought best and why, every squad's record and how the battle swung.
 
@@ -119,6 +122,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Select every unit of that type on screen | Double-click |
 | Command one soldier on his own | Alt + click him |
 | Save a group / recall it | Ctrl + 1-9 / 1-9 |
+| Every unit in the air (or at sea, or on land) | Click its heading in the order of battle |
 
 **Orders**
 
@@ -158,6 +162,7 @@ On a Mac's trackpad, scroll with two fingers to drag the map and pinch to zoom; 
 | Tactical map | Tab |
 | Battle statistics (your side's so far) | Hold Tab |
 | Order of battle (all your units) | O |
+| Doctrine tree (research) | Y |
 | Help | F1 |
 | Hide the interface | F2 |
 | Photo mode | F9 |

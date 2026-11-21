@@ -23,6 +23,7 @@ test("says hello", async () => {
   const r = await game.hello();
   assert.equal(r.tps, 30);
   assert.equal(r.headless, true);
+  assert.equal(typeof r.native, "boolean", "and says whether the native extension is loaded");
 });
 
 test("refuses what it can't do", async () => {

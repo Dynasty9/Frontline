@@ -100,6 +100,11 @@ func on_spawned() -> void:
 		target.y = maxf(target.y, world.ground_y(target))
 	if ptype in ["grad", "arty", "ac105", "ac40", "ac25"]:
 		position = origin
+	if ptype in ["jet", "a10"]:
+		var axis := Defs.flat(vel).normalized()
+		position = _pass_point(position, axis)
+		if srv and ptype == "jet":
+			position.y = maxf(position.y, world.terrain.landform.height(position + Defs.flat(vel)) + 60.0)
 	net_pos = position
 	net_init = true
 	if srv and ptype in ["rocket", "atgm", "recoilless"]:
@@ -133,12 +138,37 @@ func sim(dt: float) -> void:
 			_bomb(dt)
 
 
-## Ground-attack jet: flies straight over the target and releases a stick of
-## high-drag bombs timed so they land across it.
+## The outer legs bend into and out of the straight central pass. Integrating a
+## smooth heading change gives a continuous tangent and roll at both joins.
+static func _pass_offset(along: float) -> float:
+	var leg := maxf(absf(along) - 110.0, 0.0)
+	var u := minf(leg / 250.0, 1.0)
+	return signf(along) * 0.48 * (250.0 * u * u * u * (1.0 - 0.5 * u) + maxf(leg - 250.0, 0.0))
+
+
+func _pass_point(p: Vector3, axis: Vector3) -> Vector3:
+	var along := (p - target).dot(axis)
+	var q := target + axis * along + axis.cross(Vector3.UP) * _pass_offset(along)
+	q.y = p.y
+	return q
+
+
+func _pose_pass(axis: Vector3, along: float, climb: float) -> Vector3:
+	var leg := absf(along) - 110.0
+	var u := clampf(leg / 250.0, 0.0, 1.0)
+	var slope := 0.48 * smoothstep(0.0, 1.0, u)
+	var curvature := signf(along) * 0.48 * 6.0 * u * (1.0 - u) / 250.0
+	var forward := (axis + axis.cross(Vector3.UP) * slope + Vector3.UP * climb).normalized()
+	model.look_at(model.global_position + forward, Vector3.UP)
+	var speed_sq := Defs.flat(vel).length_squared()
+	model.rotate_object_local(Vector3.BACK, -atan(curvature * speed_sq / 16.0))
+	return forward
+
+
 func _jet(dt: float) -> void:
-	position += vel * dt
-	position.y = maxf(position.y, world.terrain.landform.height(position + Defs.flat(vel)) + 60.0)
 	var dirn := Defs.flat(vel).normalized()
+	position = _pass_point(position + vel * dt, dirn)
+	position.y = maxf(position.y, world.terrain.landform.height(position + Defs.flat(vel)) + 60.0)
 	var along := Defs.flat(position - target).dot(dirn)
 	if _bombs0 < 0.0:
 		_bombs0 = fuse
@@ -431,9 +461,14 @@ func _view_process(dt: float) -> void:
 			if ptype == "bomb":
 				vel = _bomb_step(vel, dt)
 			net_pos += vel * dt
+			if ptype == "jet":
+				net_pos = _pass_point(net_pos, Defs.flat(vel).normalized())
 			position = position.lerp(net_pos, 1.0 - exp(-dt * 10.0)) if position.distance_to(net_pos) < 25.0 else net_pos
 		var fw := vel.normalized()
-		if absf(fw.y) < 0.98:
+		if ptype == "jet":
+			var axis := Defs.flat(vel).normalized()
+			_pose_pass(axis, (position - target).dot(axis), 0.0)
+		elif absf(fw.y) < 0.98:
 			model.look_at(model.global_position + fw, Vector3.UP)
 		if _vm:
 			for pv in _vm.wheels:
@@ -511,6 +546,7 @@ func _build_model() -> void:
 		"jet":
 			_vm = VehicleModels.build(mk if mk != "" else "jet", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
+			_blur_props(_vm)
 			if _vm.wheels.is_empty():
 				var exhaust := Sfx.make_loop_player("jet_engine", 42.0, -1.0)
 				exhaust.max_distance = 570.0
@@ -565,6 +601,7 @@ func _build_model() -> void:
 		"ac130":
 			_vm = VehicleModels.build(mk if mk != "" else "ac130", team if team >= 0 else 0, eid)
 			model.add_child(_vm.root)
+			_blur_props(_vm)
 			_drone = AudioStreamPlayer.new()
 			_drone.bus = &"Effects"
 			if Sfx.enabled:
@@ -636,19 +673,24 @@ const A10_BURST := 1.0
 const A10_STRIP := 18.0  # the rounds walk +-18 m through the target, ahead of the diving jet
 
 
+## Round the changes of climb rate over several frames, so the nose follows
+## the pull-up without snapping at the bottom of the pass.
+static func _rounded_ramp(x: float) -> float:
+	var blend := clampf(x + 40.0, 0.0, 80.0)
+	return blend * blend / 160.0 + maxf(x - 40.0, 0.0)
+
+
 static func a10_alt(along: float) -> float:
-	if along < -160.0:
-		return lerpf(62.0, 27.0, clampf((along - A10_START) / (-160.0 - A10_START), 0.0, 1.0))
-	if along < 0.0:
-		return lerpf(27.0, 21.0, (along + 160.0) / 160.0)
-	return 21.0 + along * 0.42
+	var descent := 35.0 / 260.0
+	var shallow := 6.0 / 160.0
+	return 62.0 - descent * maxf(along - A10_START, 0.0) + (descent - shallow) * _rounded_ramp(along + 160.0) + (0.42 + shallow) * _rounded_ramp(along)
 
 
 ## Comes in low along `vel`, nose down, and walks a two-second burst of 30 mm
 ## through the target; the BRRRT reaches the ground after the shells do.
 func _a10(dt: float) -> void:
 	var dirn := Defs.flat(vel).normalized()
-	position += dirn * A10_SPEED * dt
+	position = _pass_point(position + dirn * A10_SPEED * dt, dirn)
 	var along := Defs.flat(position - target).dot(dirn)
 	position.y = world.terrain.landform.height(position) + a10_alt(along)
 	vel = dirn * A10_SPEED + Vector3(0, (a10_alt(along + 1.0) - a10_alt(along)) * A10_SPEED, 0)
@@ -676,14 +718,12 @@ func _a10(dt: float) -> void:
 func _a10_view(dt: float) -> void:
 	var dirn := Defs.flat(vel).normalized()
 	if not srv:
-		net_pos += dirn * A10_SPEED * dt
+		net_pos = _pass_point(net_pos + dirn * A10_SPEED * dt, dirn)
 		position = position.lerp(net_pos, 1.0 - exp(-dt * 10.0)) if position.distance_to(net_pos) < 25.0 else net_pos
 	var along := Defs.flat(position - target).dot(dirn)
 	if not srv:
 		position.y = world.terrain.landform.height(position) + a10_alt(along)
-	var fw := (dirn * A10_SPEED + Vector3(0, (a10_alt(along + 1.0) - a10_alt(along)) * A10_SPEED, 0)).normalized()
-	if absf(fw.y) < 0.98:
-		model.look_at(model.global_position + fw, Vector3.UP)
+	var fw := _pose_pass(dirn, along, a10_alt(along + 1.0) - a10_alt(along))
 	var firing := along >= A10_FIRE_AT and along < A10_FIRE_AT + A10_BURST * A10_SPEED
 	var nose := position + fw * 7.6 + Vector3(0, -0.3, 0)
 	if _vm and _vm.mg_tip and is_instance_valid(_vm.mg_tip) and _vm.mg_tip.is_inside_tree():
@@ -826,6 +866,16 @@ func muzzle_world(weapon: String) -> Vector3:
 		return Vector3.INF
 	var tip: Node3D = _vm.weapon_tips.get(weapon, _vm.mg_tip if weapon == "ac25" else _vm.gun_tip)
 	return tip.global_position if tip else Vector3.INF
+
+
+## (view) An aircraft's propellers turn at full speed the whole time it's in
+## sight, faster than the frame rate can show a blade: each shows its blur
+## disc alone, as the eye sees a running propeller (the blades would strobe).
+static func _blur_props(vm: VehicleModels) -> void:
+	for pv in vm.wheels:
+		var blades := (pv as Node3D).get_node_or_null("Blades") as Node3D
+		if blades and (pv as Node3D).get_node_or_null("Blur") != null:
+			blades.visible = false
 
 
 func _ac130_view(dt: float) -> void:

@@ -6,7 +6,11 @@ extends Node3D
 ##   --clip=mounted-guns-stills  one vehicle at a time on the same spot: its
 ##                               main weapon from the front quarter and its
 ##                               machine gun (or the gun again) from behind
-##                               (DIR/<kind>-a.png, DIR/<kind>-b.png)
+##                               (DIR/<kind>-a.png, DIR/<kind>-b.png), a lone
+##                               machine gun's receiver close to (-c); where a
+##                               man works it, the vehicle side-on at the gun's
+##                               height (-d), him from behind (-e), and the gun
+##                               swung to the left (-f) and to the rear (-g)
 ##   --clip=mounted-guns         a firing line engaging trucks downrange, the
 ##                               camera close on one gun after another
 ##                               (DIR/0000.png ..., tools/showcase/capture.py's
@@ -14,7 +18,10 @@ extends Node3D
 ##   --frames=DIR      where the images go
 ##   --label=TEXT      the caption's first line (e.g. BEFORE / AFTER)
 ##   --kinds=a,b,c     a different set of vehicles
-##   --seconds=S       how long the firing clip runs (default 27)
+##   --seconds=S       how long the firing clip runs (default: the whole line, 31)
+##   --crew-views      the gunner's framings (side-on, behind, swung left and
+##                     back: DIR/<kind>-d.png ... -g.png) for every vehicle
+##                     with a laid machine gun, not just those with a gunner
 const SPOT := Vector3(40, 0, 50)  # open ground east of the base
 const STILLS: Array[String] = [
 	"tank", "slammer", "slammer_up", "rhino", "rhino_up", "old_tank", "varsuk", "kuma", "angara", "angara_k", "futura",
@@ -29,7 +36,7 @@ const STILLS: Array[String] = [
 ## off to the right].
 const LINE: Array = [
 	["tank", 4.0, "gun", "truck"], ["ifv", 3.0, "mg", "truck"], ["marshall", 3.0, "mg", "truck"], ["hunter_hmg", 3.0, "mg", "air"],
-	["technical", 3.0, "mg", "truck"], ["aa_tech", 3.5, "mg", "air"], ["hunter_gmg", 3.0, "mg", "truck"], ["motorboat", 2.5, "mg", "truck"],
+	["technical", 3.0, "mg", "truck"], ["humvee", 3.0, "mg", "truck"], ["aa_tech", 3.5, "mg", "air"], ["hunter_gmg", 3.0, "mg", "truck"], ["motorboat", 2.5, "mg", "truck"],
 	["ghosthawk", 3.0, "mg", "side"],
 ]
 ## How long each kind of gun is, roughly, for framing (by its sound).
@@ -40,6 +47,7 @@ var mode := "mounted-guns"
 var label := "CURRENT BUILD"
 var kinds: Array = []
 var seconds := -1.0
+var crew_views := false
 var field: World
 var camera: Camera3D
 var caption: Label
@@ -54,6 +62,7 @@ func _ready() -> void:
 		if arg.begins_with("--label="): label = arg.get_slice("=", 1)
 		if arg.begins_with("--kinds="): kinds = Array(arg.get_slice("=", 1).split(","))
 		if arg.begins_with("--seconds="): seconds = float(arg.get_slice("=", 1))
+		if arg == "--crew-views": crew_views = true
 	if not output.is_empty():
 		DirAccess.make_dir_recursive_absolute(output)
 	seed(712)
@@ -127,7 +136,26 @@ func _stills() -> void:
 			camera.look_at(s[1])
 			caption.text = "%s · %s · %s" % [label, v.display_name().to_upper(), String(s[2])]
 			await _settle()
-			_save("%s-%s" % [kind, "ab"[i]])
+			_save("%s-%s" % [kind, "abcde"[i]])
+		# where a man works the gun, it swung onto a truck to the left and
+		# then behind: he walks round with it and stays on his floor
+		if _crewed(v):
+			var turns := [[PI * 0.5, "TO THE LEFT"], [PI * 0.92, "TO THE REAR"]]
+			for j in turns.size():
+				var dir := (-v.global_basis.z).slide(Vector3.UP).normalized().rotated(Vector3.UP, float(turns[j][0]))
+				var mark := _spawn("hemtt", v.global_position + dir * 32.0, 0.0, 1 if v.team == 0 else 0)
+				mark.roe = 2
+				v.forced_target = mark
+				await _pass(4.0, [mark])
+				var gun := v._vm.mg_mounts[0].global_position as Vector3
+				var side := dir.cross(Vector3.UP).normalized()
+				camera.global_position = gun - dir * 2.7 + side * 1.2 + Vector3.UP * 1.7
+				camera.look_at(gun + dir * 0.3 + Vector3(0, -0.4, 0))
+				caption.text = "%s · %s · %s" % [label, v.display_name().to_upper(), String(turns[j][1])]
+				await _settle()
+				_save("%s-%s" % [kind, "fg"[j]])
+				v.forced_target = null
+				field.despawn(mark)
 		_report(kind, v)
 		field.despawn(v)
 		await _settle()
@@ -152,9 +180,34 @@ func _framings(v: Vehicle) -> Array:
 	elif vm.mg_tip:
 		out.append(_frame(vm.mg_tip.global_position, -vm.mg_tip.global_basis.z, mg_len, 1.0, centre, mg))
 		out.append(_frame(vm.mg_tip.global_position, -vm.mg_tip.global_basis.z, mg_len, -1.0, centre, mg))
+		# and the receiver and barrel close to, from the side
+		var axis := (-vm.mg_tip.global_basis.z).normalized()
+		var at := vm.mg_tip.global_position - axis * mg_len * 0.62
+		var side := axis.cross(Vector3.UP).normalized()
+		var out_side := -1.0 if side.dot(at - centre) < 0.0 else 1.0
+		if absf(side.dot(at - centre)) < 0.3:
+			out_side = -1.0
+		out.append([at + (side * out_side * 0.85 + Vector3.UP * 0.32 + axis * 0.25).normalized() * (mg_len * 0.55 + 0.25), at, mg + " CLOSE"])
+		# and, where a man works it, the whole vehicle side-on at the gun's
+		# height (how high it stands over the cab, where he stands) and from
+		# behind and above (where he is in the bed or the hatch)
+		if _crewed(v):
+			var right := v.global_basis.x.normalized()
+			var gun := vm.mg_mounts[0].global_position as Vector3
+			out.append([Vector3(centre.x, gun.y, centre.z) + right * 7.5 + Vector3.UP * 0.4, Vector3(centre.x, gun.y - 0.5, centre.z), "PROFILE"])
+			out.append([gun + v.global_basis.z.normalized() * 2.6 + right * 1.1 + Vector3.UP * 1.9, gun + Vector3(0, -0.35, 0), "GUNNER"])
 	else:
 		out.append([centre + Vector3(8, 4, 8), centre, "NO GUN"])
 	return out
+
+
+## Whether a man works the vehicle's gun (or, with --crew-views, whether it
+## has a laid gun at all: a build from before gunners framed the same way).
+func _crewed(v: Vehicle) -> bool:
+	var gunners: Variant = v.get("_gunners")
+	if gunners is Array and not (gunners as Array).is_empty():
+		return true
+	return crew_views and v._vm.mg_mounts.size() > 0 and v._vm.gun_tip == null
 
 
 ## A camera on a gun whose muzzle is at `muzzle`, pointing `axis`: `front` 1

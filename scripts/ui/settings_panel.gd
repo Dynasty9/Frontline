@@ -8,8 +8,8 @@ extends PanelContainer
 
 signal closed
 
-const MOODS := ["random", "day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain"]
-const MOOD_NAMES := ["Random each battle", "Midday", "Golden hour", "Dawn", "Dusk", "Overcast", "Hazy", "Night", "Rain & thunder"]
+const MOODS := ["random", "day", "golden", "dawn", "dusk", "overcast", "hazy", "night", "rain", "snow"]
+const MOOD_NAMES := ["Random each battle", "Midday", "Golden hour", "Dawn", "Dusk", "Overcast", "Hazy", "Night", "Rain & thunder", "Snow"]
 const RES_NAMES := ["1280 x 720", "1600 x 900", "1920 x 1080", "2560 x 1440", "3840 x 2160"]
 
 var _rows := {}  # key -> control
@@ -98,13 +98,15 @@ func _ready() -> void:
 		["option", "wildlife", "Wildlife", Settings.LABELS.wildlife, "Birds feeding in the fields and wheeling overhead, rats in town, hares, fish, ducks and dolphins, all taking fright at the fighting. Only round the camera; turn it down or off if it costs you frames."],
 		["option", "effects", "Effects quality", Settings.LABELS.effects, "Particles per explosion, smoke density, debris."],
 		["option", "mountain_clouds", "Mountain clouds", Settings.LABELS.mountain_clouds, "Cloud banks above distant ranges. Higher settings sample more detail; Off removes the banks. Independent of volumetric fog."],
-		["option", "water", "Water quality", Settings.LABELS.water, "Waves, reflections and the bed seen through the water. Low skips the see-through water, the costly part; High adds light dancing on the shallows and foam streaks in a blow; Ultra a finer swell."],
+		["option", "water", "Water quality", Settings.LABELS.water, "Waves, reflections and the bed seen through the water. Low skips the see-through water, the costly part; High adds banks, trees, bridges and boats mirrored in the water, light dancing on the shallows and foam streaks in a blow; Ultra a finer swell and longer reflections."],
 		["check", "decals", "Scorch marks & craters", null, "Burn marks left by explosions."],
 		["check", "ragdolls", "Ragdoll physics", null, "The dead fall, tumble and are thrown by blasts under real physics; thrown earth and rubble bounce and roll."],
 		["head", "", "Lighting"],
 		["check", "ssao", "Ambient occlusion", null, "Contact shadows in corners, under soldiers and around sandbags."],
 		["option", "ao_q", "Ambient occlusion quality", Settings.LABELS.ao_q, "More samples, less noise."],
 		["check", "ssil", "Indirect light", null, "Light bouncing off nearby surfaces (screen-space)."],
+		["option", "light_probes", "Light probes", Settings.LABELS.light_probes, "A grid of probes over the battlefield works out how much sky every street, room and trench can see, and how much sunlight the walls and ground round it throw back: shaded streets, dim rooms lit from their windows, warm light off a sunlit wall. Updated as buildings fall and shells dig craters. Low keeps only the shade from the sky."],
+		["option", "ssgi", "Bounce light", Settings.LABELS.ssgi, "Sunlight thrown back off walls, roofs and roads lights what faces them in their colours: a sunlit brick wall warms the street, a white house brightens the alley beside it, light through a breach fills the room. High casts more rays, for less grain."],
 		["check", "gi", "Global illumination", null, "SDFGI: full bounced lighting. Expensive."],
 		["check", "phys_sky", "Physical sky", null, "At golden hour, dawn, dusk and in haze the sky is worked out from how sunlight scatters in the air: deep blue overhead, a reddened sun, the earth's shadow rising at dusk. The sky lights the battlefield too, so shade turns sky-blue while the sunlit side glows."],
 		["check", "terrain_reflections", "Mountain reflections", null, "Cached distant terrain reflected in water. Does not reflect moving units; approximate near shorelines."],
@@ -152,6 +154,7 @@ func _ready() -> void:
 		["note", "ui_note", "", null, ""],
 		["check", "labels", "Unit activity labels", null, "Close up: each soldier's name and what he's doing. Further out: a status icon per man."],
 		["check", "bubbles", "Speech bubbles", null, "Shouts, radio calls and the men's banter."],
+		["check", "hud_calm", "Quiet side panels", null, "The order of battle and the fire missions step back while you look at the battle, and come up as the cursor goes to them."],
 		["check", "cover_preview", "Cover preview", null, "Pips under the cursor showing the cover each man will take (green heavy, yellow light, red exposed)."],
 		["check", "coop_show", "Co-commanders' views and cursors", null, "In co-op: where the other commanders on your side are looking, their cursors, what they've selected and what they're lining up, in their colours. (Pings and the Command Net show either way.)"],
 		["check", "reduce_motion", "Reduce motion", null, "Panels cut straight in instead of typing or counting on, and warnings don't flicker."],
@@ -197,7 +200,7 @@ func _ready() -> void:
 ## the camera and lens passes; marching the physical sky and shadowing fires
 ## would cost a browser too much; and the page decides the game's size and
 ## when it draws.
-const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync",
+const NOT_ON_WEB := ["ssao", "ao_q", "ssil", "ssgi", "gi", "ssr", "vol_fog", "upscaler", "sharpen", "dof", "resolution", "vsync",
 	"light_shadows", "phys_sky", "lens", "shafts", "local_exp", "eye_adapt", "film", "heat_haze", "motion_blur"]
 ## Settings only a Mac has a use for: elsewhere a trackpad scrolls like a wheel.
 const ONLY_ON_MAC := ["scroll_mode"]

@@ -27,13 +27,6 @@ func bake() -> void:
 		scene.free()
 	for name: String in meshes:
 		var mesh: ArrayMesh = meshes[name]
-		if name == "shrub_02-0":
-			# The established meadow shrub shader raises its mesh origin by 65 cm.
-			var shifted := SurfaceTool.new()
-			shifted.begin(Mesh.PRIMITIVE_TRIANGLES)
-			shifted.append_from(mesh, 0, Transform3D(Basis.IDENTITY, Vector3(0, -0.65, 0)))
-			shifted.index()
-			mesh = shifted.commit()
 		if name.begins_with("tree_small_02-") or name.begins_with("pine_sapling_small-") or name.begins_with("fir_tree_01-"):
 			var family := name.get_slice("-", 0) + "-" + name.get_slice("-", 1)
 			var trunk: ArrayMesh = meshes[family + "-trunk"]

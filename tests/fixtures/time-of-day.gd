@@ -45,7 +45,7 @@ func _ready() -> void:
 		return
 	var took := []
 	for c in [_check_moods_hold_their_hour, _check_weather_holds, _check_smooth_round_the_day, _check_pace, _check_no_hidden_state,
-			_check_live_light, _check_photo_mode, _check_setting_off, _check_sky_code]:
+			_check_live_light, _check_air_clock, _check_photo_mode, _check_setting_off, _check_sky_code]:
 		var t0 := Time.get_ticks_msec()
 		c.call()
 		took.append("%s %d ms" % [c.get_method().trim_prefix("_check_"), Time.get_ticks_msec() - t0])
@@ -66,7 +66,7 @@ func _check_moods_hold_their_hour() -> void:
 
 
 func _check_weather_holds() -> void:
-	for m in ["overcast", "rain", "hazy"]:
+	for m in ["overcast", "rain", "hazy", "snow"]:
 		_check("%s isn't on the clock" % m, not TimeOfDay.runs(m))
 		for t in [0.0, 600.0, 2400.0, 9000.0]:
 			_check("%s holds at %d s" % [m, t], str(TimeOfDay.light(m, t)) == str(TimeOfDay.still(m)))
@@ -262,7 +262,7 @@ func _check_setting_off() -> void:
 				and before.env.sky.radiance_size == (Sky.RADIANCE_SIZE_256 if physical else Sky.RADIANCE_SIZE_128))
 			_check(what + ": the painted sky as it was", before.sky_mat.get_shader_parameter("zenith") == d.zenith
 				and before.sky_mat.get_shader_parameter("horizon") == d.horizon and before.sky_mat.get_shader_parameter("sun_col") == d.sun
-				and float(before.sky_mat.get_shader_parameter("cloud_cover")) == (1.0 if m in ["overcast", "rain"] else (0.3 if m == "day" else 0.55))
+				and float(before.sky_mat.get_shader_parameter("cloud_cover")) == (1.0 if m in ["overcast", "rain", "snow"] else (0.3 if m == "day" else 0.55))
 				and float(before.sky_mat.get_shader_parameter("stars")) == (1.0 if m == "night" else 0.0))
 			var seen := _seen(before)
 			for t in [2.0, 600.0, 2400.0]:
@@ -311,3 +311,19 @@ func _dump(start: String) -> void:
 			float(d.exposure), float(d.ambient), (d.zenith as Color).to_html(false), (d.horizon as Color).to_html(false),
 			(d.fog as Color).to_html(false), float(st.photo), str(st.weights)])
 		t += every
+
+
+func _check_air_clock() -> void:
+	Settings.v.time_passes = true
+	var a := _atmosphere({"seed": 3, "mood": "dawn"})
+	a.air = AirLayers.new()
+	a.air.atmo = a
+	a.air.world = _field
+	a.air.grid = WeatherGrid.new(_field)
+	a.air.set_process(false)
+	a.add_child(a.air)
+	for t in [0.0, 2400.0, 5000.0, 0.0]:
+		_tick_at(a, t)
+		_check("air follows the clock at %d s" % t, a.air._mood == a.mood and a.air.grid.mood == a.mood)
+		_check("air density follows the current mood", is_equal_approx(a.air._haze, float(AirLayers.MOOD[a.mood][1])))
+	_done(a)
