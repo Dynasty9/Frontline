@@ -544,6 +544,30 @@ func _ready() -> void:
 		var kbl: Vector3 = kb[1]
 		check(kbb.size.x <= kbl.x and kbb.size.z <= kbl.z and kbb.end.y <= kbl.y and kbb.position.y >= -0.01, "a kerbside piece keeps to its spot (%s, %s)" % [kbb, kbl])
 		kbk.sink.root.free()
+	# A stop sign's STOP is one flat part lying a few millimetres in front of
+	# the red (never level with it, where the two would flicker, nor through
+	# it to the back), centred on the face, a third of its height, and clear
+	# of the white border all round.
+	var stp_k := kit()
+	BuildingKerbside.stop_sign(stp_k, stp_k.rng)
+	var stp_word := BuildingKerbside.stop_letters()
+	var stp_found := 0
+	for stp_child in stp_k.sink.root.get_children():
+		var stp_mi := stp_child as MeshInstance3D
+		if stp_mi == null or stp_mi.mesh != stp_word:
+			continue
+		stp_found += 1
+		var stp_b: AABB = stp_mi.transform * stp_word.get_aabb()
+		check(stp_b.size.z < 0.0005 and stp_b.end.z < BuildingKerbside.STOP_FACE - 0.001 and stp_b.position.z > BuildingKerbside.STOP_FACE - 0.006, "a stop sign's lettering lies just in front of its face (%s)" % stp_b)
+		var stp_mid := stp_b.get_center() - Vector3(0, BuildingKerbside.STOP_Y, 0)
+		check(absf(stp_mid.x) < 0.005 and absf(stp_mid.y) < 0.005 and absf(stp_b.size.y - BuildingKerbside.STOP_CAP) < 0.005, "a stop sign's lettering is centred and a third of its height (%s)" % stp_b)
+		# (the red octagon's flats, less a margin: across, up and down, and
+		# on the diagonals)
+		var stp_flat: float = BuildingKerbside.STOP_RED * cos(PI / 8.0) - 0.02
+		var stp_half := stp_b.size * 0.5
+		check(stp_half.x + absf(stp_mid.x) <= stp_flat and stp_half.y + absf(stp_mid.y) <= stp_flat and (stp_half.x + stp_half.y) / sqrt(2.0) <= stp_flat, "a stop sign's lettering keeps inside its white border (%s)" % stp_b)
+	check(stp_found == 1, "a stop sign's lettering is one part (%d)" % stp_found)
+	stp_k.sink.root.free()
 	# The water tower stands on its piers within its footprint, its finial at
 	# 13.5 m or so.
 	var towk := kit()

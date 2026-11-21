@@ -333,3 +333,17 @@ frames; the current harness prevents that extra callback. Current mainline
 harness controls also retain the newer zoom/probe options. These historical
 clips isolate the surface-history fix and do not validate later renderer edits.
 Do not grade the comparison or use software capture time as GPU performance.
+
+### Stop-sign motion review
+
+Use `--building-single --building-kinds=stop_sign_face --building-stop-review`
+with `--fixed-fps 12 --resolution 1600x900` before the user-argument separator.
+Set `FL_CAPTURE_REF` and `--building-out` separately for each checkout. The same
+stage on both revisions captures 144 frames: a close angular view, a pullback
+to 55 m at 44 degrees and 48-degree FOV, then an approach. The sign-center target
+makes this a scenery fixture, not a town gameplay camera. The subject uses the
+existing stage seed 5; light and exposure stay fixed. `motion-capture.json` records
+every camera/light transform. Retain the first-frame checkpoint and compare those
+records before encoding. A centered 800 by 450 crop from each 1600 by 900 frame
+keeps the native pixel scale in a side-by-side clip. Default-distance evidence
+shows the octagon and white word shape, not readable individual letters.

@@ -26,6 +26,7 @@ var components := false
 var view_direction := Vector3(1.0, 0.7, -1.35)
 var night := false  # --building-night: the lamps on, the sun down
 var motion := false
+var stop_review := false
 var orbit_review := false
 var motion_cells := []
 var cameras := {}  # subject -> [centre x, y, z, size, distance] as framed (in capture.json)
@@ -45,6 +46,9 @@ func _ready() -> void:
 			output = arg.trim_prefix("--building-out=")
 		elif arg.begins_with("--building-kinds="):
 			kinds.assign(arg.trim_prefix("--building-kinds=").split(","))
+		elif arg == "--building-stop-review":
+			stop_review = true
+			motion = true
 		elif arg == "--building-orbit-review":
 			orbit_review = true
 			motion = true
@@ -69,7 +73,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(output)
 	var manifest := {"renderer": RenderingServer.get_current_rendering_method(), "subjects": kinds, "single": single,
 		"components": components, "view_direction": str(view_direction), "motion": motion, "orbit_review": orbit_review,
-		"motion_frames": 48 if motion else 0, "motion_stage": ("Orthographic native component fixture; fixed exposure and lighting, camera orbit" if orbit_review else "Orthographic native component fixture; fixed exposure, grazing directional light") if motion else ""}
+		"motion_frames": (144 if stop_review else 48) if motion else 0, "stop_review": stop_review, "motion_stage": ("Perspective native stop-sign fixture; matched pullback and approach" if stop_review else "Orthographic native component fixture; fixed exposure and lighting, camera orbit" if orbit_review else "Orthographic native component fixture; fixed exposure, grazing directional light") if motion else ""}
 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
 	var per_page := 1 if single else (6 if components else 6)
 	for start in range(0, kinds.size(), per_page):
@@ -186,6 +190,15 @@ func _cell(grid: GridContainer, kind: String, size: Vector2i) -> void:
 		camera.size = 1.25 if kind == "kerbside_stop" else 1.8
 		camera.position = center + Vector3(1.7, 0.65, -3.5)
 		camera.look_at(center)
+	if kind in ["stop_sign_face", "stop_sign_back"]:
+		# the stop sign close enough to read its lettering's shapes: its face
+		# a little off square with the sun on it, or its bare back in the sun
+		center = Vector3(0, 2.15, 0)
+		camera.size = 1.0
+		camera.position = center + (Vector3(0.9, 0.3, -3.5) if kind == "stop_sign_face" else Vector3(1.6, 0.3, 3.0))
+		camera.look_at(center)
+		if kind == "stop_sign_face":
+			sun.rotation_degrees = Vector3(-35, 160, 0)
 	cameras[kind] = [center.x, center.y, center.z, camera.size, camera.position.distance_to(center)]
 	motion_cells.append({"camera": camera, "sun": sun, "center": center, "size": camera.size})
 	var label := Label.new()
@@ -409,13 +422,13 @@ func _subject(kind: String) -> Node3D:
 					br.seed = 3 + i
 					farm.call("bales", BuildingKit.nodes(row, br).at_point(Vector3(-4.5 + i * 3.0, 0, 0), Vector3(0, 0.3 * i, 0)), 3 - i % 2, i >= 2, br)
 			return row
-		"kerbside_stop", "kerbside_lamp_joint":
+		"kerbside_stop", "kerbside_lamp_joint", "stop_sign_face", "stop_sign_back":
 			var detail := Node3D.new()
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 5
 			var kit := BuildingKit.nodes(detail, rng)
-			if kind == "kerbside_stop": BuildingKerbside.stop_sign(kit, rng)
-			else: BuildingKerbside.column(kit)
+			if kind == "kerbside_lamp_joint": BuildingKerbside.column(kit)
+			else: BuildingKerbside.stop_sign(kit, rng)
 			return detail
 		"kerbside":
 			# street lamps, a lantern, a hydrant, a stop sign, a mailbox and the
@@ -745,6 +758,9 @@ func _bounds(node: Node3D, parent: Transform3D) -> AABB:
 ## Actual building materials under grazing light; orthographic fixture, not gameplay.
 ## --building-motion writes 48 frames for playback at --fixed-fps 12.
 func _motion(kind: String) -> void:
+	if stop_review:
+		await _stop_motion(kind)
+		return
 	var folder := output.path_join(kind + "-frames")
 	assert(DirAccess.make_dir_recursive_absolute(folder) == OK)
 	for frame in 48:
@@ -762,3 +778,35 @@ func _motion(kind: String) -> void:
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		assert(get_viewport().get_texture().get_image().save_png(folder.path_join("%04d.png" % frame)) == OK)
+
+
+## Matched native stop-sign pullback. No simulation or model modifications.
+func _stop_motion(kind: String) -> void:
+	assert(single and kind == "stop_sign_face")
+	var folder := output.path_join("stop-motion")
+	assert(DirAccess.make_dir_recursive_absolute(folder) == OK)
+	var records: Array = []
+	for frame in 144:
+		var t := float(frame) / 12.0
+		var pull := smoothstep(2.0, 6.0, t) * (1.0 - smoothstep(8.0, 11.5, t))
+		var distance := exp(lerpf(log(2.2), log(55.0), pull))
+		var pitch := lerpf(5.0, 44.0, pull)
+		var yaw := 0.25 + sin(t * TAU / 12.0) * 0.08
+		for cell: Dictionary in motion_cells:
+			var camera: Camera3D = cell.camera
+			camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+			camera.fov = 48.0
+			var direction := Vector3(sin(yaw) * cos(deg_to_rad(pitch)), sin(deg_to_rad(pitch)), -cos(yaw) * cos(deg_to_rad(pitch)))
+			camera.position = cell.center + direction * distance
+			camera.look_at(cell.center)
+			records.append({"frame": frame, "distance": distance, "pitch": pitch, "yaw": yaw, "camera": str(camera.transform), "sun": str(cell.sun.transform)})
+		if frame == 0:
+			for warmup in 12:
+				await get_tree().process_frame
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		assert(get_viewport().get_texture().get_image().save_png(folder.path_join("%04d.png" % frame)) == OK)
+		if frame == 0:
+			print("STOP_CHECKPOINT ", output)
+	var record := {"source_ref": OS.get_environment("FL_CAPTURE_REF"), "renderer": RenderingServer.get_current_rendering_method(), "seed": 5, "fps": 12, "fov": 48, "resolution": [1600, 900], "frames": records, "stage": "Native scenery fixture; sign center targeted, default-distance 55m / pitch 44 degrees / FOV 48; no world simulation", "exposure": 1, "msaa": "4x"}
+	FileAccess.open(output.path_join("motion-capture.json"), FileAccess.WRITE).store_string(JSON.stringify(record, "  "))
