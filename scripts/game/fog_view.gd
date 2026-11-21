@@ -158,8 +158,19 @@ func _process(dt: float) -> void:
 			if st.team == team:
 				_own.append(st)
 	var marks: Array = (world.team_info[team] as Dictionary).get("marks", []) if team < world.team_info.size() else []
-	_list = Vision.eyes(world, team, marks, _own)
-	_observers = Vision.observers(world, team, marks, _own)
+	# (at night each eye shows the share of its sight the dark leaves it: what a
+	# flare lights, or a muzzle flash shows, is seen beyond, and shows up in the fog)
+	var night: Variant = null
+	if world.dark:
+		night = []
+	_observers = Vision.observers(world, team, marks, _own, night)
+	_list.resize(_observers.size())
+	for i in _observers.size():
+		var eye := _observers[i]
+		if night != null:
+			eye.w *= float(night[i])
+			_observers[i] = eye
+		_list[i] = Vector3(eye.x, eye.z, eye.w)
 	_eyes.queue_redraw()
 	_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	_vp_dark.render_target_update_mode = SubViewport.UPDATE_ONCE

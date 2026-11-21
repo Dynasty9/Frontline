@@ -23,6 +23,11 @@ static func disc_material(nb: int, hub: float, tint := Color(0.15, 0.155, 0.16))
 	m.set_shader_parameter("blade_count", float(nb))
 	m.set_shader_parameter("blade_tint", tint)
 	m.set_shader_parameter("hub", hub)
+	# (a propeller's or a fan's blades are broad against the small circle
+	# they sweep, two or three times a rotor's share of it, so its disc is
+	# denser: at the rotors' share a drone's props and a ducted fan all but
+	# vanished from above)
+	m.set_shader_parameter("solidity", 1.4)
 	_discs[key] = m
 	return m
 

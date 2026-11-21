@@ -99,13 +99,16 @@ func _ready() -> void:
 					target_labels[i].text = ["DIRT", "STONE", "METAL"][i]
 					target_labels[i].position.z = 20.0
 		if night:
-			if frame == 15: atmo._spawn_flare(Vector3.ZERO)
-			atmo._flare_t = 999.0
-			atmo._flares_tick(1.0 / CAPTURE_FPS)
-			if not atmo._flares.is_empty():
-				var charge: Node3D = atmo._flares[0][0]
-				camera.position = charge.position + Vector3(5, 3, 8)
-				camera.look_at(charge.position + Vector3.UP * 2.1)
+			if frame == 15:
+				if field.flares == null:
+					field.flares = Flares.new(field)
+				field.flares.add(1, Vector3(0, 36, 0), field.time, 26.0, 0.0, -1)
+			field.time += 1.0 / CAPTURE_FPS
+			atmo._flares_tick()
+			if atmo._flare_views.has(1):
+				var chute: Node3D = atmo._flare_views[1][0]
+				camera.position = chute.position + Vector3(5, -1, 8)
+				camera.look_at(chute.position + Vector3.DOWN * 1.9)
 		elif impacts:
 			var material_index := mini(frame / 120, 2)
 			var p := Vector3(material_index * 12.0 - 12.0, 0.12, 15.0)

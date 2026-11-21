@@ -234,6 +234,12 @@ var SUPPORT := {
 		"desc": "Off-map launchers saturate the area with sixteen rockets. Inaccurate, but nobody likes being under it."},
 	"mortars": {"name": "Mortar Barrage", "team": 1, "cost": 110, "cooldown": 60.0, "shape": "circle", "r": 15.0,
 		"desc": "Off-map mortars drop twelve rounds on the spot."},
+	"illum": {"name": "M853A1 Illumination", "team": 0, "cost": 25, "cooldown": 50.0, "from": 0.0, "shape": "circle", "r": 60.0, "illum": true, "rounds": 2,
+		"pattern": "81 mm M853A1 illuminating cartridge, off-map mortar section",
+		"desc": "Two star shells burst high over the spot: each hangs a magnesium flare under a parachute that burns for about forty seconds as it drifts down on the wind. At night everyone in its light is seen as far as by day, your own men too."},
+	"r_illum": {"name": "82 mm Illumination", "team": 1, "cost": 20, "cooldown": 50.0, "from": 0.0, "shape": "circle", "r": 60.0, "illum": true, "rounds": 2,
+		"pattern": "82 mm S-832S illuminating bomb, off-map mortar battery",
+		"desc": "Two illuminating bombs burst high over the spot, each a magnesium flare under a parachute burning for about forty seconds. At night everyone under it is seen as far as by day, your own fighters too."},
 	"smoke": {"name": "Smoke Screen", "team": -1, "cost": 0, "cooldown": 0.0, "shape": "circle", "r": 14.0,
 		"desc": "Mortar smoke rounds screen the area (observer demo)."},
 	# reconnaissance
@@ -254,6 +260,19 @@ var SUPPORT := {
 		"pattern": "KH-3A Fenghuang (CASC CH-3A Rainbow), its missiles left off for fuel",
 		"desc": "CSAT lends a Fenghuang: it circles the spot for most of a minute and shows your side everything within 80 m of it."},
 }
+## An illumination flare (Flares): bursts this high over its target (m), falls
+## at this rate under its chute (m/s), burns [min, max] seconds, drifts on the
+## wind at this multiple of it, hangs its charge this far below the chute (m),
+## swings it this far (radians) and lights the ground this far round (m).
+const FLARE := {"burst": 70.0, "fall": 1.45, "life": [34.0, 44.0], "drift": 1.3, "line": 4.0, "swing": 0.3, "lit_r": 85.0}
+## How far a side sees by night, as a share of its sight by day: men (the
+## Coalition's night sights and goggles against the Rebels' few), vehicles
+## (thermal sights). Anything lit (Flares) or that has just fired (its muzzle
+## flash) is seen as far as by day; aircraft and drones see by their sensors.
+const NIGHT_SIGHT := [0.6, 0.45]
+const NIGHT_SIGHT_VEHICLE := 0.8
+## A muzzle flash gives a man (or a gun) away in the dark for this long (s).
+const NIGHT_FLASH := 1.2
 const DEMO_SUPPORT := ["a10", "wipeout", "ac130", "blackfish", "airstrike", "buzzard", "gryphon", "greyhawk", "sentinel", "neophron", "shikra", "xian", "artillery", "barrage", "mortars", "smoke"]
 
 
@@ -316,23 +335,126 @@ const BUILD_MENU := [
 	["fob", "barracks", "factory", "medic_tent", "research", "helipad", "dock", "tunnel", "sandbags", "barricade", "trench", "wire", "mines", "tank_trap", "camo_net", "ammo_cache", "mg_nest", "hmg_nest", "mortar_pit", "bunker", "at_post", "watchtower"],
 ]
 
+## Research: the doctrine tree (the Research Post). Four branches - the
+## infantry's kit, and the three domains a commander fights in: land, air and
+## sea - each a few steps deep. A step needs the ones before it (requires) and
+## unlocks the vehicles it lists (unlocks): everything the Factory, the
+## Helipad and the Boat Dock can build is either there from the start or
+## unlocked by exactly one step of its side's tree. col: how deep in its
+## branch the step sits (where the tree draws it); tier: how far into a
+## battle the AI commander gets round to it.
+const BRANCHES := [["land", "Land"], ["air", "Air"], ["sea", "Sea"], ["inf", "Infantry"]]
+
 var UPGRADES := {
-	"armor": {"name": "Body Armor", "cost": 150, "time": 40.0, "teams": [0, 1], "desc": "+20% soldier health."},
-	"grenades": {"name": "Grenade Pouches", "cost": 100, "time": 30.0, "teams": [0, 1], "desc": "+1 frag grenade for every soldier."},
-	"medicine": {"name": "Field Medicine", "cost": 120, "time": 30.0, "teams": [0, 1], "desc": "Patch up and bleed out 50% slower."},
-	"optics": {"name": "Optics", "cost": 150, "time": 40.0, "teams": [0, 1], "desc": "+15% accuracy."},
-	"warheads": {"name": "FPV Warheads", "cost": 150, "time": 35.0, "teams": [1], "desc": "+50% drone damage."},
-	"deep_tunnels": {"name": "Deep Tunnels", "cost": 100, "time": 30.0, "teams": [1], "desc": "Tunnel travel twice as fast."},
-	# vehicle tiers: what the Factory and the Helipad can build
-	"armour_doctrine": {"name": "Armoured Warfare", "cost": 220, "time": 50.0, "teams": [0], "tier": 2,
-		"desc": "Unlocks tier 2: main battle tanks, infantry fighting vehicles, anti-aircraft vehicles and attack helicopters."},
-	"combined_arms": {"name": "Combined Arms", "cost": 320, "time": 70.0, "teams": [0], "tier": 3, "requires": "armour_doctrine",
-		"desc": "Unlocks tier 3: self-propelled artillery, the heaviest tanks, drones and the UGV."},
-	"csat_advisers": {"name": "Foreign Advisers", "cost": 200, "time": 50.0, "teams": [1], "tier": 2,
-		"desc": "CSAT advisers bring tier 2: tanks, IFVs, anti-aircraft vehicles and attack helicopters."},
-	"csat_corps": {"name": "Expeditionary Corps", "cost": 300, "time": 70.0, "teams": [1], "tier": 3, "requires": "csat_advisers",
-		"desc": "A CSAT expeditionary corps brings tier 3: artillery, the T-140 and the Futura, drones."},
+	# ---------------------------------------------------------------- the infantry's kit
+	"armor": {"name": "Body Armor", "cost": 150, "time": 40.0, "teams": [0, 1], "branch": "inf", "col": 0, "desc": "+20% soldier health."},
+	"grenades": {"name": "Grenade Pouches", "cost": 100, "time": 30.0, "teams": [0, 1], "branch": "inf", "col": 0, "desc": "+1 frag grenade for every soldier."},
+	"medicine": {"name": "Field Medicine", "cost": 120, "time": 30.0, "teams": [0, 1], "branch": "inf", "col": 1, "requires": "armor", "desc": "Patch up and bleed out 50% slower."},
+	"optics": {"name": "Optics", "cost": 150, "time": 40.0, "teams": [0, 1], "branch": "inf", "col": 1, "requires": "grenades", "desc": "+15% accuracy."},
+	"warheads": {"name": "FPV Warheads", "cost": 150, "time": 35.0, "teams": [1], "branch": "inf", "col": 2, "requires": "optics", "desc": "+50% drone damage."},
+	"deep_tunnels": {"name": "Deep Tunnels", "cost": 100, "time": 30.0, "teams": [1], "branch": "inf", "col": 2, "requires": "medicine", "desc": "Tunnel travel twice as fast."},
+	# ---------------------------------------------------------------- Coalition: land
+	"c_mech": {"name": "Mechanised Infantry", "cost": 160, "time": 40.0, "teams": [0], "branch": "land", "col": 0, "tier": 2,
+		"unlocks": ["ifv", "marshall", "gorgon", "mora", "panther", "nyx_ac", "nyx_recon", "prowler_at", "bobcat"],
+		"desc": "Infantry fighting vehicles and armoured carriers: the rifle squads ride to the fight under armour, with a cannon to cover them out."},
+	"c_armour": {"name": "Armoured Warfare", "cost": 220, "time": 50.0, "teams": [0], "branch": "land", "col": 1, "tier": 2, "requires": "c_mech",
+		"unlocks": ["tank", "slammer", "kuma", "rhino", "nyx_at"],
+		"desc": "Main battle tanks and tank destroyers: the guns that break a defence and stop an armoured attack."},
+	"c_air_defence": {"name": "Air Defence", "cost": 150, "time": 35.0, "teams": [0], "branch": "land", "col": 1, "tier": 2, "requires": "c_mech",
+		"unlocks": ["cheetah", "nyx_aa"],
+		"desc": "Radar-laid guns and missiles on tracks: an umbrella over the armour against helicopters and drones."},
+	"c_fires": {"name": "Fire Support", "cost": 240, "time": 55.0, "teams": [0], "branch": "land", "col": 2, "tier": 3, "requires": "c_armour",
+		"unlocks": ["scorcher", "sandstorm"],
+		"desc": "Self-propelled howitzers and rocket launchers of your own, firing on anything your side has spotted."},
+	"c_urban": {"name": "Urban Armour Packages", "cost": 180, "time": 45.0, "teams": [0], "branch": "land", "col": 2, "tier": 3, "requires": "c_armour",
+		"unlocks": ["slammer_up", "rhino_up"],
+		"desc": "Reactive armour, slat cages and remote guns for fighting tanks in towns, where every window can hide an RPG."},
+	"c_robotics": {"name": "Unmanned Ground Vehicles", "cost": 140, "time": 40.0, "teams": [0], "branch": "land", "col": 2, "tier": 3, "requires": "c_air_defence",
+		"unlocks": ["stomper"],
+		"desc": "Robot gun carriers: slow and tough, and nobody inside to lose."},
+	# ---------------------------------------------------------------- Coalition: air
+	"c_aviation": {"name": "Army Aviation", "cost": 160, "time": 40.0, "teams": [0], "branch": "air", "col": 0, "tier": 2,
+		"unlocks": ["pawnee", "ghosthawk", "hellcat"],
+		"desc": "Armed scouts and utility helicopters: lift a squad over the front and give it fire when it lands."},
+	"c_attack_aviation": {"name": "Attack Aviation", "cost": 260, "time": 55.0, "teams": [0], "branch": "air", "col": 1, "tier": 2, "requires": "c_aviation",
+		"unlocks": ["gunship", "blackfoot", "ghosthawk_stub"],
+		"desc": "Attack helicopters: cannon, rockets and missiles for armour caught in the open."},
+	"c_uav": {"name": "Unmanned Aircraft", "cost": 160, "time": 40.0, "teams": [0], "branch": "air", "col": 1, "tier": 3, "requires": "c_aviation",
+		"unlocks": ["falcon"],
+		"desc": "An armed rotary drone that hunts on its own over the battlefield."},
+	# ---------------------------------------------------------------- Coalition: sea
+	"c_riverine": {"name": "Riverine Squadron", "cost": 120, "time": 30.0, "teams": [0], "branch": "sea", "col": 0, "tier": 2,
+		"unlocks": ["speedboat_minigun"],
+		"desc": "Armoured riverine craft: a grenade machine gun in the bow and room for a squad, put ashore under its own fire."},
+	"c_coastal": {"name": "Coastal Patrol", "cost": 220, "time": 50.0, "teams": [0], "branch": "sea", "col": 1, "tier": 3, "requires": "c_riverine",
+		"unlocks": ["patrol_ship"],
+		"desc": "A patrol ship with a stabilised cannon: it owns the coast and shoots up anything on the shore."},
+	# ---------------------------------------------------------------- Rebels: land
+	"r_advisers": {"name": "Foreign Advisers", "cost": 150, "time": 40.0, "teams": [1], "branch": "land", "col": 0, "tier": 2,
+		"unlocks": ["btr", "marid", "kamysh", "qilin_at"],
+		"desc": "CSAT advisers bring armoured carriers and missile buggies, and teach the fighters to use them."},
+	"r_rockets": {"name": "Workshop Rockets", "cost": 140, "time": 35.0, "teams": [1], "branch": "land", "col": 0, "tier": 2,
+		"unlocks": ["zamak_mrl"],
+		"desc": "A rocket launcher welded onto a lorry: inaccurate, terrifying and cheap."},
+	"r_armour": {"name": "Armour Shipments", "cost": 220, "time": 50.0, "teams": [1], "branch": "land", "col": 1, "tier": 2, "requires": "r_advisers",
+		"unlocks": ["old_tank", "varsuk"],
+		"desc": "Tanks come over the border on low-loaders: old ones first, then CSAT's own."},
+	"r_air_defence": {"name": "Air Defence", "cost": 150, "time": 35.0, "teams": [1], "branch": "land", "col": 1, "tier": 2, "requires": "r_advisers",
+		"unlocks": ["tigris"],
+		"desc": "A CSAT twin 35 mm gun and missile carrier under its own radar."},
+	"r_corps": {"name": "Expeditionary Corps", "cost": 300, "time": 65.0, "teams": [1], "branch": "land", "col": 2, "tier": 3, "requires": "r_armour",
+		"unlocks": ["angara", "angara_k", "futura", "sochor"],
+		"desc": "A CSAT expeditionary corps: the T-140, the railgun Futura and self-propelled artillery."},
+	# ---------------------------------------------------------------- Rebels: air
+	"r_aviation": {"name": "Armed Helicopters", "cost": 160, "time": 40.0, "teams": [1], "branch": "air", "col": 0, "tier": 2,
+		"unlocks": ["orca_armed"],
+		"desc": "Utility helicopters with a minigun in the door and rockets on the skids."},
+	"r_attack_aviation": {"name": "CSAT Attack Aviation", "cost": 280, "time": 55.0, "teams": [1], "branch": "air", "col": 1, "tier": 2, "requires": "r_aviation",
+		"unlocks": ["kajman"],
+		"desc": "CSAT's heavy attack helicopter, flown by its own crews."},
+	"r_uav": {"name": "Drone Programme", "cost": 160, "time": 40.0, "teams": [1], "branch": "air", "col": 1, "tier": 3, "requires": "r_aviation",
+		"unlocks": ["fenghuang_uav"],
+		"desc": "Armed drones from CSAT's factories, flown from a shed behind the lines."},
+	# ---------------------------------------------------------------- Rebels: sea
+	"r_gunboats": {"name": "Gunboats", "cost": 120, "time": 30.0, "teams": [1], "branch": "sea", "col": 0, "tier": 2,
+		"unlocks": ["gun_trawler"],
+		"desc": "Fishing boats with anti-aircraft cannon bolted to the deck."},
+	"r_navy": {"name": "CSAT Riverine Craft", "cost": 200, "time": 45.0, "teams": [1], "branch": "sea", "col": 1, "tier": 3, "requires": "r_gunboats",
+		"unlocks": ["speedboat_hmg"],
+		"desc": "CSAT's armoured riverine craft: a grenade launcher, a heavy machine gun and a squad aboard."},
 }
+
+## team -> {item: the step of the tree that unlocks it}; filled on first use.
+var _unlocks := [{}, {}]
+
+
+## The research that unlocks `item` for `team` ("" if it's there from the start).
+func unlocked_by(team: int, item: String) -> String:
+	if team < 0 or team > 1:
+		return ""
+	if (_unlocks[0] as Dictionary).is_empty() and (_unlocks[1] as Dictionary).is_empty():
+		for k in UPGRADES:
+			for t in UPGRADES[k].teams:
+				for it in UPGRADES[k].get("unlocks", []):
+					_unlocks[int(t)][String(it)] = k
+	return String((_unlocks[team] as Dictionary).get(item, ""))
+
+
+## What a step of the tree needs researched first ([] if nothing).
+func requires_of(key: String) -> Array:
+	var r = UPGRADES.get(key, {}).get("requires", [])
+	if r is String:
+		return [r]
+	return r as Array
+
+
+## The name of what `team` must still research before it may build `item`
+## ("" if it may), given what it has researched (`have`, upgrade keys).
+func locked_by(team: int, item: String, have: Array) -> String:
+	var k := unlocked_by(team, item)
+	if k == "" or k in have:
+		return ""
+	return String(UPGRADES[k].name)
 
 
 func yaw_of(d: Vector3) -> float:
