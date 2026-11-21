@@ -526,6 +526,31 @@ func _ready() -> void:
 		var bb := _bounds(bk.sink.root, Transform3D.IDENTITY)
 		check(bb.size.x <= 2.9 and bb.size.z <= 1.5 and bb.end.y <= 3.15 and bb.position.y >= -0.01, "a farm's bales keep to their footprint (%s)" % bb)
 		bk.sink.root.free()
+	# A helipad keeps its pad flat and its windsock, fuel and flag about its
+	# edge (its edge markers half tyres, half sunk), for either side.
+	for side in 2:
+		var hp := Structure.preview_model("helipad", side)
+		var hpb := _bounds(hp, Transform3D.IDENTITY)
+		check(hp.get_child_count() > 0 and hpb.size.x <= 12.5 and hpb.size.z <= 12.5 and hpb.position.y >= -0.3 and hpb.end.y < 5.0, "a helipad keeps to its pad (%d: %s)" % [side, hpb])
+		hp.free()
+	# Turning either pad must not turn its windsock away from the shared wind.
+	for side in 2:
+		for pad_yaw: float in [0.0, PI * 0.5, PI, PI * 1.5]:
+			var sock_kit := kit()
+			BuildingAirfield.helipad(sock_kit, Vector3(10, 3, 10), side, sock_kit.rng, Basis(Vector3.UP, -pad_yaw) * Fires.WIND)
+			var sock_stripes: Array[Vector3] = []
+			for child in sock_kit.sink.root.get_children():
+				var sock_mesh := child as MeshInstance3D
+				if sock_mesh != null and sock_mesh.mesh is CylinderMesh:
+					var sock_cylinder := sock_mesh.mesh as CylinderMesh
+					if is_equal_approx(sock_cylinder.height, 0.24) and sock_cylinder.radial_segments == 12:
+						sock_stripes.append(sock_mesh.position)
+			check(sock_stripes.size() == 5, "the windsock has five striped sections")
+			if sock_stripes.size() == 5:
+				var pad_downwind := Basis(Vector3.UP, pad_yaw) * (sock_stripes[4] - sock_stripes[0])
+				pad_downwind.y = 0.0
+				check(pad_downwind.normalized().dot(Fires.WIND.normalized()) > 0.9999, "the windsock stays downwind (%d, %.2f)" % [side, pad_yaw])
+			sock_kit.sink.root.free()
 	# What stands at the kerb keeps to its spot: a lamp's head out over the
 	# road no further than its arm, a sign, a hydrant, a mailbox, a cabinet
 	# (the bounds of a turned lantern or sign are a turned square's;

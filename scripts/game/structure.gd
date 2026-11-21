@@ -4272,17 +4272,14 @@ func _build_model() -> void:
 				_box(p.p, p.s, C_WOOD if p.s.y > 1.0 else C_WOOD.lightened(0.05), p.r)
 			WorksModels.tower(model, rng, bags)
 		"helipad":
-			var white := Color(0.9, 0.9, 0.85)
-			_box(Vector3(0, 0.06, 0), Vector3(size.x, 0.12, size.z), Color(0.4, 0.4, 0.38), 0.0, false)
-			_box(Vector3(-1.2, 0.13, 0), Vector3(0.5, 0.02, 3.6), white, 0.0, false)
-			_box(Vector3(1.2, 0.13, 0), Vector3(0.5, 0.02, 3.6), white, 0.0, false)
-			_box(Vector3(0, 0.13, 0), Vector3(2.4, 0.02, 0.5), white, 0.0, false)
+			# a forward helipad (BuildingAirfield): the pad, its markings, the
+			# windsock, the fuel bladder; its edge lights glow on their own
+			var hoist := BuildingAirfield.helipad(_kit(rng), size, team, rng, Basis(Vector3.UP, -yaw) * Fires.WIND)
 			for x in [-4.6, 4.6]:
 				for z in [-4.6, 4.6]:
-					Res.mi(model, Res.sphere(0.12, 6), Res.mat(Color(1, 0.6, 0.2), 0.5, 3.0, true), Vector3(x, 0.2, z), Vector3.ZERO, false)
-			Res.mi(model, Res.cyl(0.04, 0.04, 3.0, 4), Res.mat(Color(0.7, 0.7, 0.7)), Vector3(4.8, 1.5, -4.8))
-			_box(Vector3(5.3, 2.85, -4.8), Vector3(1.0, 0.35, 0.3), Color(1.0, 0.5, 0.1))
-			_flag = _box(Vector3(-4.8, 0.5, 4.8), Vector3(0.6, 0.6, 0.6), tc)
+					Res.mi(model, Res.cyl(0.06, 0.09, 0.1, 8), Res.mat(Color(0.25, 0.25, 0.24)), Vector3(x, 0.15, z), Vector3.ZERO, false)
+					Res.mi(model, Res.sphere(0.07, 6), Res.mat(Color(1, 0.6, 0.2), 0.5, 3.0, true), Vector3(x, 0.24, z), Vector3.ZERO, false)
+			_flag = _box(hoist + Vector3(0.5, -0.3, 0), Vector3(0.95, 0.6, 0.03), tc)
 		"tunnel":
 			# a dug shaft, shored, sandbagged, a sheet propped over it (WorksModels)
 			var hang := WorksModels.tunnel_mouth(model, rng)

@@ -1,0 +1,26 @@
+{
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "source_ref": "619a9b61b88c2e893a6872cd667518990a719d1d",
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "stage": "tools/showcase/building-surfaces.tscn",
+  "command": "godot --path CHECKOUT --resolution 1600x900 tools/showcase/building-surfaces.tscn -- --building-out=OUTPUT --offscreen --building-single --building-kinds=helipad:0,helipad:1",
+  "comparisons": [
+    {
+      "subjects": [
+        "helipad:0",
+        "helipad:1"
+      ],
+      "both_flags": [
+        "--building-match=BEFORE/capture.json"
+      ],
+      "crop": [
+        60,
+        100,
+        1540,
+        880
+      ]
+    }
+  ],
+  "notes": "Both sides render from the baseline's cameras.",
+  "composition": "PIL: matched rows, 792 px halves, JPEG quality 82"
+}
