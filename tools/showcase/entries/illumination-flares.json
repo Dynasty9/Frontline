@@ -1,0 +1,34 @@
+{
+  "entry": "changelog/unreleased/illumination-flares.md",
+  "title": "Illumination flares: fight by flarelight at night",
+  "version": "unreleased",
+  "kind": "new",
+  "summary": "At night men see only a short way. Mortars now fire star shells: magnesium flares that drift down under parachutes, light the ground and everyone on it, and throw shadows that swing as they fall. The AI lights up night attacks too.",
+  "medium": "motion",
+  "stage": "Native Godot 4.7.2 Forward+, --scenario=flares --static --seed=1 (night), High preset, --fixed-fps 30, 1280x720, command camera --focus=0,-8 --zoom=45 --pitch=-12 --nohud. FL_DEBUG_FLARE_AT=-44,-45,3 bursts one flare over (-44, -45) at t=3 so it drifts low past the wall in its last seconds; clip = 300 frames from t=32 (--shot-at=32 --shots=300 --shot-every=0.03333). Without-flare frame: same run with FL_DEBUG_FLARES_HIDE=1 at t=37. Swing stills: clip frames 90 (t=35, swing -1.0 m) and 150 (t=37, +0.8 m), cropped.",
+  "rationale": "A flare is light that moves: the clip shows the drift, the swing and the shadows swinging with it; the matched with/without pair shows the pool and its falloff; the swing pair shows the shadows moving. Measured on a wide matched pair (flare 47 m up, 8-bit luma without/with): 25 m out 16.5/31, 50 m 16/21, 100 m 14/14, 200 m 12/12, sky 23/23 (no exposure change).",
+  "source_ref": "Branch dines/illumination-flares (after review of af06dd92). Encoded VP9 CRF 38 with Playwright's ffmpeg (JPEG on pipe:0).",
+  "sources": [
+    {
+      "file": "changelog/unreleased/illumination-flares/flare-night.webm",
+      "sha256": "53c5d299e5a8fdd408a05c5228a6bbfc7d6ffdafac12bf3eabf8d8d8a6b4a933",
+      "caption": "A flare's last ten seconds over a line of walls at night."
+    },
+    {
+      "file": "changelog/unreleased/illumination-flares/flare-night.jpg",
+      "sha256": "57632c701f2de84ddef2be8d4dffcba8e37422a93710cba7a542f3d44f6e6c22",
+      "caption": "Poster: clip frame 150 (t=37 s)."
+    },
+    {
+      "file": "changelog/unreleased/illumination-flares/with-and-without.jpg",
+      "sha256": "3523697e88a92cfdf1137993f24ef9ccbcacbc3a4dbed9109da7194d791d870f",
+      "caption": "The same moment without and with the flare."
+    },
+    {
+      "file": "changelog/unreleased/illumination-flares/swing.jpg",
+      "sha256": "42efde547cc046e4bfcfac39be4160a0a6b70d4d090a619e72988aadb51f07e7",
+      "caption": "The charge at either end of its swing, two seconds apart."
+    }
+  ],
+  "output": null
+}

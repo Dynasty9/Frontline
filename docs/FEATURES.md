@@ -584,10 +584,26 @@ Ambush Alley autoplay can call its existing mortar support against spotted, stop
   battlefield (about 5 m to the pixel, fifteen times a second); a full-screen pass finds where each pixel lies on the
   ground from the depth buffer and darkens it there. Aircraft high overhead aren't darkened; at night the fog is
   lighter, because everything is dark already. The "Fog of war" map layer (the eye) turns it off.
+- **Night and illumination flares** (`flares.gd`, `vision.gd`, `rules.gd`). In a night battle men see only part of
+  their sight: the Coalition, with night sights and goggles, 60% (34 m), the Rebels 45% (25 m); vehicles 80% through
+  their thermal sights; aircraft, drones and recon photographs as by day. Anyone standing in a flare's light, or who
+  has just fired (his muzzle flash, for a second or so), is seen as far as by day, whichever side he's on. Buildings
+  are seen as by day. A **star shell** (mortar teams and pits: the **Illum** fire mission, two rounds 18 s apart; or the
+  off-map **M853A1 Illumination** / **82 mm Illumination** from the support panel, cheap and ready from the start) is
+  fuzed to burst about 70 m over the spot and hangs a magnesium flare under a small parachute. It burns 34-44 s with a
+  cold, flickering bluish-white light (falling off as real light does: a bright pool under it, dark again
+  a hundred metres out) that shows men up some 85 m round, falls about 1.5 m a second and drifts on the
+  wind, the charge swinging under its chute on its shroud lines, so the shadows below swing and lengthen as it
+  comes down. The host bursts each flare from the battle's seed and sends it once (burst point, time, burn and
+  swing); where it is at any moment is worked out from those alone, so every player, a replay and the host's rules
+  agree. Its light scatters in the volumetric haze (a halo round the charge, shafts past trees and houses), and the
+  nearest two cast shadows. The **AI commander** fights by flarelight at night: where its squads hear fire they can't
+  see, or have just lost sight of an enemy, and nothing is burning overhead, it has a mortar team (or a crewed pit,
+  or the battery behind the lines) put a star shell up, aimed a little upwind so it drifts over the spot.
 - **Watchtowers** see over the hedges and roofs: 85 m, and 115 m with a lookout up it (any idle soldier beside it
   climbs up). Placing one shows both rings; selecting one shows what it sees now.
-- **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (tier
-  1) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
+- **Drones.** The Coalition's AR-2 Darter and the Rebels' AR-2 Tayran are cheap quadcopters from the Helipad (from
+  the start) that circle where they're sent and show 70 m round them; the armed MQ-12 Falcon and KH-3A Fenghuang see 75 m.
   Selecting a drone or recon vehicle shows its sight ring.
 - Jets and reconnaissance planes bank into curved approaches, and a recon pass curves away again; bomb runs break away climbing and the A-10 pulls off in a climbing turn (see "Off-map support").
 - **Every aircraft spots.** A jet on a bomb run sees 70 m round it as it flies, a gun run 55 m, and an orbiting
@@ -944,14 +960,42 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   recruitment attribution intact. Construction can assign an allied engineer, and tunnel orders move allied
   passengers, without requiring the issuing commander to own them. Supply convoys and supply helicopters
   continue their automatic routes rather than taking troop orders.
-- **Order of battle** (O): every unit down the left, grouped into infantry, support teams and vehicles, each
-  with its symbol, callsign, a pip per man, what it has been told to do and where an attack has got to ("Base of
-  fire on D3", "Assaulting D3"), and alerts for contact, pinned, casualties and low ammunition. Click to select
-  and look at it, Shift+click to add, double-click to zoom in. Observers see both sides.
+- **A quiet command display.** Orders are given, acknowledged and then left to the men: a new order draws its
+  path and its tag on the ground for a couple of seconds (`Hud.ACK_SECS`) and the squad answers on the command
+  net, then it goes out of sight. A unit's orders show again while it is selected or while the hand is over it
+  (`Hud.focus_sid`: the unit on the ground, its symbol on the map, or its row in the order of battle); the tactical
+  map (Tab) and the Orders map layer show everyone's. Speech bubbles are capped at the few that matter (a man hit, then shouts, then the
+  radio, then banter, the nearest the middle first). The left column (the order of battle and the fire missions)
+  steps back while the cursor is out on the battlefield and comes up as it goes to it (Settings > Interface >
+  Quiet side panels). Finished mission objectives fold into one line (3 DONE) after a few seconds.
+- **Hover cards** (`hud_pointer_overlay.gd`): the hand over a squad shows its card by the cursor: callsign and
+  type, a pip per man and how many are fit to fight, its nerve, its ammunition, whether the XO has it, what it was
+  told to do and what it's doing about it, and the man under the cursor (name, role, health, what he's doing).
+  A vehicle's card has its role, hull, who's aboard and what it's doing. An enemy squad shows only what can be
+  seen of it.
+- **The command net** (`hud_radio.gd`): what comes over the radio - the XO's reports, the mission's traffic,
+  another commander's orders - is heard one transmission at a time as a subtitle low in the middle of the screen,
+  opened by a burst of squelch, typed on and held while it's read, rather than piled in the corner with the
+  alerts. Squads and vehicles answer the orders you give them on it, in their element's words ("Moving to D8,
+  out.", "Inbound to D8.", "Under way to D8."). Everything said stays in the message history (L).
+- **Notifications** (top right): three lines at most, and briefly. The same news again (another lorry lost,
+  another strongpoint knocked down) updates its line and counts (x3) instead of stacking up; routine news (a
+  squad trained, a building finished) passes quickest and faintest; a warning outlasts newer routine lines.
+- **Order of battle** (O): every unit down the left, grouped by where it fights: infantry, support teams, then
+  land, air and sea vehicles, each with its symbol, callsign and a pip per man. A row says what the unit was told
+  to do (MOV D8, DEF E4, where an attack has got to) only while it's selected or under the hand; otherwise it
+  speaks up only when the unit needs its commander (ROUTING, PINNED, LOW AMMO, CONTACT; IMMOBILISED, ENGAGING
+  for vehicles). Click to select and look at it, Shift+click to add, double-click to zoom in; click a heading
+  (Air, Sea...) for every unit under it. Observers see both sides.
 - **Map layers** (the column beside the minimap): unit symbols at any zoom, orders and attack plans for all your
-  units, intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
-  selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols, every order, plan and contact, and the
-  A-H / 1-8 grid on the ground.
+  units (off by default: see above), intelligence (where the enemy was last seen and how long ago), the fog of war, weapon ranges of the
+  selection, soldier labels. **Tactical map** (Tab): the battlefield dims under the symbols and contacts, with the
+  A-H / 1-8 grid on the ground, and every order and plan: the planning board, where the battlefield view keeps them out of sight.
+- **The doctrine tree** (Y, or the Research Post's card; `hud_doctrine.gd`): research as a tree of four branches,
+  land, air, sea and the infantry's kit, each a few steps deep, joined by rules to what each step needs. Every step
+  shows what it costs and takes, what it unlocks, and whether it's done, under way (how far), ready (lit) or still
+  locked (and by what). Click a lit step to queue it at the Research Post with the shortest queue. See Research,
+  under The systems.
 - **Battle statistics and the after-action report** (`battle_stats.gd`, `stats_panel.gd`). The host keeps a record of
   the battle and credits everything to the commander whose unit did it (a player, or a side's AI): the man who last
   hurt a soldier gets the kill even if he bleeds out later, fire support and mines count for whoever called or laid
@@ -1144,10 +1188,27 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
     BTR-K Kamysh, T-100 Varsuk, T-100X Futura (railgun), T-140 Angara and T-140K, ZSU-39 Tigris, 2S9 Sochor,
     Tempest transport / ammo / medical / repair, Mi-48 Kajman, PO-30 Orca (and armed), Mi-290 Taru, AR-2 Tayran,
     KH-3A Fenghuang.
-- **Tiers.** Light vehicles, trucks and transport helicopters from the start; tanks, IFVs, anti-aircraft
-  vehicles and attack helicopters after Armoured Warfare (Coalition) or Foreign Advisers (Rebels); artillery, the
-  heaviest tanks and drones after Combined Arms / Expeditionary Corps. The Factory and Helipad pages long lists
-  by category (Light, Armour, Fire support, Logistics, Air) and show what's still locked.
+- **The doctrine tree** (`Defs.UPGRADES`, the Research Post, Y). Light vehicles, trucks, transport helicopters,
+  small drones and light boats are there from the start; everything else is unlocked by one step of the side's
+  tree, and every vehicle the Factory, the Helipad and the Dock can build is on it (the economy test checks).
+  - Land. Coalition: Mechanised Infantry (IFVs and carriers: IFV, Marshall, Gorgon, Mora, Panther, Nyx
+    autocannon and recon, Prowler AT, Bobcat), then Armoured Warfare (the tanks and tank destroyers) and Air
+    Defence (Cheetah, Nyx AA); after those, Fire Support (Scorcher, Sandstorm), Urban Armour Packages (Slammer UP,
+    Rhino UP) and Unmanned Ground Vehicles (Stomper). Rebels: Foreign Advisers (BTR, Marid, Kamysh, Qilin AT) and
+    Workshop Rockets (Zamak MRL); then Armour Shipments (the old tank, Varsuk) and Air Defence (Tigris); then the
+    Expeditionary Corps (Angara, Angara K, Futura, Sochor).
+  - Air: Army Aviation (Pawnee, Ghost Hawk, Hellcat), then Attack Aviation (the gunship, Blackfoot, the stub-wing
+    Ghost Hawk) and Unmanned Aircraft (Falcon); the Rebels' Armed Helicopters (armed Orca), then CSAT Attack
+    Aviation (Kajman) and the Drone Programme (Fenghuang).
+  - Sea: Riverine Squadron (the armed SURC), then Coastal Patrol (the patrol ship); the Rebels' Gunboats (gun
+    trawler), then CSAT Riverine Craft.
+  - Infantry: Body Armor and Grenade Pouches, then Field Medicine and Optics, and for the Rebels FPV Warheads and
+    Deep Tunnels after those.
+  A step needs the one before it in its branch, and a side may run as many Research Posts as it can pay for, a
+  queue of four at each. The AI commander works through the infantry's kit and the land branch as they come due,
+  and the air and sea branches once it has a Helipad or a Dock to use them. The Factory and Helipad pages list long
+  rosters by category (Light, Armour, Fire support, Logistics, Air) with how many of each are unlocked, and a
+  locked vehicle says which step it needs.
 - **What they do:** ATGMs at armour and bunkers, homing SAMs at anything flying; self-propelled guns and rocket
   launchers halt, lay the barrel or raise the launcher and fire salvos at spotted enemies (or on a fire mission:
   F); repair, ammunition and medical vehicles look after everything parked near them; troop helicopters fly
@@ -1347,9 +1408,11 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 - **.50 cal nest** (M2HB on the M3 tripod / DShKM with a gun shield; also as a trench bay): 100 m range and crushing suppression. Its armour-piercing rounds shred trucks, technicals,
   helicopters and drones (they still bounce off tanks).
 - **Mortar pit**: crewed automatically and fires on enemies your side has spotted, behind cover too, at 30â€“160 m.
-  It holds fire when your own troops are within 8 m of the target. Select it to call 6-round HE or smoke fire missions.
+  It holds fire when your own troops are within 8 m of the target. Select it to call 6-round HE or smoke fire missions,
+  or two star shells (illumination: see "Night and illumination flares").
   Rounds whistle on the way down, so soldiers shout "Incoming!" and hit the dirt, or dive if a shell is landing right on them.
-- **Mortar teams** (both sides) do the same on the move with limited rounds. Press F to call a fire mission.
+- **Mortar teams** (both sides) do the same on the move with limited rounds. Press F to call a fire mission (HE, smoke
+  or illumination).
 - **Bunker** (a concrete pillbox cast in place, with splayed embrasures and a steel observation cupola, or a
   log-and-earth dugout for the Rebels): firing slits soldiers shoot through, and a roof that stops shrapnel.
   Right-click it with a squad to garrison.
@@ -1386,8 +1449,8 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
 **Look and feel** (`atmosphere.gd`, `cinematic_fx.gd`, `physical_sky.gd`, `cloud_shadow.gd`, `mats.gd`, `vehicle_models.gd`, `vfx.gd`, `gunfx.gd`, `grass.gd`, `wildlife.gd`, `ui/`)
 - Nine lighting moods (midday, golden hour, dawn, dusk, overcast, hazy, **night**, **rain & thunder**, **snow**)
   with a procedural sky, AgX tonemapping, cloud shadows drifting over the ground, volumetric haze and a subtle film
-  look. At night the sky fills with stars and illumination flares drift down on parachutes over the fighting,
-  throwing moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the
+  look. At night the sky fills with stars, and the illumination flares the mortars put up (see "Night and
+  illumination flares") drift down on parachutes over the fighting, throwing moving shadows. In the rain, streaks fall around the camera, splashes hit the ground, puddles reflect the
   sky and lightning flashes are followed by thunder.
 - **Snow** (`Atmosphere.MOODS.snow`, `snowfall.gd`, the `snow_cover` global; `Atmosphere._snow_tick`): a flat, cold
   winter light, the sun weak behind cloud and its shadows barely there, a pale blue-grey sky and the haze closing in.

@@ -136,7 +136,7 @@ func sim(dt: float) -> void:
 			_atgm(dt)
 		"sam":
 			_sam(dt)
-		"mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25":
+		"mortar", "mortar_smoke", "mortar_illum", "grad", "arty", "ac105", "ac40", "ac25":
 			_shell()
 		"jet":
 			_jet(dt)
@@ -401,7 +401,7 @@ func shell_pos(k: float) -> Vector3:
 
 
 func is_shell() -> bool:
-	return ptype in ["mortar", "mortar_smoke", "grad", "arty", "ac105", "ac40", "ac25"]
+	return ptype in ["mortar", "mortar_smoke", "mortar_illum", "grad", "arty", "ac105", "ac40", "ac25"]
 
 
 ## Mortar shells follow a fixed high arc to their (already scattered) impact point.
@@ -414,6 +414,12 @@ func _shell() -> void:
 			position = next
 			return
 		target = ground.position
+	if ptype == "mortar_illum":
+		# the time fuze bursts it over the target: out comes the flare on its chute
+		# (`target` is the burst point; struck short, it bursts where it hit)
+		world.flares.burst(target, team)
+		world.despawn(self)
+		return
 	var src: Entity = world.entity(thrower_id) if thrower_id != 0 else null
 	match ptype:
 		"grad":
@@ -709,10 +715,10 @@ func _build_model() -> void:
 			if world.fx and world.fx.vfx:
 				trail = world.fx.vfx.make_trail()
 				add_child(trail)
-		"mortar", "mortar_smoke", "arty":
+		"mortar", "mortar_smoke", "mortar_illum", "arty":
 			# drawn a little larger than life, trailing wisps, so the arc reads from the air
 			var big := ptype == "arty"
-			Res.mi(model, Res.cyl(0.11 if big else 0.08, 0.06, 0.9 if big else 0.6, 8), Res.mat(Color(0.25, 0.27, 0.2) if ptype != "mortar_smoke" else Color(0.6, 0.6, 0.55)), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
+			Res.mi(model, Res.cyl(0.11 if big else 0.08, 0.06, 0.9 if big else 0.6, 8), Res.mat(Color(0.25, 0.27, 0.2) if ptype not in ["mortar_smoke", "mortar_illum"] else Color(0.6, 0.6, 0.55)), Vector3.ZERO, Vector3(PI / 2, 0, 0), false)
 			Res.mi(model, Res.sphere(0.09 if big else 0.07, 6), Res.mat(Color(1.0, 0.75, 0.4), 0.5, 4.0, true), Vector3(0, 0, 0.4 if big else 0.3), Vector3.ZERO, false)
 			if world.fx and world.fx.vfx:
 				trail = world.fx.vfx.make_shell_trail(big)

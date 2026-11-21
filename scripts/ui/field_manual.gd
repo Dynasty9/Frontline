@@ -930,9 +930,40 @@ func _make_model(e: Dictionary) -> Node3D:
 					return _on_the_ground(VehicleModels.build("ac130", 0, 3).root)
 				"mortars":
 					return Structure.preview_model("mortar_pit", 1)
+				"illum", "r_illum":
+					return _star_shell()
 				_:
 					return _shells(String(e.key))
 	return null
+
+
+## An illumination round's flare as it hangs in the air: the cloth chute, its
+## shroud lines and the magnesium charge burning white beneath, with the
+## round's empty body beside it.
+func _star_shell() -> Node3D:
+	var g := Node3D.new()
+	var chute := MeshInstance3D.new()
+	chute.mesh = Atmosphere._flare_canopy()
+	var cloth := StandardMaterial3D.new()
+	cloth.albedo_color = Color(0.70, 0.68, 0.61)
+	cloth.roughness = 0.95
+	cloth.cull_mode = BaseMaterial3D.CULL_DISABLED
+	cloth.vertex_color_use_as_albedo = true
+	chute.material_override = cloth
+	chute.position = Vector3(0, 1.9, 0)
+	g.add_child(chute)
+	var end := Vector3(0, 0.15, 0)
+	for i in 8:
+		var a := i * TAU / 8.0
+		var rim := Vector3(cos(a) * 0.9, 1.9, sin(a) * 0.9)
+		var seg := end - rim
+		var line := Res.mi(g, Res.cyl(0.004, 0.004, seg.length(), 4), Mats.get_mat("canvas_white"), rim + seg * 0.5)
+		line.quaternion = Quaternion(Vector3.UP, seg.normalized())
+	Res.mi(g, Res.cyl(0.045, 0.045, 0.22, 8), Res.mat(Color(1.0, 0.98, 0.95), 0.5, 6.0, true), end)
+	# the 81 mm round it came out of: a white-banded body and its tail fins
+	WeaponModels._tube(g, 0.042, -0.25, 0.22, 0.04, "paint", -1.0, 0.7, Color(0.42, 0.45, 0.3))
+	WeaponModels._tube(g, 0.042, 0.02, 0.07, 0.041, "paint", -1.0, 0.7, Color(0.92, 0.92, 0.88))
+	return g
 
 
 ## An aircraft on display: gear down if it has any, the exhaust glow off.
@@ -1484,12 +1515,10 @@ func _build_entries() -> Array:
 			st2.append(["Service", {"repair": "repairs vehicles within 13 m", "ammo": "rearms men and vehicles within 13 m", "medical": "treats the wounded within 11 m"}.get(String(v.service), String(v.service)), -1.0])
 		if v.has("sight"):
 			st2.append(["Sees", "%d m" % int(v.sight), -1.0])
-		if int(v.get("tier", 1)) > 1:
-			var tier_r := ""
-			for uk in Defs.UPGRADES:
-				if int(Defs.UPGRADES[uk].get("tier", 0)) == int(v.tier) and int(v.team) in Defs.UPGRADES[uk].teams:
-					tier_r = String(Defs.UPGRADES[uk].name)
-			st2.append(["Unlocked by", "%s (tier %d)" % [tier_r, int(v.tier)], -1.0])
+		var by := Defs.unlocked_by(int(v.team), k)
+		if by != "":
+			var br := String(Defs.UPGRADES[by].get("branch", "land"))
+			st2.append(["Unlocked by", "%s (%s doctrine)" % [String(Defs.UPGRADES[by].name), br], -1.0])
 		var vpage: String = "veh_air" if v.get("air", false) else {"light": "veh_light", "armour": "veh_armour", "support": "veh_support", "logistics": "veh_support", "air": "veh_air", "naval": "boats"}.get(
 			String(v.get("cat", "")), "veh_armour" if String(v.get("base", "")) in ["tank", "afv"] else ("veh_support" if String(v.get("base", "")) in ["spaa", "supply", "util", "arty"] else "veh_light"))
 		var rel := ["Built at " + where] if int(v.cost) > 0 else ["Drives supply from your depot to the FOBs"]

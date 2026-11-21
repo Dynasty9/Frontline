@@ -104,6 +104,13 @@ func _launch(kind: String, team: int, pos: Vector3, dir: Vector3, by := 0) -> vo
 				"thrower": 0, "by": by, "mk": mk, "guns": String(sd.get("guns", "ac130"))})
 			_sup_msg(team, foe, "%s on station over %s. Thirty seconds of fire." % [air_name, gr], "Enemy aircraft overhead!", pos)
 			return
+	if sd.get("illum", false):
+		# star shells from the battery behind the lines, a few seconds apart
+		var back4 := (Vector3(0, 0, -1) if team == 1 else Vector3(0, 0, 1)) if team >= 0 else -dir
+		for i in int(sd.get("rounds", 2)):
+			_support_q.append([world.time + 2.0 + i * 5.0, "mortar_illum", team, pos, float(sd.r) * 0.6, back4 * 160.0, by])
+		_sup_msg(team, foe, "Illumination going up over %s." % gr, "", pos)
+		return
 	match kind:
 		"artillery":
 			var back := Vector3(0, 0, 1) if team == 0 else (Vector3(0, 0, -1) if team == 1 else -dir)
@@ -151,8 +158,10 @@ func _support_tick() -> void:
 		origin.y = 3.0
 		var speed: float = float({"grad": 140.0, "arty": 110.0}.get(pt, 60.0))
 		var T: float = (4.5 if pt != "arty" else 6.0) + Defs.flat(tgt - origin).length() / float(speed)
+		if pt == "mortar_illum":
+			tgt = world.flares.burst_point(tgt)  # (fuzed to burst high over the spot)
 		world.spawn("projectile", {"ptype": pt, "team": team, "pos": origin, "origin": origin, "target": tgt, "T": T, "thrower": 0, "by": int(q[6])})
-		if pt in ["mortar", "mortar_smoke", "arty"] and world.rng.randf() < 0.5:
+		if pt in ["mortar", "mortar_smoke", "mortar_illum", "arty"] and world.rng.randf() < 0.5:
 			world.fx_event([Fx.FAR_SOUND, "mortar" if pt != "arty" else "cannon", -14.0, pos])
 
 
@@ -196,29 +205,23 @@ func next_fob_name(team: int) -> String:
 	return n
 
 
-## The vehicle tier a side has unlocked: 1 to start with, then each tier
-## research raises it.
-func tier(team: int) -> int:
-	var t := 1
-	for k in Defs.UPGRADES:
-		var u: Dictionary = Defs.UPGRADES[k]
-		if u.has("tier") and has_upgrade(team, k):
-			t = maxi(t, int(u.tier))
-	return t
-
-
-## "" if the side may build `item` now, else the name of the research it needs.
+## "" if the side may build `item` now, else the name of the step of the
+## doctrine tree that unlocks it (Defs.UPGRADES).
 func tier_needed(team: int, item: String) -> String:
-	if not Defs.VEHICLES.has(item):
+	if team < 0 or team > 1:
 		return ""
-	var want := int(Defs.VEHICLES[item].get("tier", 1))
-	if want <= tier(team):
-		return ""
-	for k in Defs.UPGRADES:
-		var u: Dictionary = Defs.UPGRADES[k]
-		if int(u.get("tier", 0)) == want and team in u.teams:
-			return String(u.name)
-	return "tier %d" % want
+	return Defs.locked_by(team, item, upgrades[team].keys())
+
+
+## May the side start researching `key` now: its own side's, not had yet,
+## and everything it needs before it done.
+func can_research(team: int, key: String) -> bool:
+	if not Defs.UPGRADES.has(key) or has_upgrade(team, key) or not team in Defs.UPGRADES[key].teams:
+		return false
+	for r in Defs.requires_of(key):
+		if not has_upgrade(team, String(r)):
+			return false
+	return true
 
 
 func has_upgrade(team: int, key: String) -> bool:
@@ -236,7 +239,15 @@ func apply_upgrade(team: int, key: String) -> void:
 			s.hp *= 1.2
 		elif key == "grenades" and not s.is_bearer():
 			s.frags += 1
-	world.send_msg(team, "info", "Research complete: %s." % Defs.UPGRADES[key].name)
+	var u: Dictionary = Defs.UPGRADES[key]
+	var got := ""
+	if u.has("unlocks"):
+		var names := []
+		for it in u.unlocks:
+			if Defs.VEHICLES.has(it):
+				names.append(String(Defs.VEHICLES[it].name))
+		got = " Now available: %s." % ", ".join(names)
+	world.send_msg(team, "info", "Research complete: %s.%s" % [u.name, got])
 
 
 ## Warnings go only to the human who caused them (AI commanders get none).
@@ -1289,8 +1300,11 @@ func _visibility() -> void:
 		for i in range(mk.size() - 1, -1, -1):
 			if (mk[i] as Vector4).w < world.time:
 				mk.remove_at(i)
-		for e in Vision.observers(world, t, mk, own[t]):
-			_add_obs(cells[t], Vector3(e.x, e.y, e.z), e.w)
+		_dims.clear()
+		var obs := Vision.observers(world, t, mk, own[t], _dims if world.dark else null)
+		for i in obs.size():
+			var e := obs[i]
+			_add_obs(cells[t], Vector3(e.x, e.y, e.z), e.w, float(_dims[i]) if world.dark else 1.0)
 	for s in world.soldiers:
 		_vis_ent(s, cells)
 	for v in world.vehicles:
@@ -1330,8 +1344,10 @@ func _debug_vision() -> void:
 	print(line)
 
 
-func _add_obs(cells: Dictionary, p: Vector3, r: float) -> void:
-	var o := [p, r * r]
+## An eye that sees `r` far by day, `night` as much of that in the dark (what's
+## lit, or has just fired, it sees as far as by day).
+func _add_obs(cells: Dictionary, p: Vector3, r: float, night := 1.0) -> void:
+	var o := [p, r * r, r * r * night * night]
 	for x in range(floori((p.x - r) / VC), floori((p.x + r) / VC) + 1):
 		for z in range(floori((p.z - r) / VC), floori((p.z + r) / VC) + 1):
 			var k := Vector2i(x, z)
@@ -1340,6 +1356,21 @@ func _add_obs(cells: Dictionary, p: Vector3, r: float) -> void:
 				a = []
 				cells[k] = a
 			a.append(o)
+
+
+var _dims: Array = []  # (each eye's night share, filled by Vision.observers)
+
+
+## At night: whether this can be seen as far as by day - it's in a flare's
+## light, or it has just fired (a muzzle flash shows a long way in the dark).
+func seen_in_dark(e: Entity) -> bool:
+	if e is Structure:
+		return true  # (a building doesn't creep about: its bulk shows against the sky)
+	if e is Soldier and world.time - (e as Soldier).last_shot_t < Defs.NIGHT_FLASH:
+		return true
+	if e is Vehicle and ((e as Vehicle).is_air() or world.time - (e as Vehicle).last_fire_t < Defs.NIGHT_FLASH):
+		return true  # (and an aircraft is heard long before it's seen, and its sensors, not eyes, are what count)
+	return world.flares.lit(e.position)
 
 
 func _vis_ent(e: Entity, cells: Array) -> void:
@@ -1354,9 +1385,21 @@ func _vis_ent(e: Entity, cells: Array) -> void:
 		var obs = cells[t].get(k)
 		if obs == null:
 			continue
+		var lit := -1  # (worked out once, the first time an eye needs it)
 		for o in obs:
-			if Defs.flat(o[0] - e.position).length_squared() <= o[1] * hide * hide and world.terrain.ray_ground(o[0], e.center_point()).is_empty():
+			var d2 := Defs.flat(o[0] - e.position).length_squared()
+			if d2 > o[1] * hide * hide:
+				continue
+			if d2 > o[2] * hide * hide:
+				# out of the dark's reach: only if he's lit, or gives himself away firing
+				if lit < 0:
+					lit = 1 if seen_in_dark(e) else 0
+				if lit == 0:
+					continue
+			if world.terrain.ray_ground(o[0], e.center_point()).is_empty():
 				m |= 1 << t
+				if d2 > o[2] * hide * hide and ((e.vis_mask >> t) & 1) == 0:
+					world.stat("seen_by_flare" if world.flares.lit(e.position) else "seen_firing")  # (picked out of the dark)
 				break
 	if e is Structure and e.skind == "mines":
 		m = 1 << e.team

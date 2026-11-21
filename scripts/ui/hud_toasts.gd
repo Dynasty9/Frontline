@@ -4,26 +4,66 @@ extends Control
 ## scrim, a line each: the time in mono, who it's from, what it says. Alerts
 ## step up in three levels: a notice is just a line; a caution is a line ruled
 ## off in yellow that flickers on once; a warning is ruled off in red and
-## flickers on twice. Older lines wait in the message history (L).
+## flickers on twice. Only a few lines at once, and briefly: the same news
+## again (another truck lost, another strongpoint knocked down) updates its
+## line and counts rather than stacking up, routine news (a squad trained, a
+## building finished) passes quickest, and the radio is heard on the command
+## net instead (HudRadio). Older lines wait in the message history (L).
 
-const LIFE := 7.0  # seconds a line stays (alerts and intel longer)
+const LIFE := 5.0  # seconds a line stays (alerts and intel longer, routine news shorter)
+const LIFE_LOUD := 8.0
+const LIFE_ROUTINE := 3.5
+const MAX_LINES := 3
 const TIME_W := 46.0
 const FROM_W := 92.0
 
 var hud: Hud
-var items: Array = []  # [kind, text, age, life, time stamp]
+var items: Array = []  # [kind, text, age, life, time stamp, template, count]
+
+
+## The same news again, whatever the numbers and places in it: "The supply
+## truck from Ruvel was destroyed at E6 with 120 supply aboard!" and the next
+## one are one line.
+static func template_of(text: String) -> String:
+	var out := ""
+	var digit := false
+	for c in text:
+		if c >= "0" and c <= "9":
+			if not digit:
+				out += "#"
+			digit = true
+		else:
+			out += c
+			digit = false
+	return out
+
+
+## News the commander needn't stop for: something he ordered is ready.
+static func routine(kind: String, text: String) -> bool:
+	return kind in ["info", "system"] and (text.ends_with(" ready.") or text.ends_with(" completed.") or text.begins_with("Research complete") or text.ends_with("are standing by."))
 
 
 func push(kind: String, text: String) -> void:
+	var tpl := template_of(text)
 	for it in items:
-		if it[1] == text:
+		if it[1] == text or (it[0] == kind and it[5] == tpl):
+			it[6] = int(it[6]) + 1
+			it[1] = text
 			it[2] = 0.0
 			queue_redraw()
 			return
 	var t := hud.world.time if hud and hud.world else 0.0
-	items.push_front([kind, text, 0.0, 10.0 if kind in ["alert", "intel", "warn"] else LIFE, t])
-	if items.size() > 6:
-		items.pop_back()
+	var life := LIFE_LOUD if kind in ["alert", "intel", "warn", "ping"] else (LIFE_ROUTINE if routine(kind, text) else LIFE)
+	items.push_front([kind, text, 0.0, life, t, tpl, 1])
+	if items.size() > MAX_LINES:
+		# the oldest goes, unless it's louder than everything newer
+		var drop := items.size() - 1
+		if items[drop][0] in ["alert", "warn"]:
+			for i in range(items.size() - 1, 0, -1):
+				if not items[i][0] in ["alert", "warn"]:
+					drop = i
+					break
+		items.remove_at(drop)
 	queue_redraw()
 
 
@@ -68,6 +108,10 @@ func _draw_content() -> void:
 		if not UiMotion.reduced() and age < flick * 0.12 and fmod(age, 0.12) >= 0.06:
 			a = 0.0
 		var parts := _split(kind, String(it[1]))
+		if int(it[6]) > 1:
+			parts[1] = String(parts[1]) + "  ×%d" % int(it[6])
+		if routine(kind, String(it[1])):
+			a *= 0.7
 		var level := kind in ["alert", "warn"]
 		var lc: Color = UiKit.BAD if kind == "alert" else (UiKit.WARN if kind == "warn" else UiKit.ACCENT)
 		var lines := MapSymbols.wrap(String(parts[1]), 13, 400, w - TIME_W - FROM_W - 8.0)

@@ -239,20 +239,27 @@ func _ready() -> void:
 	field.atmo = atmo
 	add_child(atmo)
 	atmo.set_process(false)
-	atmo._spawn_flare(p)
-	atmo._flare_t = 999.0
-	var f: Array = atmo._flares[0]
-	f[3] = 26.0
+	field.flares = Flares.new(field)
+	field.flares.add(1, p + Vector3(0, 36, 0), field.time, 26.0, 0.0, -1)
+	atmo._flares_tick()
+	var f: Array = atmo._flare_views[1]
 	var start: Vector3 = (f[0] as Node3D).position
-	atmo._flares_tick(1.0)
+	var swing0: Quaternion = (f[1] as Node3D).quaternion
+	field.time += 1.0
+	atmo._flares_tick()
 	check((f[0] as Node3D).position.y < start.y, "Illumination flares descend")
 	check((f[0] as Node3D).position.x != start.x, "Illumination flares drift with the wind")
-	atmo._flares_tick(float(f[3]))
+	check(not (f[1] as Node3D).quaternion.is_equal_approx(swing0), "The charge swings under its chute")
+	check((f[2] as OmniLight3D).light_energy > 1.0, "A burning flare lights the ground")
+	field.time += 26.0
+	atmo._flares_tick()
 	check((f[0] as Node3D).position.y < field.floor_height + 2.0, "Long-burning flares keep descending near the ground")
-	for emitter: GeometryInstance3D in (f[5] as Node3D).get_children():
+	check((f[0] as Node3D).position.y >= field.floor_height, "and come to rest on it, not under it")
+	for emitter: GeometryInstance3D in (f[4] as Node3D).get_children():
 		check(not Vfx.is_emitting(emitter), "Flare emitters stop when the charge burns out")
-	atmo._flares_tick(5.0)
-	check(atmo._flares.is_empty(), "Spent flares drain their smoke and are removed")
+	field.time += 7.0
+	atmo._flares_tick()
+	check(atmo._flare_views.is_empty(), "Spent flares drain their smoke and are removed")
 	# A light HE scorch must stay light while fading and after a pool reuse.
 	while v._decals.size() < 70:
 		v.scorch(p, 1.0)

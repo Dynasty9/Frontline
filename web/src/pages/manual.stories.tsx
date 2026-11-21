@@ -114,8 +114,8 @@ export const Research: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole("heading", { level: 1, name: /Train harder/ })).toBeVisible()
-    await userEvent.click(canvas.getByRole("button", { name: /^Combined Arms/ }))
-    const entry = within(canvas.getByRole("article", { name: "Combined Arms" }))
+    await userEvent.click(canvas.getByRole("button", { name: /^Fire Support/ }))
+    const entry = within(canvas.getByRole("article", { name: "Fire Support" }))
     await expect(entry.getByText("Armoured Warfare")).toBeVisible()
     await expect(canvas.queryByTitle(/3D model of/)).toBeNull()
   },
