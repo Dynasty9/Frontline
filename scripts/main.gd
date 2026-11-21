@@ -343,7 +343,9 @@ func _ready() -> void:
 
 
 ## Scenarios that show something only one time of day shows (unless --mood says otherwise).
-const SCENARIO_MOODS := {"flares": "night"}
+## The fire scenario shows how fire spreads, not how men fight in the dark: at
+## night (its seed's own draw) the fight, and with it the spread, goes otherwise.
+const SCENARIO_MOODS := {"flares": "night", "fire": "dusk"}
 
 
 ## A game on this machine alone, as tests run one: a --scenario, an AI-vs-AI
