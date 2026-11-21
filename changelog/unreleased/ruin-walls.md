@@ -27,4 +27,5 @@ caption = "The break up close, in render, brick and stone, and from the command 
 - **The scorch is where the roof burned:** charred joist ends in their pockets at the top of the walls that still
   reach the eaves, soot on the plaster under them.
 - **Inside, patches of plaster have flaked away** across the ruined wall, exposing brick below the windows as well as along the break. Intact rooms keep their existing finish.
+- **Plaster edges break into larger flakes and fine chips**, with uneven peeling below the exposed top courses and around patches beneath the windows.
 - The walls give the same cover as before.

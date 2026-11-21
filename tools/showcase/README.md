@@ -321,3 +321,9 @@ frames; the current harness prevents that extra callback. Current mainline
 harness controls also retain the newer zoom/probe options. These historical
 clips isolate the surface-history fix and do not validate later renderer edits.
 Do not grade the comparison or use software capture time as GPU performance.
+
+The ruin-room motion fixture also accepts `--review-intact` for an unchanged
+intact-house comparison, and `--review-geometry-only` to write sorted transformed
+triangle fingerprints for the ruined and intact subjects without drawing.
+Set `FL_CAPTURE_REF` to record the material revision; `motion.json` records every
+camera transform. Keep the same fixture on both checkouts for edge comparisons.

@@ -1845,6 +1845,20 @@ void fragment() {
 		} else {
 			float n = tfbm(uv * 0.9 + off);
 			float chip = smoothstep(0.69 - sw, 0.72 + sw, n + plaster_loss + (1.0 - smoothstep(0.0, 1.2, wpos.y - ground_y)) * 0.06);
+			if (plaster_loss > 0.0) {
+				// Ruined linings: broad flakes with smaller broken chips along their edge.
+				// Keep the intact finish and the brick/mortar construction untouched.
+				vec2 edge_uv = uv + vec2(tnoise(uv * 1.7 + off), tnoise(uv * 2.1 + off + 9.2)) * 0.18;
+				float flakes = (tnoise(edge_uv * 5.7 + off) - 0.5) * 0.18;
+				float chips = (tnoise(edge_uv * 19.3 + off + 4.7) - 0.5) * 0.065 * keep(0.052, px);
+				float loss = n + plaster_loss + flakes + chips + (1.0 - smoothstep(0.0, 1.2, wpos.y - ground_y)) * 0.06;
+				// Let the upper lining peel back in uneven tongues below the exposed courses.
+				float peel_height = 1.78 + (tnoise(edge_uv * 2.7 + off + 6.4) - 0.5) * 0.7;
+				loss = max(loss, 0.705 + (wpos.y - ground_y - peel_height) * 0.55 + flakes + chips);
+				float edge_width = mix(0.006, 0.018, tnoise(edge_uv * 3.1 + off + 17.0));
+				float edge_aa = max(fwidth(loss) * 0.7, 0.001);
+				chip = smoothstep(0.705 - edge_width - edge_aa, 0.705 + edge_width + edge_aa, loss);
+			}
 			vec3 pl = texture(photo_color, uv * 0.5).rgb * col_a * 1.8;
 			float streak = tfbm(vec2(uv.x * 3.0, uv.y * 0.35) + off);
 			pl = mix(pl, col_d, smoothstep(0.5, 0.8, streak) * 0.45);
