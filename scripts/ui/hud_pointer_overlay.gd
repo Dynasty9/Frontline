@@ -31,6 +31,8 @@ func _draw() -> void:
 				lbl = "Artillery salvo"
 			"mortar_smoke", "pit_smoke":
 				lbl = "Mortar smoke"
+			"mortar_illum", "pit_illum":
+				lbl = "Mortar illum"
 		_hint(mp, lbl, _grid_at(inp, mp), UiKit.WARN)
 	elif inp.place_drag and not inp.line_items.is_empty():
 		var ok := 0

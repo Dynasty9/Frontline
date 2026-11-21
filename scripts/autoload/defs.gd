@@ -234,6 +234,12 @@ var SUPPORT := {
 		"desc": "Off-map launchers saturate the area with sixteen rockets. Inaccurate, but nobody likes being under it."},
 	"mortars": {"name": "Mortar Barrage", "team": 1, "cost": 110, "cooldown": 60.0, "shape": "circle", "r": 15.0,
 		"desc": "Off-map mortars drop twelve rounds on the spot."},
+	"illum": {"name": "M853A1 Illumination", "team": 0, "cost": 25, "cooldown": 50.0, "from": 0.0, "shape": "circle", "r": 60.0, "illum": true, "rounds": 2,
+		"pattern": "81 mm M853A1 illuminating cartridge, off-map mortar section",
+		"desc": "Two star shells burst high over the spot: each hangs a magnesium flare under a parachute that burns for about forty seconds as it drifts down on the wind. At night everyone in its light is seen as far as by day, your own men too."},
+	"r_illum": {"name": "82 mm Illumination", "team": 1, "cost": 20, "cooldown": 50.0, "from": 0.0, "shape": "circle", "r": 60.0, "illum": true, "rounds": 2,
+		"pattern": "82 mm S-832S illuminating bomb, off-map mortar battery",
+		"desc": "Two illuminating bombs burst high over the spot, each a magnesium flare under a parachute burning for about forty seconds. At night everyone under it is seen as far as by day, your own fighters too."},
 	"smoke": {"name": "Smoke Screen", "team": -1, "cost": 0, "cooldown": 0.0, "shape": "circle", "r": 14.0,
 		"desc": "Mortar smoke rounds screen the area (observer demo)."},
 	# reconnaissance
@@ -254,6 +260,19 @@ var SUPPORT := {
 		"pattern": "KH-3A Fenghuang (CASC CH-3A Rainbow), its missiles left off for fuel",
 		"desc": "CSAT lends a Fenghuang: it circles the spot for most of a minute and shows your side everything within 80 m of it."},
 }
+## An illumination flare (Flares): bursts this high over its target (m), falls
+## at this rate under its chute (m/s), burns [min, max] seconds, drifts on the
+## wind at this multiple of it, hangs its charge this far below the chute (m),
+## swings it this far (radians) and lights the ground this far round (m).
+const FLARE := {"burst": 70.0, "fall": 1.45, "life": [34.0, 44.0], "drift": 1.3, "line": 4.0, "swing": 0.3, "lit_r": 85.0}
+## How far a side sees by night, as a share of its sight by day: men (the
+## Coalition's night sights and goggles against the Rebels' few), vehicles
+## (thermal sights). Anything lit (Flares) or that has just fired (its muzzle
+## flash) is seen as far as by day; aircraft and drones see by their sensors.
+const NIGHT_SIGHT := [0.6, 0.45]
+const NIGHT_SIGHT_VEHICLE := 0.8
+## A muzzle flash gives a man (or a gun) away in the dark for this long (s).
+const NIGHT_FLASH := 1.2
 const DEMO_SUPPORT := ["a10", "wipeout", "ac130", "blackfish", "airstrike", "buzzard", "gryphon", "greyhawk", "sentinel", "neophron", "shikra", "xian", "artillery", "barrage", "mortars", "smoke"]
 
 

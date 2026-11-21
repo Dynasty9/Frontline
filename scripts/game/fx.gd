@@ -23,6 +23,7 @@ const FIRE := 16  # a grass fire: [FIRE, pos, radius, seconds]
 const BURNT_OUT := 17  # something burnt through falls in: [BURNT_OUT, pos, half extents, yaw]
 const SINK := 18  # a boat founders: [SINK, eid, pos]
 const UNIT_HIT := 19  # [UNIT_HIT, eid, world direction, normalized strength]
+const FLARE := 20  # an illumination flare bursts: [FLARE, id, burst point, burst time, burn, swing phase, team] (Flares)
 
 const CANNON_TRACER_SPEED := 950.0
 
@@ -173,6 +174,10 @@ func play(ev: Array, blast_bus := &"Effects") -> void:
 			_puff("dust", ev[1])
 		TREE_FALL:
 			_tree_fall(ev[1], float(ev[2]), int(ev[3]) if ev.size() > 3 else 0, int(ev[4]) if ev.size() > 4 else 0)
+		FLARE:
+			world.flares.add(int(ev[1]), ev[2], float(ev[3]), float(ev[4]), float(ev[5]), int(ev[6]))
+			# the burst charge's dull crack high up, the canister thrown out
+			Sfx.play("thud", ev[2], -6.0, 1.7)
 		MORTAR:
 			Sfx.play("mortar", ev[1], -2.0)
 			gunfx.mortar_blast(ev[1], _cam_d(ev[1]))
