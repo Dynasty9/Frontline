@@ -15,6 +15,11 @@ caption = "A rendered ruin, a brick one, and a ruin in the town, before and afte
 [[screenshots]]
 file = "close-up.jpg"
 caption = "The break up close, in render, brick and stone, and from the command camera"
+[[videos]]
+file = "plaster-edge-review.webm"
+poster = "plaster-edge-review.jpg"
+caption = "Supplemental plaster-edge review: matched native command scale, room-side orbit and window-side detail, before and after. Larger irregular flakes and fine chips expose crisp brick. Fixed daylight, software Compatibility renderer; geometry and intact plaster unchanged."
+
 +++
 
 - **A ruin's walls break off** along their brick courses or stones, stepping back a brick at a time: highest at
