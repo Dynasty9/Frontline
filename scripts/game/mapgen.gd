@@ -947,6 +947,41 @@ func scenario(sname: String) -> void:
 				world.get_tree().create_timer(75.0, true, true).timeout.connect(func():
 					if is_instance_valid(r) and is_instance_valid(world) and world.winner < 0:
 						world.execute_cmd(b, {"t": "assault", "squads": [rq.sid], "pos": Vector3(0, 0, -19), "face": Vector3(0, 0, 1)}))
+		"flares":
+			# a night attack (main.gd plays it at night): a rifle squad holds a line
+			# of walls with a mortar team behind it; two fighter cells creep up out
+			# of the dark. Men see a short way at night, so the first the squad
+			# knows is the muzzle flashes; then the commander has the mortar put
+			# star shells up over them, and in the flares' light the cells are
+			# seen - and shot - as far off as by day. One cell starts 52 m out:
+			# by day the squad would see it from the walls; at night only a flare
+			# shows it (tests/flares.test.mjs).
+			for i in 5:
+				_spawn("low_wall", Vector3(-8 + i * 4.1, 0, -4), 0.0, -1, {"size": Vector3(4, 1, 0.5)})
+			_woods(Vector3(-34, 0, -36), 9)
+			_house(Vector3(26, 0, -30), 8.0, 6.0, 0.0, 1.0, false, 0.0)
+			for i in 4:
+				_try("tree", Vector3(-4 + i * 7.0, 0, -70 - i * 2.5), 0.0, -1)
+			var line := r.spawn_squad("rifle_squad", 0, a, Vector3(0, 0, -1))
+			var mortar := r.spawn_squad("mortar_team", 0, a, Vector3(4, 0, 46))
+			var near := r.spawn_squad("fighter_cell", 1, b, Vector3(-6, 0, -52))
+			var far := r.spawn_squad("fighter_cell", 1, b, Vector3(16, 0, -125))
+			if not world.settings.get("static", false):
+				world.get_tree().create_timer(1.0, true, true).timeout.connect(func():
+					line.order_defend(Vector3(0, 0, -2), Vector3(0, 0, -1))
+					mortar.order_defend(Vector3(4, 0, 46), Vector3(0, 0, -1)))
+				world.get_tree().create_timer(4.0, true, true).timeout.connect(func():
+					if is_instance_valid(world) and world.winner < 0:
+						world.execute_cmd(b, {"t": "assault", "squads": [near.sid, far.sid], "pos": Vector3(0, 0, -2), "face": Vector3(0, 0, 1)}))
+				if a < 0:
+					# the Coalition's commander, for its fire missions only: the
+					# squads are the scenario's (CommanderAI._illuminate)
+					var cmdr := CommanderAI.new(world, 0)
+					var look := func(again: Callable) -> void:
+						if is_instance_valid(world) and world.winner < 0:
+							cmdr._illuminate(cmdr._my_squads())
+							world.get_tree().create_timer(2.0, true, true).timeout.connect(again.bind(again))
+					world.get_tree().create_timer(2.0, true, true).timeout.connect(look.bind(look))
 		"fire":
 			# what burns and how it spreads: a wood, a hedgerow, a crate dump, parked
 			# cars, a watchtower and a house, a fighter cell dug in among them. The

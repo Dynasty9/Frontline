@@ -39,6 +39,37 @@ func capture() -> void:
 		"parking":
 			views = [["Seed 3: occupied and empty bays", Vector3(-6.8,0,20.3), 19.0, -36.0, -1.0],
 				["Street clearance at command height", Vector3(-6.8,0,20.3), 38.0, -50.0, -1.0]]
+		"utility":
+			var poles := []
+			var wires := []
+			for entry: Array in world.decor:
+				if entry[0] == "pole": poles.append(entry)
+				if entry[0] == "wire": wires.append(entry)
+			var farm := []
+			for pole: Array in poles:
+				if pole[3] == null or int(pole[3]) != 1: continue
+				var connections := 0
+				for wire: Array in wires:
+					if (wire[1] as Vector3).distance_to(pole[1]) < 0.01 or (wire[3][0] as Vector3).distance_to(pole[1]) < 0.01: connections += 1
+				if connections == 0:
+					farm = pole
+					break
+			assert(not farm.is_empty(), "Expected an actual standalone farm transformer")
+			var connected := []
+			var nearest := INF
+			for wire: Array in wires:
+				var middle: Vector3 = (wire[1] + wire[3][0]) * 0.5
+				var span: float = (wire[1] as Vector3).distance_to(wire[3][0])
+				if span < 20.0 or span > 35.0: continue
+				if middle.length_squared() < nearest:
+					nearest = middle.length_squared()
+					connected = wire
+			assert(not connected.is_empty(), "Expected a generated pole-to-pole wire span")
+			var mid: Vector3 = (connected[1] + connected[3][0]) * 0.5
+			views = [["Standalone farm transformer: generated placement, no line connection", farm[1] + Vector3.UP * 4.2, 26.0, -25.0, float(farm[2]) + PI * 0.5],
+				["Standalone farm transformer fittings", farm[1] + Vector3.UP * 6.3, 10.0, -12.0, float(farm[2]) + PI * 0.5],
+				["Actual connected roadside pole span", mid + Vector3.UP * 4.5, 58.0, -22.0, float(connected[2]) + 0.12]]
+			print("MOTION_UTILITY farm=", farm, " connected=", connected)
 		"clouds":
 			world.cam.cam.fov = 55.0
 			for mood in ["day", "golden", "rain", "night"]:
@@ -68,6 +99,9 @@ func capture() -> void:
 			views = [["Alpine ranges, ocean and forest coverage", Vector3.ZERO, 900.0, -22.0, 0.7],
 				["Calibrated roofs, asphalt and frontages", Vector3(-30,0,-12), 55.0, -45.0, 0.7],
 				["Finer meadow and clustered shrubs", Vector3(-110,0,-130), 22.0, -35.0, 0.7]]
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--motion-only-view="):
+			views = [views[int(arg.get_slice("=", 1))]]
 	assert(not views.is_empty())
 	var orbit := 0.0 if mode == "clouds" else 0.065
 	var records := []

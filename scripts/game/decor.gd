@@ -580,14 +580,9 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			BuildingKerbside.lantern_post(BuildingKit.baked(_bake, rng, _at))
 			_lens(h, Vector3(0.26, 0.42, 0.26), Vector3(0, 4.3, 0))
 		"pole":
-			_m(Res.cyl(0.11, 0.16, 8.4, 8), "wood_dark", Vector3(0, 4.2, 0), Color(0.3, 0.24, 0.17))
-			_m(Res.box(Vector3(0.12, 0.11, 2.0)), "wood_dark", Vector3(0, 7.45, 0), Color(0.3, 0.24, 0.17))
-			var pk := BuildingKit.baked(_bake, rng, _at)
-			for z in [-0.8, 0.0, 0.8]:
-				BuildingWire.insulator(pk, Vector3(0, 7.47, z))
-			_beam(Vector3(0, 6.9, 0), Vector3(0, 7.42, 0.6), 0.05, "wood_dark", Color(0.3, 0.24, 0.17), false)
-			if ex == 1:
-				_m(Res.cyl(0.27, 0.27, 0.85, 12), "paint", Vector3(0.38, 6.3, 0), Color(0.5, 0.52, 0.48))
+			# the overhead line's timber pole, now and then with its transformer
+			# (BuildingUtility; the wires are strung from its insulators below)
+			BuildingUtility.pole(BuildingKit.baked(_bake, rng, _at), ex == 1, rng)
 		"hydrant":
 			# (BuildingKerbside)
 			BuildingKerbside.hydrant(BuildingKit.baked(_bake, rng, _at))

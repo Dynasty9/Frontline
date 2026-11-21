@@ -888,68 +888,109 @@ func _setup_snow() -> void:
 		add_child(_snowfall)
 
 
-# --- night: illumination flares drifting down over the fighting ----------------
+# --- illumination flares (Flares): drifting down, swinging under their chutes ----
 
 static var _flare_canopy_mesh: ArrayMesh
-var _flare_t := 3.0
-var _flares: Array = []  # [root, light, age, life, glow, trail, canopy]
+var _flare_glow_mat: ShaderMaterial
+var _flare_views := {}  # flare id -> [root, hang, light, glow, trail, charge]
+## Magnesium burns a hard, cold, bluish white, far whiter than fire; the light
+## is the brightest thing on a night battlefield.
+const FLARE_COLOR := Color(0.80, 0.88, 1.0)
+## Energy at the charge, falling off with the square of the distance as real
+## light does (measured, flare 47 m up: the ground under it about eight times
+## the moonlit ground's brightness, a third of that 50 m out, the dark again
+## past 100 m). Low, near the end of its burn, it glares and the shadows run long.
+const FLARE_ENERGY := 3000.0
+const FLARE_DECAY := 2.0
+const FLARE_RANGE := 160.0
+## (its light in the volumetric fog: the falloff makes it fierce close to the
+## charge, a halo round it, and faint shafts further off)
+const FLARE_FOG := 0.03
 
 
-func _flares_tick(dt: float) -> void:
-	_flare_t -= dt
-	if _flare_t <= 0.0 and _flares.size() < 3 and by_mood(FLARES, 0.0) >= 0.6:
-		_flare_t = randf_range(5.0, 11.0)
-		var p := world.cam.focus_pos
-		if world.director and not world.director.hot.is_empty():
-			var now := Time.get_ticks_msec() / 1000.0
-			var recent := []
-			for h in world.director.hot:
-				if now - float(h[2]) < 25.0:
-					recent.append(h[0])
-			if not recent.is_empty():
-				p = recent[randi() % recent.size()]
-		_spawn_flare(p + Vector3(randf_range(-25, 25), 0, randf_range(-25, 25)))
-	for i in range(_flares.size() - 1, -1, -1):
-		var f: Array = _flares[i]
-		f[2] += dt
-		var root: Node3D = f[0]
-		var age: float = f[2]
-		var life: float = f[3]
-		root.position.y = maxf(world.ground_y(root.position) + 0.15, root.position.y - dt * 1.3)
-		root.position += Fires.WIND * dt * 0.6
-		# The canopy and its lines sway together about the suspended charge.
-		root.rotation.z = sin(age * 1.4) * 0.08
-		var fade := clampf((life - age) / 3.0, 0.0, 1.0) * clampf(age * 2.0, 0.0, 1.0)
-		var l: OmniLight3D = f[1]
-		l.light_energy = fade * (7.0 + 1.0 * sin(age * 23.0) + 0.6 * sin(age * 37.0))
-		(f[4] as MeshInstance3D).scale = Vector3.ONE * (0.65 + 0.06 * sin(age * 31.0)) * fade
-		if age >= life and is_instance_valid(f[5]):
-			for emitter: GeometryInstance3D in (f[5] as Node3D).get_children():
+## Each flare in the air (world.flares, the same on every player's machine)
+## drawn where it is now: the chute, the shroud lines and the burning charge
+## swinging under them, its light (with a shadow, for the nearest, so the
+## shadows of everything below swing and stretch as it goes), the white glare
+## round it, and the smoke it trails.
+func _flares_tick() -> void:
+	world.flares.tick()
+	if _debug_flares_hide:
+		return  # (FL_DEBUG_FLARES_HIDE: the same battle with no flare drawn, for before/after renders)
+	if _debug_flares and fmod(world.time, 0.5) < 0.034 and not world.flares.list.is_empty():
+		_debug_flare_samples()
+	var live := {}
+	for f in world.flares.list:
+		var id := int(f.id)
+		var age := world.time - float(f.t0)
+		if age < 0.0:
+			continue
+		live[id] = true
+		var v: Array = _flare_views.get(id, [])
+		if v.is_empty():
+			v = _make_flare()
+			_flare_views[id] = v
+		var ph := float(f.ph)
+		var life := float(f.life)
+		var root: Node3D = v[0]
+		var hang: Node3D = v[1]
+		var b := Flares.brightness(age, life)
+		var at := Flares.chute_at(f.p, age, ph)
+		# (it comes down to the ground in the end, burnt out, the chute over it)
+		at.y = maxf(at.y, world.ground_y(at) + (float(Defs.FLARE.line) + 0.3 if b > 0.0 else 0.3))
+		root.position = at
+		# the canopy, the lines and the charge swing together about the chute
+		var down := Flares.swing(age, ph).normalized()
+		hang.quaternion = Quaternion(Vector3.DOWN, down)
+		# a magnesium flare flickers fast and unevenly as it burns
+		var flick := 0.86 + 0.06 * sin(age * 23.0 + ph) + 0.05 * sin(age * 37.3 + ph * 3.0) + 0.04 * sin(age * 61.7)
+		var l: OmniLight3D = v[2]
+		l.light_energy = FLARE_ENERGY * b * flick
+		l.visible = b > 0.0
+		var glow: MeshInstance3D = v[3]
+		glow.visible = b > 0.0
+		glow.scale = Vector3.ONE * (2.4 + 0.25 * sin(age * 31.0)) * b
+		var charge: MeshInstance3D = v[5]
+		charge.visible = b > 0.0
+		if age >= life and is_instance_valid(v[4]):
+			for emitter: GeometryInstance3D in (v[4] as Node3D).get_children():
 				Vfx.set_emitting(emitter, false)
-		if age > life + 4.0:
-			root.queue_free()
-			_flares.remove_at(i)
+	for id in _flare_views.keys():
+		if not live.has(id):
+			(_flare_views[id][0] as Node3D).queue_free()
+			_flare_views.erase(id)
 
 
-func _spawn_flare(p: Vector3) -> void:
+var _debug_flares := OS.has_environment("FL_DEBUG_FLARES")
+var _debug_flares_hide := OS.has_environment("FL_DEBUG_FLARES_HIDE")
+
+
+## FL_DEBUG_FLARES: where on the screen the ground lies 0, 25, 50, 100 and 200 m
+## from the point under the first flare (on the far side of it from the camera, so
+## all of them are in view), to measure its
+## light's falloff in a render.
+func _debug_flare_samples() -> void:
+	var f: Dictionary = world.flares.list[0]
+	var age := world.time - float(f.t0)
+	var c := Flares.charge_at(f.p, age, float(f.ph))
+	var cam := world.cam.cam
+	var away := Vector3(c.x - cam.global_position.x, 0.0, c.z - cam.global_position.z).normalized()
+	var sw := Flares.swing(age, float(f.ph))
+	var line := "FLARESAMPLE t=%.2f age=%.1f/%.1f height=%.1f swing=(%.2f, %.2f) at=(%.0f, %.0f)" % [world.time, age, float(f.life), c.y - world.ground_y(c), sw.x, sw.z, c.x, c.z]
+	for d: float in [0.0, 25.0, 50.0, 100.0, 200.0]:
+		var q := Vector3(c.x, 0.0, c.z) + away * d
+		q.y = world.ground_y(q)
+		var sp := cam.unproject_position(q)
+		line += " d%d=(%d,%d)%s" % [int(d), int(sp.x), int(sp.y), "" if cam.is_position_in_frustum(q) else "!"]
+	print(line)
+
+
+func _make_flare() -> Array:
+	var line_l := float(Defs.FLARE.line)
 	var root := Node3D.new()
 	add_child(root)
-	root.position = Vector3(p.x, world.ground_y(p) + 36.0, p.z)
-	var l := OmniLight3D.new()
-	l.light_color = Color(1.0, 0.86, 0.62)
-	l.omni_range = 70.0
-	l.omni_attenuation = 0.9
-	l.light_energy = 0.0
-	l.shadow_enabled = _flares.size() < 2 and int(Settings.get_v("shadows")) >= 2
-	l.light_volumetric_fog_energy = 2.0
-	l.add_to_group(LIGHT_GROUP)
-	root.add_child(l)
-	var glow := MeshInstance3D.new()
-	glow.mesh = world.fx.vfx.quad if world.fx and world.fx.vfx else QuadMesh.new()
-	glow.material_override = world.fx.vfx.flash_mat if world.fx and world.fx.vfx else null
-	Mats.set_inst(glow, &"rays", 0.5)
-	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(glow)
+	var hang := Node3D.new()
+	root.add_child(hang)
 	var chute := MeshInstance3D.new()
 	chute.mesh = _flare_canopy()
 	var cloth := StandardMaterial3D.new()
@@ -957,22 +998,64 @@ func _spawn_flare(p: Vector3) -> void:
 	cloth.roughness = 0.95
 	cloth.cull_mode = BaseMaterial3D.CULL_DISABLED
 	cloth.vertex_color_use_as_albedo = true
+	# (lit from below by its own charge: the cloth glows through)
+	cloth.backlight_enabled = true
+	cloth.backlight = Color(0.5, 0.48, 0.45)
 	chute.material_override = cloth
-	chute.position = Vector3(0, 2.4, 0)
-	root.add_child(chute)
-	# Suspension lines meet the cloth rim and stay attached as it sways.
+	chute.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF  # (its own light is under it)
+	hang.add_child(chute)
+	# shroud lines from the canopy's rim down to the charge
+	var end := Vector3(0, -line_l, 0)
 	for i in 8:
 		var a := i * TAU / 8.0
 		var seam := pow(absf(sin(a * 6.0)), 2.0)
 		var radius := 0.9 * (1.0 - 0.035 * seam)
-		var end := Vector3(cos(a) * radius, 2.4 + 0.045 * seam, sin(a) * radius)
-		var line := Res.mi(root, Res.cyl(0.003, 0.003, end.length(), 4), Mats.get_mat("canvas_white"), end * 0.5)
-		line.quaternion = Quaternion(Vector3.UP, end.normalized())
-	var tr: Node3D
+		var rim := Vector3(cos(a) * radius, 0.045 * seam, sin(a) * radius)
+		var seg := end - rim
+		var line := Res.mi(hang, Res.cyl(0.004, 0.004, seg.length(), 4), Mats.get_mat("canvas_white"), rim + seg * 0.5)
+		line.quaternion = Quaternion(Vector3.UP, seg.normalized())
+		line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var charge := Res.mi(hang, Res.cyl(0.045, 0.045, 0.22, 8), Res.mat(Color(1.0, 0.98, 0.95), 0.5, 12.0, true), end)
+	charge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var l := OmniLight3D.new()
+	l.light_color = FLARE_COLOR
+	l.omni_range = FLARE_RANGE
+	l.omni_attenuation = FLARE_DECAY
+	l.light_energy = 0.0
+	l.light_size = 0.15
+	l.light_specular = 0.6
+	# the nearest two cast shadows if shadows are on at all ("Shadows from fire
+	# and flares" may lend more): what makes a flare is its shadows moving
+	l.shadow_enabled = _flare_views.size() < 2 and int(Settings.get_v("shadows")) >= 1 and not OS.has_feature("web")
+	l.shadow_bias = 0.06
+	l.shadow_normal_bias = 1.2
+	l.omni_shadow_mode = OmniLight3D.SHADOW_CUBE
+	# lights the air round it in the volumetric fog (AirLayers): a halo, and
+	# shafts where the trees and houses stand in its way
+	l.light_volumetric_fog_energy = FLARE_FOG
+	l.add_to_group(LIGHT_GROUP)
+	l.position = end + Vector3(0, -0.3, 0)  # (just under the charge: its own lines and can don't shadow everything)
+	hang.add_child(l)
+	var glow := MeshInstance3D.new()
+	if world.fx and world.fx.vfx:
+		glow.mesh = world.fx.vfx.quad
+		if _flare_glow_mat == null:
+			_flare_glow_mat = world.fx.vfx.flash_mat.duplicate()
+			_flare_glow_mat.set_shader_parameter("col", Color(0.9, 0.93, 1.0))
+			_flare_glow_mat.set_shader_parameter("intensity", 9.0)
+		glow.material_override = _flare_glow_mat
+	else:
+		glow.mesh = QuadMesh.new()
+	Mats.set_inst(glow, &"rays", 0.6)
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	glow.position = end
+	hang.add_child(glow)
+	var tr: Node3D = null
 	if world.fx and world.fx.vfx:
 		tr = world.fx.vfx.make_flare_trail()
-		root.add_child(tr)
-	_flares.append([root, l, 0.0, randf_range(20.0, 26.0), glow, tr, chute])
+		tr.position = end
+		hang.add_child(tr)
+	return [root, hang, l, glow, tr, charge]
 
 
 ## A sewn canopy has a rounded crown and scalloped gores, open underneath.
@@ -1003,13 +1086,12 @@ static func _flare_canopy() -> ArrayMesh:
 ## night, some at dusk and dawn, a little on a dark day, none in sunshine.
 const LAMPLIGHT := {"night": 1.0, "dusk": 0.55, "dawn": 0.35, "rain": 0.18, "overcast": 0.12, "snow": 0.15}
 ## The painted sky's cloud, the volumetric haze's density, the colour
-## grading's saturation, the stars and the night's flares, by mood (what
+## grading's saturation and the stars, by mood (what
 ## isn't listed takes the default given where it's used).
 const CLOUDINESS := {"overcast": 1.0, "rain": 1.0, "snow": 1.0, "day": 0.3}
 const VOLUME_FOG := {"hazy": 0.003, "snow": 0.0022}
 const SATURATION := {"golden": 1.05, "dusk": 1.05, "dawn": 1.05}
 const STARS := {"night": 1.0}
-const FLARES := {"night": 1.0}
 
 
 static func lamplight(m: String) -> float:
@@ -1592,8 +1674,8 @@ func _view_process(_dt: float) -> void:
 		_activity = lerpf(_activity, clampf(act / 12.0, 0.0, 1.0), 1.0 - exp(-_dt * 0.8))
 		_rumble.volume_db = lerpf(RUMBLE_DB.x, RUMBLE_DB.y, _activity) - hush
 		Music.heat = _activity
-	if mood == "night" or not _flares.is_empty():
-		_flares_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.0)
+	if not world.flares.list.is_empty() or not _flare_views.is_empty():
+		_flares_tick()
 	if _rain:
 		_rain_tick(_dt / maxf(0.0001, Engine.time_scale) if Engine.time_scale > 0.001 else 0.016)
 	if _snowfall:
