@@ -338,7 +338,10 @@ func fire_mortar(src: Soldier, from: Vector3, tgt: Vector3, kind: String) -> voi
 	var r := sqrt(world.rng.randf()) * scatter
 	var tp := Vector3(tgt.x + cos(ang) * r, 0.05, tgt.z + sin(ang) * r)
 	var flight := 2.4 + d / 40.0
-	world.spawn("projectile", {"ptype": "mortar" if kind != "smoke" else "mortar_smoke", "team": src.team, "pos": from,
+	if kind == "illum":
+		tp = world.flares.burst_point(tp)  # (a star shell bursts high over the spot)
+		flight += 2.0
+	world.spawn("projectile", {"ptype": {"smoke": "mortar_smoke", "illum": "mortar_illum"}.get(kind, "mortar"), "team": src.team, "pos": from,
 		"origin": from, "target": tp, "T": flight, "thrower": src.eid})
 	world.fx_event([Fx.MORTAR, from])
 	world.stat("mortar_round")

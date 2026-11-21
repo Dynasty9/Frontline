@@ -914,9 +914,9 @@ func queue_fire(pos: Vector3, kind: String, peer: int) -> void:
 		world.rules.notify(peer, team, "Out of mortar range (30-160 m).")
 		return
 	fire_queue.clear()
-	for i in 6:
+	for i in 2 if kind == "illum" else 6:
 		fire_queue.append([pos, kind])
-	gunner.say("Fire mission, %s! Rounds out!" % ("smoke" if kind == "smoke" else "HE"), true)
+	gunner.say("Fire mission, %s! Rounds out!" % {"smoke": "smoke", "illum": "illum"}.get(kind, "HE"), true)
 
 
 func front_dir() -> Vector3:
@@ -3040,9 +3040,10 @@ func queue_research(peer: int, item: String) -> void:
 	var def: Dictionary = Defs.UPGRADES[item]
 	if not team in def.teams or world.rules.has_upgrade(team, item) or queue.size() >= 4:
 		return
-	if def.has("requires") and not world.rules.has_upgrade(team, String(def.requires)):
-		world.rules.notify(peer, team, "%s needs %s first." % [def.name, Defs.item_name(String(def.requires))])
-		return
+	for rq in Defs.requires_of(item):
+		if not world.rules.has_upgrade(team, String(rq)):
+			world.rules.notify(peer, team, "%s needs %s first." % [def.name, Defs.item_name(String(rq))])
+			return
 	for q in queue:
 		if q.item == item:
 			return

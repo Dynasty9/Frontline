@@ -786,11 +786,12 @@ func order_fire_mission(p: Vector3, kind: String) -> void:
 	if not has_mortar():
 		return
 	fire_queue.clear()
-	for i in 4:
+	# (star shells go up two at a time, one after the other as the first burns)
+	for i in 2 if kind == "illum" else 4:
 		fire_queue.append([p, kind])
 	for m in alive_members():
 		if int(m.udef.get("mortar", 0)) > 0:
-			m.say("Fire mission, %s. Copy!" % ("smoke" if kind == "smoke" else "HE"), true)
+			m.say("Fire mission, %s. Copy!" % {"smoke": "smoke", "illum": "illum"}.get(kind, "HE"), true)
 			m.mortar_cd = 0.0
 			break
 

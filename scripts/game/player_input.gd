@@ -257,7 +257,7 @@ const KEY_ACTIONS := ["chat_team", "chat", "support", "grenade", "smoke", "attac
 	"intent_hold", "intent_take", "intent_screen", "intent_reserve", "intent_ambush", "cam_follow", "cam_mount",
 	"stance", "fire_discipline", "target_priority", "dismount",
 	"fire_mission", "cam_reset", "view_save_1", "view_save_2", "view_save_3", "view_save_4", "view_go_1", "view_go_2",
-	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "jump_alert", "log", "hide_hud",
+	"view_go_3", "view_go_4", "retreat", "hold", "tactical", "cycle_fob", "orbat", "doctrine", "jump_alert", "log", "hide_hud",
 	"help", "manual", "photo_mode", "director", "pause", "slower", "faster", "view_side", "ping", "coop_next",
 	"group_set_1", "group_set_2", "group_set_3", "group_set_4", "group_set_5", "group_set_6", "group_set_7",
 	"group_set_8", "group_set_9", "group_set_0", "group_1", "group_2", "group_3", "group_4", "group_5", "group_6",
@@ -389,6 +389,9 @@ func _key(ev: InputEvent) -> void:
 		"orbat":
 			if world.hud:
 				world.hud.toggle_orbat()
+		"doctrine":
+			if world.hud:
+				world.hud.toggle_doctrine()
 		"jump_alert":
 			# the newest of the alerts and the co-commanders' pings
 			var at := Vector3.INF
@@ -981,12 +984,12 @@ func selection_has_arty() -> bool:
 
 func _use_ability() -> void:
 	var gp := world.cam.ground_point(_mouse())
-	var smoke := ability.ends_with("smoke")
+	var round_kind := ability.get_slice("_", 1)  # he, smoke or illum
 	match ability:
-		"mortar_he", "mortar_smoke":
-			world.send_cmd({"t": "fire_mission", "squads": sel_squads, "pos": gp, "kind": "smoke" if smoke else "he"})
-		"pit_he", "pit_smoke":
-			world.send_cmd({"t": "fire_mission", "building": sel_structure, "pos": gp, "kind": "smoke" if smoke else "he"})
+		"mortar_he", "mortar_smoke", "mortar_illum":
+			world.send_cmd({"t": "fire_mission", "squads": sel_squads, "pos": gp, "kind": round_kind})
+		"pit_he", "pit_smoke", "pit_illum":
+			world.send_cmd({"t": "fire_mission", "building": sel_structure, "pos": gp, "kind": round_kind})
 		"arty_he":
 			world.send_cmd({"t": "fire_mission", "vehicles": sel_vehicles, "pos": gp, "kind": "he"})
 		"support":
@@ -996,7 +999,7 @@ func _use_ability() -> void:
 				world.send_cmd({"t": "unit", "soldier": sel_unit, "o": "throw", "pos": gp, "kind": ability})
 			else:
 				world.send_cmd({"t": "throw", "squads": sel_squads, "pos": gp, "kind": ability})
-	_marker(gp, Color(0.85, 0.85, 0.85) if smoke else Color(1.0, 0.6, 0.2))
+	_marker(gp, Color(0.85, 0.85, 0.85) if round_kind in ["smoke", "illum"] else Color(1.0, 0.6, 0.2))
 	Sfx.ui("click")
 	ability = ""
 

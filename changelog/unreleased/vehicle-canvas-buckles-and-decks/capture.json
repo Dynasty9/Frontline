@@ -1,0 +1,86 @@
+{
+  "before_ref": "854d4dffcf7b964812488607d5da247cd2e12ff1",
+  "after_ref": "the change that adds this entry",
+  "engine": "Godot 4.7.2 stable",
+  "renderer": "forward_plus",
+  "seed": 3,
+  "source_size": [
+    1600,
+    900
+  ],
+  "sheet_size": [
+    1600,
+    4950
+  ],
+  "composition": "Uncropped source renders resized to 800x450, before left, after right, short labels. JPEG quality 80. The before column rendered from a checkout of before_ref (round 15's code merged with main), the after column from the same checkout with this change's files copied in (round 16).",
+  "command": "godot --path <checkout> tools/showcase/vehicle-surfaces.tscn -- --surface-single --surface-kinds=<model> [--surface-flight] [--surface-rear] --surface-seed=<seed> [--surface-focus=<focus> --surface-size=<size>] --surface-out=<outside-repo-directory>",
+  "shots": [
+    {
+      "model": "slammer",
+      "flight": true,
+      "label": "Slammer from above: a finely perforated engine-deck cover"
+    },
+    {
+      "model": "panther",
+      "flight": true,
+      "label": "Panther from above: perforated plate, not polka dots"
+    },
+    {
+      "model": "hemtt_ammo",
+      "focus": "0.6,2.4,1.0",
+      "size": 3.4,
+      "label": "HEMTT ammunition: canvas pulled over the boxes"
+    },
+    {
+      "model": "hemtt_cargo",
+      "focus": "0.6,2.4,1.0",
+      "size": 3.4,
+      "label": "HEMTT load: canvas over boxes, straps that read"
+    },
+    {
+      "model": "tempest_ammo",
+      "focus": "0.6,2.4,1.0",
+      "size": 3.4,
+      "label": "Tempest ammunition: canvas over the boxes"
+    },
+    {
+      "model": "zamak_cargo",
+      "flight": true,
+      "label": "Zamak from above: a soft drape over a loose load"
+    },
+    {
+      "model": "slammer",
+      "flight": true,
+      "focus": "0,2.4,1.6",
+      "size": 3.2,
+      "label": "Slammer's bustle: black buckles, no white tags"
+    },
+    {
+      "model": "prowler",
+      "flight": true,
+      "focus": "0,1.2,0.2",
+      "size": 2.4,
+      "label": "Prowler: harnesses with dark cam-locks"
+    },
+    {
+      "model": "hemtt",
+      "rear": true,
+      "focus": "0,1.8,4.6",
+      "size": 4.0,
+      "label": "HEMTT: the floor under the tilt in shade"
+    },
+    {
+      "model": "zamak",
+      "rear": true,
+      "focus": "0,1.9,3.4",
+      "size": 4.0,
+      "label": "Zamak: the floor under the tilt in shade"
+    },
+    {
+      "model": "m35",
+      "focus": "0,1.2,0",
+      "size": 7.5,
+      "label": "M35: wheels painted with the truck"
+    }
+  ]
+}

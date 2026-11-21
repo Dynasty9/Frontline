@@ -203,9 +203,12 @@ const UPGRADES = table("UPGRADES").map(({ id, body }) => ({
   time: num(body, "time") ?? 0,
   teams: numbers(body, "teams"),
   tier: num(body, "tier"),
-  requires: text(body, "requires"),
+  branch: text(body, "branch") || "inf",
+  requires: list(body, "requires").length ? list(body, "requires") : [text(body, "requires")].filter(Boolean),
+  unlocks: list(body, "unlocks"),
   desc: text(body, "desc"),
 }))
+const BRANCH_NAMES: Record<string, string> = { land: "Land", air: "Air", sea: "Sea", inf: "Infantry" }
 
 /** A vehicle as the game's tables have it: the original ones in defs.gd, then the roster's. */
 type RawVehicle = {
@@ -455,8 +458,8 @@ const weapons: Entry[] = carried.map((w) => {
 // ---------------------------------------------------------------- vehicles
 
 const ARMOUR = ["none (soft-skinned)", "light (stops rifle fire)", "heavy (small arms bounce off)"]
-const upgradeFor = (tier: number, team: number) =>
-  UPGRADES.find((u) => u.tier === tier && u.teams.includes(team))?.name ?? "research"
+/** The step of the side's doctrine tree that unlocks a vehicle, if it isn't there from the start. */
+const unlockedBy = (id: string, team: number) => UPGRADES.find((u) => u.teams.includes(team) && u.unlocks.includes(id))
 const built = RAW_VEHICLES.filter((v) => v.team >= 0 || v.cost > 0)
 const vMax = {
   hp: max(RAW_VEHICLES, (v) => v.hp),
@@ -505,7 +508,8 @@ function vehicleFacts(v: RawVehicle): Fact[] {
     })
   const sight = num(v.body, "sight")
   if (sight) facts.push({ label: "Sees", value: `${round(sight)} m` })
-  if (v.tier > 1) facts.push({ label: "Unlocked by", value: `${upgradeFor(v.tier, v.team)} (tier ${v.tier})` })
+  const by = unlockedBy(v.id, v.team)
+  if (by) facts.push({ label: "Unlocked by", value: `${by.name} (${BRANCH_NAMES[by.branch].toLowerCase()} doctrine)` })
   if (v.pattern) facts.push({ label: "Based on", value: v.pattern })
   return facts
 }
@@ -688,20 +692,21 @@ const support: Entry[] = called.map((s) => {
 
 const research: Entry[] = UPGRADES.map((u) => {
   const team = teamOf(u.teams)
-  const requires = UPGRADES.find((x) => x.id === u.requires)
+  const requires = UPGRADES.filter((x) => u.requires.includes(x.id))
+  const unlocks = u.unlocks.map((k) => RAW_VEHICLES.find((v) => v.id === k)?.name ?? k)
   return {
     id: u.id,
     name: u.name,
     team,
     side: sideName(team),
-    group: u.tier ? "Vehicle tiers" : "Upgrades",
+    group: `${BRANCH_NAMES[u.branch]} doctrine`,
     kind: `${u.cost} supply · ${round(u.time)} s`,
     description: u.desc,
     facts: [
       { label: "Cost", value: `${u.cost} supply` },
       { label: "Research time", value: `${round(u.time)} s` },
-      ...(u.tier ? [{ label: "Unlocks", value: `tier ${u.tier} vehicles` }] : []),
-      ...(requires ? [{ label: "Needs", value: requires.name }] : []),
+      ...(unlocks.length ? [{ label: "Unlocks", value: unlocks.join(", ") }] : []),
+      ...(requires.length ? [{ label: "Needs", value: requires.map((r) => r.name).join(", ") }] : []),
     ],
     notes: ["Researched at the Research Post"],
     model: false,
@@ -758,8 +763,8 @@ export const SECTIONS: Section[] = [
     title: "Research",
     headline: ["Train harder.", "Field heavier."],
     summary:
-      "What the Research Post unlocks: better kit for every soldier, and the doctrines that bring heavier vehicles to the Factory and the Helipad.",
-    groups: ["Upgrades", "Vehicle tiers"],
+      "The doctrine tree the Research Post works through: better kit for every soldier, and the steps on land, in the air and at sea that bring every vehicle to the Factory, the Helipad and the Dock.",
+    groups: ["Land doctrine", "Air doctrine", "Sea doctrine", "Infantry doctrine"],
     entries: research,
     noun: ["upgrade", "upgrades"],
   },

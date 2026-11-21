@@ -1,19 +1,55 @@
 class_name VehicleCloth
 extends RefCounted
 
-## A cloth shell with a sloping crown and gathered side folds. The displacement
-## is deterministic and stays in model space; straps remain separate geometry.
-## On a vehicle with a load of its own (VehicleCargo.kit) the tarp is the
-## crew's: its own shade of drab (one of four ways it was thrown over, so few
-## shells are cached), its folds where it fell and its lashings a ring
-## forward or back of where they were.
-static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Color(0.30, 0.32, 0.23), pallet := true, mat := "canvas_white") -> void:
+## A tarpaulin lashed over a load, taking the load's shape (_box_tarp); a
+## wreck's is the old cloth shell with a sloping crown and gathered side
+## folds. The displacement is deterministic and stays in model space; straps
+## remain separate geometry. On a vehicle with a load of its own
+## (VehicleCargo.kit) the tarp is the crew's: its own shade of drab, the way
+## it was thrown over and its lashings a hand forward or back of where they
+## were.
+static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Color(0.30, 0.32, 0.23), pallet := true, mat := "canvas_white", boxes := Vector3i.ZERO, straps: Array = []) -> void:
 	# (`mat` the cloth: cotton duck by default, "coated" for a polythene or PVC
 	# tarp, smooth and a little glossy, that sheds the rain; a wreck's stays
 	# the duck it always was)
 	if k.wreck:
 		mat = "canvas_white"
 	var rng := VehicleCargo.kit(k, k.root, base, 3)
+	# A load under a tarp is boxes and bales, and the tarp takes their shape
+	# (_box_tarp): `boxes`, the boxes across, the layers and the boxes along,
+	# where the caller knows them (VehicleCargo.crate_stack's stack, the tarp
+	# exactly its size and colour, `straps` the z offsets of its lashings),
+	# else a load of boxes of about 60 by 45 cm under the cloth, its two
+	# lashings a quarter of the way in from either end, give or take a
+	# hand's width. Its hem comes down to the bed (or the pallet) it's tied
+	# to, where the old shell's stopped 14 cm short of it. (A wreck's stays
+	# the cover it always was.)
+	if not k.wreck:
+		var lift := 0.12 if pallet else 0.0
+		if pallet:
+			k._box(k.root, Vector3(size.x - 0.06, 0.12, size.z - 0.06), base + Vector3(0, 0.06, 0), "wood")
+		var cover := size
+		var grid := boxes
+		var lashed := straps
+		if boxes == Vector3i.ZERO:
+			cover = Vector3(size.x - 0.1, size.y - lift, size.z - 0.08)
+			grid = Vector3i(maxi(1, roundi(cover.x / 0.6)), maxi(1, roundi(cover.y / 0.45)), maxi(1, roundi(cover.z / 0.6)))
+			lashed = [-cover.z * 0.25, cover.z * 0.25]
+			if rng != null:
+				col = VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_TARP, 0.5)
+				lashed = [-cover.z * (0.25 + rng.randf_range(-0.04, 0.04)), cover.z * (0.25 + rng.randf_range(-0.04, 0.04))]
+		# A depot's tarpaulin over a stack of cases is heavy vinyl-coated
+		# duck a few seasons old, gone as dull as the canvas: in the coated
+		# finish's satin sheen a sheet over boxes read as a plastic case.
+		# (A loose load's plastic sheet, the offroad's, keeps its sheen.)
+		var cloth := "canvas_white" if mat == "coated" and boxes != Vector3i.ZERO else mat
+		if cloth != mat:
+			# (its shades were picked a little warm for the sheen that greyed
+			# them; matte, they'd come out mustard and grass)
+			col = Color.from_hsv(col.h, col.s * 0.75, col.v)
+		# (a load the caller doesn't know is piled by hand: its sides lean in)
+		_box_tarp(k, base + Vector3(0, lift, 0), cover, grid, lashed, col, cloth, rng, 0.04 if boxes == Vector3i.ZERO else 0.0)
+		return
 	var fold := 0
 	var lashings: Array[int] = [6, 18]
 	if rng != null:
@@ -38,32 +74,8 @@ static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Co
 		var hem := size.x * 0.5 - 0.05
 		var w := hem * (1.0 - 0.03 * pinch - 0.025 * end)
 		var h := size.y * (1.0 - 0.065 * pinch - 0.07 * end)
-		if k.wreck:
-			rings.append(PackedVector3Array([Vector3(-hem, 0.14, z), Vector3(-w + ripple, h * 0.72, z), Vector3(-w * 0.75, h - 0.035 + ripple, z), Vector3(0, h + ripple * 0.35, z), Vector3(w * 0.75, h - 0.035 - ripple, z), Vector3(w - ripple, h * 0.72, z), Vector3(hem, 0.14, z)]))
-			continue
-		# A tarp pulled over boxes takes their shape: a flat top a little
-		# slack between the lashings, turning over the load's top edges in a
-		# tight shoulder and hanging nearly straight down its sides, not a
-		# pillow; and it drops over the load's ends.
-		var drop := pow(absf(t - 0.5) * 2.0, 10.0)
-		h *= 1.0 - 0.06 * drop
-		var top := h - 0.012 * (1.0 - pinch)
-		var edge := w - 0.012 * drop
-		# The slack the lashings leave runs off across the top in one
-		# diagonal fold, a ridge beside its valley, where the cloth was
-		# dragged over the load (none under a strap, which pulls it flat).
-		var folded: Array[float] = []
-		for x: float in [-edge + 0.09, -edge * 0.45, 0.0, edge * 0.45, edge - 0.09]:
-			var d := x / hem * 0.45 + t * 1.4 - 0.45 - float(fold) * 0.12
-			folded.append(0.035 * (exp(-pow((d - 0.08) / 0.09, 2.0)) - exp(-pow((d + 0.08) / 0.09, 2.0))) * (1.0 - pinch) * (1.0 - drop))
-		# At each corner the spare cloth is gathered round and tucked down,
-		# so seen from above the cover's corners are rounded off and pulled
-		# low, not a box's square shoulders (its hem stays tied along the bed).
-		var gather := pow(absf(t - 0.5) * 2.0, 5.0)
-		var sx := 0.08 * gather
-		var sy := 0.07 * gather
-		rings.append(PackedVector3Array([Vector3(-hem, 0.14, z), Vector3(-edge + ripple * 0.6 + sx * 0.25, h * 0.62, z), Vector3(-edge + 0.025 + sx, h - 0.075 + ripple * 0.5 - sy, z), Vector3(-edge + 0.09 + sx * 0.6, top + ripple * 0.4 + folded[0] * 0.5 - sy * 0.3, z), Vector3(-edge * 0.45, top - 0.005 + ripple * 0.38 + folded[1], z), Vector3(0, top - 0.008 + ripple * 0.35 + folded[2], z), Vector3(edge * 0.45, top - 0.005 - ripple * 0.38 + folded[3], z), Vector3(edge - 0.09 - sx * 0.6, top - ripple * 0.4 + folded[4] * 0.5 - sy * 0.3, z), Vector3(edge - 0.025 - sx, h - 0.075 - ripple * 0.5 - sy, z), Vector3(edge - ripple * 0.6 - sx * 0.25, h * 0.62, z), Vector3(hem, 0.14, z)]))
-	var shell := VehicleModels.solid(rings, "shared_tarp_%s_%d_%d" % [str(size), lashings[0], lashings[1]] + ("_%d" % fold if fold > 0 else "") + ("" if k.wreck else "_sqf"))
+		rings.append(PackedVector3Array([Vector3(-hem, 0.14, z), Vector3(-w + ripple, h * 0.72, z), Vector3(-w * 0.75, h - 0.035 + ripple, z), Vector3(0, h + ripple * 0.35, z), Vector3(w * 0.75, h - 0.035 - ripple, z), Vector3(w - ripple, h * 0.72, z), Vector3(hem, 0.14, z)]))
+	var shell := VehicleModels.solid(rings, "shared_tarp_%s_%d_%d" % [str(size), lashings[0], lashings[1]] + ("_%d" % fold if fold > 0 else ""))
 	var arrays := shell.surface_get_arrays(0)
 	var smooth := SurfaceTool.new()
 	smooth.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -80,28 +92,214 @@ static func load_cover(k: VehicleModels, base: Vector3, size: Vector3, col := Co
 	var last := rings[0].size() - 1
 	for side in [0, last]:
 		VehicleEquipment._rod(k, k.root, base + rings[0][side], base + rings[24][side], 0.009, mat, col.darkened(0.16), 6, false, 3)
-	if k.wreck:
-		# (a wreck's lashings stay the round cords they always were)
-		for index in lashings:
-			var cross_section: PackedVector3Array = rings[index]
-			for j in last:
-				VehicleEquipment._rod(k, k.root, base + cross_section[j] + Vector3(0, 0.012, 0), base + cross_section[j + 1] + Vector3(0, 0.012, 0), 0.012, "webbing", Color(0.18, 0.19, 0.13), 6, false, 3)
-		return
-	# Each lashing is a flat webbing strap from hem to hem, lying on the tarp
-	# where it pulls it into its waist and folding over its shoulders; a
-	# crew's come from whatever lot of straps it has (as restraints' do).
-	# (The tarp rises out of its waist either side of the strap's middle, a
-	# few millimetres within the strap's width, so the band lies 8 mm off
-	# the waist's own line to keep the cloth from showing through its edges.)
+	# (a wreck's lashings stay the round cords they always were)
 	for index in lashings:
 		var cross_section: PackedVector3Array = rings[index]
-		var webbing := VehicleCargo.kit_colour(rng, Color(0.18, 0.19, 0.13), VehicleCargo.KIT_STRAP, 0.6) if rng != null else Color(0.18, 0.19, 0.13)
-		var path: Array = []
-		for j in cross_section.size():
-			var d := cross_section[mini(j + 1, last)] - cross_section[maxi(j - 1, 0)]
-			var out := Vector3(-d.y, d.x, 0).normalized()
-			path.append(base + cross_section[j] + out * 0.008)
-		strap(k, k.root, path, 0.05, webbing, Vector3.BACK, 0.005)
+		for j in last:
+			VehicleEquipment._rod(k, k.root, base + cross_section[j] + Vector3(0, 0.012, 0), base + cross_section[j + 1] + Vector3(0, 0.012, 0), 0.012, "webbing", Color(0.18, 0.19, 0.13), 6, false, 3)
+
+
+static var _box_tarps := {}
+
+
+## A tarpaulin lashed over a stack of boxes (load_cover's `boxes`: the boxes
+## across, the layers and the boxes along; `size` the stack's, from its foot
+## at `base`). Pulled over boxes a tarp takes their shape, not a pillow's: it
+## lies flat on the lids and dips 3.5 cm into the gaps between them, so from
+## above the load still reads as boxes under a sheet; it turns over the lids'
+## edges in a tight 2.5 cm roll and hangs down the sides, bellied a little
+## between the joints and creased in at each, to its hem hanging loose just
+## above the bed. The spare cloth at each corner is folded round the end, so
+## the skirt flares out a few centimetres at the foot of every corner, the
+## fold's edge running up to the lid's corner (more at one end than the
+## other: the way it was thrown over). Its faces are planes between the rolls
+## and creases, so they read as a box's and only those shade round. Its
+## lashings (`straps`, z offsets) are webbing from hem to hem, cinched flat
+## over the lids and the rolls. `lean` draws the sides in by that much at the
+## top, as a tarp falls over a load piled by hand rather than one stacked
+## square. One cached sheet per size, stack, lean and lie.
+static func _box_tarp(k: VehicleModels, base: Vector3, size: Vector3, boxes: Vector3i, straps: Array, col: Color, mat: String, rng: RandomNumberGenerator, lean := 0.0) -> void:
+	var lie := rng.randi_range(0, 1) if rng != null else 0
+	var key := "%s|%s|%d|%.3f" % [str(size), str(boxes), lie, lean]
+	if not _box_tarps.has(key):
+		_box_tarps[key] = _box_tarp_mesh(size, boxes, lie, lean)
+	k._add(k.root, _box_tarps[key], mat, col, base)
+	var hx := size.x * 0.5
+	var hi := hx - lean
+	var top := size.y
+	var t := 0.005
+	var shape := _tarp_shape(size, boxes, lean)
+	var roll: float = shape[0]
+	var crown: float = shape[2]
+	var belly: float = shape[3]
+	var middles: Array[float] = shape[4]
+	# (the webbing a shade darker than the cloth it's cinched over, as wet
+	# and oily straps go: at the tarp's own value it vanished into the sheet)
+	var webbing := VehicleCargo.kit_colour(rng, Color(0.18, 0.19, 0.13), VehicleCargo.KIT_STRAP, 0.6) if rng != null else Color(0.18, 0.19, 0.13)
+	webbing = webbing.darkened(0.35)
+	var nz := maxi(1, boxes.z)
+	for s: float in straps:
+		var at := base + Vector3(0, 0, s)
+		# (the sides belly out only clear of the joints between the boxes
+		# along, where the sheet is pulled in: a strap there lies on the
+		# crease)
+		var clear := 1.0
+		for j in range(1, nz):
+			clear = minf(clear, absf(s - (-size.z * 0.5 + size.z * float(j) / float(nz))) / 0.05)
+		clear = minf(clear, 1.0)
+		# hem, over the bellies of the sides, the shoulder, the lid's crown
+		var left := [at + Vector3(-hx - t - 0.01, 0.035, 0)]
+		for y: float in middles:
+			left.append(at + Vector3(-(hx - lean * y / top) - belly * clear - t, y, 0))
+		# (over a crowned lid it rides the crown, laid on at the shoulder, half
+		# way in and the middle, bridging the dips between)
+		var u := (hx - roll) / hx
+		left.append_array([at + Vector3(-hi - t, top - roll, 0), at + Vector3(-hi + roll, top + crown * (1.0 - u * u) + t, 0)])
+		if crown > 0.0:
+			left.append(at + Vector3(-hi * 0.5, top + crown * 0.75 + t, 0))
+		var path := left.duplicate()
+		if crown > 0.0:
+			path.append(at + Vector3(0, top + crown + t, 0))
+		left.reverse()
+		for p: Vector3 in left:
+			path.append(Vector3(2.0 * at.x - p.x, p.y, p.z))
+		strap(k, k.root, path, 0.05, webbing, Vector3.BACK, t)
+
+
+## The shape a tarp takes over its load, shared by its sheet and its straps:
+## [the shoulder's roll radius, the shoulder's depth, the lid's crown, the
+## sides' belly, the heights of the bellies (each layer's middle)]. Over
+## boxes stacked square (no `lean`) it turns the lids' edges in a tight 2.5
+## cm roll and lies flat on them; over a load piled by hand it falls over
+## soft 9 cm shoulders onto a lid crowned 4 cm in the middle, as cloth drapes
+## over bales and bags, not over cases.
+static func _tarp_shape(size: Vector3, boxes: Vector3i, lean: float) -> Array:
+	var soft := lean > 0.0
+	var roll := 0.09 if soft else 0.025
+	var shoulder := roll + 0.035
+	var top := size.y
+	var ny := maxi(1, boxes.y)
+	var middles: Array[float] = []
+	for l in ny:
+		var y := top * (float(l) + 0.5) / float(ny)
+		var below := 0.07 if l == 0 else top * float(l) / float(ny) + 0.025
+		var above := top - shoulder if l == ny - 1 else top * float(l + 1) / float(ny) - 0.025
+		if y - below > 0.03 and above - y > 0.03:
+			middles.append(y)
+	return [roll, shoulder, 0.04 if soft else 0.0, 0.02 if soft else 0.012, middles]
+
+
+static func _box_tarp_mesh(size: Vector3, boxes: Vector3i, lie: int, lean := 0.0) -> ArrayMesh:
+	var hx := size.x * 0.5
+	var hz := size.z * 0.5
+	var top := size.y
+	var nx := maxi(1, boxes.x)
+	var ny := maxi(1, boxes.y)
+	var nz := maxi(1, boxes.z)
+	# Canvas pulled over boxes, not a box itself: it sinks 3.5 cm into the
+	# gaps between them (at a centimetre and a half it read as one hard
+	# case), its sides belly out between the layers' joints and hang loose a
+	# finger's width at the hem, and the spare cloth folded round each end
+	# flares 6 cm at the foot of the corners.
+	var shape := _tarp_shape(size, boxes, lean)
+	var roll: float = shape[0]
+	var shoulder: float = shape[1]
+	var crown: float = shape[2]
+	var belly: float = shape[3]
+	var middles: Array[float] = shape[4]
+	var dip := 0.035 if crown == 0.0 else 0.02
+	var ear := 0.06
+	var nib := roll * 0.32
+	# Stations up a side (y, and 1 where a layer's joint creases it, -1 at a
+	# layer's middle, where the side bellies) and across the lid (x, and 1
+	# at a joint between boxes).
+	var ys: Array[Vector2] = [Vector2(0.025, 0.0), Vector2(0.07, 0.0)]
+	for l in ny:
+		if l > 0:
+			var y := top * float(l) / float(ny)
+			ys.append_array([Vector2(y - 0.025, 0.0), Vector2(y, 1.0), Vector2(y + 0.025, 0.0)])
+		var y_mid := top * (float(l) + 0.5) / float(ny)
+		if y_mid in middles:
+			ys.append(Vector2(y_mid, -1.0))
+	ys.append_array([Vector2(top - shoulder, 0.0), Vector2(top - roll, 0.0)])
+	var xs: Array[Vector2] = [Vector2(-hx + roll, 0.0), Vector2(-hx + shoulder, 0.0)]
+	var odd := (nx & 1) == 1
+	var mid := nx >> 1
+	if odd and mid == 0:
+		xs.append(Vector2(0.0, 0.0))
+	for i in range(1, nx):
+		var x := -hx + size.x * float(i) / float(nx)
+		xs.append_array([Vector2(x - 0.05, 0.0), Vector2(x, 1.0), Vector2(x + 0.05, 0.0)])
+		if odd and i == mid:
+			xs.append(Vector2(0.0, 0.0))
+	xs.append_array([Vector2(hx - shoulder, 0.0), Vector2(hx - roll, 0.0)])
+	# Stations along it: [z, dip at a joint, the end's roll, the corners'
+	# flare], from the front end to the back.
+	var fade := minf(0.16, hz * 0.45)
+	var front := 1.0 if lie == 0 else 0.6
+	var back := 0.6 if lie == 0 else 1.0
+	var zs: Array[Vector4] = [Vector4(-hz, 0.0, roll, front), Vector4(-hz + nib, 0.0, nib, front * (1.0 - nib / fade)), Vector4(-hz + roll, 0.0, 0.0, front * (1.0 - roll / fade)), Vector4(-hz + shoulder, 0.0, 0.0, front * maxf(0.0, 1.0 - shoulder / fade)), Vector4(-hz + fade, 0.0, 0.0, 0.0)]
+	for j in range(1, nz):
+		var z := -hz + size.z * float(j) / float(nz)
+		zs.append_array([Vector4(z - 0.05, 0.0, 0.0, 0.0), Vector4(z, 1.0, 0.0, 0.0), Vector4(z + 0.05, 0.0, 0.0, 0.0)])
+	zs.append_array([Vector4(hz - fade, 0.0, 0.0, 0.0), Vector4(hz - shoulder, 0.0, 0.0, back * maxf(0.0, 1.0 - shoulder / fade)), Vector4(hz - roll, 0.0, 0.0, back * (1.0 - roll / fade)), Vector4(hz - nib, 0.0, nib, back * (1.0 - nib / fade)), Vector4(hz, 0.0, roll, back)])
+	var rings: Array[PackedVector3Array] = []
+	for st: Vector4 in zs:
+		var z := st.x
+		var d := st.y
+		var e := st.z
+		var f := st.w
+		# (no dips in the end rings, which close flat: the end's own face)
+		var keep := 1.0 - e / roll
+		var ring := PackedVector3Array()
+		for side: float in [-1.0, 1.0]:
+			var run: Array[Vector2] = ys.duplicate()
+			if side > 0.0:
+				run.reverse()
+			var lid := PackedVector3Array()
+			for yv: Vector2 in run:
+				var y := yv.x
+				var flare := ear * f * (1.0 - y / top)
+				var lip := 0.016 if y < 0.03 else 0.0
+				# (pulled in at a layer's joint and where the boxes along it
+				# meet, bellied out between)
+				var crease := (0.01 * maxf(yv.y, 0.0) + 0.012 * d - belly * maxf(-yv.y, 0.0) * (1.0 - d)) * keep
+				var roll_in := clampf((y - (top - shoulder - 0.02)) / (shoulder + 0.02), 0.0, 1.0)
+				lid.append(Vector3(side * (hx + flare + lip - crease - lean * y / top), y - e * roll_in, z))
+			if side < 0.0:
+				ring.append_array(lid)
+				ring.append(Vector3(-hx + lean + nib, top - nib - e, z))
+				for xv: Vector2 in xs:
+					var u := xv.x / hx
+					ring.append(Vector3(xv.x * (1.0 - lean / hx), top - e - dip * maxf(xv.y, d) * keep + crown * (1.0 - u * u) * keep, z))
+				ring.append(Vector3(hx - lean - nib, top - nib - e, z))
+			else:
+				ring.append_array(lid)
+		rings.append(ring)
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	surface.set_smooth_group(0)
+	for r in rings.size() - 1:
+		var r0 := rings[r]
+		var r1 := rings[r + 1]
+		var cen := Vector3(0, top * 0.5, (r0[0].z + r1[0].z) * 0.5)
+		var n := r0.size()
+		for i in n:
+			var j := i + 1 if i + 1 < n else 0
+			# (the underside, hem to hem, apart: its normals would darken the
+			# hem's whole band)
+			surface.set_smooth_group(2 if j == 0 else 0)
+			VehicleModels._tri(surface, r0[i], r0[j], r1[j], cen)
+			VehicleModels._tri(surface, r0[i], r1[j], r1[i], cen)
+	surface.set_smooth_group(1)
+	for e: int in [0, rings.size() - 1]:
+		var r := rings[e]
+		var inside := Vector3(0, top * 0.5, 0)
+		for i in range(1, r.size() - 1):
+			VehicleModels._tri(surface, r[0], r[i], r[i + 1], inside)
+	surface.generate_normals()
+	surface.index()
+	return surface.commit()
 
 
 ## A sewn cloth panel in local XY. Edges stay on the frame while the centre
@@ -200,8 +398,14 @@ static func canopy(k: VehicleModels, parent: Node3D, profile: Array, bows: Array
 
 
 ## The faded issue shade a tilt's roof goes after a few summers in the sun:
-## paler and greyer than the sides, which the roof shades.
+## paler and greyer than the sides, which the roof shades. (A wreck's.)
 const SUN_FADED := Color(0.60, 0.58, 0.50)
+## The same on a running truck: olive duck bleaches toward a warm khaki, the
+## dye's green going first. (Toward the greyer shade, on a tilt as dark as the
+## hull a bleached width read slate blue in the sky's light, a different cloth.)
+const SUN_FADED_LIVE := Color(0.6, 0.55, 0.42)
+## How much more or less than the rest each roof width has faded, bay by bay.
+const ROOF_FADES: Array[float] = [0.0, 0.06, -0.04, 0.035, -0.055, 0.05]
 static var _tilts := {}
 
 
@@ -227,7 +431,7 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 		if not wide.is_empty() and rng.randf() < 0.5:
 			patch = Vector2i(wide[rng.randi_range(0, wide.size() - 1)], rng.randi_range(0, 2))
 			var other := VehicleCargo.kit_colour(rng, col, VehicleCargo.KIT_TARP, 0.0)
-			patch_col = col.lerp(other, 0.5).darkened(0.07) if rng.randf() < 0.6 else col.lerp(SUN_FADED, 0.3)
+			patch_col = col.lerp(other, 0.5).darkened(0.07) if rng.randf() < 0.6 else col.lerp(SUN_FADED if k.wreck else SUN_FADED_LIVE, 0.3)
 	# In the heat a crew rolls a side curtain up to the eaves (or both) and
 	# straps it there, so the bows, benches and bed show.
 	var rolled := 0
@@ -237,13 +441,17 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 	var built := _tilt_meshes(profile, bows, variant)
 	# (the roof bleached by the sun on every tilt, the curtains under the
 	# eaves a shade darker, where road dirt and the rain's run-off stain them)
-	var roof := col.lerp(SUN_FADED, 0.26)
+	var faded := SUN_FADED if k.wreck else SUN_FADED_LIVE
+	var roof := col.lerp(faded, 0.26)
 	var side := col.darkened(0.06)
 	for part: Array in built[0]:
 		var width := int(part[2])
 		if width != 1 and (rolled & (1 if width == 0 else 2)) != 0:
 			continue
-		var c := roof if width == 1 else side
+		# (each roof width sewn from its own bolt and bleached its own amount,
+		# so from above the bays don't read as one lid)
+		# (posmod, not %: models are built on worker threads)
+		var c := col.lerp(faded, 0.26 + ROOF_FADES[posmod(int(part[1]) + variant * 2, ROOF_FADES.size())]) if width == 1 else side
 		if Vector2i(int(part[1]), width) == patch:
 			c = patch_col
 		k._add(parent, part[0], "canvas_white", c, Vector3.ZERO)
@@ -254,10 +462,13 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 			k._add(parent, built[2][s], "canvas_white", col.darkened(0.42).lerp(Color(0.25, 0.23, 0.17), 0.4), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 	# The cover's dim inside, the cloth seen from under it: past an open back
 	# or a rolled side the shade under the tilt shows, and the benches and
-	# troops in it, as on a real truck (no board across the opening).
+	# troops in it, as on a real truck (no board across the opening). (Under
+	# a cover the sky's light is gone, which the renderer doesn't know: lit
+	# by the sun through the opening, a liner at 40% of the cloth read as
+	# bright as the outside, so it's taken down to 28%.)
 	for width in 3:
 		if width == 1 or (rolled & (1 if width == 0 else 2)) == 0:
-			k._add(parent, built[4][width], "canvas_white", col.darkened(0.6), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+			k._add(parent, built[4][width], "canvas_white", col.darkened(0.72), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 	if rolled != 0:
 		var z0: float = bows[0]
 		var z1: float = bows[bows.size() - 1]
@@ -288,12 +499,9 @@ static func _tilt(k: VehicleModels, parent: Node3D, profile: Array, bows: Array,
 			# rests, so a band's middle sits a little below the roll's axis.
 			for f: float in [-0.12, 0.12]:
 				k._add(parent, VehicleEquipment._cylinder(1.0, 1.0, 0.04, 10, false, false), "webbing", col.darkened(0.35), at + Vector3(0, -r * (1.0 - ROLL_TOP) * 0.5, f * (z1 - z0)), Vector3(PI / 2, 0, 0), Vector3(r * 1.02, 1.0, r * (1.0 + ROLL_TOP) * 0.5 * 1.02), false)
-	# the hems sewn round the cover's front and back edges, over the end bows
-	for z: float in [float(bows[0]), float(bows[bows.size() - 1])]:
-		for i in profile.size() - 1:
-			var a: Vector2 = profile[i]
-			var b: Vector2 = profile[i + 1]
-			VehicleEquipment._rod(k, parent, Vector3(a.x, a.y, z), Vector3(b.x, b.y, z), 0.009, "canvas_white", col.darkened(0.16), 6, false, 3)
+	# the doubled hems bound round the cover's front and back edges, over the
+	# end bows, and the chafing strips over the bows between them
+	k._add(parent, built[5], "canvas_white", roof.darkened(0.25), Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 
 
 ## A tilt's back flap let half down from its rear bow at `z`: the cloth hangs
@@ -539,6 +747,15 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 							norms.append(shade[i])
 							uvs.append(Vector2((grid[i].z - z0) / maxf(z1 - z0, 0.001), (arc[along[corner]] - a0) / maxf(a1 - a0, 0.001)))
 			parts.append([_arrays_mesh(verts, norms, uvs), bay, width])
+	# Where each side curtain meets the roof (a rolled curtain is strapped
+	# up there).
+	var first_roof := -1
+	var last_roof := -1
+	for q in cols - 1:
+		if absf(face[seg[q]].y) >= 0.5:
+			if first_roof < 0:
+				first_roof = q
+			last_roof = q + 1
 	# The bound hem along each side's foot and the cord laced from eye to
 	# hook: down to a hook on the bed 7 cm under the hem halfway between two
 	# eyes, and up to the next.
@@ -554,6 +771,27 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 		for r in rows:
 			line.append(grid[r * cols + q] + out * 0.004 + Vector3(0, 0.012, 0))
 		_cord(line, 0.011, 4, hem_v, hem_n)
+		# The seam where the curtain is sewn to the roof, bound over the eave
+		# in a doubled band 6 cm wide that road grime and the rain's run-off
+		# darken, so from above the roof's edge reads as a line (it goes with
+		# its curtain: a rolled curtain's eave is under its roll).
+		var eq := first_roof if q == 0 else last_roof
+		if eq > 0 and eq < cols - 1:
+			var lo := PackedVector3Array()
+			var mid := PackedVector3Array()
+			var hi := PackedVector3Array()
+			var ns := PackedVector3Array()
+			for r in rows:
+				var c := grid[r * cols + eq]
+				var a := grid[r * cols + eq - 1]
+				var b := grid[r * cols + eq + 1]
+				var n := shade[r * cols + eq]
+				lo.append(c.lerp(a, minf(0.5, 0.03 / maxf(c.distance_to(a), 0.001))) + n * 0.004)
+				mid.append(c + n * 0.005)
+				hi.append(c.lerp(b, minf(0.5, 0.03 / maxf(c.distance_to(b), 0.001))) + n * 0.004)
+				ns.append(n)
+			_strip(lo, mid, ns, hem_v, hem_n)
+			_strip(mid, hi, ns, hem_v, hem_n)
 		var lace := PackedVector3Array()
 		for bay in bows.size() - 1:
 			var z0: float = bows[bay]
@@ -569,19 +807,11 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 		_cord(lace, 0.006, 3, cord_v, cord_n)
 		hems.append(_arrays_mesh(hem_v, hem_n, PackedVector2Array()))
 		cords.append(_arrays_mesh(cord_v, cord_n, PackedVector2Array()))
-	# Where each side curtain meets the roof (a rolled curtain is strapped
-	# up there), and the cover's inside: the section 8 cm in (deeper than the
+	# The eaves, and the cover's inside: the section 8 cm in (deeper than the
 	# cloth sags between its bows, so no edge of it shows past the eaves from
 	# outside), facing in, one mesh for each width.
 	var eaves: Array[Vector3] = []
 	var liners: Array[ArrayMesh] = []
-	var first_roof := -1
-	var last_roof := -1
-	for q in cols - 1:
-		if absf(face[seg[q]].y) >= 0.5:
-			if first_roof < 0:
-				first_roof = q
-			last_roof = q + 1
 	for q: int in [maxi(first_roof, 0), maxi(last_roof, 0)]:
 		eaves.append(Vector3(points[q].x, points[q].y, normals[q].x))
 	for width in 3:
@@ -610,8 +840,64 @@ static func _tilt_meshes(profile: Array, bows: Array, variant: int) -> Array:
 				for p: Vector3 in [p0, p1, p2]:
 					verts.append(p)
 					norms.append(inward)
+		if width == 1:
+			# The front panel's inside too, with the roof's (always built):
+			# looking in past the open back, the far end of a covered bed is
+			# the dimmest thing in it, the cloth seen from the shade under the
+			# cover, not the cover's sunlit drab. The section 3 cm in, just
+			# behind the panel, fanned from the middle of its foot.
+			var z := float(bows[0]) + 0.02
+			var outline: Array[Vector3] = []
+			for i in profile.size():
+				var n: Vector2 = face[0] if i == 0 else (face[face.size() - 1] if i == face.size() else (face[i - 1] + face[i]).normalized())
+				var p: Vector2 = (profile[i] as Vector2) - n * 0.03
+				outline.append(Vector3(p.x, p.y, z))
+			var foot := (outline[0] + outline[outline.size() - 1]) * 0.5
+			for i in outline.size() - 1:
+				var p0 := foot
+				var p1 := outline[i]
+				var p2 := outline[i + 1]
+				if (p0 - p2).cross(p0 - p1).dot(Vector3.BACK) < 0.0:
+					var swap := p1
+					p1 = p2
+					p2 = swap
+				for p: Vector3 in [p0, p1, p2]:
+					verts.append(p)
+					norms.append(Vector3.BACK)
 		liners.append(_arrays_mesh(verts, norms, PackedVector2Array()))
-	var result := [parts, hems, cords, eaves, liners]
+	# The cover's two ends bound in a doubled hem 3 cm deep over the end bows
+	# (seen from behind it's the edge of a cover, not of a sheet of paper),
+	# and a chafing strip 5 cm wide sewn over every bow between them across
+	# the roof, where the cloth wears on the bow: grime works into the doubled
+	# cloth, so from the battle camera the strips rule the roof off bay by bay.
+	var trim_v := PackedVector3Array()
+	var trim_n := PackedVector3Array()
+	for r: int in [0, rows - 1]:
+		var line := PackedVector3Array()
+		var inward := 0.008 if r == 0 else -0.008
+		for q in cols:
+			line.append(grid[r * cols + q] + Vector3(0, 0, inward))
+		_cord(line, 0.018, 4, trim_v, trim_n)
+	if first_roof >= 0:
+		for r in range(1, rows - 1):
+			if us[r] != 0.0:
+				continue
+			var ta := minf(0.5, 0.025 / maxf(zs[r] - zs[r - 1], 0.001))
+			var tb := minf(0.5, 0.025 / maxf(zs[r + 1] - zs[r], 0.001))
+			var la := PackedVector3Array()
+			var lm := PackedVector3Array()
+			var lb := PackedVector3Array()
+			var ns := PackedVector3Array()
+			for q in range(first_roof, last_roof + 1):
+				var c := grid[r * cols + q]
+				var n := shade[r * cols + q]
+				la.append(c.lerp(grid[(r - 1) * cols + q], ta) + n * 0.004)
+				lm.append(c + n * 0.005)
+				lb.append(c.lerp(grid[(r + 1) * cols + q], tb) + n * 0.004)
+				ns.append(n)
+			_strip(la, lm, ns, trim_v, trim_n)
+			_strip(lm, lb, ns, trim_v, trim_n)
+	var result := [parts, hems, cords, eaves, liners, _arrays_mesh(trim_v, trim_n, PackedVector2Array())]
 	_tilts[key] = result
 	return result
 
@@ -636,6 +922,21 @@ static func _cord(points: PackedVector3Array, radius: float, sides: int, verts: 
 				for c: int in order:
 					verts.append(tri[c])
 					norms.append(tri[c + 3])
+
+
+## A band laid on the cloth between two lines of as many points, `normals`
+## (one a point of `a`, shared by `b`'s) its outward face.
+static func _strip(a: PackedVector3Array, b: PackedVector3Array, normals: PackedVector3Array, verts: PackedVector3Array, norms: PackedVector3Array) -> void:
+	for i in a.size() - 1:
+		var quad: Array[Vector3] = [a[i], a[i + 1], b[i + 1], b[i]]
+		var qn: Array[Vector3] = [normals[i], normals[i + 1], normals[i + 1], normals[i]]
+		for tri: Array in [[0, 1, 2], [0, 2, 3]]:
+			var order: Array[int] = [tri[0], tri[1], tri[2]]
+			if (quad[order[0]] - quad[order[2]]).cross(quad[order[0]] - quad[order[1]]).dot(qn[order[0]]) < 0.0:
+				order = [order[0], order[2], order[1]]
+			for c: int in order:
+				verts.append(quad[c])
+				norms.append(qn[c])
 
 
 static func _arrays_mesh(verts: PackedVector3Array, norms: PackedVector3Array, uvs: PackedVector2Array) -> ArrayMesh:
@@ -827,7 +1128,11 @@ static func _bag(k: VehicleModels, mount: Node3D, place: Vector3, scale: Vector3
 		if z.dot(Vector3(0, mid.y + h.y * 0.3, mid.z)) < 0.0:
 			z = -z
 		k._add(mount, VehicleEquipment._plate(Vector3(minf(0.045, size.x * 0.15), a.distance_to(b) + 0.004, 0.012)), "webbing", seam_col, mid + z * 0.002, Basis(y.cross(z), y, z).get_euler(), Vector3.ONE, false)
-	k._add(mount, VehicleEquipment._plate(Vector3(0.065, 0.018, 0.055)), "gunmetal", Color(0.22, 0.23, 0.21), _soft(Vector3(sx, h.y, 0), place) * scale + Vector3(0, 0.009, 0), Vector3.ZERO, Vector3.ONE, false)
+	# The buckle on the bag's top is a black acetal side-release buckle, as
+	# on all issue and bought kit since the seventies, moulded with a dull
+	# satin face like the webbing's: a steel plate there mirrored the sky,
+	# a pale label on every bag's lid from above.
+	k._add(mount, VehicleEquipment._plate(Vector3(0.065, 0.018, 0.055)), "webbing", BUCKLE, _soft(Vector3(sx, h.y, 0), place) * scale + Vector3(0, 0.009, 0), Vector3.ZERO, Vector3.ONE, false)
 	k._fold(mount)
 	return part
 
@@ -853,7 +1158,7 @@ static func _lid(k: VehicleModels, mount: Node3D, place: Vector3, scale: Vector3
 		if z.z < 0.0:
 			z = -z
 		k._add(mount, VehicleEquipment._plate(Vector3(minf(0.035, size.x * 0.12), a.distance_to(b), 0.01)), "webbing", seam_col, (a + b) * 0.5 + z * 0.002, Basis(y.cross(z), y, z).get_euler(), Vector3.ONE, false)
-		k._add(mount, VehicleEquipment._plate(Vector3(minf(0.045, size.x * 0.15), 0.03, 0.012)), "gunmetal", Color(0.22, 0.23, 0.21), b + z * 0.005, Basis(y.cross(z), y, z).get_euler(), Vector3.ONE, false)
+		k._add(mount, VehicleEquipment._plate(Vector3(minf(0.045, size.x * 0.15), 0.03, 0.012)), "webbing", BUCKLE, b + z * 0.005, Basis(y.cross(z), y, z).get_euler(), Vector3.ONE, false)
 
 
 ## Woven webbing laid along `points` (in `parent`'s coordinates): one flat
@@ -878,6 +1183,47 @@ static func strap(k: VehicleModels, parent: Node3D, points: Array, width: float,
 		x = x.normalized()
 		var size := Vector3(width, length + thick, thick).snappedf(0.001)
 		k._add(parent, VehicleEquipment._plate(size), material, col, (a + b) * 0.5, Basis(x, y, x.cross(y)).get_euler(), Vector3.ONE, false)
+
+
+## A light vehicle's harness webbing: black, as the issue four-point belts are.
+const HARNESS := Color(0.07, 0.07, 0.065)
+## A kit bag's moulded plastic buckles: black acetal.
+const BUCKLE := Color(0.075, 0.075, 0.07)
+
+## The four-point harness of an open light vehicle's crew seat (a Prowler's,
+## a Qilin's), left lying in the empty seat as the crew climbed out of it:
+## two shoulder belts out of their slots in the seat back, down its face and
+## across the cushion, and the two halves of the lap belt in from the
+## cushion's sides, all four meeting in the buckle's pressed steel plate at
+## the cushion's front. From above, an open buggy's seats are the most visible
+## thing in it, and the belts and their buckle read them as seats a crew
+## is strapped into over rough ground, not as padded boards. `center`, `size`
+## and `rotation` are the seat's own, as VehicleCab.seat takes them (its
+## cushion centre, width, back height and depth; its front is local -Z).
+## Wrecks and burnt hulks keep their bare seats.
+static func harness(k: VehicleModels, parent: Node3D, center: Vector3, size: Vector3, rotation: Vector3, col := HARNESS) -> void:
+	if k.wreck or k.burnt:
+		return
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	# (the seat's cushion and leaning back as VehicleCab.seat builds them,
+	# each belt laid 3 mm proud of the cloth it lies on)
+	var pad := minf(0.12, size.z * 0.24)
+	var back := Vector3(0, size.y * 0.5, size.z * 0.46)
+	var lean := Basis(Vector3.RIGHT, 0.12)
+	var face := -(pad * 0.4 + 0.003)
+	var top := pad * 0.5 + 0.003
+	var buckle := Vector3(0, top + 0.002, -size.z * 0.12)
+	for side: float in [-1.0, 1.0]:
+		var shoulder := [back + lean * Vector3(side * 0.075, size.y * 0.36, face), back + lean * Vector3(side * 0.065, -size.y * 0.3, face), Vector3(side * 0.055, top, size.z * 0.2), buckle + Vector3(side * 0.02, 0, 0.03)]
+		strap(k, mount, shoulder, 0.045, col, Vector3.RIGHT)
+		strap(k, mount, [Vector3(side * size.x * 0.34, top, size.z * 0.24), buckle + Vector3(side * 0.03, 0, 0)], 0.045, col, Vector3.BACK)
+	# (the buckle a rotary cam-lock in a black anodised housing: bright
+	# steel glared from above as a lamp, and even blackened steel, flat and
+	# level in a seat, gave the sky back as a pale square on every cushion,
+	# where the anodised face is as dull as the belts round it)
+	k._box(mount, Vector3(0.05, 0.008, 0.06), buckle + Vector3(0, 0.003, 0), "webbing", BUCKLE, Vector3.ZERO, false)
+	k._fold(mount)
 
 
 ## A ratchet tensioner on a load strap: `at` its middle on the strap's face,
@@ -922,9 +1268,14 @@ static func rope(k: VehicleModels, parent: Node3D, points: Array, radius: float,
 const SACK := Vector3(0.5, 0.14, 0.28)
 ## Sacks as irregulars find them: hessian (jute, the old issue: brown, hairy,
 ## dead matte) and woven polypropylene (the builders' merchant's plastic sack:
-## off-white, olive or sand, finer, with a faint sheen).
-const SACK_HESSIAN: Array[Color] = [Color(0.45, 0.37, 0.25), Color(0.40, 0.33, 0.22), Color(0.51, 0.43, 0.30)]
-const SACK_POLY: Array[Color] = [Color(0.66, 0.64, 0.57), Color(0.36, 0.37, 0.27), Color(0.57, 0.51, 0.38), Color(0.31, 0.33, 0.25)]
+## off-white, olive or sand, finer). Both are woven and read matt at any
+## distance. (Jute is a greyish brown: any more chroma and the game's warm sun
+## turns a wall of them into orange loaves, the warmest thing on the vehicle.
+## A white sack is grey with the earth it was filled with and the hands that
+## carried it: at the clean white of a new one, a wall of them was the
+## brightest thing on a truck's cab.)
+const SACK_HESSIAN: Array[Color] = [Color(0.44, 0.38, 0.28), Color(0.39, 0.34, 0.25), Color(0.50, 0.44, 0.33)]
+const SACK_POLY: Array[Color] = [Color(0.52, 0.5, 0.45), Color(0.36, 0.37, 0.27), Color(0.5, 0.47, 0.38), Color(0.31, 0.33, 0.25)]
 ## Earth rubbed into a sack that has been filled, carried and sat on.
 const SACK_EARTH := Color(0.34, 0.29, 0.21)
 
@@ -961,14 +1312,14 @@ static func sandbag(k: VehicleModels, parent: Node3D, foot: Vector3, along: Vect
 		col = palette[rng.randi_range(0, palette.size() - 1)]
 	var shade := rng.randf_range(-0.06, 0.06)
 	col = col.lightened(shade) if shade > 0.0 else col.darkened(-shade)
-	col = col.lerp(SACK_EARTH, rng.randf_range(0.05, 0.3) if not poly else rng.randf_range(0.0, 0.2))
+	col = col.lerp(SACK_EARTH, rng.randf_range(0.05, 0.3) if not poly else rng.randf_range(0.08, 0.25))
 	var variant := rng.randi_range(0, 3) + (4 if drape else 0)
 	var flat := Vector3(along.x, 0.0, along.z).normalized()
 	var yaw := atan2(-flat.z, flat.x) + rng.randf_range(-0.12, 0.12)
 	var fill := snappedf(rng.randf_range(0.88, 1.06), 0.06)
 	var scale := Vector3(snappedf(length, 0.05), fill, snappedf(rng.randf_range(0.92, 1.04), 0.06))
 	var tilt := Vector3(rng.randf_range(-0.05, 0.05), yaw, rng.randf_range(-0.03, 0.03))
-	k._add(parent, _sack(variant), "nylon" if poly else "canvas", col, foot, tilt, scale)
+	k._add(parent, _sack(variant), "canvas", col, foot, tilt, scale)
 
 
 ## A wall of sandbags along a line of support from `a` to `b` (each a point
@@ -1045,7 +1396,9 @@ static func _sack(variant: int) -> ArrayMesh:
 			var w := PI * arc[j]
 			var s := sin(w)
 			var c := cos(w)
-			var y := signf(s) * pow(absf(s), 0.3 if s < 0.0 else 0.62)
+			# (the top pressed flat under the course above or the fill's own
+			# weight: square shoulders, not a loaf's dome)
+			var y := signf(s) * pow(absf(s), 0.3 if s < 0.0 else 0.4)
 			var z := signf(c) * pow(absf(c), 0.6)
 			var p := Vector3(ring.x * h.x, 0.0, z * h.z * ring.y)
 			if y >= 0.0:
@@ -1300,9 +1653,26 @@ static func roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: floa
 		_roll(k, mount, r, b - a, tint, material, straps)
 
 
+## A tarpaulin rolled up tight on a roof, as a crew carries the vehicle's own
+## cover across a turret's rear plate: roll's shape at a roof kit's price.
+## Its two ties are knotted webbing, not buckled straps (a tarp is lashed down
+## where it lies and seldom undone), and its wound ends show a turn and a half
+## of the cloth's edge, not two and a half: a roll a hand across is a few
+## pixels from the battle camera, where it reads by its round top, its dark
+## ends and the two ties pinching it. Eight sides instead of twelve, for the
+## same reason. Built once per size (cached as roll's are); wrecks carry none.
+static func tarp_roll(k: VehicleModels, parent: Node3D, center: Vector3, radius: float, length: float, rotation: Vector3, col: Color, material := "canvas") -> void:
+	if k.wreck:
+		return
+	var mount := k._pivot(parent, center)
+	mount.rotation = rotation
+	_roll(k, mount, radius, length, col, material, Vector2(-0.3, 0.3), true)
+
+
 ## One roll on its mount, along its Y: `straps` the two straps' places as
-## fractions of its length from its middle.
-static func _roll(k: VehicleModels, mount: Node3D, radius: float, length: float, col: Color, material: String, straps: Vector2) -> void:
+## fractions of its length from its middle. `cheap` builds tarp_roll's: no
+## buckles, fewer sides and wound turns.
+static func _roll(k: VehicleModels, mount: Node3D, radius: float, length: float, col: Color, material: String, straps: Vector2, cheap := false) -> void:
 	if k.wreck:
 		# (a wreck's rolls, and the webbing left of them, as they always were)
 		var end := minf(0.03, length * 0.04)
@@ -1331,19 +1701,26 @@ static func _roll(k: VehicleModels, mount: Node3D, radius: float, length: float,
 	# centimetres, and scaled to the exact size.
 	var ratio := maxf(1.5, snappedf(length / radius, 0.25))
 	var at := Vector2(snappedf(straps.x, 0.04), snappedf(straps.y, 0.04))
-	var meshes := _roll_meshes(ratio, at)
+	var meshes := _roll_meshes(ratio, at, cheap)
 	var scale := Vector3(radius, length / ratio, radius)
 	var rot := Vector3(0, yaw, 0)
 	k._add(mount, meshes[0], material, col, Vector3.ZERO, rot, scale)
 	# The wound layers on the end faces read as a darker spiral.
 	k._add(mount, meshes[1], material, col.darkened(0.25), Vector3.ZERO, rot, scale, false)
 	k._add(mount, meshes[2], "webbing", col.darkened(0.35), Vector3.ZERO, rot, scale, false)
+	if cheap:
+		k._fold(mount)
+		return
 	# Each buckle on its strap at the mount's +X, where the family put it, on
-	# the strap's flattened section there.
+	# the strap's flattened section there. A tilt's own curtain is strapped
+	# with the steel roller buckles sewn to it; a bedroll's or a mat's
+	# compression straps close in the black plastic buckles of the kit bags
+	# beside it (steel there caught the sky as a grey glint on every roll).
 	var c := up.x / flat.length() if flat.length() > 0.3 else 0.0
 	var reach := ROLL_BAND * sqrt(1.0 - c * c * (1.0 - ROLL_TOP * ROLL_TOP)) if c > 0.0 else ROLL_BAND
+	var steel := material == "canvas_white"
 	for f: float in [at.x, at.y]:
-		k._box(mount, Vector3(0.014, minf(0.05, length * 0.06), 0.04), Vector3(radius * reach + 0.005, f * length, 0), "gunmetal", Color(0.22, 0.23, 0.21), Vector3.ZERO, false)
+		k._box(mount, Vector3(0.014, minf(0.05, length * 0.06), 0.04), Vector3(radius * reach + 0.005, f * length, 0), "gunmetal" if steel else "webbing", Color(0.22, 0.23, 0.21) if steel else BUCKLE, Vector3.ZERO, false)
 	k._fold(mount)
 
 
@@ -1359,20 +1736,27 @@ static var _rolls := {}
 ## its middle: [the cloth, the spiral on its ends, the straps]. The cloth is
 ## wound, so its outer lap ends in a step along its length, and lumpy with
 ## the folds rolled in; it pinches in under each strap; its ends turn in and
-## dish a little where the layers are wound tighter at the core.
-static func _roll_meshes(ratio: float, straps: Vector2) -> Array:
-	var key := Vector3(ratio, straps.x, straps.y)
+## dish a little where the layers are wound tighter at the core. `cheap` is
+## tarp_roll's: eight sides, one ring fewer at each end, a turn and a half of
+## spiral in ten steps.
+static func _roll_meshes(ratio: float, straps: Vector2, cheap := false) -> Array:
+	var key := Vector4(ratio, straps.x, straps.y, 1.0 if cheap else 0.0)
 	if _rolls.has(key):
 		return _rolls[key]
 	var half := ratio * 0.5
-	var sides := 12
+	var sides := 8 if cheap else 12
 	var lap := 0.6
-	var stations: Array[float] = [-half, -half + 0.1, -half + 0.28]
+	var stations: Array[float] = [-half, -half + 0.16]
+	if not cheap:
+		stations = [-half, -half + 0.1, -half + 0.28]
 	for s: float in [straps.x * ratio, straps.y * ratio]:
 		for d: float in [-0.24, 0.0, 0.24]:
 			stations.append(s + d)
 	stations.append(0.0)
-	stations.append_array([half - 0.28, half - 0.1, half])
+	var ends: Array[float] = [half - 0.16, half]
+	if not cheap:
+		ends = [half - 0.28, half - 0.1, half]
+	stations.append_array(ends)
 	stations.sort()
 	var ys: Array[float] = []
 	for y in stations:
@@ -1427,10 +1811,11 @@ static func _roll_meshes(ratio: float, straps: Vector2) -> Array:
 		# Two and a half turns of the wound cloth's edge, a couple of
 		# millimetres proud of the dished face so it never fights it.
 		var rim_r := 0.87
-		var turns := 26
+		var turns := 10 if cheap else 26
+		var winds := 1.5 if cheap else 2.5
 		for t in turns + 1:
 			var f := float(t) / turns
-			var a := lap + f * TAU * 2.5 * side
+			var a := lap + f * TAU * winds * side
 			var rad := lerpf(0.12, 0.78, f)
 			for w: float in [-0.035, 0.035]:
 				var p := _roll_point(a, rad + w, 0.0)
