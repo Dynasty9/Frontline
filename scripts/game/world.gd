@@ -51,6 +51,11 @@ var nav: Nav
 var combat: Combat
 var rules: Rules
 var fires: Fires  # (server) what's burning
+var flares: Flares  # illumination flares in the air (every player's, from the host's Fx.FLARE)
+## A night battle: men see a fraction as far (Defs.NIGHT_SIGHT) unless what
+## they look at is lit by a flare or gives itself away firing. From the battle's
+## mood, which every player has from the host.
+var dark := false
 var fx: Fx
 var phys: PhysicsFx  # ragdolls, thrown chunks, tossed props (clients only)
 var cam: RtsCamera
@@ -144,6 +149,8 @@ func _ready() -> void:
 	local_team = int(pl[local_peer].team) if pl.has(local_peer) else -1
 	view_team = local_team
 	rng.seed = int(settings.get("seed", 1))
+	dark = Atmosphere.pick_mood(settings) == "night"
+	flares = Flares.new(self)
 	_load_mark("allocating terrain")
 	# the host has its battle from the start; a client's comes from the host (see
 	# Joining), out of sight under the loading screen: drawing it meanwhile only
@@ -823,6 +830,7 @@ func _simulate(dt: float) -> void:
 			e.sim(dt)
 	tp = _p("structures", tp)
 	fires.tick(dt)
+	flares.tick()
 	tp = _p("fire", tp)
 	for arr in [vehicles.duplicate(), projectiles.duplicate(), drones.duplicate()]:
 		for e in arr:
@@ -2073,6 +2081,8 @@ func team_of_peer(peer: int) -> int:
 func send_cmd(d: Dictionary) -> void:
 	if settings.get("replay", false):
 		return
+	if hud and not (d.get("vehicles", []) as Array).is_empty() and (d.get("squads", []) as Array).is_empty():
+		hud.vehicle_ack(d)  # (squads answer when their order arrives back: Hud._track_orders)
 	if srv:
 		execute_cmd(local_peer, d)
 	else:

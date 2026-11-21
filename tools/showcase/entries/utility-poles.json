@@ -1,0 +1,49 @@
+{
+  "entry": "changelog/unreleased/utility-poles.md",
+  "summary": "The poles along the roads now have braced crossarms, steps, number and danger plates and an earth wire. The ones carrying a transformer show its finned tank, its platform, fuses and the cable down to the ground.",
+  "medium": "motion",
+  "stage": "tools/showcase/building-surfaces.tscn (poles; main's pole drawn with the same shapes for the before)",
+  "rationale": "Appearance change of the overhead line's poles: a matched studio still of a stretch of line, and a close still of a transformer pole. After review the wire down a pole was reworked (one thin wire flat on the pole, no conduit or guard): the comparison's after half and the transformer still are re-rendered from that, the before half kept as it was. Seed 3, main versus this branch: the standalone farm transformer has no pole-to-pole line connection; the last section shows a separate real connected roadside span. Matched camera motion, with an identical detail crop for the span. Low settings, native Forward+ software rendering; simulation held.",
+  "source_ref": "55a9e772b6b64ca6d974c2f440dbaa19b24d3f40",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/utility-poles/comparison.jpg",
+      "sha256": "306465fc4a5e210b7daf8bf9fccba26f9d138c05ec8381a97230894cb4b675a6"
+    },
+    {
+      "file": "changelog/unreleased/utility-poles/transformer.jpg",
+      "sha256": "e8684feff24c028eb137937a9956712852e839d06b95f76ff4dcfd0472e24c37"
+    },
+    {
+      "file": "changelog/unreleased/utility-poles/wire-review.jpg",
+      "sha256": "4ba382c9e6a4608a789a920cd31467011300c1d6c6181130d0a7758d9c0ed7dc"
+    },
+    {
+      "file": "changelog/unreleased/utility-poles/utility-motion.webm",
+      "sha256": "eae522db0090374f859db6809c8865421f0f8bb61792091d6349a866b1e4a104"
+    },
+    {
+      "file": "changelog/unreleased/utility-poles/utility-motion.jpg",
+      "sha256": "9bafa4ef2db899e1e0c7eca8a6e33678ec55ca3e8017f9ef63158d29c8a1b642"
+    },
+    {
+      "file": "changelog/unreleased/utility-poles/motion-capture.json",
+      "sha256": "a29c42585eb51abd5742cc1becaf4a98bb42d0b986dea85ef0d675456bc1a26e"
+    }
+  ],
+  "output": null,
+  "capture": {
+    "renderer": "Forward+, 1600x900, off-screen window",
+    "comparison": "--building-kinds=poles --building-single, the stage's own framing; after half cropped (306, 85, 1334, 816) and scaled to 780x555 as the first sheet's was",
+    "transformer": "--building-kinds=poles --building-single --building-match with the camera [0, 4.2, 0, size 9, distance 60], cropped (580, 20, 1020, 900)",
+    "wire_review": "Review sheet for the pull request, not shown to players: the PR's first wire (cccfbae8388a0af280f8756157bc41d7d0db8b9b) against the reworked one, on the stage (the close framing above) and in game (--aivai --seed=3 --focus=-79.1,-5.5 --zoom=14 --cam-yaw=2.356 --shot-at=4 --nohud --perf=0, the farm transformer pole at -77, -7.6)"
+  },
+  "motion_review": {
+    "before_ref": "6399514f144e529794856e8618d488ec5df28a4e",
+    "source_ref": "2f2a08706cbe6345fc54b52024e1f92bdf2a856d",
+    "harness_sha256": "2a4a3686cd999f7d41e9ea91cd5577954fce77751584db52f95d727fd46fe161",
+    "stage": "tools/showcase/environment-motion.gd --motion-stage=utility",
+    "capture": "changelog/unreleased/utility-poles/motion-capture.json"
+  }
+}

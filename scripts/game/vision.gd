@@ -37,9 +37,13 @@ static func structure_sight(st: Structure) -> float:
 ## Every eye a side has, as (x, y, z, radius). A recon flight's pictures (the
 ## strip it photographed a moment ago) come in as `marks`: (x, z, radius, until).
 ## `structures`: the side's own buildings, if the caller keeps a list of them
-## (null: every structure on the map is looked through).
-static func observers(w: World, team: int, marks: Array = [], structures = null) -> PackedVector4Array:
+## (null: every structure on the map is looked through). `night`, if given,
+## gets each eye's share of its sight that's left in the dark, in step with the
+## eyes (Defs.NIGHT_SIGHT: men and posts, vehicles by their thermal sights;
+## drones, aircraft and their photographs see by their sensors).
+static func observers(w: World, team: int, marks: Array = [], structures = null, night = null) -> PackedVector4Array:
 	var out := PackedVector4Array()
+	var men: float = Defs.NIGHT_SIGHT[clampi(team, 0, 1)]
 	for s in w.soldiers:
 		if s.team != team or s.gone:
 			continue
@@ -47,9 +51,15 @@ static func observers(w: World, team: int, marks: Array = [], structures = null)
 			out.append(Vector4(s.position.x, s.position.y + 1.5, s.position.z, s.sight_range()))
 		elif s.life == Soldier.Life.DOWNED:
 			out.append(Vector4(s.position.x, s.position.y + 1.5, s.position.z, DOWNED))
+		else:
+			continue
+		if night != null:
+			night.append(men)
 	for v in w.vehicles:
 		if v.team == team and not v.gone:
 			out.append(Vector4(v.position.x, v.position.y + 2.0, v.position.z, float(v.vdef.get("sight", VEHICLE))))
+			if night != null:
+				night.append(1.0 if v.is_air() else Defs.NIGHT_SIGHT_VEHICLE)
 	for st in (w.owned_structures if structures == null else structures):
 		if st.team != team or st.gone or not st.built:
 			continue
@@ -57,18 +67,34 @@ static func observers(w: World, team: int, marks: Array = [], structures = null)
 		if r > 0.0:
 			var c: Vector3 = st.zone_c if st.skind == "town" else st.position  # (a town: from the middle of its ground)
 			out.append(Vector4(c.x, c.y + (5.5 if st.skind == "watchtower" else 2.0), c.z, r))
+			if night != null:
+				night.append(men)
 	for d in w.drones:
 		if d.team == team and not d.gone:
 			out.append(Vector4(d.position.x, d.position.y, d.position.z, FPV))
+			if night != null:
+				night.append(1.0)
 	for p in w.projectiles:
 		if p.team == team and not p.gone:
 			var air := PackedVector3Array()
 			p.add_eyes(air)
 			for eye in air:
 				out.append(Vector4(eye.x, p.position.y, eye.y, eye.z))
+				if night != null:
+					night.append(1.0)
 	for m in marks:
 		out.append(Vector4(m.x, w.terrain.landform.peak + 100.0, m.y, m.z))
+		if night != null:
+			night.append(1.0)
 	return out
+
+
+## How far a man of this side sees right now: by day his sight, by night the
+## dark's share of it (Defs.NIGHT_SIGHT).
+static func night_share(w: World, team: int, vehicle := false) -> float:
+	if not w.dark:
+		return 1.0
+	return Defs.NIGHT_SIGHT_VEHICLE if vehicle else float(Defs.NIGHT_SIGHT[clampi(team, 0, 1)])
 
 
 static func eyes(w: World, team: int, marks: Array = [], structures = null) -> PackedVector3Array:

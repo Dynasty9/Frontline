@@ -191,7 +191,10 @@ static func sensor(k: VehicleModels, parent: Node3D, center: Vector3, size: Vect
 		# in a box head (a ball curves away behind it).
 		_cyl(k, mount, radius * 1.25, radius * 1.25, radius * 0.35, at, Vector3(PI / 2, 0, 0), "rubber", null, 12, false, 1 if style != "ball" else 3)
 		if not k.burnt:
-			_cyl(k, mount, radius, radius, radius * 0.08, at + Vector3(0, 0, -radius * 0.2), Vector3(PI / 2, 0, 0), "glass", Color(0.13, 0.20, 0.23), 12, false, 1)
+			# An optic's window is coated armour glass, its amber-violet coating
+			# dark from any angle (VehicleMounts.OPTIC), not a pale blue window (a
+			# wreck's keeps the plain glass it had).
+			_cyl(k, mount, radius, radius, radius * 0.08, at + Vector3(0, 0, -radius * 0.2), Vector3(PI / 2, 0, 0), "glass" if k.wreck else "armor_glass", Color(0.13, 0.20, 0.23) if k.wreck else VehicleMounts.OPTIC, 12, false, 1)
 		var rim := VehicleFittings._ring(radius, radius * 1.2)
 		k._add(mount, rim, "metal_dark", null, at + Vector3(0, 0, -radius * 0.28), Vector3(PI / 2, 0, 0), Vector3(1, 0.45, 1))
 	for side: float in [-1.0, 1.0]:
@@ -626,20 +629,30 @@ const PANEL_CORD: Array[Color] = [Color(0.24, 0.24, 0.17), Color(0.09, 0.09, 0.0
 ## and scenery and wrecks never carry one: it's the warmest colour on a
 ## vehicle from the air, which is the point, so the battle camera picks out
 ## the few that do. Nothing when it isn't laid; true when it is.
-static func recognition_panel(k: VehicleModels, parent: Node3D, center: Vector3, rot := Vector3.ZERO, folded := false, chance := 0.2) -> bool:
+static func recognition_panel(k: VehicleModels, parent: Node3D, center: Vector3, rot := Vector3.ZERO, folded := false, chance := 0.2, salt := 0) -> bool:
 	if k.wreck or k.burnt:
 		return false
-	var rng := VehicleCargo.kit(k, parent, center, 41)
+	# (`salt` draws it apart for models that share one spot: a family's
+	# variants on one cab, so a column of them doesn't wear one panel)
+	var rng := VehicleCargo.kit(k, parent, center, 41 + salt)
 	# (fewer than a crew's kit might suggest: even dulled, a panel is the
 	# loudest patch on a vehicle from the battle camera, so one in eight)
 	if rng == null or rng.randf() >= minf(chance, 0.12):
 		return false
 	var face: Color = PANEL_FACES[rng.randi_range(0, 1)]
 	# a season in the sun bleaches the dye toward a chalky pink or apricot,
-	# and the dust the hull wears lies thick on it
+	# and the dust the hull wears lies thick on it. A panel stowed folded on
+	# a roof for months is a faded, filthy rag of its orange or cerise, about
+	# the hull's own value with its hue still in it: kept at the dye's
+	# strength (even dulled by the dust) it read from the battle camera as a
+	# terracotta or pink tile, the loudest thing on the vehicle.
 	face = face.lerp(Color(0.9, 0.78, 0.7), rng.randf_range(0.0, 0.14))
 	var dust: Color = VehicleMaterials.DIRT.get(k.surface_family, VehicleMaterials.DIRT.armor).dust_col
-	face = face.lerp(dust, rng.randf_range(0.35, 0.5))
+	face = face.lerp(dust, rng.randf_range(0.55, 0.68)).darkened(rng.randf_range(0.3, 0.4))
+	# (and the sun takes the dye's strength as well as its value: even dark,
+	# a cerise at full strength read as a red tile on a sand hull at dusk)
+	var grey := face.get_luminance()
+	face = face.lerp(Color(grey, grey, grey), 0.4)
 	if not folded and rng.randf() < 0.67:
 		folded = true
 	# (laid by hand, a few degrees off square, in the plane it lies on)
@@ -778,7 +791,14 @@ const SHADES: Array[Color] = [Color(0.74, 0.75, 0.74), Color(0.66, 0.67, 0.66), 
 ## from. A silver one shows through the glass from the battle camera as a
 ## pale panel, so a street of parked cars stops looking alike inside.
 ## Built once per car (its own mesh, cached by the stock with the car).
-static func sunshade(k: VehicleModels, parent: Node3D, corners: Array, inside: Vector3, col: Color, pleats := 12) -> void:
+## The shades sold are folded in eight or nine panels a hand and a half wide,
+## not a dozen narrow ones: each panel tilted a little off the next, so in
+## sun every other one flashes and the rest stand darker, the
+## zigzag a pale shade shows through the glass. A silver one's face is a
+## bright metallised print on the cloth, paler than any car's grey trim, so
+## it reads through the tinted windscreen as the pale panel it is and not as
+## another grey seat back.
+static func sunshade(k: VehicleModels, parent: Node3D, corners: Array, inside: Vector3, col: Color, pleats := 8) -> void:
 	if k.wreck or k.burnt or corners.size() < 4:
 		return
 	var c0: Vector3 = corners[0]
@@ -791,20 +811,25 @@ static func sunshade(k: VehicleModels, parent: Node3D, corners: Array, inside: V
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var idx := PackedInt32Array()
-	# (a little short of the frame all round, resting on the dash)
+	# (a little short of the frame all round, resting on the dash: its foot
+	# is pressed flat against the glass's foot, the folds opening above it,
+	# so no crease reaches back into the dash and shows a dark notch of it
+	# through the glass)
 	var v0 := 0.05
 	var v1 := 0.92
 	for i in pleats:
 		var ua := lerpf(0.05, 0.95, float(i) / pleats)
 		var ub := lerpf(0.05, 0.95, float(i + 1) / pleats)
-		var da := 0.03 + 0.016 * float(i & 1)
-		var db := 0.03 + 0.016 * float((i + 1) & 1)
-		var pa := c0.lerp(c1, ua).lerp(c3.lerp(c2, ua), v0) - out * da
-		var pb := c0.lerp(c1, ub).lerp(c3.lerp(c2, ub), v0) - out * db
+		# (wider panels fold deeper: their creases stand 2.4 cm apart)
+		var da := 0.028 + 0.024 * float(i & 1)
+		var db := 0.028 + 0.024 * float((i + 1) & 1)
+		var pa := c0.lerp(c1, ua).lerp(c3.lerp(c2, ua), v0) - out * 0.026
+		var pb := c0.lerp(c1, ub).lerp(c3.lerp(c2, ub), v0) - out * 0.026
 		var pc := c0.lerp(c1, ub).lerp(c3.lerp(c2, ub), v1) - out * db
 		var pd := c0.lerp(c1, ua).lerp(c3.lerp(c2, ua), v1) - out * da
 		VehicleWheels._quad_toward(verts, norms, idx, out, pa, pb, pc, pd)
-	k._add(parent, VehicleWheels._mesh(verts, norms, idx), "nylon", col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
+	var silver := col.s < 0.1 and col.v > 0.5
+	k._add(parent, VehicleWheels._mesh(verts, norms, idx), "nylon", col.lightened(0.3) if silver else col, Vector3.ZERO, Vector3.ZERO, Vector3.ONE, false)
 
 
 ## A soft tonneau cover snapped over a pickup's bed: vinyl stretched across
@@ -825,16 +850,29 @@ static func bed_cover(k: VehicleModels, parent: Node3D, center: Vector3, size: V
 		var h := PackedFloat32Array()
 		for j in nz:
 			# the cover dips between the bows and is held up on them; it lies
-			# flat on the side rails, so the sag fades out toward them
+			# flat on the side rails, so the sag fades out toward them. (Two
+			# centimetres and more at mid-span, as vinyl a few summers old
+			# hangs: at one and a half it lay dead flat from the battle
+			# camera, a black mat over the bed; each bow now stands as a
+			# ridge with the slack falling away from it, held up a little on
+			# the bed's centreline where it rests on the bow's crown.)
+			# (At 2.6 cm, under the old pale coating, the slack still lay flat
+			# from above: a soft cover pulls down 4 cm between bows 70 cm
+			# apart, and the matt vinyl's soft sheen then shades each dip.)
 			var f := fmod(float(j), 4.0) / 4.0
 			for i in nx:
 				var u := -1.0 + 2.0 * i / float(nx - 1)
-				var sag := 0.014 * sin(PI * f) * (1.0 - pow(absf(u), 3.0))
-				h.append(0.006 - sag)
+				var sag := 0.04 * pow(sin(PI * f), 0.8) * (1.0 - pow(absf(u), 2.4))
+				h.append(0.008 - sag)
 		_sheets[key] = _sheet(size, nx, nz, h, 0.035)
 	var m := k._pivot(parent, center)
 	k._add(m, _sheets[key], mat, col, Vector3.ZERO)
-	# the snap rail's aluminium edge showing under the flap's hem along each side
+	# The rail's aluminium edge, clamped along the top of each bed side over
+	# the cover's edge, frames the cover from above (under the hem, as it
+	# was, nothing of it showed, and the cover read as a mat laid edge to
+	# edge). The rails sold with soft covers are anodised black, a dark satin
+	# line against the vinyl: in bright steel they drew a hard white glint
+	# down each side of the bed from the battle camera.
 	for s: float in [-1.0, 1.0]:
-		k._add(m, _plate(Vector3(0.012, 0.012, size.y * 0.96)), "steel", Color(0.55, 0.56, 0.55), Vector3(s * (size.x * 0.5 - 0.004), -0.041, 0), Vector3.ZERO, Vector3.ONE, false)
+		k._add(m, _plate(Vector3(0.016, 0.016, size.y * 0.98)), "plain_dark", Color(0.035, 0.035, 0.037), Vector3(s * (size.x * 0.5 - 0.007), 0.014, 0), Vector3.ZERO, Vector3.ONE, false)
 	k._fold(m)

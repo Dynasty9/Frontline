@@ -490,6 +490,22 @@ there are three.
 
 Render them with `--building-kinds=bales`.
 
+## Utility poles
+
+The overhead line's poles (Decor `pole`) are `BuildingUtility.pole`. The wires Decor strings at 7.66 m still meet
+the cups of the three pin insulators.
+- **The pole** is tapered and creosoted timber, darker where it stands in the ground, under a weather cap. Its
+  crossarm sits on two galvanised braces.
+- **Fittings**: staggered steps start out of a child's reach, the number plate and the yellow danger plate are at
+  eye height, and a bare copper earth wire is stapled flat down the far side into the ground.
+- **With its transformer** (Decor `ex` 1), the pole carries a finned tank on a platform of channels, with bushings
+  on top, a fuse for each on the crossarm, and its cable clipped flat down the pole into the ground.
+- **What comes down a pole** is one plain wire a centimetre or so across, lying on the wood along an edge of it
+  (`on_pole`) and straight, as the pole's taper is, with no guard or conduit standing off it. The fixture keeps
+  everything below the plates within a couple of centimetres of the pole.
+
+Render them with `--building-kinds=poles`.
+
 ## At the kerb
 
 The pieces at the kerb are `BuildingKerbside`'s:
@@ -591,6 +607,7 @@ parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB, research post and HQ command post masts; FOB, bunker and HQ signals aerials; town dump, barracks, HQ, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, HQ yard, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingUtility.pole` | The overhead line's poles and pole transformers (Decor) |
 | `BuildingFactory.walls`, `chimney` | The factory (vehicle works) |
 | `BuildingPillbox.walls`, `roof`, `embrasure`, `door`, `weather` | The Coalition's concrete bunker |
 | `BuildingCargo.stack`, `shipping_crate`, `ammo_box`, `pallet_load`, `ammo_row` | Cover crate stacks, the town's supply dumps, the FOB's stores |

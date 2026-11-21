@@ -247,8 +247,7 @@ func _showcase(camera: Camera3D, caption: Label) -> void:
 				5: _frame_subject(camera, metal, car_basis * Vector3(5, 2, 3), 0.2)
 				6:
 					field.atmo.apply_mood("night")
-					field.atmo._flare_t = 999.0
-					field.atmo._spawn_flare(soil)
+					field.flares.add(1, soil + Vector3(0, 36, 0), field.time, 26.0, 0.0, -1)
 		if frame in [int(0.75 * capture_fps), int(4.5 * capture_fps), int(9.5 * capture_fps)]:
 			seed(712 + phase)
 			_emit_blast((fuel if phase == 2 else soil) + Vector3.UP * 0.1, [1.0, 1.4, 2.0][phase], ["frag", "he", "fuel"][phase])
@@ -265,8 +264,9 @@ func _showcase(camera: Camera3D, caption: Label) -> void:
 			var delay := field.fx.gunfx.round_flight(from, p, "mg", 0, distance)
 			field.fx.gunfx.impact([Fx.HIT_DIRT, Fx.HIT_STONE, Fx.HIT_METAL][phase - 3], p, (from - p).normalized(), 1.0, distance, delay)
 		if phase == 6:
-			field.atmo._flares_tick(1.0 / capture_fps)
-			var charge: Node3D = field.atmo._flares[0][0]
+			field.time += 1.0 / capture_fps
+			field.atmo._flares_tick()
+			var charge: Node3D = field.atmo._flare_views[1][5]
 			# Look down across the charge so the illuminated terrain stays in
 			# view behind the canopy and trail, instead of a plain black sky.
 			var offset := Vector3(9, 6, 13) if t >= 23.0 else Vector3(24, 18, 32)

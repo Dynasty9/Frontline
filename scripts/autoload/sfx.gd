@@ -117,6 +117,7 @@ func _recipes() -> Array:
 		["launch", _whoosh],
 		["thud", _thud],
 		["click", _click],
+		["squelch", _squelch],
 		["objective", _chime.bind([660.0, 880.0])],
 		["objective_done", _chime.bind([660.0, 880.0, 1320.0])],
 		["objective_failed", _chime.bind([520.0, 390.0])],
@@ -739,6 +740,27 @@ func _click(rng: RandomNumberGenerator) -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / RATE
 		s[i] = sin(TAU * 1600.0 * t) * exp(-t * 120.0) * 0.5
+	return _wav(s)
+
+
+## A radio keying up: a key click, a breath of band-limited hiss with the
+## carrier's whine under it, and the hiss cut off - how a transmission opens
+## on the command net.
+func _squelch(rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n := int(0.16 * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var hp := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var noise := rng.randf() * 2.0 - 1.0
+		lp += (noise - lp) * 0.35  # take the top off
+		var band := lp - hp
+		hp += (lp - hp) * 0.06  # and the bottom
+		var env := minf(1.0, t * 400.0) * (1.0 - smoothstep(0.1, 0.16, t))
+		var click := sin(TAU * 2400.0 * t) * exp(-t * 260.0) * 0.45
+		s[i] = band * env * 0.55 + sin(TAU * 1150.0 * t) * env * 0.05 + click
 	return _wav(s)
 
 

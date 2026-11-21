@@ -72,6 +72,17 @@ scenarioTests([
     },
   },
   {
+    scenario: "flares",
+    seed: 1,
+    secs: 45,
+    does: "a night attack: the commander puts star shells up over it, and the attackers are seen in their light",
+    check: async (f) => {
+      f.atLeast("ai_illum", 1, "the commander called for illumination");
+      f.atLeast("flare_burst", 1, "a star shell burst over the field");
+      f.atLeast("seen_by_flare", 1, "and picked attackers out of the dark");
+    },
+  },
+  {
     scenario: "cache",
     seed: 1,
     secs: 20,

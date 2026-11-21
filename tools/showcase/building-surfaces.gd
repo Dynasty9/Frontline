@@ -330,6 +330,23 @@ func _subject(kind: String) -> Node3D:
 					bp.call("spring_rider", pk.at_point(Vector3(-0.1, 0, 3.3), Vector3(0, PI * 0.5, 0)), 1, pr)
 					bp.call("spring_rider", pk.at_point(Vector3(5.8, 0, -0.4), Vector3(0, PI * 0.5, 0)), 2, pr)
 			return play
+		"poles":
+			# the overhead line along a verge: a plain pole, one carrying the
+			# street's transformer, another plain, the wires strung between
+			var line := Node3D.new()
+			var lr := RandomNumberGenerator.new()
+			lr.seed = 5
+			var lk := BuildingKit.nodes(line, lr)
+			if ResourceLoader.exists("res://scripts/game/building_utility.gd"):
+				var utility: Variant = load("res://scripts/game/building_utility.gd")
+				for i in 3:
+					utility.call("pole", lk.at_point(Vector3(-9.0 + i * 9.0, 0, 0)), i == 1, lr)
+			for i in 2:
+				for z: float in [-0.8, 0.0, 0.8]:
+					var pts := BuildingWire.catenary(Vector3(-9.0 + i * 9.0, 7.66, z), Vector3(i * 9.0, 7.66, z), 0.31, 12)
+					for j in range(1, pts.size()):
+						lk.rod(pts[j - 1], pts[j], 0.008, "metal_dark", Color(0.1, 0.1, 0.1))
+			return line
 		"shop_rooms":
 			# two shops with their roofs off, as when men are inside (as they
 			# were before, where shops had no fitting out of their own: a
