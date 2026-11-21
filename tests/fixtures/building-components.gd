@@ -670,6 +670,12 @@ func _ready() -> void:
 	check(ruined_floor.get_child_count() > plain_floor.get_child_count(), "a ruin's floor has its fallen roof on it")
 	ruined_floor.free()
 	plain_floor.free()
+	# A street bollard keeps to its collar's round and stands below the knee.
+	var bok := kit()
+	BuildingFittings.bollard(bok, Vector3.ZERO)
+	var bob := _bounds(bok.sink.root, Transform3D.IDENTITY)
+	check(bob.position.y >= -0.01 and bob.end.y <= 0.95 and bob.size.x <= 0.28 and bob.size.z <= 0.28, "a bollard keeps to its collar (%s)" % bob)
+	bok.sink.root.free()
 	# Utility poles: a pole (with or without its transformer) keeps to its
 	# crossarm's span and under its cap, and an insulator stands at every
 	# point the line's wires are strung to (Decor ties them at 7.66 m). What

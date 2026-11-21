@@ -253,7 +253,21 @@ Use `environment-motion.gd` for a reproducible, current-PR camera demonstration.
 It records two four-second views for `stones`, `shore` and `town`, or three views
 for `environment`. The simulation is held at two seconds; camera, wind and water
 remain animated. This is not a combat demonstration or a performance benchmark.
-The normal camera clearance remains active. Inspect each view before publishing.
+Normal views retain camera clearance; the bollard contact inspection is the
+exception described below. Inspect each view before publishing.
+
+For bounded captures, `--motion-frames=N`, `--motion-fps=N` and
+`--motion-warmup=N` control each view; match `--fixed-fps` to the motion FPS.
+`--motion-defer-draw` finishes scenery preparation before enabling rendering.
+Each view saves a checkpoint and its camera transforms; `--motion-only-view=N`
+selects one view. Set `FL_CAPTURE_REF` to the rendering commit and keep each
+revision's output directory separate. Match the recorded transforms, seed,
+exposure and lighting before making a before/after clip.
+
+`--motion-stage=bollards` uses the town-square command camera, then inspects the
+nearest generated bollard's contact with the paving. Only that close inspection
+bypasses the command camera's minimum height, within this capture script;
+gameplay camera settings and post placement are unchanged.
 
 For bounded captures, `--motion-frames=N`, `--motion-fps=N` and
 `--motion-warmup=N` control each view; match `--fixed-fps` to the motion FPS.

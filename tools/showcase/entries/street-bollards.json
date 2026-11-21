@@ -1,0 +1,35 @@
+{
+  "entry": "changelog/unreleased/street-bollards.md",
+  "summary": "The bollards where the square meets its streets are now cast iron, with a collar, a raised band, a white band that catches headlights, and a domed cap.",
+  "medium": "motion",
+  "stage": "tools/showcase/building-surfaces.tscn (bollards; main's cylinder for the before)",
+  "rationale": "Appearance change of a small street piece: one matched studio still before and after. Previous PR head versus the collar contact fix, in the same seed-3 square: command-camera context followed by close inspection. The decorative collar now remains visible above the paving. Matched Low settings, camera and lighting; native Forward+ software rendering with simulation held. The close inspection camera is capture-only.",
+  "source_ref": "4e1fab114ec0f0fbdab3ff4c59e9f77f69919263",
+  "before_ref": "afe46c41d126ef9d6f41d19e3cf1a7edb22206cc",
+  "sources": [
+    {
+      "file": "changelog/unreleased/street-bollards/comparison.jpg",
+      "sha256": "0a01690efdc3fddc8ad39010c270ed80f68c6c3f1638607db4921556fb824ca3"
+    },
+    {
+      "file": "changelog/unreleased/street-bollards/bollard-contact.webm",
+      "sha256": "7a387a564ff06ea2326f58f178755a5880391880e47e55b402e0fd660dd63e5c"
+    },
+    {
+      "file": "changelog/unreleased/street-bollards/bollard-contact.jpg",
+      "sha256": "fa57b3f7fa25fca381ed91f5db1fe14bac77f20673cdc3cd0f8a9a35371edc09"
+    },
+    {
+      "file": "changelog/unreleased/street-bollards/motion-capture.json",
+      "sha256": "5c3d43b5e2bde8018c6a1920bbeae75e04bfac7f1e307fba5dadb680142469db"
+    }
+  ],
+  "output": null,
+  "motion_review": {
+    "before_ref": "60160aad770fd7c1f9188f8d3382d9e312329148",
+    "source_ref": "9f63354f65f99a6896d2b20922a2a6def2bdce6b",
+    "harness_sha256": "9be5796450f71de3cdc713ccbafe5abb2b04a82551b83691121e344a30ac8686",
+    "stage": "tools/showcase/environment-motion.gd --motion-stage=bollards",
+    "capture": "changelog/unreleased/street-bollards/motion-capture.json"
+  }
+}

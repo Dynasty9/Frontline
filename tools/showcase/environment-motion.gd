@@ -36,6 +36,19 @@ func capture() -> void:
 		world.director.active = false
 	var views := []
 	match mode:
+		"bollards":
+			var close := Vector3(-1, 0, 12)
+			var nearest := INF
+			for entry: Array in world.decor:
+				if entry[0] != "bollard": continue
+				var distance: float = (entry[1] as Vector3).distance_squared_to(Vector3(-1,0,12))
+				if distance < nearest:
+					nearest = distance
+					close = entry[1]
+			assert(nearest < INF)
+			views = [["Town square camera: bollards at the paving edge", Vector3(-1,0,12), 10.0, -26.0, 2.6],
+				["Decorative collar contact with generated paving", close + Vector3.UP * 0.35, 3.0, -22.0, 2.6, true]]
+			print("MOTION_BOLLARD position=", close)
 		"utility":
 			var poles := []
 			var wires := []
@@ -114,7 +127,7 @@ func capture() -> void:
 		world.cam.pitch_deg = view[3]
 		world.cam.yaw = view[4]
 		world.cam.focus_pos = view[1]
-		world.cam._apply()
+		_place_camera(world, view, float(view[4]))
 		print("MOTION_PREPARE view=", index)
 		if defer_draw:
 			for prepare in 2: await process_frame
@@ -135,12 +148,12 @@ func capture() -> void:
 			# Gentle orbit returns to its start, leaving surfaces readable throughout.
 			world.cam.yaw = float(view[4]) + sin(phase * TAU) * orbit
 			world.cam.focus_pos = view[1]
-			world.cam._apply()
+			_place_camera(world, view, world.cam.yaw)
 			camera_frames.append(str(world.cam.cam.global_transform))
 			await process_frame
 			await RenderingServer.frame_post_draw
 			assert(root.get_texture().get_image().save_png(folder + "/%04d.png" % frame) == OK)
-		records.append({"label": view[0], "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "orbit_radians": orbit, "fov": world.cam.cam.fov, "seconds": float(frames) / fps, "frames": frames, "camera": str(world.cam.cam.global_transform), "simulation_time": world.time, "camera_frames": camera_frames})
+		records.append({"label": view[0], "focus": str(view[1]), "zoom": view[2], "pitch": view[3], "yaw": view[4], "inspection_camera": view.size() > 5 and view[5] is bool and view[5], "orbit_radians": orbit, "fov": world.cam.cam.fov, "seconds": float(frames) / fps, "frames": frames, "camera": str(world.cam.cam.global_transform), "simulation_time": world.time, "camera_frames": camera_frames})
 		print("MOTION_VIEW ", mode, " ", index)
 		FileAccess.open(output + "/views.json", FileAccess.WRITE).store_string(JSON.stringify(records, "\t"))
 		index += 1
@@ -148,3 +161,14 @@ func capture() -> void:
 	var file := FileAccess.open(output + "/capture.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(metadata, "\t"))
 	quit()
+
+
+## Close inspection bypasses the command camera's minimum height, in this
+## capture tool only; normal square views keep the game's camera constraints.
+func _place_camera(world, view: Array, yaw: float) -> void:
+	world.cam._apply()
+	if view.size() <= 5 or not view[5] is bool or not view[5]: return
+	var pitch := deg_to_rad(float(view[3]))
+	var focus: Vector3 = view[1]
+	world.cam.cam.global_position = focus + Vector3(sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch)) * float(view[2])
+	world.cam.cam.look_at(focus, Vector3.UP)

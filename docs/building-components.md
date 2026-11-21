@@ -580,6 +580,7 @@ parts in its bake. Render them with `--building-kinds=crates:-1:0,crates:-1:1`.
 | `BuildingFittings` plant | Flat roofs, barracks and research post (air conditioners, water tanks, dishes) |
 | `BuildingFittings.mast`, `whip`, `flagpole`, `lamp` | FOB, research post and HQ command post masts; FOB, bunker and HQ signals aerials; town dump, barracks, HQ, Coalition dock flagpoles; bridge and quay lamps |
 | `BuildingFittings.drum`, `crate`, `pallet` | FOB, HQ yard, town dumps, barracks, barricades, ammunition caches, the dock |
+| `BuildingFittings.bollard` | The cast-iron bollards where the town square meets its streets (Decor) |
 | `BuildingUtility.pole` | The overhead line's poles and pole transformers (Decor) |
 | `BuildingFactory.walls`, `chimney` | The factory (vehicle works) |
 | `BuildingPillbox.walls`, `roof`, `embrasure`, `door`, `weather` | The Coalition's concrete bunker |

@@ -588,7 +588,8 @@ func _make(h: Node3D, kind: String, ex) -> void:
 			# (BuildingStreet)
 			BuildingStreet.planter(BuildingKit.baked(_bake, rng, _at), rng)
 		"bollard":
-			_m(Res.cyl(0.08, 0.1, 0.85, 8), "metal_dark", Vector3(0, 0.42, 0), Color(0.2, 0.2, 0.2), Vector3.ZERO, false)
+			# a cast-iron bollard where the square meets the streets (BuildingFittings)
+			BuildingFittings.bollard(BuildingKit.baked(_bake, rng, _at), Vector3.ZERO)
 		"fountain":
 			# the square's fountain (BuildingStreet), its water drawn on its own
 			BuildingStreet.fountain(BuildingKit.baked(_bake, rng, _at))
