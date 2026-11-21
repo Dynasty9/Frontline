@@ -1,0 +1,84 @@
+diff --git a/tools/showcase/building-surfaces.gd b/tools/showcase/building-surfaces.gd
+index 04926c6..4a0e1cd 100644
+--- a/tools/showcase/building-surfaces.gd
++++ b/tools/showcase/building-surfaces.gd
+@@ -18,6 +18,10 @@ const COMPONENTS := ["wall_plaster", "wall_brick", "wall_stone", "wall_timber",
+ 	"dish", "mast", "drum", "crate", "pallet", "wire_cable", "wire_barbed", "wire_topping", "fence_picket", "fence_post_rail",
+ 	"fence_railings", "fence_close_board", "fence_paling", "fence_chain_link", "fence_bow_top", "fence_security", "fence_panels", "fence_improvised"]
+ 
++var orbit := false
++var orbit_sample := false
++var orbit_label := "DECORATIVE SURFACE"
++
+ var output := "/tmp/building-surfaces"
+ var kinds: Array[String] = []
+ var single := false
+@@ -41,6 +45,12 @@ func _ready() -> void:
+ 			output = arg.trim_prefix("--building-out=")
+ 		elif arg.begins_with("--building-kinds="):
+ 			kinds.assign(arg.trim_prefix("--building-kinds=").split(","))
++		elif arg == "--building-orbit":
++			orbit = true
++		elif arg == "--building-orbit-sample":
++			orbit_sample = true
++		elif arg.begins_with("--building-orbit-label="):
++			orbit_label = arg.trim_prefix("--building-orbit-label=")
+ 		elif arg == "--building-single":
+ 			single = true
+ 		elif arg == "--building-rear":
+@@ -54,12 +64,16 @@ func _ready() -> void:
+ 			var earlier = JSON.parse_string(FileAccess.get_file_as_string(arg.trim_prefix("--building-match=")))
+ 			if earlier is Dictionary:
+ 				framing = earlier.get("cameras", {})
++	if orbit:
++		single = true
++		view_direction = Vector3(1.0, 1.15, -1.35)
+ 	if kinds.is_empty():
+ 		kinds.assign(COMPONENTS if components else SUBJECTS)
+ 	RenderingServer.global_shader_parameter_set("window_glow", 1.0 if night else 0.0)
+ 	DirAccess.make_dir_recursive_absolute(output)
+ 	var manifest := {"renderer": RenderingServer.get_current_rendering_method(), "subjects": kinds, "single": single,
+-		"components": components, "view_direction": str(view_direction)}
++		"components": components, "view_direction": str(view_direction), "night": night,
++		"orbit": orbit, "orbit_sample": orbit_sample, "orbit_span": [-0.18, 0.18], "orbit_label": orbit_label}
+ 	FileAccess.open(output.path_join("capture.json"), FileAccess.WRITE).store_string(JSON.stringify(manifest, "\t"))
+ 	var per_page := 1 if single else (6 if components else 6)
+ 	for start in range(0, kinds.size(), per_page):
+@@ -70,6 +84,8 @@ func _ready() -> void:
+ 		add_child(grid)
+ 		for i in range(start, mini(start + per_page, kinds.size())):
+ 			_cell(grid, kinds[i], Vector2i(1600, 900) if single else Vector2i(533, 450))
++		if orbit:
++			await _capture_orbit(grid, kinds[start])
+ 		for frame in 6:
+ 			await get_tree().process_frame
+ 		await RenderingServer.frame_post_draw
+@@ -523,3 +539,28 @@ func _bounds(node: Node3D, parent: Transform3D) -> AABB:
+ 			if cb.size != Vector3.ZERO:
+ 				box = cb if box.size == Vector3.ZERO else box.merge(cb)
+ 	return box
++
++
++## Matched decorative-surface review: move only the studio camera, keeping
++## production meshes/materials and daylight fixed. Encode the 60 frames at 15 fps.
++func _capture_orbit(grid: GridContainer, kind: String) -> void:
++	var camera := grid.find_children("*", "Camera3D", true, false)[0] as Camera3D
++	var label := grid.find_children("*", "Label", true, false)[0] as Label
++	label.text = orbit_label
++	label.add_theme_font_size_override("font_size", 30)
++	label.add_theme_color_override("font_shadow_color", Color.BLACK)
++	label.add_theme_constant_override("shadow_offset_x", 2)
++	label.add_theme_constant_override("shadow_offset_y", 2)
++	var m: Array = cameras[kind]
++	var center := Vector3(float(m[0]), float(m[1]), float(m[2]))
++	var eye := camera.position - center
++	var count := 3 if orbit_sample else 60
++	for i in count:
++		var angle := lerpf(-0.18, 0.18, float(i) / float(count - 1))
++		camera.position = center + eye.rotated(Vector3.UP, angle)
++		camera.look_at(center)
++		for warmup in (24 if i == 0 else 1):
++			await get_tree().process_frame
++		await RenderingServer.frame_post_draw
++		get_viewport().get_texture().get_image().save_png(output.path_join("orbit-%04d.png" % i))
++	print("SURFACE_ORBIT frames=%d renderer=%s drawn=%d" % [count, RenderingServer.get_current_rendering_method(), Engine.get_frames_drawn()])
