@@ -257,6 +257,36 @@ a splinter of timber, glass), thickest by the wall and thinning out over a metre
 comes with the wall's rebuild when the house goes dark. Under a shot-out window lies its glass
 (`BuildingWeathering.shards`). Both draw from a stream of their own.
 
+## Ruins
+
+A ruined house's walls break off along their tops. A wall knows it's a ruin's when it's dark and stands on a
+ruin's floor (with no world, a dark wall). Its body stands whole to `Structure.RUIN_CUT` (2 m), drawn
+square-edged, its inside lining stopped there; each of its parts that stood higher is noted with the colour it was
+drawn in (`_crown_parts`), and its broken crown is that part's own masonry carried on up in the same surface and
+colour, so the break reads as the same wall and not as lumps laid on it.
+
+`_ruin_profile` works out the break: columns a half brick wide (a stone's length, a board's width) between the
+parts' and openings' edges, each standing to one of the wall's bed joints (`_ruin_courses`: brick every fourteenth
+of a metre and stone at its three course heights, where the surface lays them out in the world, so a course breaks
+off whole along its joint). Knots along the wall say roughly how high it stands: highest at the ends (the piers and
+corners hold best), lowest over an opening (its masonry goes first once the lintel's burned), lower all along a bay
+that took a blast. Then the columns rack back: none stands more than two courses above its neighbour, nor alone more
+than one above both, and here and there a brick or a stone is knocked out. It never breaks lower than `RUIN_LOW`
+(2.25 m, over the cupboards, clocks and lamps that hang or stand on it) or an opening's head, and a shop's front
+stands whole under its fascia.
+
+`_ruin_crown` builds it. Under render the break is the brick the render was laid on, set in by the render's
+thickness; the render outside and the room's plaster inside have spalled back from the break in ragged patches,
+each its own width, wandering lower and higher along the wall. Boards carry their laps up and are charred at their
+ends. A broken brick or stone lies loose on a step here and there, more lie flat at the wall's foot on either side
+(a slab of render among them, none in a doorway), and where the wall still stands to the eaves a joist that bore on
+it is a charred stub in its pocket with soot up the plaster under it: the fire was in the roof, so that's where the
+scorch is. Nothing hangs on a ruin's face above where it may break (no air conditioner up on it, no dish, no hood
+over the door), and the war's marks keep to its body. The wall's parts, its cover, stay whole: all of the crown is
+above a standing man's eyes. Render a rendered, a brick and a stone one with
+`--building-kinds=house_ruin_plaster,house_ruin_brick,house_ruin`; the town views `ruin` and `ruin-command` show one
+in the world.
+
 ## Barns
 
 A farmstead's barn is built as a house but weatherboarded: `BuildingMaterials.HOUSE` ends in `timber`, and

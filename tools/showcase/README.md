@@ -30,6 +30,7 @@ lead artifact; original notes and supporting media remain under **Explore this c
 | Ground damage and blast timing | Immediate flash, lighter dust and actual crater aftermath | `blast-ground`: two six-second HE shots, open ground and stone cover, fixed 24 Hz |
 | Text | Reliability, compatibility, unrecorded sound or unmeasured performance | Short player outcome and original detail |
 | Vehicle surfaces | Fixed-light roster sheets, close-ups and material swatches | `vehicle-surfaces.tscn`; `--surface-out`, `--surface-kinds`, `--surface-team`, `--surface-single`, `--surface-swatches`, `--surface-offset` |
+| Ruined room finish | Default 55 m / 48° command-camera scale and a matched native-model room-side orbit; fixed studio light | `ruin-room-motion.tscn`; `--review-out=DIR`, `--review-label=BEFORE_OR_AFTER`, `--review-sample` (two stills), `--review-command-only` (15 command-scale frames) |
 | Building surfaces | Fixed-light building sheets, close-ups and the shared construction parts; matched before/after framing | `building-surfaces.tscn`; `--building-out`, `--building-kinds` (subjects, `kind:side[:variant]`), `--building-single`, `--building-rear`, `--building-night`, `--building-components`, `--building-match=capture.json`, `--offscreen` |
 
 The website uses the main site’s Signal tokens and shadcn/Radix components.
@@ -333,3 +334,9 @@ frames; the current harness prevents that extra callback. Current mainline
 harness controls also retain the newer zoom/probe options. These historical
 clips isolate the surface-history fix and do not validate later renderer edits.
 Do not grade the comparison or use software capture time as GPU performance.
+
+The ruin-room motion fixture also accepts `--review-intact` for an unchanged
+intact-house comparison, and `--review-geometry-only` to write sorted transformed
+triangle fingerprints for the ruined and intact subjects without drawing.
+Set `FL_CAPTURE_REF` to record the material revision; `motion.json` records every
+camera transform. Keep the same fixture on both checkouts for edge comparisons.

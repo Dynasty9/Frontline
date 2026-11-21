@@ -1,0 +1,54 @@
+{
+  "entry": "changelog/unreleased/ruin-walls.md",
+  "summary": "A ruined house's walls broken off along their tops in their own brick or stone, the render spalled back off the brick.",
+  "medium": "motion",
+  "stage": "tools/showcase/building-surfaces.tscn (house_ruin_plaster, house_ruin_brick, house_ruin, wide and close); tests/fixtures/environment-views.gd (town: ruin, ruin-command); tools/showcase/ruin-room-motion.tscn",
+  "rationale": "Appearance change: matched before/after studio ruins in render, brick and stone and a ruin in the town on the same seed, then the break close up in each material and from the command camera, where it has to read as the wall's own top. The additional matched native-model orbit isolates interior plaster coverage; existing town and masonry stills are preserved. The wide segment uses the game's default 55 m perspective camera, 48\u00b0 field of view and zoom-dependent pitch; the fine plaster detail is clearest in the close orbit. Supplemental owner-review footage compares uneven material edges below the exposed top courses and at the patch beneath the window, retaining previous evidence.",
+  "source_ref": "60855f918e3557d69322cddcbaca7cc280e8f858",
+  "before_ref": "4060ca89d5ed44c692992a23343300c2abdbceb2",
+  "sources": [
+    {
+      "file": "changelog/unreleased/ruin-walls/comparison.jpg",
+      "sha256": "462361c658e6d02dc9de3c2fbe7e537dc7ef077bc846d8196264dc4a7e4cdc6d"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/close-up.jpg",
+      "sha256": "bac68b963079111d2b4fa8d2acc69b214cac55ed9104c3aec869dc28cc296cb2"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/capture.json",
+      "sha256": "fd10efde65c9ec9d83c9493de2e860274e6844968835b0e17fa6f3b5aa8b1e0d"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/interior-plaster.webm",
+      "sha256": "65b6c881fc49e2717de7126b0bc1aaba8b70e9ec67a6090f7992a785cd95946c"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/interior-plaster.jpg",
+      "sha256": "4a3c9b2b896257fad5d0cffc85ba7ea81363624b35c673f2625ac16bff46ea31"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/interior-motion-capture.json",
+      "sha256": "b9be57146cb94427fd39691c1ebc397f310055436d9fbb06b49cd0e59ff31343"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/plaster-edge-review.webm",
+      "sha256": "7c1529f7d95502302d0d66c2b944ad050091b5598dd1cdf1c5a21503f4ba28f7"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/plaster-edge-review.jpg",
+      "sha256": "524180737b7b7bd694dc9101b27b190b939fd8f09f44f1b1dd52e58a161656c5"
+    },
+    {
+      "file": "changelog/unreleased/ruin-walls/edge-motion-capture.json",
+      "sha256": "ecebccd26b219bc2420f029c191a8ab8d59401dd73a4f94f1d7dff84fe07f528"
+    }
+  ],
+  "output": null,
+  "motion_before_ref": "d4c7864110563b525cafa4785c80c413e4b8cd32",
+  "edge_review": {
+    "before_ref": "e45a726045e7e863b437de2d997668c01b19f72b",
+    "source_ref": "72be765cabbbd452e59e90032096645bc5ffc818",
+    "capture": "changelog/unreleased/ruin-walls/edge-motion-capture.json"
+  }
+}

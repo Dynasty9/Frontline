@@ -832,7 +832,9 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   lanterns (a gleam at night, a glimmer on a dark day); a ruin's lamps are out, and so are a house's once it's
   shelled, loses a wall or its roof catches fire. Weeds grow at the foot of walls and ivy up some of
   them (most often on old stone), and a ruin's floor carries its fallen roof: soot, charred rafters, broken
-  tiles, plaster and glass; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
+  tiles, plaster and glass. A ruin's walls are broken off along their tops, course by course in their own brick
+  or stone (the render spalled back off the brick under it), standing highest at the corners and lowest over the
+  windows, with charred joist stubs where they still reach the eaves and broken bricks at their foot; where a wall has come down, a heap of broken masonry with brick lumps, plaster slabs,
   a charred joist and bent rods sticking out. A ruined or shelled house has debris spilled at the foot of its walls, and glass lies
   under shot-out windows. The war shows on the walls: bullet strikes, the odd shell hit blown through the render
   to the brick, soot over a window or door where a fire was, rain streaks under the sills, and windows taped,

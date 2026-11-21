@@ -1,0 +1,60 @@
+{
+  "before_ref": "d4c7864110563b525cafa4785c80c413e4b8cd32",
+  "after": "Game/material source 7b70328cd7fdf9bb95629fd1102e1c5b9bc3fb39; corrected camera fixture identified by source hash",
+  "source_sha256": {
+    "scripts/game/mats.gd": "35d906de3eebb93feacbd9836f53ea601ad31edddeaa34aef29f92698020d72a",
+    "scripts/game/building_furnishings.gd": "8ed0072557a7c59728182111f5b1d9bd534d69bdc08c147a60e70e07b1ed8378",
+    "scripts/game/structure.gd": "b92fa521616a9e7ffe6ea6911f25113a51c4ef957f545350702f2e0408ca34ca",
+    "tools/showcase/ruin-room-motion.gd": "d91d45fd4fd926ea8b269b79c7db8ad66de71d342c18e2f343f3fb786e695e59"
+  },
+  "engine": "Godot 4.7.2 stable ed1daf0bf",
+  "renderer": "gl_compatibility",
+  "device": "Mesa llvmpipe software",
+  "stage": "tools/showcase/ruin-room-motion.tscn",
+  "subject": "house_ruin_plaster; native procedural model in fixed studio light",
+  "fps": 15,
+  "duration_seconds": 8,
+  "edit": "4 seconds before then 4 seconds after; each has 1 second at the default command-camera scale (new native captures), then 3 seconds of the unchanged room-side orbit from the original native takes. Same model, light and camera settings for both revisions.",
+  "resolution": "1600x900 native frames, encoded 1280x720",
+  "audio": "silent",
+  "command": "godot --path CHECKOUT --audio-driver Dummy --rendering-method gl_compatibility --resolution 1600x900 --fixed-fps 15 tools/showcase/ruin-room-motion.tscn -- --review-out=OUTPUT --review-label=BEFORE_OR_AFTER",
+  "geometry_check": {
+    "method": "Sorted transformed triangles rounded to five decimals; before and after match",
+    "house_ruin_plaster": {
+      "triangles": 28492,
+      "sha256": "b5cb3f7f66a53301273e1476ebadbef722f555871a062093f644d91400dfc48d"
+    },
+    "house_pitched": {
+      "triangles": 23878,
+      "sha256": "6a691aa843636aaa71c3d1da1d4b1c7d773c2e67171ce69f32f56c561d65eb05"
+    }
+  },
+  "limitations": [
+    "Native model studio, not gameplay footage. Existing town stills retain generated-world context.",
+    "Software capture is not hardware GPU or performance validation."
+  ],
+  "command_camera": {
+    "projection": "perspective",
+    "distance_m": 55,
+    "vertical_fov_degrees": 48,
+    "pitch": "RtsCamera.pitch_for(55.0, 0.0)",
+    "focus": [
+      0,
+      0,
+      0
+    ],
+    "view_yaw": "atan2(0.5, -1.35)"
+  },
+  "close_camera": {
+    "projection": "orthographic",
+    "size": 5.3,
+    "focus": [
+      0,
+      1.5,
+      3.4
+    ],
+    "distance": 43.6671,
+    "path": "Vector3(0.5,1,-1.35) rotated -0.1 to +0.1 radians over 45 frames"
+  },
+  "retained_close_take_fixture_ref": "7b70328cd7fdf9bb95629fd1102e1c5b9bc3fb39"
+}

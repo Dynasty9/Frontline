@@ -470,6 +470,11 @@ func _subject(kind: String) -> Node3D:
 		"house_ruin":
 			# a house that burned and fell in: no roof, the odd wall down
 			return _house(9.0, 7.6, 4, false, false, true)
+		"house_ruin_plaster":
+			# (the same, rendered: its broken tops the brick under the render)
+			return _house(9.0, 7.6, 3, false, false, true)
+		"house_ruin_brick":
+			return _house(9.0, 7.6, 2, false, false, true)
 		"house_stone":
 			return _house(8.6, 7.4, 4, true)
 		"house_window":
