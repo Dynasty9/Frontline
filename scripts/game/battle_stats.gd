@@ -268,6 +268,10 @@ func vehicle_destroyed(v: Vehicle) -> void:
 		u.t1 = world.time
 		u.alive = 0
 	_event(v.team, "veh", "%s %s lost" % [Defs.TEAM_NAMES[v.team], v.display_name()])
+	if not v.is_auto() and v.base() != "supply":
+		var vn := v.display_name().to_upper()
+		world.send_moment(1 - v.team, "gain", "Enemy %s destroyed" % vn, v.position)
+		world.send_moment(v.team, "loss", "%s lost" % vn, v.position)
 	var w: Array = v.hit_by
 	if w.is_empty():
 		return
@@ -297,6 +301,8 @@ func building_destroyed(st: Structure) -> void:
 	add(st.owner_peer, st.team, "val_lost", val)
 	if st.skind == "fob":
 		_event(st.team, "fob", "FOB %s wrecked" % st.sname)
+		world.send_moment(1 - st.team, "gain", "Enemy FOB %s wrecked" % st.sname, st.position)
+		world.send_moment(st.team, "loss", "FOB %s wrecked" % st.sname, st.position)
 	var w: Array = st.hit_by
 	if w.is_empty():
 		return
@@ -313,11 +319,17 @@ func built(st: Structure) -> void:
 func fob_captured(f: Structure, new_team: int) -> void:
 	add(_taker(f.position, Defs.FOB_RADIUS, new_team), new_team, "captures")
 	_event(new_team, "fob", "%s captured FOB %s" % [Defs.TEAM_NAMES[new_team], f.sname])
+	world.send_moment(new_team, "gain", "FOB %s captured" % f.sname, f.position)
+	if f.team >= 0 and f.team != new_team:
+		world.send_moment(f.team, "loss", "FOB %s lost" % f.sname, f.position)
 
 
 func town_captured(tn: Structure, new_team: int) -> void:
 	add(_taker(tn.zone_c, tn.zone_r, new_team), new_team, "towns")
 	_event(new_team, "town", "%s took %s" % [Defs.TEAM_NAMES[new_team], tn.sname])
+	world.send_moment(new_team, "gain", "%s taken" % tn.sname, tn.zone_c)
+	if tn.team >= 0 and tn.team != new_team:
+		world.send_moment(tn.team, "loss", "%s lost" % tn.sname, tn.zone_c)
 
 
 ## The men standing on it took it: the credit goes to whoever commands most of them.
@@ -366,6 +378,20 @@ func squad_gone(sq: Squad) -> void:
 	if not u.is_empty():
 		u.t1 = world.time
 		u.alive = 0
+		# every man of a proper squad killed (not a crew of two, nor men who went
+		# off to other squads): a moment for both sides
+		if int(u.men) >= 3 and int(u.lost) >= int(u.men) and sq.last_pos != Vector3.INF:
+			world.stat("squad_wiped")
+			var kind := sq.display_name().to_upper()
+			world.send_moment(1 - sq.team, "gain", "Enemy %s wiped out" % kind, sq.last_pos)
+			world.send_moment(sq.team, "loss", "%s · %s wiped out" % [Squad.callsign_of(sq.team, sq.sid).to_upper(), kind], sq.last_pos)
+
+
+## A side's score so far, for its status line: [men killed, men lost,
+## vehicles killed, vehicles lost].
+func tally(team: int) -> Array:
+	var sd: Dictionary = sides[team]
+	return [int(sd.kills), int(sd.lost), int(sd.veh_kills), int(sd.veh_lost)]
 
 
 func support_called(owner: int, team: int, kind: String) -> void:

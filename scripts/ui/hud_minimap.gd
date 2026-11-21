@@ -692,7 +692,19 @@ func _draw_pings(w: World) -> void:
 			continue
 		var pp := _pt(pg[0])
 		var r := 4.0 + fmod(now * 2.0, 1.0) * 6.0
-		_ink.draw_arc(pp, r, 0, TAU, 16, Color(0.5, 0.9, 1.0) if pg[2] == "intel" else Color(1, 0.5, 0.3), 1.5, true)
+		_ink.draw_arc(pp, r, 0, TAU, 16, _ping_col(String(pg[2])), 1.5, true)
+
+
+## A ping's colour: intel blue, good news green, a caution yellow, the rest warning red.
+static func _ping_col(kind: String) -> Color:
+	match kind:
+		"intel":
+			return Color(0.5, 0.9, 1.0)
+		"moment_gain":
+			return UiKit.GOOD
+		"warn":
+			return UiKit.WARN
+	return Color(1, 0.5, 0.3)
 
 
 ## The other commanders on our side: each one's view as a wedge in his colour

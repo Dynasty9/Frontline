@@ -7,6 +7,7 @@ extends Control
 var hud: Hud
 var need_h := 120.0
 var _rows: Array = []  # [Rect2, soldier eid] - click to command just him
+var _tips: Array = []  # [Rect2, text]: a man's cell, and what it says in full
 
 const NAME_Y := 18.0  # the name line's baseline
 const CODE_Y := 38.0  # the codes' baseline
@@ -26,10 +27,19 @@ func _gui_input(ev: InputEvent) -> void:
 				return
 
 
+## Hovering a man's cell says in full what its code says short.
+func _get_tooltip(at: Vector2) -> String:
+	for t in _tips:
+		if (t[0] as Rect2).has_point(at):
+			return String(t[1])
+	return ""
+
+
 func _draw() -> void:
 	var w := hud.world
 	var inp := w.input
 	_rows.clear()
+	_tips.clear()
 	if inp.sel_unit != 0:
 		var su: Soldier = w.entity(inp.sel_unit) as Soldier
 		if su:
@@ -214,6 +224,7 @@ func _man(c: Rect2, s: Soldier, common: String) -> void:
 	var dt := s.doing_text()
 	var code := role
 	var cc := UiKit.FAINT
+	var tip := "%s %s" % [String(s.udef.get("name", s.utype)), s.sname]
 	if dead:
 		code = "KIA"
 		cc = UiKit.BAD
@@ -221,15 +232,22 @@ func _man(c: Rect2, s: Soldier, common: String) -> void:
 		code = "DOWN"
 		cc = UiKit.BAD
 	elif dt != "" and dt != common:
-		code = role + " · " + dt.to_upper()
+		code = role + " · " + s.doing_code()
 		cc = Hud.CAT_COLORS.get(s.doing_cat(), UiKit.DIM)
+		tip += "\n" + dt
 	elif s.life == Soldier.Life.ALIVE and s.ammo_fraction() < 0.25:
 		code = role + " · LOW AMMO"
 		cc = UiKit.WARN
+	# a narrow cell: the activity alone, then cut with a mark (never mid-word unseen)
 	var maxw := c.size.x - 18.0
-	while code.length() > 3 and UiKit.mono_w(code, 11) > maxw:
-		code = code.substr(0, code.length() - 2)
+	if UiKit.mono_w(code, 11) > maxw and code.contains(" · "):
+		code = code.get_slice(" · ", 1)
+	if UiKit.mono_w(code, 11) > maxw:
+		while code.length() > 2 and UiKit.mono_w(code + "…", 11) > maxw:
+			code = code.substr(0, code.length() - 1)
+		code += "…"
 	UiKit.mono_at(self, Vector2(x, c.position.y + 29), code, 11, cc)
+	_tips.append([c, tip])
 
 
 ## A short code for a man's job.

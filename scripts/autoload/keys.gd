@@ -59,6 +59,7 @@ const ACTIONS := [
 	["cam_follow", "Follow the selection", "Camera", "cam", KEY_F | KEY_MASK_CTRL, NONE, "The camera keeps the selected units in view until you pan away."],
 	["jump_alert", "Jump to the latest alert or ping", "Camera", "cam", KEY_SPACE, NONE, ""],
 	["cycle_fob", "Cycle your bases", "Camera", "cam", KEY_HOME, NONE, ""],
+	["next_idle", "Next idle squad", "Camera", "cam", KEY_PERIOD, NONE, "Selects the next of your squads standing about with nothing to do, and goes there."],
 	["view_go_1", "Go to saved view 1", "Saved views", "cam", KEY_F5, NONE, ""],
 	["view_go_2", "Go to saved view 2", "Saved views", "cam", KEY_F6, NONE, ""],
 	["view_go_3", "Go to saved view 3", "Saved views", "cam", KEY_F7, NONE, ""],

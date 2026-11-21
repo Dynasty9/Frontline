@@ -1,0 +1,48 @@
+{
+  "entry": "changelog/unreleased/battle-feedback.md",
+  "summary": "Battle moments, a kill and loss tally, idle squads and under-fire alerts, a compact fire mission list, readable squad cards and unique names.",
+  "medium": "motion",
+  "stage": "game capture, 1920x1080 player view, off-screen window, --perf=0: --host --team=0 --seed=4 --select-first --timescale=6 --shot-at=25 --shot-every=215 --shots=3 (before on f302f20e, after on this branch); --scenario=roster --play --seed=1 --focus=-84,24 --zoom=60 --shot-at=8 --shot-every=3 (moments)",
+  "rationale": "A HUD layout change: matched before/after frames of the same battle at three times show the fire list, idle readout, tally and squad card; a busy tank fight shows moments as they land. A new matched gameplay recording demonstrates repeat ordering, updated grid/count/jump hint and reduced-motion entry; older stills remain historical evidence.",
+  "source_ref": "claude/battle-feedback",
+  "before_ref": "f302f20e",
+  "sources": [
+    {
+      "file": "changelog/unreleased/battle-feedback/before-after-timeline.jpg",
+      "sha256": "3c42ca185a6d29ad9cd45488317f5142204551423f4d9cb5fdd1816edaf04f5a"
+    },
+    {
+      "file": "changelog/unreleased/battle-feedback/moments-in-battle.jpg",
+      "sha256": "bfa0d583eba8c3ea3ac42c5efcc1082f759fcd6681dbd113f6cd79c5177f96f4"
+    },
+    {
+      "file": "changelog/unreleased/battle-feedback/fires-before-after.jpg",
+      "sha256": "ac3258caa971232dcf700b671dfc71d41c270c086c6a9a8108fc560f2761905c"
+    },
+    {
+      "file": "changelog/unreleased/battle-feedback/squad-card-before-after.jpg",
+      "sha256": "07a232547f9af6dbfd03f70552a1b5f2ddf39bf57a529e843651a8cb7addc6ef"
+    },
+    {
+      "file": "changelog/unreleased/battle-feedback/repeated-moments.webm",
+      "sha256": "ab9d3c97430fe1ad9446872ed9e92d4db0d682d84b362b5bf76b73d4aed861df"
+    },
+    {
+      "file": "changelog/unreleased/battle-feedback/repeated-moments.jpg",
+      "sha256": "54b562f33fce45faafe490b302ca01497a934716b089f688542463c2e3af96ac"
+    }
+  ],
+  "output": null,
+  "repeat_capture": {
+    "before_ref": "4b37649a2bb1117e0e301e938e1b9666754a00f9",
+    "after_ref": "6728e49c87bf8ee8e9858bb39d5837bc4dc04adb",
+    "fixture": "tests/fixtures/battle-feedback-clips.tscn",
+    "fixture_gd_sha256": "358473c6729d1e2f8200ae67ce944333f5ca5d94640440ba3f1ff5f6e15dd684",
+    "controls": "Same capture fixture copied into both revisions. Attack seed 3, map 1024 m, day, low preset, camera (0,0,-5), distance 90. Scripted real vehicle damage at 2.0/3.4/4.8 s; recording disabled for isolated fixture; input disabled. FL_REDUCED=0 for matched arms and 1 for reduced-motion arm.",
+    "engine": "Official Godot 4.7.2 ed1daf0bf, Linux Xvfb, Compatibility, Mesa llvmpipe; actual rendered movie frames, not runtime performance evidence.",
+    "command": "DISPLAY=:99 FL_REDUCED=0 GODOT --path . --rendering-method gl_compatibility --audio-driver Dummy --resolution 960x600 --fixed-fps 30 --write-movie CAPTURE.avi tests/fixtures/battle-feedback-clips.tscn (reduced: FL_REDUCED=1 and --quit-after 100)",
+    "frames": "Before and after: 271 frames each at fixed 30 Hz; reduced: 100 frames. Event logs report drawn counts 59/102/144; at the repeat before keeps TECHNICAL first, after moves HUMVEE first with position (22,0,-5) and count 2.",
+    "edit": "Native movie 1600x900; center crop 960x600 at (320,0), no time scaling. Before 1.5-7.0 s, after 1.5-7.0 s, reduced 1.5-3.3 s; bottom labels; silent VP9 WebM 12.8 s. Fade verified in consecutive frames around first event; reduced fully opaque immediately.",
+    "limits": "Controlled fixture encounter, not public multiplayer. Shows notice and jump-hint updates, not a camera jump. Software capture supports appearance/behavior only. Existing asset UID and exit ObjectDB warnings remain; no script errors in accepted captures."
+  }
+}
