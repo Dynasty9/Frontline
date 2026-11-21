@@ -27,7 +27,7 @@ static func transport(v: Vehicle) -> bool:
 
 static func dock_wanted(c, sup: int) -> bool:
 	var w: WaterMap = c.world.water
-	if w.coast.is_empty() or not c._my_structs("dock").is_empty() or c._my_structs("factory").is_empty():
+	if w.coast.is_empty() or not c._my_structs("dock").is_empty() or c._my_structs("factory").is_empty() or c._my_structs("research").is_empty():
 		return false
 	return c.world.time > 420.0 and sup > int(Defs.BUILDINGS.dock.cost) + 60 + c._fob_reserve()
 

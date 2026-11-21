@@ -1189,8 +1189,12 @@ av.gd`, `hnav.gd`, `terrain.gd`, `squad.gd`)
   - Infantry: Body Armor and Grenade Pouches, then Field Medicine and Optics, and for the Rebels FPV Warheads and
     Deep Tunnels after those.
   A step needs the one before it in its branch, and a side may run as many Research Posts as it can pay for, a
-  queue of four at each. The AI commander works through the infantry's kit and the land branch as they come due,
-  and the air and sea branches once it has a Helipad or a Dock to use them. The Factory and Helipad pages list long
+  queue of four at each. The AI commander builds its Research Post from minute five (before a Dock, and holding
+  the build queue for it once half its cost is in hand) and sets supply aside for the next step before the barracks
+  spend the rest: body armour first, then the land branch (carriers from minute six, each deeper step three minutes
+  later, air defence at once when enemy aircraft show up) with the rest of the kit between, the air branch once it
+  has a Helipad and the sea once it has a Dock (`CommanderAI._next_research`; `FL_DEBUG_AI_RESEARCH=1` prints its
+  choice). The Factory and Helipad pages list long
   rosters by category (Light, Armour, Fire support, Logistics, Air) with how many of each are unlocked, and a
   locked vehicle says which step it needs.
 - **What they do:** ATGMs at armour and bunkers, homing SAMs at anything flying; self-propelled guns and rocket

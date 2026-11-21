@@ -580,7 +580,7 @@ func _economy(sqs: Array) -> void:
 		plan.append(["factory", main, 14.0, 36.0])
 	elif team == Defs.REBELS and _count_near(front, "tunnel", 40.0) == 0 and _my_structs("tunnel").size() < fobs.size() + 1 and t > 120.0:
 		plan.append(["tunnel", front, 10.0, 30.0])
-	elif _my_structs("research").is_empty() and t > 330.0 and sup > 300:
+	elif _my_structs("research").is_empty() and t > 270.0:
 		plan.append(["research", main, 12.0, 34.0])
 	elif _my_structs("helipad").is_empty() and not _my_structs("factory").is_empty() and t > 450.0 and sup > 350:
 		plan.append(["helipad", main, 14.0, 36.0])
@@ -649,7 +649,14 @@ func _economy(sqs: Array) -> void:
 				return
 			continue
 		var def: Dictionary = Defs.BUILDINGS[p[0]]
-		if not team in def.teams or sup < int(def.cost) + 40 + _fob_reserve():
+		if not team in def.teams:
+			continue
+		if sup < int(def.cost) + 40 + _fob_reserve():
+			# a base building that's due, once its supply is half there,
+			# waits for the rest rather than watching it go on sandbags and
+			# wire a few rounds at a time
+			if p[0] in ["barracks", "factory", "research"] and sup * 2 >= int(def.cost):
+				return
 			continue
 		var anchor: Structure = p[1]
 		if anchor == null:
@@ -921,9 +928,31 @@ func _production(sqs: Array) -> void:
 	saving += _fob_reserve()
 	if factories.is_empty() and _my_structs("factory").is_empty() and world.time > 200.0:
 		saving += int(Defs.BUILDINGS.factory.cost)
+	elif _my_structs("research").is_empty() and world.time > 270.0:
+		saving += int(Defs.BUILDINGS.research.cost)  # (the doctrine tree before more of the same)
 	elif NavalAI.dock_wanted(self, 9999) and world.time > 600.0:
 		saving += int(Defs.BUILDINGS.dock.cost) / 2
 	var boat_save := NavalAI.saving(self)
+	# the next step of the doctrine tree, paid for before the barracks spend
+	# the rest: research is how the side grows into armour, aircraft and boats
+	var research_save := 0
+	var rs_idle: Structure = null
+	for rs in _my_structs("research", true):
+		if rs.queue.is_empty():
+			rs_idle = rs
+			break
+	var step := _next_research() if rs_idle != null else ""
+	if OS.has_environment("FL_DEBUG_AI_RESEARCH"):
+		print("AIRES t=%d team=%d post=%s step=%s sup=%d fobres=%d saving=%d" % [int(world.time), team, str(rs_idle != null), step, sup, _fob_reserve(), saving])
+	if step != "":
+		var cost := int(Defs.UPGRADES[step].cost)
+		# (cheap beside a FOB: it waits behind only half the FOB's saving)
+		if sup >= cost + _fob_reserve() / 2:
+			_cmd({"t": "research", "building": rs_idle.eid, "item": step})
+			sup -= cost
+		else:
+			research_save = cost
+	saving += research_save
 	if sqs.size() < 3:
 		saving = 0
 		room = 0
@@ -963,25 +992,43 @@ func _production(sqs: Array) -> void:
 		if want != "" and sup >= int(Defs.VEHICLES[want].cost) + 80 + saving:
 			_cmd({"t": "train", "building": hp.eid, "item": want})
 			sup -= int(Defs.VEHICLES[want].cost)
-	# the doctrine tree: the infantry's kit and the land branch as they come
-	# due; the air and the sea only once there is a Helipad or a Dock to use them
+
+
+
+## The step of the doctrine tree to research next ("" if none is due). A
+## commander's doctrine: body armour first, then the land branch - carriers,
+## tanks, and air defence the moment enemy aircraft turn up - with the rest of
+## the infantry's kit between; the air branch once there's a Helipad to fly
+## from, the sea once there's a Dock; the deeper steps as the battle goes on.
+func _next_research() -> String:
+	var r := world.rules
 	var has_pad := not _my_structs("helipad", true).is_empty()
 	var has_dock := not _my_structs("dock", true).is_empty()
-	for rs in _my_structs("research", true):
-		if not rs.queue.is_empty():
+	var air := _enemy_air()
+	var best := ""
+	var best_s := -INF
+	for k in Defs.UPGRADES:
+		if not r.can_research(team, k):
 			continue
-		for k in Defs.UPGRADES:
-			var u: Dictionary = Defs.UPGRADES[k]
-			if not r.can_research(team, k):
-				continue
-			var br := String(u.get("branch", "inf"))
-			if (br == "air" and not has_pad) or (br == "sea" and not has_dock):
-				continue
-			if u.has("tier") and world.time < 300.0 * float(u.tier) + (60.0 if br != "land" else 0.0):
-				continue
-			if sup > int(u.cost) + 200:
-				_cmd({"t": "research", "building": rs.eid, "item": k})
-				break
+		var u: Dictionary = Defs.UPGRADES[k]
+		var br := String(u.get("branch", "inf"))
+		var col := int(u.get("col", 0))
+		if (br == "air" and not has_pad) or (br == "sea" and not has_dock):
+			continue
+		# vehicle steps come due through the battle: the first ones from minute
+		# six, each step deeper three minutes after
+		if br != "inf" and world.time < 360.0 + 180.0 * col:
+			continue
+		var s: float = {"land": 8.0, "air": 6.5, "sea": 5.5, "inf": 5.0}.get(br, 5.0) - 1.5 * col
+		if k == "armor":
+			s += 4.0
+		if air and (k.ends_with("air_defence")):
+			s += 4.0
+		s -= int(u.cost) / 200.0  # (the cheaper of two alike first)
+		if s > best_s:
+			best_s = s
+			best = k
+	return best
 
 
 func _pick_squad(counts: Dictionary, eng_n: int, enemy_armor: int) -> String:

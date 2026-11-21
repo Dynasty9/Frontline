@@ -46,3 +46,5 @@ caption = "A squad answering its order on the command net"
   land, air, sea and the infantry's kit - from mechanised infantry to armour, air defence, artillery and robots,
   from army aviation to attack helicopters and drones, from riverine boats to a patrol ship. Every vehicle in the
   game is on it, and each locked vehicle says which step it needs. Click a lit step to research it.
+- **The AI commander climbs the tree too:** it builds its Research Post earlier and saves for the next step, so
+  its carriers, tanks, air defence, rocket lorries and boats now turn up in a long battle.
