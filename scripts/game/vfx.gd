@@ -1813,6 +1813,9 @@ varying float rnd;
 varying float soft_depth;
 varying vec3 lv;
 varying vec2 rcs;
+varying vec3 v_air;  // the battle's lights on this puff (AirLights)
+varying vec3 v_al;  // and where they come from (view space)
+#include "res://scripts/game/air_lights.gdshaderinc"
 
 void vertex() {
 	mat4 mw = mat4(normalize(INV_VIEW_MATRIX[0]), normalize(INV_VIEW_MATRIX[1]), normalize(INV_VIEW_MATRIX[2]), MODEL_MATRIX[3]);
@@ -1826,6 +1829,16 @@ void vertex() {
 	rcs = vec2(cos(ang), sin(ang));
 	rnd = fract(sin(float(INSTANCE_ID) * 12.9898 + seed * 78.233) * 43758.5453);
 	lv = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
+	v_air = vec3(0.0);
+	v_al = vec3(0.0, 0.0, 1.0);
+	int nl = int(air_light_info.x);
+	if (nl > 0) {
+		vec3 ad;
+		v_air = air_light(MODEL_MATRIX[3].xyz, nl, ad) * air_light_info.w;
+		vec3 av = mat3(VIEW_MATRIX) * ad;
+		float al = length(av);
+		v_al = al > 1e-5 ? av / al : vec3(0.0, 0.0, 1.0);
+	}
 }
 
 void fragment() {
@@ -1854,6 +1867,9 @@ void fragment() {
 	vec3 col = COLOR.rgb * albedo_tint * (sun_col * sun_energy * diff * occl + amb_col * amb_energy * (0.55 + 0.45 * n));
 	// The burning flare lights its freshest smoke, even under a dark sky.
 	col += COLOR.rgb * local_light * pow(1.0 - clamp(age, 0.0, 1.0), 1.5);
+	// a flash, a fire or a tracer close by (AirLights): lit from its side,
+	// the thick of it shading the far side
+	col += COLOR.rgb * albedo_tint * v_air * (clamp(dot(nv, v_al) * 0.6 + 0.4, 0.0, 1.0) * occl + 0.15);
 	float back = pow(clamp(-lv.z, 0.0, 1.0), 3.0) * (1.0 - shape) * shape * 2.0;
 	col += sun_col * sun_energy * back * 0.35 * COLOR.rgb;
 	float h = heat * pow(clamp(1.0 - age / max(heat_fade * (0.55 + 0.9 * rnd), 0.01), 0.0, 1.0), 1.4);

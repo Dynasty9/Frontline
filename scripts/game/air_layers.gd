@@ -69,6 +69,7 @@ var plumes: SmokePlumes  # the smoke hanging close up (volumetric fog only)
 var trails: DustTrails  # the dust vehicles raise close up (volumetric fog only)
 var curtains: RainCurtains  # under rain, the showers further off (both renderers)
 var headlights: Headlights  # after dark, the beams of the vehicles driving near the camera (not in the browser)
+var lights: AirLights  # the battle's lights in the smoke and the fog (both renderers)
 var volume: FogVolume
 var mat: ShaderMaterial
 var _mood := ""
@@ -94,6 +95,10 @@ var _flip_frame := -1
 ## FL_DEBUG_AIR_FLIP_GLOW: the flip leaves the layers on and turns only the
 ## fires' light on their smoke and the bursts' flash in the pall off and on.
 var _flip_glow := OS.has_environment("FL_DEBUG_AIR_FLIP_GLOW")
+## FL_DEBUG_AIR_FLIP_LIGHTS: the flip (and FL_DEBUG_AIR_AB's timing) turns
+## only the battle's lights in the smoke and the fog (AirLights) off and on.
+var _flip_lights := OS.has_environment("FL_DEBUG_AIR_FLIP_LIGHTS")
+var _lights_state := 1
 var _debug_k := float(OS.get_environment("FL_DEBUG_AIR")) if OS.has_environment("FL_DEBUG_AIR") else 1.0  # thicken it all, to see where it lies
 
 
@@ -105,6 +110,9 @@ func setup(a: Atmosphere) -> void:
 	curtains = RainCurtains.new()
 	add_child(curtains)
 	curtains.setup(world, atmo)
+	lights = AirLights.new()
+	add_child(lights)
+	lights.setup(world)
 	if not Vfx.gl:
 		_build_volume()
 		headlights = Headlights.new()
@@ -245,6 +253,7 @@ func _process(dt: float) -> void:
 			grid.dust_fresh = false
 			trails.feed(grid.vehicle_dust)
 		trails.tick(dt, volume != null and volume.visible)
+	lights.tick(dt, world.fx.gunfx.now if world.fx and world.fx.gunfx else 0.0)
 	curtains.level = atmo.by_mood(RAIN_CURTAINS, 0.0)
 	curtains.tick(dt)
 	if headlights:
@@ -259,14 +268,15 @@ func _ab(real_dt: float) -> void:
 	if _ab_skip > 0:
 		_ab_skip -= 1
 	else:
-		_ab_sum[_ab_state] += RenderingServer.viewport_get_measured_render_time_gpu(vp)
-		_ab_n[_ab_state] += 1
+		var st := _lights_state if _flip_lights else _ab_state
+		_ab_sum[st] += RenderingServer.viewport_get_measured_render_time_gpu(vp)
+		_ab_n[st] += 1
 	_ab_t += real_dt
 	if _ab_t < 2.0:
 		return
 	_ab_t = 0.0
 	_ab_skip = 6
-	_show(1 - _ab_state)
+	_show(1 - (_lights_state if _flip_lights else _ab_state))
 	_ab_switches += 1
 	if _ab_switches % 6 == 0 and _ab_n[0] > 0 and _ab_n[1] > 0:
 		print("AIR A/B gpu: off %.2f ms (%d frames), on %.2f ms (%d frames)" % [_ab_sum[0] / _ab_n[0], _ab_n[0], _ab_sum[1] / _ab_n[1], _ab_n[1]])
@@ -275,6 +285,10 @@ func _ab(real_dt: float) -> void:
 ## With (1) or without (0) everything this adds: the volume and plumes, the
 ## water's caustics, and (for the flip) the fog settings as they were before.
 func _show(state: int) -> void:
+	if _flip_lights and (_flip_frame >= 0 or _ab_on):
+		lights.on = state == 1
+		_lights_state = state
+		return
 	if _flip_glow and _flip_frame >= 0:
 		if plumes:
 			plumes.glow_k = float(state)
@@ -382,7 +396,7 @@ func apply_env(env: Environment) -> void:
 ## The --stats line: how much is in the air.
 func stats_text() -> String:
 	var t := grid.totals()
-	return "AIR mist=%.2f rain=%.2f dust=%.3f smoke=%.3f plumes=%d trails=%d" % [t.x, t.y, t.z, t.w, plumes.count() if plumes else 0, trails.count() if trails else 0]
+	return "AIR mist=%.2f rain=%.2f dust=%.3f smoke=%.3f plumes=%d trails=%d lights=%d/%d" % [t.x, t.y, t.z, t.w, plumes.count() if plumes else 0, trails.count() if trails else 0, lights.count, lights.fog_count]
 
 
 const AIR_SHADER := """
@@ -414,6 +428,7 @@ uniform vec3 dust_col : source_color = vec3(0.6, 0.5, 0.36);
 uniform vec3 rain_col : source_color = vec3(0.55);
 // CLOUD_SHADOW
 // TERRAIN_TEXTURE_HELPER
+#include "res://scripts/game/air_lights.gdshaderinc"
 
 void fog() {
 	vec3 p = WORLD_POSITION;
@@ -489,5 +504,12 @@ void fog() {
 	float mshare = mist / max(total, 1e-6);
 	ALBEDO = col * mix(1.0, shade, 0.75) * mix(1.0, 0.15, mshare);
 	EMISSION = mist_sky * mist;
+	// the tracers' streaks in this air (AirLights; the fog weighs a volume's
+	// emission by its density itself, so they show where the air is thick)
+	int nl = int(air_light_info.y);
+	if (nl > 0 && DENSITY > 1e-6) {
+		vec3 ld;
+		EMISSION += air_light(p, nl, ld) * air_light_glow(DENSITY);
+	}
 }
 """

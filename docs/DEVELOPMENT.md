@@ -313,6 +313,7 @@ Scenarios, AI-vs-AI battles and missions run offline: they take no port, so any 
                                                       in a row across the camera's focus (visual test, no damage); a slow
                                                       --shot-demo-every fires one volley at all of them; -cannon adds a tank
                                                       gun and a rocket launch
+  [--shot-demo-range=90]                              fire from that far back (tracers' streaks in the night air)
 --cursor=0.5,0.4 --order-mode=defend --select-all     fake the mouse position / order mode (cover preview shots)
   --place=trench [--place-from=X,Z]                   with --cursor: show the placement ghost (or a dragged line)
 --scenario=... --play                                 command the Coalition side of a scenario instead of watching

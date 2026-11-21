@@ -138,3 +138,11 @@ window_glow={
 "type": "float",
 "value": 0.0
 }
+air_lights={
+"type": "sampler2D",
+"value": ""
+}
+air_light_info={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

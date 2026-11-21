@@ -19,6 +19,9 @@ varying float soft_depth;
 varying vec3 light_local;
 varying vec3 sky_positive;
 varying vec3 sky_negative;
+varying vec3 v_air;  // the battle's lights on this puff (AirLights)
+varying vec3 v_al;  // and where they come from, in the puff's own frame
+#include "res://scripts/game/air_lights.gdshaderinc"
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 #define NDC_Z(d) ((d) * 2.0 - 1.0)
 #else
@@ -54,6 +57,17 @@ void vertex() {
 	vec3 sky_sign = step(vec3(0.0), sky_local);
 	sky_positive = (vec3(0.25) + sky_sign * 0.75) * sky_weights;
 	sky_negative = (vec3(1.0) - sky_sign * 0.75) * sky_weights;
+	v_air = vec3(0.0);
+	v_al = vec3(0.0, 0.0, 1.0);
+	int nl = int(air_light_info.x);
+	if (nl > 0) {
+		vec3 ad;
+		v_air = air_light((billboard * turn * vec4(VERTEX, 1.0)).xyz, nl, ad) * air_light_info.w;
+		vec3 av = mat3(VIEW_MATRIX) * ad;
+		float al = length(av);
+		av = al > 1e-5 ? av / al : vec3(0.0, 0.0, 1.0);
+		v_al = vec3(c * av.x - s * av.y, s * av.x + c * av.y, av.z);
+	}
 }
 
 vec2 cell_uv(vec2 uv, float frame) {
@@ -78,6 +92,12 @@ void fragment() {
 	float sky = (dot(p.rgb, sky_positive) + dot(n.rgb, sky_negative)) / max(p.a, 0.003);
 	vec3 color = COLOR.rgb * (sun_col * sun_energy * lit + amb_col * amb_energy * (0.2 + sky * 0.6));
 	color += COLOR.rgb * local_light * pow(1.0 - age, 4.0);
+	if (v_air.r + v_air.g + v_air.b > 1e-3) {
+		// a flash, a fire or a tracer close by (AirLights), through the same
+		// baked lobes as the sun's light
+		float air_lit = dot(mix(n.rgb, p.rgb, step(vec3(0.0), v_al)), v_al * v_al) / max(p.a, 0.003);
+		color += COLOR.rgb * v_air * (0.3 + air_lit);
+	}
 	// In the fuel bake, negative alpha carries emission integrated through
 	// the same soot. Keep the glow near the opening as each eddy rises.
 	if (grille_heat > 0.0) {
